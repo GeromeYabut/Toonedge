@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ToonEdge - Library</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-highest": "#33343c",
+                        "error": "#ffb4ab",
+                        "surface-container-low": "#1a1b22",
+                        "on-tertiary-fixed": "#1c1b1b",
+                        "inverse-primary": "#732ee4",
+                        "on-primary-container": "#ede0ff",
+                        "on-background": "#e2e1eb",
+                        "tertiary-fixed": "#e5e2e1",
+                        "on-primary": "#3f008e",
+                        "on-tertiary-container": "#e7e5e4",
+                        "secondary-container": "#474746",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "secondary": "#c8c6c5",
+                        "inverse-surface": "#e2e1eb",
+                        "primary-fixed": "#eaddff",
+                        "primary": "#d2bbff",
+                        "on-secondary": "#303030",
+                        "surface-dim": "#12131a",
+                        "on-tertiary-fixed-variant": "#474746",
+                        "outline": "#958da1",
+                        "surface-tint": "#d2bbff",
+                        "surface-container-lowest": "#0c0e14",
+                        "on-secondary-fixed": "#1b1c1c",
+                        "on-secondary-fixed-variant": "#474746",
+                        "surface-bright": "#383940",
+                        "on-surface-variant": "#ccc3d8",
+                        "on-error": "#690005",
+                        "surface-variant": "#33343c",
+                        "tertiary": "#c8c6c5",
+                        "inverse-on-surface": "#2f3037",
+                        "on-secondary-container": "#b7b5b4",
+                        "tertiary-fixed-dim": "#c8c6c5",
+                        "tertiary-container": "#676666",
+                        "primary-container": "#7c3aed",
+                        "outline-variant": "#4a4455",
+                        "secondary-fixed": "#e4e2e1",
+                        "surface-container": "#1e1f26",
+                        "primary-fixed-dim": "#d2bbff",
+                        "on-tertiary": "#313030",
+                        "surface-container-high": "#282a31",
+                        "background": "#12131a",
+                        "on-primary-fixed": "#25005a",
+                        "on-primary-fixed-variant": "#5a00c6",
+                        "on-surface": "#e2e1eb",
+                        "surface": "#12131a",
+                        "error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "lg": "24px",
+                        "sm": "8px",
+                        "container-margin": "20px",
+                        "xl": "40px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "gutter": "16px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "h1": ["Inter"],
+                        "h2": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-xs": ["Inter"],
+                        "display": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400" }],
+                        "h1": ["24px", { "lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "h2": ["20px", { "lineHeight": "1.4", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "label-xs": ["10px", { "lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen pb-20">
+<!-- Top App Bar -->
+<header class="bg-surface-container dark:bg-surface-container border-b border-outline-variant docked full-width top-0 z-40">
+<div class="flex items-center w-full px-gutter h-xl max-w-7xl mx-auto justify-between h-16">
+<div class="flex items-center gap-4">
+<span class="font-h1 text-h1 text-on-surface">Library</span>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="hover:bg-surface-container-highest transition-colors p-2 rounded-full Active: opacity-80">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+<button class="hover:bg-surface-container-highest transition-colors p-2 rounded-full Active: opacity-80">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Segmented Control -->
+<div class="px-gutter max-w-7xl mx-auto pb-4">
+<div class="flex bg-surface-container-high rounded-full p-1 border border-outline-variant">
+<button class="flex-1 text-center py-2 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">Recent</button>
+<button class="flex-1 text-center py-2 rounded-full font-label-sm text-label-sm bg-primary-container text-on-primary-container font-semibold transition-colors">Reading</button>
+<button class="flex-1 text-center py-2 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">Planned</button>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="max-w-7xl mx-auto px-gutter py-lg">
+<!-- Stats/Filters Banner -->
+<div class="bg-surface-container-low border border-outline-variant rounded-lg p-4 mb-lg flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="auto_stories">auto_stories</span>
+<span class="font-body-md text-on-surface">14 Series in Progress</span>
+</div>
+<button class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-label-sm font-label-sm border border-outline-variant rounded px-2 py-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="filter_list">filter_list</span>
+                Filter
+            </button>
+</div>
+<!-- Library Grid -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-md md:gap-lg">
+<!-- Series Card 1 -->
+<div class="group cursor-pointer">
+<div class="relative aspect-[2/3] rounded-lg overflow-hidden border border-outline-variant bg-surface-container-high mb-sm transition-transform duration-300 group-hover:-translate-y-1">
+<img alt="Cover art showing a cyberpunk cityscape" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" data-alt="A dark, moody illustration of a futuristic cyberpunk city skyline at night. Neon signs in deep purple and cyan glow against the pitch-black sky. The architectural structures are monolithic and geometric, suggesting a dystopian advanced society. Rain falls heavily, reflecting the neon lights in puddles on metallic walkways. The overall aesthetic is high-contrast, clinical, and utility-driven dark mode." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8xrMugjKuQ7kn3Qzrl1KP3DqykgM5mLWlhXCVYINO4hV2FE-9uU2FryeV23CEg9Fuxu4U1hjkV2L9MoDHI_kl6CMg4a2BlPC_yoOMZDq3yYH-mzFx3HhOob1Eg4yKdSglN72q04shL9pc_xu5yHlOXtQRXrJD8BzOPT_D9fimdx9vooyUzl9wDzxv3zjJp4gP_y51srX1QiWXqBzb7qUfEnEJFco6kLi8GEKGMw9V1I0TUZHOHZY_0wWALooW8Qg_-oSMwuVE0Dc"/>
+<!-- Progress Overlay -->
+<div class="absolute bottom-0 left-0 right-0 h-1 bg-surface-container-highest">
+<div class="h-full bg-primary" style="width: 75%;"></div>
+</div>
+<!-- Badges -->
+<div class="absolute top-2 left-2 flex gap-1">
+<span class="bg-surface-container/80 backdrop-blur-sm border border-outline-variant text-on-surface font-label-xs text-label-xs px-2 py-1 rounded">Ch. 45/60</span>
+</div>
+</div>
+<h3 class="font-body-md text-body-md text-on-surface font-semibold truncate group-hover:text-primary transition-colors">Neon Ascendancy</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-xs">Last read: 2 hours ago</p>
+</div>
+<!-- Series Card 2 -->
+<div class="group cursor-pointer">
+<div class="relative aspect-[2/3] rounded-lg overflow-hidden border border-primary bg-surface-container-high mb-sm transition-transform duration-300 group-hover:-translate-y-1 shadow-[0_0_15px_rgba(124,58,237,0.15)]">
+<img alt="Cover art showing an abstract geometric shape" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" data-alt="Minimalist abstract digital art featuring sharp, crystalline geometric formations in shades of deep indigo and stark white against a true black void. The lighting is harsh and directional, creating stark contrasts and casting long, precise shadows. The forms interlock in a complex, puzzle-like manner, suggesting hidden depths and advanced technology. The mood is silent, focused, and premium." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIA4MXIX3CWTFjSsDsnp2qmgLoeN6R_rb4c2gF3n4wyz6LU0EzHSNMCO_lHaaNY3VJ1Fu20s00IGYrH9yiGNWX-pRJy2fyTov7MYSqRuruepM-scT2HoBgV6T8X76bIZzxenEktDsBqRoXW1sbvyS7m2JF22Lv_qdJya-61On2xdkzLTjaFVtL78LiZ5f6tlnYxXO_wkm7vU478qnkuxcP6IjEhW_CHAcjEcJv3Phc8C8yAeVuAOqc2AlPrWoUbEG-uW_cxwlfM2Q"/>
+<!-- Progress Overlay -->
+<div class="absolute bottom-0 left-0 right-0 h-1 bg-surface-container-highest">
+<div class="h-full bg-primary" style="width: 15%;"></div>
+</div>
+<!-- Badges -->
+<div class="absolute top-2 left-2 flex gap-1">
+<span class="bg-primary-container text-on-primary-container font-label-xs text-label-xs px-2 py-1 rounded border border-primary/30">NEW</span>
+<span class="bg-surface-container/80 backdrop-blur-sm border border-outline-variant text-on-surface font-label-xs text-label-xs px-2 py-1 rounded">Ch. 3/20</span>
+</div>
+</div>
+<h3 class="font-body-md text-body-md text-on-surface font-semibold truncate group-hover:text-primary transition-colors">Void Architecture</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-xs">Last read: Yesterday</p>
+</div>
+<!-- Series Card 3 -->
+<div class="group cursor-pointer">
+<div class="relative aspect-[2/3] rounded-lg overflow-hidden border border-outline-variant bg-surface-container-high mb-sm transition-transform duration-300 group-hover:-translate-y-1">
+<img alt="Cover art showing a solitary figure in a vast landscape" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" data-alt="A highly detailed illustration of a solitary figure standing on a desolate, rocky precipice overlooking a vast, dark ocean. The sky is an oppressive expanse of dark grays and blacks, subtly tinged with a faint, ghostly purple aura near the horizon. The artistic style is stark and graphic, emphasizing high contrast and sharp silhouettes over fine textures. The scene conveys isolation and immense scale." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6atd0lffuzD-b_ECU3S_yuq_wuIXthj8lGyXZz9bYoR-TBoRhhBgxJpwX_0XZe5ffaE2a-2gIZpv6M_dNYOBvaE0YPDgHKG4XVsnp2KO2d8rEYpsZwp-H_1p0l2e499pgb-00lJG4otRMkfZLQUmkwoZWD3EjqIHvBCC87T-DygAtHiE7Tj_ZT0nOI0kdyxtVL8J4esOHUCmRqRJDkF8OJXvtDZ8_jI2ngLRZaaZcQPNnDFbK3bu0ipR5po9xNdIfy7Hid-2mhnc"/>
+<!-- Progress Overlay -->
+<div class="absolute bottom-0 left-0 right-0 h-1 bg-surface-container-highest">
+<div class="h-full bg-primary" style="width: 95%;"></div>
+</div>
+<!-- Badges -->
+<div class="absolute top-2 left-2 flex gap-1">
+<span class="bg-surface-container/80 backdrop-blur-sm border border-outline-variant text-on-surface font-label-xs text-label-xs px-2 py-1 rounded">Ch. 110/115</span>
+</div>
+</div>
+<h3 class="font-body-md text-body-md text-on-surface font-semibold truncate group-hover:text-primary transition-colors">The Last Shore</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-xs">Last read: 3 days ago</p>
+</div>
+<!-- Series Card 4 -->
+<div class="group cursor-pointer">
+<div class="relative aspect-[2/3] rounded-lg overflow-hidden border border-outline-variant bg-surface-container-high mb-sm transition-transform duration-300 group-hover:-translate-y-1">
+<img alt="Cover art showing swirling purple and dark colors" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" data-alt="Fluid, swirling abstract patterns in dark shades of plum, charcoal, and black, interspersed with sharp, glowing lines of pure white and vibrant violet. The texture resembles liquid metal or dark matter reacting to an unseen energy source. The composition is dynamic and slightly chaotic, yet unified by a strict color palette that aligns with a premium dark mode aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBiK6cPwKILEVm1cgmzIJlM7BgwMGRGpkXnW8itAKv7bbWUucNjMZMGuEir_Qdiwug2PgnBEZbvIDilm5Cg__UcXzZ268JHbLWIkF9vpthp9nlcN7J4JiiQ7STwPXdsv-v9_kdKagB9XVlGuElw4dwJZS-j-oedoQ8fgzZJXnHqu4SruQazhKfo5jXoV6RGoxpguPTWQw7kbn1udFT26XT9_x0bh0mGTKkdh00cA7vnuibkN_Aj7Z_0qojoJ07PAgomt0sHwOq0bYY"/>
+<!-- Progress Overlay -->
+<div class="absolute bottom-0 left-0 right-0 h-1 bg-surface-container-highest">
+<div class="h-full bg-primary" style="width: 45%;"></div>
+</div>
+<!-- Badges -->
+<div class="absolute top-2 left-2 flex gap-1">
+<span class="bg-surface-container/80 backdrop-blur-sm border border-outline-variant text-on-surface font-label-xs text-label-xs px-2 py-1 rounded">Ch. 12/??</span>
+</div>
+</div>
+<h3 class="font-body-md text-body-md text-on-surface font-semibold truncate group-hover:text-primary transition-colors">Aether Currents</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-xs">Last read: 1 week ago</p>
+</div>
+<!-- Series Card 5 -->
+<div class="group cursor-pointer">
+<div class="relative aspect-[2/3] rounded-lg overflow-hidden border border-outline-variant bg-surface-container-high mb-sm transition-transform duration-300 group-hover:-translate-y-1">
+<div class="w-full h-full flex flex-col items-center justify-center bg-surface-container-highest p-4 text-center">
+<span class="material-symbols-outlined text-outline text-display mb-2" data-icon="image_not_supported">image_not_supported</span>
+<span class="font-label-sm text-on-surface-variant">Cover Missing</span>
+</div>
+<!-- Progress Overlay -->
+<div class="absolute bottom-0 left-0 right-0 h-1 bg-surface-container-highest">
+<div class="h-full bg-primary" style="width: 100%;"></div>
+</div>
+<!-- Badges -->
+<div class="absolute top-2 left-2 flex gap-1">
+<span class="bg-surface-container/80 backdrop-blur-sm border border-outline-variant text-on-surface font-label-xs text-label-xs px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="check_circle">check_circle</span>
+                            Done
+                        </span>
+</div>
+</div>
+<h3 class="font-body-md text-body-md text-on-surface font-semibold truncate group-hover:text-primary transition-colors">Archived Project Gamma</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-xs">Finished</p>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="bg-surface-container-lowest dark:bg-surface-container-lowest border-t border-outline-variant docked full-width bottom-0 fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 md:hidden">
+<!-- Discover / Home Intent -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all Active: scale-95 duration-100 py-1 px-2"><span class="material-symbols-outlined mb-1" data-icon="home">home</span><span class="font-label-sm text-label-sm">Home</span></button>
+<!-- Library (Active) -->
+<button class="flex flex-col items-center justify-center text-primary dark:text-primary font-semibold hover:text-primary transition-all Active: scale-95 duration-100 py-1 px-2">
+<span class="material-symbols-outlined fill mb-1" data-icon="library_books" data-weight="fill">library_books</span>
+<span class="font-label-sm text-label-sm">Library</span>
+</button>
+<!-- Downloads -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all Active: scale-95 duration-100 py-1 px-2">
+<span class="material-symbols-outlined mb-1" data-icon="download_for_offline">download_for_offline</span>
+<span class="font-label-sm text-label-sm">Downloads</span>
+</button>
+<!-- Settings -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all Active: scale-95 duration-100 py-1 px-2">
+<span class="material-symbols-outlined mb-1" data-icon="settings">settings</span>
+<span class="font-label-sm text-label-sm">Settings</span>
+</button>
+</nav>
+<!-- Web Navigation Cluster (Hidden on Mobile) -->
+<div class="hidden md:flex fixed top-0 right-gutter h-16 items-center gap-6 z-50">
+<button class="text-on-surface-variant hover:text-primary transition-colors font-label-sm flex items-center gap-2"><span class="material-symbols-outlined text-[20px]" data-icon="home">home</span>Home</button>
+<button class="text-primary font-semibold transition-colors font-label-sm flex items-center gap-2 border-b-2 border-primary py-5">
+<span class="material-symbols-outlined text-[20px] fill" data-icon="library_books" data-weight="fill">library_books</span>
+            Library
+        </button>
+<button class="text-on-surface-variant hover:text-primary transition-colors font-label-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]" data-icon="download_for_offline">download_for_offline</span>
+            Downloads
+        </button>
+<button class="text-on-surface-variant hover:text-primary transition-colors font-label-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+            Settings
+        </button>
+</div>
+</body></html>

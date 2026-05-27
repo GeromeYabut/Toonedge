@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ToonEdge Reader</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-fixed": "#25005a",
+                      "on-secondary": "#303030",
+                      "surface-container-high": "#282a31",
+                      "primary-fixed": "#eaddff",
+                      "surface-container-lowest": "#0c0e14",
+                      "surface": "#12131a",
+                      "outline": "#958da1",
+                      "primary-fixed-dim": "#d2bbff",
+                      "primary": "#d2bbff",
+                      "tertiary-fixed-dim": "#c8c6c5",
+                      "surface-tint": "#d2bbff",
+                      "surface-container-highest": "#33343c",
+                      "inverse-primary": "#732ee4",
+                      "inverse-surface": "#e2e1eb",
+                      "secondary": "#c8c6c5",
+                      "tertiary-fixed": "#e5e2e1",
+                      "on-surface-variant": "#ccc3d8",
+                      "secondary-container": "#474746",
+                      "primary-container": "#7c3aed",
+                      "on-tertiary-fixed": "#1c1b1b",
+                      "on-secondary-container": "#b7b5b4",
+                      "on-secondary-fixed": "#1b1c1c",
+                      "error-container": "#93000a",
+                      "surface-container-low": "#1a1b22",
+                      "error": "#ffb4ab",
+                      "on-primary-fixed-variant": "#5a00c6",
+                      "secondary-fixed-dim": "#c8c6c5",
+                      "on-surface": "#e2e1eb",
+                      "outline-variant": "#4a4455",
+                      "on-background": "#e2e1eb",
+                      "tertiary-container": "#676666",
+                      "on-tertiary": "#313030",
+                      "on-primary": "#3f008e",
+                      "tertiary": "#c8c6c5",
+                      "surface-container": "#1e1f26",
+                      "on-primary-container": "#ede0ff",
+                      "surface-bright": "#383940",
+                      "on-error": "#690005",
+                      "on-tertiary-container": "#e7e5e4",
+                      "on-secondary-fixed-variant": "#474746",
+                      "on-error-container": "#ffdad6",
+                      "inverse-on-surface": "#2f3037",
+                      "secondary-fixed": "#e4e2e1",
+                      "on-tertiary-fixed-variant": "#474746",
+                      "surface-dim": "#12131a",
+                      "background": "#12131a",
+                      "surface-variant": "#33343c"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "xl": "40px",
+                      "gutter": "16px",
+                      "md": "16px",
+                      "sm": "8px",
+                      "container-margin": "20px",
+                      "base": "8px",
+                      "xs": "4px",
+                      "lg": "24px"
+              },
+              "fontFamily": {
+                      "body-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "h1": ["Inter"],
+                      "display": ["Inter"],
+                      "label-xs": ["Inter"],
+                      "h2": ["Inter"]
+              },
+              "fontSize": {
+                      "body-md": ["14px", {"lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400"}],
+                      "body-lg": ["16px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                      "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                      "h1": ["24px", {"lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "display": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "label-xs": ["10px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "h2": ["20px", {"lineHeight": "1.4", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #12131a;
+            color: #e2e1eb;
+        }
+        .canvas-focus::-webkit-scrollbar {
+            width: 4px;
+        }
+        .canvas-focus::-webkit-scrollbar-track {
+            background: #12131a;
+        }
+        .canvas-focus::-webkit-scrollbar-thumb {
+            background: #33343c;
+            border-radius: 2px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="font-body-md text-body-md bg-background selection:bg-primary-container selection:text-on-primary-container">
+<!-- Top AppBar - Immersive/Minimalist -->
+<header class="fixed top-0 w-full z-40 flex justify-between items-center px-4 bg-surface-container-high border-b border-outline-variant h-xl transition-all duration-300 opacity-90 hover:opacity-100">
+<div class="flex items-center gap-md">
+<button class="p-base hover:bg-surface-container-highest transition-colors rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="flex flex-col">
+<span class="font-label-xs text-on-surface-variant uppercase tracking-wider">Solo Leveling</span>
+<h1 class="font-h2 text-h2 text-on-surface">Chapter 42</h1>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<button class="px-md h-base flex items-center gap-xs font-label-sm text-label-sm border border-outline-variant hover:border-primary transition-all text-on-surface-variant hover:text-primary rounded-lg py-4">
+<span class="material-symbols-outlined text-[18px]" data-icon="open_in_new">open_in_new</span>
+<span>View Original Page</span>
+</button>
+<button class="p-base hover:bg-surface-container-highest transition-colors rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="auto_stories">auto_stories</span>
+</button>
+</div>
+</header>
+<!-- Reading Canvas -->
+<main class="max-w-4xl mx-auto pt-[80px] pb-[160px] min-h-screen">
+<div class="space-y-0">
+<!-- Detection Banner (Subtle Tooltip style) -->
+<div class="bg-surface-container-low border-l-4 border-primary-container p-md flex items-center justify-between rounded-r-xl mx-gutter mb-lg">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="info">info</span>
+<p class="text-on-surface-variant font-label-sm">High-performance reading mode active. All distractions removed.</p>
+</div>
+<button class="text-primary font-label-sm uppercase tracking-wider">Dismiss</button>
+</div>
+<!-- Content Area -->
+<article class="flex flex-col w-full max-w-none gap-0">
+<img alt="Manhwa Panel 1" class="w-full h-auto object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJ3PFPRYw7EUhEd7H4urrBd8qoOthdxHN_NmMubABbKrKYKNPBcljPegthA2tMoBfMyv3tahBVHKTDPSOClVcBHdW6xF14yPVP6gAfhWtpluJp3_Fs8kfzbdmJY_Lsr8j6QZUXa6rVW5l40-pKw9C4FE2LuuEoOFjVvx386UY-4ZnQm3UW5_-d164u-OXitbE_WI11Ao9sJ5I3emZfv6K5uuklFCKG3dnm1T7X4b6wRRiT5xs-n8Idn72MF_78O7cCsQMot4pSW9E"/>
+<img alt="Manhwa Panel 2" class="w-full h-auto object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxSEx2jPgWLWCbYjMfEYAl3pboN6uHcXKolpm3FhHCCxJR8_sngub-FXmRdtVO0yc57wpDwihxpbVCrDiHaaVYpUvTzidHD3K3x7V1bzmymzWiGmSDX3b1sPVBicMqb-QyWc0fk_2fv0daXIWwXE9QWBqk4eZjB5jWRedT9bFSs52k77Uq7fSw0P-LtVTu24m9gWSjIl38BnRMyY2hV37Wgepc4sqrE-xtMDO-mZcHHnaP27xi_vugtqlOzn2yz0afqkM88pm3RYs"/>
+<img alt="Manhwa Panel 3" class="w-full h-auto object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDes40W5XQBMhqYXoFfzBzW15VsVWNJIVou7SnVn0NMfoNkyXQB4GygiEDtdtz2Lu60vMUCBvgyWZN9DCeRze4QEldS83--bUlkObAhBhcqqFOqsV7lpIN4je72ht87-OcGMfoGL4YxACo7oaKryK0xC0TQ0FwVvBQbGZ19rP3Zu9iK8xl3Efr_GEZlGmOoIBXc06zzC5k08QMRTo5BtjprJ60xo2WPwsTdW3guJIK9S26EywdfhMkTl2uBdaYhK4zrRGThthTIGzA"/>
+<img alt="Manhwa Panel 4" class="w-full h-auto object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjz-A6yonaV5-nP7rMCqx2PUEp9HaBveESlAO0p9mlqrmw9n9GjqTyOPX66cBf4QQLRMGcvpFkt68WWqmVel8zIf3wFC2QnyUOnDh9eTrm9yGwan-_gyKzzBOXvESp471XmrwdQAl0AQa1SXYILGFn4Pk3FEwo1aA-D6z-v30W0iA1FrZUUiG0nOAtmJcJR1CtLJuRjQolSm6PTN_Zmdy1uJXM4W0sSKj1VYgVehbmincKN8nw4pQUJI8bzc_IdLANe2suaYvgZnE"/>
+<img alt="Manhwa Panel 5" class="w-full h-auto object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsw2Tq5BXg5lIj5AD728gunj599jER_qGgcLj_jEp9B8pu2qYtDCbW0UnK3A4rjC0eEWAopmWk2JJ96uDCKfGiNVdgLFo677p6aVQ25o5OUB2aBJ8L0VtJ4gOd-zRGRU0fnAJUscCk91nvzfofC91GCgGJ6p2PpVNkWp2aXpLrzwSIk8TrjOQdvszlulvVnJ5568QViJYXU9Dq7Ou8rQtzvT-LvOYFFHbUVunBYACdWK-2yy_bBSDe3Oz1a2RC9UEn0cKr3aDcESM"/>
+</article>
+</div>
+</main>
+<!-- Floating Reading Controls - Appears on tap/hover -->
+<div class="fixed bottom-[80px] left-0 w-full z-40 flex justify-around items-center px-4 py-4">
+<div class="max-w-4xl w-full flex items-center justify-between gap-xl">
+<!-- Prev Button -->
+<button class="flex-1 flex items-center justify-center gap-md py-4 px-lg bg-surface-container border border-outline-variant rounded-xl hover:border-primary transition-all active:scale-95 group shadow-lg backdrop-blur-sm bg-opacity-95">
+<span class="material-symbols-outlined text-primary group-hover:-translate-x-1 transition-transform" data-icon="chevron_left">chevron_left</span>
+<div class="text-left">
+<span class="block font-label-xs text-label-xs text-on-surface-variant uppercase tracking-widest">Previous Chapter</span>
+<span class="block font-h2 text-h2 text-on-surface">Chapter 41</span>
+</div>
+</button>
+<!-- Progress Indicator (Central) -->
+<div class="hidden md:flex flex-col items-center gap-xs px-lg border-x border-outline-variant bg-surface-container-lowest/80 backdrop-blur-md p-md rounded-xl">
+<span class="font-label-sm text-on-surface-variant">Page 42 of 128</span>
+<div class="w-32 h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-1/3 h-full bg-primary-container"></div>
+</div>
+<span class="font-label-xs text-primary font-bold uppercase">32% Complete</span>
+</div>
+<!-- Next Button -->
+<button class="flex-1 flex items-center justify-center gap-md py-4 px-lg bg-primary-container rounded-xl hover:opacity-90 transition-all active:scale-95 group shadow-lg">
+<div class="text-right">
+<span class="block font-label-xs text-label-xs text-on-primary-container opacity-80 uppercase tracking-widest">Next Chapter</span>
+<span class="block font-h2 text-h2 text-on-primary-container">Chapter 43</span>
+</div>
+<span class="material-symbols-outlined text-on-primary-container group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 bg-surface-container-lowest border-t border-outline-variant shadow-2xl backdrop-blur-sm bg-opacity-95">
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" data-icon="home" data-weight="fill" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-xs">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="library_books">library_books</span>
+<span class="font-label-xs">Library</span></button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="download">download</span>
+<span class="font-label-xs">Downloads</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-xs">Settings</span>
+</button>
+</nav>
+<!-- Side Control Overlay (Floating) -->
+<div class="fixed right-6 top-1/2 -translate-y-1/2 flex flex-col gap-sm">
+<div class="flex flex-col bg-surface-container-high border border-outline-variant rounded-full p-xs gap-xs">
+<button class="w-12 h-12 flex items-center justify-center rounded-full bg-surface-container-highest text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="fit_screen">fit_screen</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-highest transition-colors text-on-surface-variant hover:text-primary">
+<span class="material-symbols-outlined" data-icon="format_size">format_size</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-highest transition-colors text-on-surface-variant hover:text-primary">
+<span class="material-symbols-outlined" data-icon="contrast">contrast</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-highest transition-colors text-on-surface-variant hover:text-primary">
+<span class="material-symbols-outlined" data-icon="bookmarks" data-weight="fill" style="font-variation-settings: 'FILL' 1;">bookmarks</span>
+</button>
+</div>
+<button class="w-12 h-12 flex items-center justify-center rounded-full bg-surface-container-high border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary transition-all">
+<span class="material-symbols-outlined" data-icon="vertical_align_top">vertical_align_top</span>
+</button>
+</div>
+</body></html>

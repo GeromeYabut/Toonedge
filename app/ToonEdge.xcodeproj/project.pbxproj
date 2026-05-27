@@ -1,0 +1,484 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000001 /* ToonEdgeAppEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* ToonEdgeAppEntry.swift */; };
+		A10000000000000000000002 /* AppShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* AppShellView.swift */; };
+		A10000000000000000000003 /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* AppDependencies.swift */; };
+		A10000000000000000000004 /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* AppRouter.swift */; };
+		A10000000000000000000005 /* ToonEdgeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* ToonEdgeApp.swift */; };
+		A10000000000000000000006 /* AppModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* AppModels.swift */; };
+		A10000000000000000000007 /* MockServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* MockServices.swift */; };
+		A10000000000000000000008 /* AppServiceProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* AppServiceProtocols.swift */; };
+		A10000000000000000000009 /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* BrowserView.swift */; };
+		A1000000000000000000000A /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* DownloadsView.swift */; };
+		A1000000000000000000000B /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* HomeView.swift */; };
+		A1000000000000000000000C /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* LibraryView.swift */; };
+		A1000000000000000000000D /* ReaderPlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000D /* ReaderPlaceholderView.swift */; };
+		A1000000000000000000000E /* SearchOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000E /* SearchOverlayView.swift */; };
+		A1000000000000000000000F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000F /* SettingsView.swift */; };
+		A10000000000000000000010 /* ToonEdgePrimitives.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000010 /* ToonEdgePrimitives.swift */; };
+		A10000000000000000000011 /* ToonEdgeDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* ToonEdgeDesignSystem.swift */; };
+		A10000000000000000000013 /* BrowserViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000013 /* BrowserViewModel.swift */; };
+		A10000000000000000000014 /* BrowserWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* BrowserWebView.swift */; };
+		A10000000000000000000015 /* ReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000015 /* ReaderView.swift */; };
+		A10000000000000000000016 /* ReaderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000016 /* ReaderViewModel.swift */; };
+		A10000000000000000000017 /* ReaderSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000017 /* ReaderSettingsView.swift */; };
+		A10000000000000000000018 /* UserDefaultsReaderProgressRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000018 /* UserDefaultsReaderProgressRepository.swift */; };
+		A10000000000000000000019 /* DetectionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000019 /* DetectionModels.swift */; };
+		A1000000000000000000001A /* GenericChapterDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001A /* GenericChapterDetector.swift */; };
+		A1000000000000000000001B /* PageAnalysisScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001B /* PageAnalysisScript.swift */; };
+		A1000000000000000000001C /* SiteProfileRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001C /* SiteProfileRegistry.swift */; };
+		A1000000000000000000001D /* ProfileAwareChapterDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001D /* ProfileAwareChapterDetector.swift */; };
+		A1000000000000000000001E /* DetectionDiagnosticsLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001E /* DetectionDiagnosticsLogger.swift */; };
+		A1000000000000000000001F /* ToonEdgePersistentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001F /* ToonEdgePersistentModels.swift */; };
+		A10000000000000000000020 /* SwiftDataLibraryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000020 /* SwiftDataLibraryRepository.swift */; };
+		A10000000000000000000021 /* HTMLLatestChapterFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000021 /* HTMLLatestChapterFetcher.swift */; };
+		A10000000000000000000022 /* LibraryUpdateRefreshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000022 /* LibraryUpdateRefreshService.swift */; };
+		A10000000000000000000023 /* FileBackedChapterAssetCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000023 /* FileBackedChapterAssetCache.swift */; };
+		A10000000000000000000024 /* CacheStorageMeasurementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000024 /* CacheStorageMeasurementService.swift */; };
+		A10000000000000000000025 /* UpdateCacheDiagnosticsLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000025 /* UpdateCacheDiagnosticsLogger.swift */; };
+		A10000000000000000000026 /* ReaderPageImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000026 /* ReaderPageImageLoader.swift */; };
+		A10000000000000000000027 /* HTMLSeriesMetadataFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000027 /* HTMLSeriesMetadataFetcher.swift */; };
+		A10000000000000000000028 /* AdjacentReaderSessionLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000028 /* AdjacentReaderSessionLoader.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A20000000000000000000001 /* ToonEdgeAppEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToonEdgeAppEntry.swift; sourceTree = "<group>"; };
+		A20000000000000000000002 /* AppShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/App/AppShell/AppShellView.swift; sourceTree = "<group>"; };
+		A20000000000000000000003 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/App/DependencyInjection/AppDependencies.swift; sourceTree = "<group>"; };
+		A20000000000000000000004 /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/App/Routing/AppRouter.swift; sourceTree = "<group>"; };
+		A20000000000000000000005 /* ToonEdgeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/App/ToonEdgeApp.swift; sourceTree = "<group>"; };
+		A20000000000000000000006 /* AppModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Domain/AppModels.swift; sourceTree = "<group>"; };
+		A20000000000000000000007 /* MockServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Mocks/MockServices.swift; sourceTree = "<group>"; };
+		A20000000000000000000008 /* AppServiceProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Protocols/AppServiceProtocols.swift; sourceTree = "<group>"; };
+		A20000000000000000000009 /* BrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Browser/Views/BrowserView.swift; sourceTree = "<group>"; };
+		A2000000000000000000000A /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Downloads/Views/DownloadsView.swift; sourceTree = "<group>"; };
+		A2000000000000000000000B /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Home/Views/HomeView.swift; sourceTree = "<group>"; };
+		A2000000000000000000000C /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Library/Views/LibraryView.swift; sourceTree = "<group>"; };
+		A2000000000000000000000D /* ReaderPlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Views/ReaderPlaceholderView.swift; sourceTree = "<group>"; };
+		A2000000000000000000000E /* SearchOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Search/Views/SearchOverlayView.swift; sourceTree = "<group>"; };
+		A2000000000000000000000F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Settings/Views/SettingsView.swift; sourceTree = "<group>"; };
+		A20000000000000000000010 /* ToonEdgePrimitives.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/SharedUI/Components/ToonEdgePrimitives.swift; sourceTree = "<group>"; };
+		A20000000000000000000011 /* ToonEdgeDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/SharedUI/DesignSystem/ToonEdgeDesignSystem.swift; sourceTree = "<group>"; };
+		A20000000000000000000012 /* ToonEdge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ToonEdge.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000013 /* BrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Browser/ViewModels/BrowserViewModel.swift; sourceTree = "<group>"; };
+		A20000000000000000000014 /* BrowserWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Browser/WebView/BrowserWebView.swift; sourceTree = "<group>"; };
+		A20000000000000000000015 /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Views/ReaderView.swift; sourceTree = "<group>"; };
+		A20000000000000000000016 /* ReaderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/ViewModels/ReaderViewModel.swift; sourceTree = "<group>"; };
+		A20000000000000000000017 /* ReaderSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Settings/ReaderSettingsView.swift; sourceTree = "<group>"; };
+		A20000000000000000000018 /* UserDefaultsReaderProgressRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/UserDefaultsReaderProgressRepository.swift; sourceTree = "<group>"; };
+		A20000000000000000000019 /* DetectionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Detection/Models/DetectionModels.swift; sourceTree = "<group>"; };
+		A2000000000000000000001A /* GenericChapterDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Detection/Scoring/GenericChapterDetector.swift; sourceTree = "<group>"; };
+		A2000000000000000000001B /* PageAnalysisScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Detection/JavaScript/PageAnalysisScript.swift; sourceTree = "<group>"; };
+		A2000000000000000000001C /* SiteProfileRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Detection/SiteProfiles/SiteProfileRegistry.swift; sourceTree = "<group>"; };
+		A2000000000000000000001D /* ProfileAwareChapterDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Detection/Services/ProfileAwareChapterDetector.swift; sourceTree = "<group>"; };
+		A2000000000000000000001E /* DetectionDiagnosticsLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Detection/Services/DetectionDiagnosticsLogger.swift; sourceTree = "<group>"; };
+		A2000000000000000000001F /* ToonEdgePersistentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Persistence/Models/ToonEdgePersistentModels.swift; sourceTree = "<group>"; };
+		A20000000000000000000020 /* SwiftDataLibraryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Persistence/Repositories/SwiftDataLibraryRepository.swift; sourceTree = "<group>"; };
+		A20000000000000000000021 /* HTMLLatestChapterFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLLatestChapterFetcher.swift; sourceTree = "<group>"; };
+		A20000000000000000000022 /* LibraryUpdateRefreshService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/LibraryUpdateRefreshService.swift; sourceTree = "<group>"; };
+		A20000000000000000000023 /* FileBackedChapterAssetCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/FileBackedChapterAssetCache.swift; sourceTree = "<group>"; };
+		A20000000000000000000024 /* CacheStorageMeasurementService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/CacheStorageMeasurementService.swift; sourceTree = "<group>"; };
+		A20000000000000000000025 /* UpdateCacheDiagnosticsLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/UpdateCacheDiagnosticsLogger.swift; sourceTree = "<group>"; };
+		A20000000000000000000026 /* ReaderPageImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderPageImageLoader.swift; sourceTree = "<group>"; };
+		A20000000000000000000027 /* HTMLSeriesMetadataFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLSeriesMetadataFetcher.swift; sourceTree = "<group>"; };
+		A20000000000000000000028 /* AdjacentReaderSessionLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Loading/AdjacentReaderSessionLoader.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		A30000000000000000000001 /* ToonEdge */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000001 /* ToonEdgeAppEntry.swift */,
+			);
+			path = ToonEdge;
+			sourceTree = "<group>";
+		};
+		A50000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				A30000000000000000000001 /* ToonEdge */,
+				A50000000000000000000002 /* ToonEdgeAppCore */,
+				A50000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A50000000000000000000002 /* ToonEdgeAppCore */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000002 /* AppShellView.swift */,
+				A20000000000000000000003 /* AppDependencies.swift */,
+				A20000000000000000000004 /* AppRouter.swift */,
+				A20000000000000000000005 /* ToonEdgeApp.swift */,
+				A20000000000000000000006 /* AppModels.swift */,
+				A20000000000000000000007 /* MockServices.swift */,
+				A20000000000000000000018 /* UserDefaultsReaderProgressRepository.swift */,
+				A20000000000000000000021 /* HTMLLatestChapterFetcher.swift */,
+				A20000000000000000000027 /* HTMLSeriesMetadataFetcher.swift */,
+				A20000000000000000000022 /* LibraryUpdateRefreshService.swift */,
+				A20000000000000000000023 /* FileBackedChapterAssetCache.swift */,
+				A20000000000000000000024 /* CacheStorageMeasurementService.swift */,
+				A20000000000000000000025 /* UpdateCacheDiagnosticsLogger.swift */,
+				A2000000000000000000001F /* ToonEdgePersistentModels.swift */,
+				A20000000000000000000020 /* SwiftDataLibraryRepository.swift */,
+				A20000000000000000000008 /* AppServiceProtocols.swift */,
+				A20000000000000000000009 /* BrowserView.swift */,
+				A20000000000000000000013 /* BrowserViewModel.swift */,
+				A20000000000000000000014 /* BrowserWebView.swift */,
+				A20000000000000000000019 /* DetectionModels.swift */,
+				A2000000000000000000001A /* GenericChapterDetector.swift */,
+				A2000000000000000000001B /* PageAnalysisScript.swift */,
+				A2000000000000000000001C /* SiteProfileRegistry.swift */,
+				A2000000000000000000001D /* ProfileAwareChapterDetector.swift */,
+				A2000000000000000000001E /* DetectionDiagnosticsLogger.swift */,
+				A2000000000000000000000A /* DownloadsView.swift */,
+				A2000000000000000000000B /* HomeView.swift */,
+				A2000000000000000000000C /* LibraryView.swift */,
+				A2000000000000000000000D /* ReaderPlaceholderView.swift */,
+				A20000000000000000000015 /* ReaderView.swift */,
+				A20000000000000000000026 /* ReaderPageImageLoader.swift */,
+				A20000000000000000000028 /* AdjacentReaderSessionLoader.swift */,
+				A20000000000000000000016 /* ReaderViewModel.swift */,
+				A20000000000000000000017 /* ReaderSettingsView.swift */,
+				A2000000000000000000000E /* SearchOverlayView.swift */,
+				A2000000000000000000000F /* SettingsView.swift */,
+				A20000000000000000000010 /* ToonEdgePrimitives.swift */,
+				A20000000000000000000011 /* ToonEdgeDesignSystem.swift */,
+			);
+			name = ToonEdgeAppCore;
+			sourceTree = "<group>";
+		};
+		A50000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000012 /* ToonEdge.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A40000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		A60000000000000000000001 /* ToonEdge */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A90000000000000000000002 /* Build configuration list for PBXNativeTarget "ToonEdge" */;
+			buildPhases = (
+				A70000000000000000000001 /* Sources */,
+				A40000000000000000000001 /* Frameworks */,
+				A70000000000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ToonEdge;
+			packageProductDependencies = (
+			);
+			productName = ToonEdge;
+			productReference = A20000000000000000000012 /* ToonEdge.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A80000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					A60000000000000000000001 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+				};
+			};
+			buildConfigurationList = A90000000000000000000001 /* Build configuration list for PBXProject "ToonEdge" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A50000000000000000000001;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = A50000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A60000000000000000000001 /* ToonEdge */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A70000000000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A70000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* ToonEdgeAppEntry.swift in Sources */,
+				A10000000000000000000002 /* AppShellView.swift in Sources */,
+				A10000000000000000000003 /* AppDependencies.swift in Sources */,
+				A10000000000000000000004 /* AppRouter.swift in Sources */,
+				A10000000000000000000005 /* ToonEdgeApp.swift in Sources */,
+				A10000000000000000000006 /* AppModels.swift in Sources */,
+				A10000000000000000000007 /* MockServices.swift in Sources */,
+				A10000000000000000000018 /* UserDefaultsReaderProgressRepository.swift in Sources */,
+				A10000000000000000000021 /* HTMLLatestChapterFetcher.swift in Sources */,
+				A10000000000000000000027 /* HTMLSeriesMetadataFetcher.swift in Sources */,
+				A10000000000000000000022 /* LibraryUpdateRefreshService.swift in Sources */,
+				A10000000000000000000023 /* FileBackedChapterAssetCache.swift in Sources */,
+				A10000000000000000000024 /* CacheStorageMeasurementService.swift in Sources */,
+				A10000000000000000000025 /* UpdateCacheDiagnosticsLogger.swift in Sources */,
+				A1000000000000000000001F /* ToonEdgePersistentModels.swift in Sources */,
+				A10000000000000000000020 /* SwiftDataLibraryRepository.swift in Sources */,
+				A10000000000000000000008 /* AppServiceProtocols.swift in Sources */,
+				A10000000000000000000009 /* BrowserView.swift in Sources */,
+				A10000000000000000000013 /* BrowserViewModel.swift in Sources */,
+				A10000000000000000000014 /* BrowserWebView.swift in Sources */,
+				A10000000000000000000019 /* DetectionModels.swift in Sources */,
+				A1000000000000000000001A /* GenericChapterDetector.swift in Sources */,
+				A1000000000000000000001B /* PageAnalysisScript.swift in Sources */,
+				A1000000000000000000001C /* SiteProfileRegistry.swift in Sources */,
+				A1000000000000000000001D /* ProfileAwareChapterDetector.swift in Sources */,
+				A1000000000000000000001E /* DetectionDiagnosticsLogger.swift in Sources */,
+				A1000000000000000000000A /* DownloadsView.swift in Sources */,
+				A1000000000000000000000B /* HomeView.swift in Sources */,
+				A1000000000000000000000C /* LibraryView.swift in Sources */,
+				A1000000000000000000000D /* ReaderPlaceholderView.swift in Sources */,
+				A10000000000000000000015 /* ReaderView.swift in Sources */,
+				A10000000000000000000026 /* ReaderPageImageLoader.swift in Sources */,
+				A10000000000000000000028 /* AdjacentReaderSessionLoader.swift in Sources */,
+				A10000000000000000000016 /* ReaderViewModel.swift in Sources */,
+				A10000000000000000000017 /* ReaderSettingsView.swift in Sources */,
+				A1000000000000000000000E /* SearchOverlayView.swift in Sources */,
+				A1000000000000000000000F /* SettingsView.swift in Sources */,
+				A10000000000000000000010 /* ToonEdgePrimitives.swift in Sources */,
+				A10000000000000000000011 /* ToonEdgeDesignSystem.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A90000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A90000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A90000000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = ToonEdge;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.toonedge.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		A90000000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = ToonEdge;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.toonedge.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A90000000000000000000001 /* Build configuration list for PBXProject "ToonEdge" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A90000000000000000000003 /* Debug */,
+				A90000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A90000000000000000000002 /* Build configuration list for PBXNativeTarget "ToonEdge" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A90000000000000000000005 /* Debug */,
+				A90000000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A80000000000000000000001 /* Project object */;
+}

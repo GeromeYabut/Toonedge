@@ -1,0 +1,163 @@
+import Foundation
+import Testing
+@testable import ToonEdgeAppCore
+
+@Test func fileBackedCacheMapsSourceURLToDeterministicChapterDirectory() throws {
+    let root = try temporaryDirectory()
+    let cache = try FileBackedChapterAssetCache(rootDirectory: root)
+    let sourceURL = URL(string: "https://example.com/series/chapter-12?utm=reader")!
+
+    let first = cache.chapterDirectory(for: sourceURL)
+    let second = cache.chapterDirectory(for: sourceURL)
+
+    #expect(first == second)
+    #expect(first.deletingLastPathComponent().standardizedFileURL.path == root.standardizedFileURL.path)
+}
+
+@Test func fileBackedCacheSanitizesInvalidURLCharacters() throws {
+    let root = try temporaryDirectory()
+    let cache = try FileBackedChapterAssetCache(rootDirectory: root)
+    let sourceURL = URL(string: "https://example.com/series/chapter:12?read=true&name=a/b")!
+
+    let directoryName = cache.chapterDirectory(for: sourceURL).lastPathComponent
+
+    #expect(!directoryName.contains(":"))
+    #expect(!directoryName.contains("?"))
+    #expect(!directoryName.contains("/"))
+    #expect(!directoryName.contains("&"))
+}
+
+@Test func fileBackedCacheMissingFileReturnsCacheMiss() throws {
+    let root = try temporaryDirectory()
+    let cache = try FileBackedChapterAssetCache(rootDirectory: root)
+    let sourceURL = URL(string: "https://example.com/series/chapter-12")!
+    let assetURL = URL(string: "https://cdn.example.com/page-1.jpg")!
+
+    let cached = cache.cachedAssetURL(for: assetURL, sourceURL: sourceURL)
+
+    #expect(cached == nil)
+}
+
+@Test func fileBackedCacheCanInitializeInTemporaryDirectory() throws {
+    let root = try temporaryDirectory().appendingPathComponent("ToonEdgeCache")
+
+    _ = try FileBackedChapterAssetCache(rootDirectory: root)
+
+    var isDirectory: ObjCBool = false
+    let exists = FileManager.default.fileExists(atPath: root.path, isDirectory: &isDirectory)
+    #expect(exists)
+    #expect(isDirectory.boolValue)
+}
+
+@Test func storageMeasurementPrefersMeasuredBytesWhenFilesExist() throws {
+    let root = try temporaryDirectory()
+    let cache = try FileBackedChapterAssetCache(rootDirectory: root)
+    let sourceURL = URL(string: "https://example.com/series/chapter-12")!
+    let assetURL = URL(string: "https://cdn.example.com/page-1.jpg")!
+    let fileURL = cache.intendedAssetURL(for: assetURL, sourceURL: sourceURL)
+    try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data([1, 2, 3, 4]).write(to: fileURL)
+    let service = CacheStorageMeasurementService(assetCache: cache)
+
+    let summary = service.summary(for: [
+        cacheEntry(sourceURL: sourceURL, estimatedStorageBytes: 99_999)
+    ])
+
+    #expect(summary.totalMeasuredBytes == 4)
+    #expect(summary.storageDescription == "4 B measured")
+}
+
+@Test func storageMeasurementFallsBackToEstimatedBytesWhenFilesAreMissing() throws {
+    let root = try temporaryDirectory()
+    let cache = try FileBackedChapterAssetCache(rootDirectory: root)
+    let sourceURL = URL(string: "https://example.com/series/chapter-12")!
+    let service = CacheStorageMeasurementService(assetCache: cache)
+
+    let summary = service.summary(for: [
+        cacheEntry(sourceURL: sourceURL, estimatedStorageBytes: 1_024)
+    ])
+
+    #expect(summary.totalMeasuredBytes == 0)
+    #expect(summary.totalEstimatedBytes == 1_024)
+    #expect(summary.storageDescription == "1 KB estimated")
+}
+
+@Test func removingCachedFilesUpdatesMeasuredSummary() throws {
+    let root = try temporaryDirectory()
+    let cache = try FileBackedChapterAssetCache(rootDirectory: root)
+    let sourceURL = URL(string: "https://example.com/series/chapter-12")!
+    let assetURL = URL(string: "https://cdn.example.com/page-1.jpg")!
+    let fileURL = cache.intendedAssetURL(for: assetURL, sourceURL: sourceURL)
+    try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data([1, 2, 3, 4]).write(to: fileURL)
+    let service = CacheStorageMeasurementService(assetCache: cache)
+    let entries = [cacheEntry(sourceURL: sourceURL, estimatedStorageBytes: 1_024)]
+
+    try FileManager.default.removeItem(at: fileURL)
+    let summary = service.summary(for: entries)
+
+    #expect(summary.totalMeasuredBytes == 0)
+    #expect(summary.storageDescription == "1 KB estimated")
+}
+
+@Test func storageMeasurementIgnoresFilesOutsideCacheNamespace() throws {
+    let root = try temporaryDirectory()
+    let cache = try FileBackedChapterAssetCache(rootDirectory: root)
+    let unrelated = root.appendingPathComponent("unrelated.bin")
+    try Data(repeating: 1, count: 2_048).write(to: unrelated)
+    let service = CacheStorageMeasurementService(assetCache: cache)
+
+    let summary = service.summary(for: [])
+
+    #expect(summary.cachedItemCount == 0)
+    #expect(summary.totalMeasuredBytes == 0)
+    #expect(summary.storageDescription == "No local storage tracked")
+}
+
+@Test func cacheRemoveFailureDiagnosticUsesSanitizedSourceIdentity() {
+    let sourceURL = URL(string: "https://example.com/private/chapter-1?token=secret")!
+
+    let event = UpdateCacheDiagnosticsLogger.cacheRemoveFailureEvent(sourceURL: sourceURL)
+
+    #expect(event == .cacheRemoveFailed(
+        sourceIdentity: UpdateCacheDiagnosticsLogger.sanitizedSourceIdentity(for: sourceURL),
+        operation: "remove"
+    ))
+    #expect(!String(describing: event).contains("token=secret"))
+    #expect(!String(describing: event).contains("chapter-1"))
+}
+
+@Test func metadataWithMissingBackingFileIsSurfacedAsMissing() throws {
+    let root = try temporaryDirectory()
+    let cache = try FileBackedChapterAssetCache(rootDirectory: root)
+    let sourceURL = URL(string: "https://example.com/series/chapter-12")!
+    let service = CacheStorageMeasurementService(assetCache: cache)
+
+    let state = service.storageState(for: cacheEntry(sourceURL: sourceURL, estimatedStorageBytes: 1_024))
+
+    #expect(state == .metadataOnlyMissingFiles)
+}
+
+private func temporaryDirectory() throws -> URL {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("ToonEdgeCacheStorageTests")
+        .appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    return root
+}
+
+private func cacheEntry(
+    sourceURL: URL,
+    estimatedStorageBytes: Int64
+) -> CacheMetadataEntry {
+    CacheMetadataEntry(
+        sourceURL: sourceURL,
+        seriesTitle: "Measured Fixture",
+        chapterTitle: "Chapter 12",
+        chapterLabel: "12",
+        imageCount: 1,
+        estimatedStorageBytes: estimatedStorageBytes,
+        retentionState: .retained,
+        cachedAt: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+}

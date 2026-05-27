@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#472a00",
+                    "surface-container": "#201f1f",
+                    "primary-container": "#a277ff",
+                    "primary-fixed": "#eaddff",
+                    "on-primary-container": "#35007e",
+                    "inverse-surface": "#e5e2e1",
+                    "secondary": "#c8c6c8",
+                    "secondary-container": "#474649",
+                    "on-tertiary-fixed": "#2b1700",
+                    "primary": "#d1bcff",
+                    "surface-bright": "#3a3939",
+                    "on-error": "#690005",
+                    "on-primary-fixed": "#24005b",
+                    "on-secondary-fixed-variant": "#474649",
+                    "tertiary-container": "#c7821e",
+                    "surface-variant": "#353534",
+                    "secondary-fixed-dim": "#c8c6c8",
+                    "on-surface-variant": "#ccc3d7",
+                    "surface-container-highest": "#353534",
+                    "secondary-fixed": "#e4e2e4",
+                    "surface-container-high": "#2a2a2a",
+                    "on-primary": "#3d008f",
+                    "on-tertiary-fixed-variant": "#663e00",
+                    "surface": "#131313",
+                    "error": "#ffb4ab",
+                    "inverse-on-surface": "#313030",
+                    "background": "#131313",
+                    "tertiary": "#ffb962",
+                    "surface-dim": "#131313",
+                    "on-tertiary-container": "#3e2400",
+                    "outline-variant": "#4a4454",
+                    "on-secondary": "#303032",
+                    "surface-container-low": "#1c1b1b",
+                    "tertiary-fixed-dim": "#ffb962",
+                    "error-container": "#93000a",
+                    "on-error-container": "#ffdad6",
+                    "tertiary-fixed": "#ffddb9",
+                    "outline": "#958ea0",
+                    "surface-tint": "#d1bcff",
+                    "on-secondary-fixed": "#1b1b1d",
+                    "on-surface": "#e5e2e1",
+                    "on-primary-fixed-variant": "#5715bc",
+                    "inverse-primary": "#703ad5",
+                    "on-background": "#e5e2e1",
+                    "on-secondary-container": "#b6b4b7",
+                    "surface-container-lowest": "#0e0e0e",
+                    "primary-fixed-dim": "#d1bcff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "1.5rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        .glass-panel {
+            background: rgba(19, 19, 19, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .thin-scrollbar::-webkit-scrollbar { width: 4px; }
+        .thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .thin-scrollbar::-webkit-scrollbar-thumb { background: #353534; border-radius: 10px; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container/30">
+<!-- TopAppBar -->
+<header class="sticky top-0 w-full z-40 bg-[#131313]/70 backdrop-blur-xl no-border tonal-shift bg-gradient-to-b from-[#131313] to-transparent">
+<div class="flex justify-between items-center px-6 py-4 w-full">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden border border-outline-variant/20">
+<img class="w-full h-full object-cover" data-alt="professional male portrait with neutral background and soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOieYjlYzIrqphaZgSOuYNB3SVADLsJqTUFXE8L3Mv97KG4StjIwOTdkFZ-w-lVUrb7DtXbq1hVYtjteR9k6facUcq6NBFYxu_wwqTZDomWfMbG_HRQhh4wBkQKO4AZHFjLAOyfp4LuZIBUqHI87t4NW3Ukq8xrCAjr_7MVm2jEvaYN0S3qa_zWK8Kay8ccFE8RZ6XXQWLS9SRzj9xpU6whoigCzKGyZSpv6Fmwqe-fk54A8PJMvb85hLRMnQbnmahFX7i5cBqtrs"/>
+</div>
+<h1 class="font-['Inter'] text-[1.75rem] font-semibold tracking-tight text-[#e5e2e1]">ToonEdge</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-[#d1bcff] hover:opacity-80 transition-opacity active:scale-95 duration-200">
+<span class="material-symbols-outlined text-2xl">settings</span>
+</button>
+</div>
+</div>
+</header>
+<main class="max-w-5xl mx-auto px-6 pt-4 pb-32 space-y-12">
+<!-- DISCOVER SECTION -->
+<section id="discover">
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-[1.75rem] font-semibold tracking-tight text-on-surface">Discover</h2>
+<span class="text-label-sm font-bold uppercase tracking-widest text-primary">Explore New Worlds</span>
+</div>
+<!-- Open from Clipboard Prompt -->
+<div class="mb-8 p-5 rounded-xl bg-surface-container-low border border-outline-variant/10 flex items-center justify-between group cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-xl bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">content_paste</span>
+</div>
+<div>
+<p class="font-medium text-on-surface">Link detected in clipboard</p>
+<p class="text-sm text-on-surface-variant">https://asuratoon.com/manga/shadow-monarch...</p>
+</div>
+</div>
+<button class="px-5 py-2 rounded-full bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold text-sm active:scale-95 transition-transform">
+                    Open
+                </button>
+</div>
+<!-- Suggested Domains (Bento Grid) -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+<div class="col-span-2 aspect-[2/1] rounded-xl relative overflow-hidden group cursor-pointer">
+<img class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="vibrant abstract geometric pattern with flowing neon purple and blue shapes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDaj08o7s7PNirqGF6zU73CixHhyAC55lZBL3ingVSppAlpc4cXvEjgwMTVnursxC3UwHlt0-tXof421hqwu3I5CBeaHC11IcLlD6IIUsrSNnc1U6sGaxrrqFAkFmLVKGv57Jw9wF9nxzIb-sq5mYPIpTPA4E2C7kHLir1cxm5l0HVNv4IOa9DsyW2nn1dyZAvvSLXAYqLk7RZU1LZQZGoaU1W2W-akpffkVq_YxicPiS23JvqwBj9sJPhm8bGTqKX_G5qmpEz8SRE"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest/90 to-transparent"></div>
+<div class="absolute bottom-4 left-4">
+<p class="text-label-sm font-bold text-primary uppercase tracking-widest mb-1">Official Source</p>
+<h3 class="text-xl font-bold">Asura Scans</h3>
+</div>
+</div>
+<div class="aspect-square rounded-xl bg-surface-container-high flex flex-col items-center justify-center p-4 text-center hover:bg-surface-container-highest transition-colors cursor-pointer border border-outline-variant/10">
+<div class="w-12 h-12 rounded-full bg-[#ff4500]/20 flex items-center justify-center text-[#ff4500] mb-3">
+<span class="material-symbols-outlined">rocket_launch</span>
+</div>
+<span class="font-bold text-sm">Reddit</span>
+</div>
+<div class="aspect-square rounded-xl bg-surface-container-high flex flex-col items-center justify-center p-4 text-center hover:bg-surface-container-highest transition-colors cursor-pointer border border-outline-variant/10">
+<div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary mb-3">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<span class="font-bold text-sm">Flame Scans</span>
+</div>
+</div>
+<!-- Recent Links -->
+<div>
+<h3 class="text-title-sm font-medium text-on-surface-variant mb-4 px-1">Recent Visits</h3>
+<div class="space-y-2">
+<div class="flex items-center justify-between p-3 rounded-lg hover:bg-surface-container-low transition-colors group">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant">history</span>
+<span class="text-sm">reaper-scans.com/series/swordmasters-youngest-son</span>
+</div>
+<span class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant cursor-pointer">close</span>
+</div>
+<div class="flex items-center justify-between p-3 rounded-lg hover:bg-surface-container-low transition-colors group">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant">history</span>
+<span class="text-sm">mangadex.org/title/solo-leveling-arise</span>
+</div>
+<span class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant cursor-pointer">close</span>
+</div>
+</div>
+</div>
+</section>
+<!-- DOWNLOADS SECTION -->
+<section id="downloads">
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-[1.75rem] font-semibold tracking-tight text-on-surface">Downloads</h2>
+<div class="flex flex-col items-end">
+<span class="text-sm font-medium text-on-surface-variant">2.4GB / 64GB used</span>
+<div class="w-32 h-1.5 bg-surface-container-highest rounded-full mt-2 overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-primary-container" style="width: 38%"></div>
+</div>
+</div>
+</div>
+<!-- Active Download -->
+<div class="mb-10 p-4 rounded-xl bg-primary-container/5 border border-primary/20">
+<div class="flex items-start gap-4 mb-3">
+<div class="w-16 h-20 rounded-lg overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="dramatic close-up of a dark fantasy manga cover with glowing blue energy elements" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCz-Sq3Uy8Oq5SSmqCGr849w24T9lRpYMV6uQQbv4qw-n1AjXRhMLCStZtvPIyHI-pYj8p5VhQHJSI1Y07AqVLT6VaNiyxUs58zYU6aCnuhvebtFJFGLw7zIHx02ZsLMZY7uAQ4KuGo3dwOs-m5bmCu4oKsiETSVm-EUpMWX20Ldibd4BuK15c0lneEjgktz3sHQELLuoDbEEujEyFAeDwk5g3CS5xt5GA7fdcsOFhIK1d6KF8KtgLXsiFJ1X0636QpVMoTH4X_2Gk"/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="font-bold text-on-surface">The Beginning After The End</h4>
+<p class="text-xs text-primary font-bold uppercase tracking-wider">Downloading Chapter 174</p>
+</div>
+<span class="material-symbols-outlined text-primary cursor-pointer">pause_circle</span>
+</div>
+<div class="mt-4">
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">
+<span>85% complete</span>
+<span>2.4 MB/s</span>
+</div>
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 85%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Downloaded Library -->
+<div class="flex flex-col gap-4">
+<div class="flex gap-4 p-3 rounded-xl bg-surface-container-low border border-outline-variant/10 hover:bg-surface-container-high transition-colors group cursor-pointer items-center">
+<div class="w-16 h-24 rounded-lg overflow-hidden flex-shrink-0 shadow-lg shadow-black/40">
+<img class="w-full h-full object-cover" data-alt="minimalist book cover with bold typography on a dark textured background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBV3eekzRiFASCLd4ZH3axbPXA4u-gg_3kexkvPWYgPP6FNYhzossX9JNIO68zE1bPY15zH6HEmPxwSSNOrHECTmUZC-l7VaTYjUwrIXv45ZmI7y9KwN8SYasbSk-4K2wmbF_Q0xX5VkGbVJ6n0ljhDhSmlZdbrcpCqcuPJ2MQK_2aJweW9hfhUNroHDYDeLkMmeEwCZJPCskZUMR5IOm1e6SzoNjAubiZDExqlUPGrx__2eXCSEvKB4RKcvTCXcwTy93nXNAD-5RI"/>
+</div>
+<div class="flex flex-col justify-center flex-1">
+<h4 class="font-bold text-on-surface group-hover:text-primary transition-colors">Tower of God</h4>
+<p class="text-sm text-on-surface-variant mb-2">52 Chapters • 1.1 GB</p>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 rounded bg-primary/20 text-[10px] font-bold text-primary border border-primary/20">DOWNLOADED</span>
+</div>
+</div>
+<button class="p-2 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-full transition-colors" title="Delete">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+<div class="flex gap-4 p-3 rounded-xl bg-surface-container-low border border-outline-variant/10 hover:bg-surface-container-high transition-colors group cursor-pointer items-center">
+<div class="w-16 h-24 rounded-lg overflow-hidden flex-shrink-0 shadow-lg shadow-black/40">
+<img class="w-full h-full object-cover" data-alt="action-packed comic art illustration with dynamic perspective and cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqA6IuG4CFJjfBEKmIiJTIr4jXituVywF6Wnoyfw6-Ay4ET_WhfaTfFLV1_K10xDPpOXZRMM4p3hula7YrXjBs9LhGDqPeMM9aEaNOVrAWKTgK9gLjDaTQaJV636JOySxe0cMuVCkdX4H7bQLB-if637ioKEF6ODgjcM-kEvXKUNCH0MTjelquNDySSdeum74zl7O5FQD7nEk6z1P7kqM_8IBUAr0r2XZB-SGKzPI-ia43kQzlpgKwtKzaIwUs8mn6QtbxgR0C_L4"/>
+</div>
+<div class="flex flex-col justify-center flex-1">
+<h4 class="font-bold text-on-surface group-hover:text-primary transition-colors">Omniscient Reader</h4>
+<p class="text-sm text-on-surface-variant mb-2">12 Chapters • 450 MB</p>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-[10px] font-bold text-on-surface-variant border border-outline-variant/20">CACHED</span>
+</div>
+</div>
+<button class="p-2 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-full transition-colors" title="Delete">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+</div>
+</section>
+<!-- SETTINGS SECTION -->
+<section class="pb-10" id="settings">
+<h2 class="text-[1.75rem] font-semibold tracking-tight text-on-surface mb-8">Settings</h2>
+<div class="space-y-8">
+<!-- iOS Style Group -->
+<div class="bg-surface-container-low rounded-2xl overflow-hidden border border-outline-variant/10">
+<div class="flex items-center justify-between p-4 hover:bg-surface-container-high transition-colors cursor-pointer border-b border-outline-variant/5">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-xl">menu_book</span>
+</div>
+<span class="font-medium">Reader Preferences</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+<div class="flex items-center justify-between p-4 hover:bg-surface-container-high transition-colors cursor-pointer border-b border-outline-variant/5">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-tertiary/20 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-xl">database</span>
+</div>
+<span class="font-medium">Storage</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+<div class="flex items-center justify-between p-4 hover:bg-surface-container-high transition-colors border-b border-outline-variant/5">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-secondary/20 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-xl">notifications</span>
+</div>
+<span class="font-medium">Notifications</span>
+</div>
+<!-- Toggle -->
+<div class="w-12 h-6 bg-primary rounded-full relative cursor-pointer">
+<div class="absolute right-0.5 top-0.5 w-5 h-5 bg-on-primary rounded-full shadow-sm"></div>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 hover:bg-surface-container-high transition-colors cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-on-secondary-container/20 flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined text-xl">sync</span>
+</div>
+<span class="font-medium">Cloud Sync</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+</div>
+<!-- Sliders Section -->
+<div class="bg-surface-container-low rounded-2xl p-6 space-y-6 border border-outline-variant/10">
+<div>
+<div class="flex justify-between mb-4">
+<span class="font-medium">Display Brightness</span>
+<span class="text-primary font-bold">85%</span>
+</div>
+<input class="w-full h-1.5 bg-surface-container-highest rounded-full appearance-none cursor-pointer accent-primary" type="range"/>
+</div>
+<div>
+<div class="flex justify-between mb-4">
+<span class="font-medium">Pre-load Buffer</span>
+<span class="text-primary font-bold">5 Chapters</span>
+</div>
+<input class="w-full h-1.5 bg-surface-container-highest rounded-full appearance-none cursor-pointer accent-primary" type="range"/>
+</div>
+</div>
+<!-- Danger Zone -->
+<div class="pt-4">
+<button class="w-full py-4 px-6 rounded-2xl bg-error-container/10 border border-error-container/30 text-error font-bold text-center active:scale-95 transition-all hover:bg-error-container/20">
+                        Clear Cache (1.2 GB)
+                    </button>
+<p class="text-center text-xs text-on-surface-variant mt-4 font-medium uppercase tracking-widest">ToonEdge v2.4.0 • Made for OLED</p>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 pb-safe bg-[#131313]/70 backdrop-blur-xl no-border-tonal-shift shadow-[0_-10px_40px_rgba(0,0,0,0.4)]">
+<div class="flex justify-around items-center h-20 px-4 w-full">
+<a class="flex flex-col items-center justify-center text-[#e5e2e1]/40 hover:text-[#d1bcff]/80 transition-all active:scale-90 duration-150 ease-out" href="#"><span class="material-symbols-outlined mb-1">home</span><span class="font-['Inter'] text-[0.6875rem] font-bold uppercase tracking-widest">Home</span></a>
+<a class="flex flex-col items-center justify-center text-[#e5e2e1]/40 hover:text-[#d1bcff]/80 transition-all active:scale-90 duration-150 ease-out" href="#"><span class="material-symbols-outlined mb-1">library_books</span><span class="font-['Inter'] text-[0.6875rem] font-bold uppercase tracking-widest">Library</span></a>
+<a class="flex flex-col items-center justify-center text-[#e5e2e1]/40 hover:text-[#d1bcff]/80 transition-all active:scale-90 duration-150 ease-out" href="#">
+<span class="material-symbols-outlined mb-1">download_for_offline</span>
+<span class="font-['Inter'] text-[0.6875rem] font-bold uppercase tracking-widest">Downloads</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#d1bcff] scale-110 transition-transform active:scale-90 duration-150 ease-out" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="font-['Inter'] text-[0.6875rem] font-bold uppercase tracking-widest">Settings</span>
+</a>
+</div>
+</nav>
+</body></html>

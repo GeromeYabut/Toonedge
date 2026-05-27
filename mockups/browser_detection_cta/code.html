@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ToonEdge Browser - Clean Mode</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed": "#25005a",
+                    "on-secondary": "#303030",
+                    "surface-container-high": "#282a31",
+                    "primary-fixed": "#eaddff",
+                    "surface-container-lowest": "#0c0e14",
+                    "surface": "#12131a",
+                    "outline": "#958da1",
+                    "primary-fixed-dim": "#d2bbff",
+                    "primary": "#d2bbff",
+                    "tertiary-fixed-dim": "#c8c6c5",
+                    "surface-tint": "#d2bbff",
+                    "surface-container-highest": "#33343c",
+                    "inverse-primary": "#732ee4",
+                    "inverse-surface": "#e2e1eb",
+                    "secondary": "#c8c6c5",
+                    "tertiary-fixed": "#e5e2e1",
+                    "on-surface-variant": "#ccc3d8",
+                    "secondary-container": "#474746",
+                    "primary-container": "#7c3aed",
+                    "on-tertiary-fixed": "#1c1b1b",
+                    "on-secondary-container": "#b7b5b4",
+                    "on-secondary-fixed": "#1b1c1c",
+                    "error-container": "#93000a",
+                    "surface-container-low": "#1a1b22",
+                    "error": "#ffb4ab",
+                    "on-primary-fixed-variant": "#5a00c6",
+                    "secondary-fixed-dim": "#c8c6c5",
+                    "on-surface": "#e2e1eb",
+                    "outline-variant": "#4a4455",
+                    "on-background": "#e2e1eb",
+                    "tertiary-container": "#676666",
+                    "on-tertiary": "#313030",
+                    "on-primary": "#3f008e",
+                    "tertiary": "#c8c6c5",
+                    "surface-container": "#1e1f26",
+                    "on-primary-container": "#ede0ff",
+                    "surface-bright": "#383940",
+                    "on-error": "#690005",
+                    "on-tertiary-container": "#e7e5e4",
+                    "on-secondary-fixed-variant": "#474746",
+                    "on-error-container": "#ffdad6",
+                    "inverse-on-surface": "#2f3037",
+                    "secondary-fixed": "#e4e2e1",
+                    "on-tertiary-fixed-variant": "#474746",
+                    "surface-dim": "#12131a",
+                    "background": "#12131a",
+                    "surface-variant": "#33343c"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "xl": "40px",
+                    "gutter": "16px",
+                    "md": "16px",
+                    "sm": "8px",
+                    "container-margin": "20px",
+                    "base": "8px",
+                    "xs": "4px",
+                    "lg": "24px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "h1": ["Inter"],
+                    "display": ["Inter"],
+                    "label-xs": ["Inter"],
+                    "h2": ["Inter"]
+            },
+            "fontSize": {
+                    "body-md": ["14px", {"lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400"}],
+                    "body-lg": ["16px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                    "h1": ["24px", {"lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "display": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-xs": ["10px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "h2": ["20px", {"lineHeight": "1.4", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { background-color: #12131a; color: #e2e1eb; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .toon-edge-border { border: 1px solid #262626; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="font-body-md text-body-md overflow-hidden h-screen flex flex-col">
+<!-- Top Navigation Bar (Browser Shell) -->
+<header class="bg-surface-container border-b border-outline-variant flex items-center w-full px-sm py-2 z-50">
+<div class="flex items-center gap-xs">
+<button class="p-2 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-[20px]">arrow_back</span>
+</button>
+<button class="p-2 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors opacity-50">
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+<button class="p-2 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-[20px]">refresh</span>
+</button>
+</div>
+<div class="flex-grow bg-surface-container-high rounded-full px-4 py-2 mx-2 flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">lock</span>
+<span class="text-on-surface text-body-md truncate">toonedge.com/series/crimson-voyage/chapter-42</span>
+</div>
+<div class="flex items-center gap-xs">
+<button class="p-2 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</button>
+<button class="p-2 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+</header>
+<!-- Content Canvas (Simulating a Webpage) -->
+<main class="flex-grow overflow-y-auto relative bg-surface-container-lowest pb-24">
+<!-- Simulated Webpage Content -->
+<div class="max-w-4xl mx-auto py-xl px-gutter space-y-lg">
+<!-- Article Header -->
+<div class="space-y-sm">
+<h1 class="font-display text-display text-on-surface">Crimson Voyage: Chapter 42 - The Shattered Mirror</h1>
+<p class="text-on-surface-variant font-body-md">Published 2 hours ago • Action, Fantasy, Supernatural</p>
+</div>
+<!-- Ad Placeholder -->
+<div class="w-full h-24 bg-surface-container-high border border-outline-variant flex items-center justify-center text-on-surface-variant font-label-xs tracking-widest uppercase">
+                ADVERTISEMENT
+            </div>
+<!-- Web Comic/Article Content -->
+<div class="space-y-xl">
+<p class="text-on-surface font-body-lg leading-relaxed">
+                    The wind howled through the obsidian pillars of the forgotten temple. Kaelen gripped the hilt of his blade, the cold metal biting into his palm. Above, the crimson moon cast a long, jagged shadow across the shattered floor. He knew they were coming. He could feel the ripple in the air before he heard the sound.
+                </p>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<img class="w-full h-80 object-cover rounded-lg toon-edge-border" data-alt="A cinematic, high-contrast digital illustration of a dark, gothic fantasy landscape under a blood-red moon. The scene is dominated by deep blacks and dark grays, with vibrant violet and crimson lighting highlights. In the distance, ruined stone pillars of an ancient temple stand against a stormy, swirling sky. The atmosphere is tense, professional, and immersive, aligning with a premium dark-mode utility aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5U7yX5pAveRqhAtksSfkgntkH_nICx3cAo9f5pqFoFHqoJ6ywoG_54DxSx98Cv-u4ocXOct1MZtDCPVfmvDgpj2slUs1-IR-rVD7cpdlY2k7dGpT0oUiIWkm_c9SA6ls4NbmYIaioXAKwOntK0tfZHvkIPlRDtvCY22EQwF29dKFQNFY56Eah2c92yKmtstHggeoOG0X24L6vOUHePDaiIztjLIOb43f6Irp1fK5bu1m4rSIGBqurzP_chiWWPp7ZVACX670HvjI"/>
+<img class="w-full h-80 object-cover rounded-lg toon-edge-border" data-alt="A detailed, close-up digital art piece focusing on a weathered, ornate sword hilt glowing with faint purple energy. The background is a pitch-black, moody environment with sharp, crisp edges and professional lighting. The color palette consists of obsidian, charcoal, and a single striking indigo accent. The image exudes high-performance digital artistry and a clinical, sophisticated mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDWVhD05JxGNo5CQIYFcNzsmVbt8Da21hH99QPEEr99uydVwKmjvSWKt0oQjH_V5JPR44qA3xakaxE_Cy-o1amzaGsjw45GoZZuT9yBQ0P6cvrE5K-xJZciCfcfyTzrFC2o_7TQej1u4PIqWwXNI0dyb8i76SkzCcvg3ZddMvyZyATeZM4md8UV8wzDejYvQn0hL6mzmDzG7KO8HtCxCk_OuFwoMhonftmyJ4-YpEUDpW_DG6cfMON5na6hgZRwQxFh2SMxzEXRbK4"/>
+</div>
+<p class="text-on-surface font-body-lg leading-relaxed">
+                    The first one emerged from the shadows like smoke taking form. It had no face, only a hollow void where features should have been. It raised a hand, and the ground began to tremble. Kaelen didn't wait. He moved with the speed of a dying star, his blade cutting a path of light through the darkness.
+                </p>
+<!-- Sidebar Content Simulation -->
+<div class="bg-surface-container rounded-lg p-lg border border-outline-variant space-y-md">
+<h3 class="font-h2 text-h2 text-on-surface">Popular This Week</h3>
+<div class="space-y-md">
+<div class="flex items-center gap-md">
+<div class="w-12 h-16 bg-surface-container-highest rounded-lg flex-shrink-0"></div>
+<div>
+<p class="text-on-surface font-semibold">Neon Shadows</p>
+<p class="text-on-surface-variant font-label-sm">Chapter 112</p>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<div class="w-12 h-16 bg-surface-container-highest rounded-lg flex-shrink-0"></div>
+<div>
+<p class="text-on-surface font-semibold">The Alchemist's Debt</p>
+<p class="text-on-surface-variant font-label-sm">Chapter 15</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Floating UI / Medium Confidence CTA -->
+<div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-md w-full max-w-[340px] px-gutter">
+<div class="bg-surface-container-highest border border-outline-variant px-lg py-3 rounded-full flex flex-row items-center justify-between shadow-lg w-full">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">auto_stories</span>
+<span class="text-on-surface font-label-sm font-semibold whitespace-nowrap">Clean reading mode</span>
+</div>
+<button class="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label-sm font-bold hover:opacity-90 active:scale-95 transition-all">
+                    Open
+                </button>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation (Shared Component) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface-container-lowest border-t border-outline-variant md:hidden">
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all"><span class="material-symbols-outlined">explore</span><span class="font-label-sm text-label-sm">Discover</span></div>
+<div class="flex flex-col items-center justify-center text-primary dark:text-primary font-semibold hover:text-primary transition-all"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">library_books</span><span class="font-label-sm text-label-sm">Library</span></div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all">
+<span class="material-symbols-outlined">download_for_offline</span>
+<span class="font-label-sm text-label-sm">Downloads</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-sm text-label-sm">Settings</span>
+</div>
+</nav>
+</body></html>

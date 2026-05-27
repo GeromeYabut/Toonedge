@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ToonEdge - Search Results</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-high": "#282a31",
+                        "primary-fixed-dim": "#d2bbff",
+                        "on-error": "#690005",
+                        "tertiary": "#c8c6c5",
+                        "on-surface-variant": "#ccc3d8",
+                        "tertiary-fixed": "#e5e2e1",
+                        "primary-fixed": "#eaddff",
+                        "on-tertiary": "#313030",
+                        "on-background": "#e2e1eb",
+                        "background": "#12131a",
+                        "inverse-surface": "#e2e1eb",
+                        "tertiary-container": "#676666",
+                        "on-secondary-fixed-variant": "#474746",
+                        "on-primary-fixed": "#25005a",
+                        "on-primary-container": "#ede0ff",
+                        "on-tertiary-container": "#e7e5e4",
+                        "on-secondary-container": "#b7b5b4",
+                        "on-secondary-fixed": "#1b1c1c",
+                        "surface-container-lowest": "#0c0e14",
+                        "on-tertiary-fixed": "#1c1b1b",
+                        "inverse-on-surface": "#2f3037",
+                        "outline": "#958da1",
+                        "on-primary": "#3f008e",
+                        "on-primary-fixed-variant": "#5a00c6",
+                        "surface-container-low": "#1a1b22",
+                        "on-secondary": "#303030",
+                        "tertiary-fixed-dim": "#c8c6c5",
+                        "surface-tint": "#d2bbff",
+                        "inverse-primary": "#732ee4",
+                        "surface-variant": "#33343c",
+                        "surface-dim": "#12131a",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "on-error-container": "#ffdad6",
+                        "primary": "#d2bbff",
+                        "surface-bright": "#383940",
+                        "secondary-fixed": "#e4e2e1",
+                        "secondary-container": "#474746",
+                        "on-surface": "#e2e1eb",
+                        "on-tertiary-fixed-variant": "#474746",
+                        "error-container": "#93000a",
+                        "surface": "#12131a",
+                        "secondary": "#c8c6c5",
+                        "surface-container-highest": "#33343c",
+                        "outline-variant": "#4a4455",
+                        "error": "#ffb4ab",
+                        "primary-container": "#7c3aed",
+                        "surface-container": "#1e1f26"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "sm": "8px",
+                        "gutter": "16px",
+                        "container-margin": "20px",
+                        "xs": "4px",
+                        "xl": "40px",
+                        "md": "16px",
+                        "lg": "24px",
+                        "base": "8px"
+                    },
+                    fontFamily: {
+                        "label-xs": ["Inter"],
+                        "h2": ["Inter"],
+                        "body-md": ["Inter"],
+                        "h1": ["Inter"],
+                        "display": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-xs": ["10px", { lineHeight: "1", letterSpacing: "0.05em", fontWeight: "600" }],
+                        "h2": ["20px", { lineHeight: "1.4", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "body-md": ["14px", { lineHeight: "1.5", letterSpacing: "0", fontWeight: "400" }],
+                        "h1": ["24px", { lineHeight: "1.3", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "display": ["32px", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "label-sm": ["12px", { lineHeight: "1", letterSpacing: "0.02em", fontWeight: "500" }],
+                        "body-lg": ["16px", { lineHeight: "1.6", letterSpacing: "0", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #12131a; color: #e2e1eb; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col antialiased">
+<!-- TopAppBar -->
+<header class="bg-surface-container dark:bg-surface-container text-primary dark:text-primary font-body-md text-body-md docked full-width top-0 border-b border-outline-variant flat no shadows hover:bg-surface-container-highest transition-colors flex items-center w-full px-gutter h-xl max-w-7xl mx-auto flex-shrink-0 z-40 sticky">
+<button aria-label="Leading Icon" class="p-2 -ml-2 rounded-full hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-on-surface" data-icon="search">search</span>
+</button>
+<div class="flex-1 ml-2 mr-2">
+<div class="bg-surface-container-highest rounded-full px-4 py-2 flex items-center border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant mr-2 text-[18px]">search</span>
+<input class="bg-transparent border-none focus:ring-0 p-0 text-on-surface font-body-md w-full placeholder-on-surface-variant" placeholder="Search or enter URL" type="text" value="Return of the Mount Hua Sect"/>
+</div>
+</div>
+<button aria-label="Trailing Icon" class="p-2 -mr-2 rounded-full hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-on-surface" data-icon="more_vert">more_vert</span>
+</button>
+</header>
+<!-- Detection Banner (System Prominent) -->
+<div class="bg-[#1A1A1A] border-l-2 border-primary-container px-4 py-3 flex items-start gap-3 flex-shrink-0">
+<span class="material-symbols-outlined text-primary-container mt-0.5" style="font-variation-settings: 'FILL' 1;">policy</span>
+<div class="flex-1">
+<h3 class="text-on-surface font-body-lg text-body-lg">Ready to Extract</h3>
+<p class="text-on-surface-variant font-body-md text-body-md mt-1">Tap a supported result to automatically parse chapters and add to your library.</p>
+</div>
+</div>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-6 max-w-3xl mx-auto w-full pb-32">
+<!-- Search Result Item 1 -->
+<article class="group">
+<div class="flex items-center gap-2 mb-1">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 overflow-hidden">
+<img alt="Asura Scans Favicon" class="w-full h-full object-cover" data-alt="A macro shot of a stylized, glowing 'A' logo with a fiery, neon orange and deep purple gradient, reminiscent of modern webcomic aggregator site branding. The icon is perfectly centered in a small circular frame against a true black background. The lighting is crisp, emitting a subtle bloom effect indicative of a digital interface. The overall aesthetic is sleek, fast, and highly modern, fitting for a power-user platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCOPM81ukr53hLoQui0XamHIyGfdSYy6CawP6Wsw5iDrlxYHDgQENFdj9SShOG8znYURlxErUMTCDpPpm-3-9L3hckt76ZmKh0lB5kyRJ9KcI4fTfOeXVcBqYlqO5xGlS7EmMjOH8OSlVRpsnTix4Dd20iqK5yJlJwudo9ObwqMpGtMwXvj3vjiYYbW_0umThB3EKLNQ4lOrL9b_WU2g-dYCoOR4vT_DxsC4Jdp_Ri29LXFz9KScRnEwWmrl9GRXWrH6WHp3S8IUV0"/>
+</div>
+<div class="flex flex-col">
+<span class="text-on-surface font-label-sm text-label-sm">Asura Scans</span>
+<span class="text-on-surface-variant font-label-xs text-label-xs truncate max-w-[200px]">https://asura.gg › manga › return-of-the-mount-hua-sect</span>
+</div>
+<span class="material-symbols-outlined text-outline ml-auto text-[16px]">more_vert</span>
+</div>
+<a class="block" href="#">
+<h3 class="text-primary-fixed-dim font-h2 text-h2 hover:underline mb-1">Return of the Mount Hua Sect - Asura Scans</h3>
+<p class="text-on-surface-variant font-body-md text-body-md line-clamp-2">Read Return of the Mount Hua Sect manga online for free at Asura Scans. Chung Myung, The 13th Disciple of the Mount Hua Sect...</p>
+</a>
+<!-- Detection Tag -->
+<div class="mt-2 inline-flex items-center gap-1.5 bg-surface-container-high px-2 py-1 rounded border border-outline-variant">
+<span class="material-symbols-outlined text-primary text-[14px]" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="text-on-surface font-label-xs text-label-xs">Supported Source</span>
+</div>
+</article>
+<!-- Search Result Item 2 -->
+<article class="group">
+<div class="flex items-center gap-2 mb-1">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 overflow-hidden">
+<img alt="Webtoon Favicon" class="w-full h-full object-cover" data-alt="A minimalist, geometric 'W' logo in vibrant lime green against a stark, pitch-black background, characteristic of official digital comic publishing platforms. The logo is sharply focused, with clean vector-style edges and no gradients or shadows. It sits within a circular crop. The visual style is clinical, high-contrast, and strictly professional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_SvgMgpIjHg3wBp5zg7v3YjYgEqQ1G2OTyFXno5xlLcaBOYGiw82mGsPLFwPMwjHZQMU3j9kzcUnFLvNKLBuf6jHnFGR2qJeprsVJJ815-iGob4lgDUjmDxldI9y5HtcsWafaMWRR07SyHVKcu7ve2hHiW0mlAOBd_t6KHygXlA4mr2HQgtgdJvSKA-dZfgC6etGKKarBSgbbtZCeSreu7L5gSdpkM6tAsxe0FR726dXUMK2TYCld4aIhsGkY6KiSn91lheNo1NU"/>
+</div>
+<div class="flex flex-col">
+<span class="text-on-surface font-label-sm text-label-sm">WEBTOON</span>
+<span class="text-on-surface-variant font-label-xs text-label-xs truncate max-w-[200px]">https://www.webtoons.com › action › return-of-the-blooming...</span>
+</div>
+<span class="material-symbols-outlined text-outline ml-auto text-[16px]">more_vert</span>
+</div>
+<a class="block" href="#">
+<h3 class="text-primary-fixed-dim font-h2 text-h2 hover:underline mb-1">Return of the Blossoming Blade | WEBTOON</h3>
+<p class="text-on-surface-variant font-body-md text-body-md line-clamp-2">Chung Myung, the 13th disciple of the Mount Hua Sect, awakens 100 years later to find his beloved sect in ruins. He vows to restore it to its former glory.</p>
+</a>
+<div class="mt-2 inline-flex items-center gap-1.5 bg-surface-container-high px-2 py-1 rounded border border-outline-variant">
+<span class="material-symbols-outlined text-primary text-[14px]" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="text-on-surface font-label-xs text-label-xs">Supported Source</span>
+</div>
+</article>
+<!-- Search Result Item 3 -->
+<article class="group">
+<div class="flex items-center gap-2 mb-1">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">language</span>
+</div>
+<div class="flex flex-col">
+<span class="text-on-surface font-label-sm text-label-sm">Wiki</span>
+<span class="text-on-surface-variant font-label-xs text-label-xs truncate max-w-[200px]">https://return-of-the-mount-hua-sect.fandom.com › wiki</span>
+</div>
+<span class="material-symbols-outlined text-outline ml-auto text-[16px]">more_vert</span>
+</div>
+<a class="block" href="#">
+<h3 class="text-primary-fixed-dim font-h2 text-h2 hover:underline mb-1">Return of the Mount Hua Sect Wiki | Fandom</h3>
+<p class="text-on-surface-variant font-body-md text-body-md line-clamp-2">Welcome to the Return of the Mount Hua Sect Wiki, a database about the web novel and manhwa that anyone can edit. Discover characters, chapters, and lore.</p>
+</a>
+</article>
+</main>
+<!-- Browser Controls Bar (Bottom) - Using structural cues but adapted for browser -->
+<nav class="bg-surface-container-lowest dark:bg-surface-container-lowest text-primary-container dark:text-primary-container font-label-sm text-label-sm docked full-width border-t border-outline-variant flat no shadows flex items-center justify-around h-14 max-w-7xl mx-auto flex-shrink-0 z-40 px-4 pb-safe-area">
+<button aria-label="Back" class="flex flex-col items-center justify-center w-12 h-12 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">arrow_back_ios</span>
+</button>
+<button aria-label="Forward" class="flex flex-col items-center justify-center w-12 h-12 text-on-surface-variant hover:text-on-surface transition-colors opacity-50 cursor-not-allowed" disabled="">
+<span class="material-symbols-outlined">arrow_forward_ios</span>
+</button>
+<button aria-label="Refresh" class="flex flex-col items-center justify-center w-12 h-12 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">refresh</span>
+</button>
+<button aria-label="Share" class="flex flex-col items-center justify-center w-12 h-12 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">ios_share</span>
+</button>
+<button aria-label="Tabs" class="flex flex-col items-center justify-center w-12 h-12 text-on-surface-variant hover:text-on-surface transition-colors relative">
+<span class="material-symbols-outlined">filter_none</span>
+<span class="absolute top-2.5 right-2.5 text-[10px] font-bold text-background bg-on-surface-variant rounded-sm px-1 leading-none">3</span>
+</button>
+</nav><nav class="bg-surface-container-lowest dark:bg-surface-container-lowest text-on-surface-variant font-label-xs text-label-xs docked full-width bottom-0 border-t border-outline-variant flat no shadows flex items-center justify-around h-16 max-w-7xl mx-auto flex-shrink-0 z-40 sticky px-4 pb-safe-area">
+<button class="flex flex-col items-center justify-center gap-1 w-full h-full hover:text-primary transition-colors">
+<span class="material-symbols-outlined">home</span>
+<span>Home</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 w-full h-full text-primary transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">local_library</span>
+<span>Library</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 w-full h-full hover:text-primary transition-colors">
+<span class="material-symbols-outlined">history</span>
+<span>History</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 w-full h-full hover:text-primary transition-colors">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</button>
+</nav>
+</body></html>

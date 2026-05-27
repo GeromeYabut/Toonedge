@@ -1,0 +1,7 @@
+.DS_Store
+app/.build/
+DerivedData/
+*.xcuserdata/
+xcuserdata/
+UserInterfaceState.xcuserstate
+docs/.obsidian/workspace.json

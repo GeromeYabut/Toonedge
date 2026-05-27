@@ -1,0 +1,17 @@
+{
+  "pageURL": "https://mangakatana.com/manga/sample/c1",
+  "title": "Sample Chapter 1",
+  "documentHeight": 18000,
+  "viewportWidth": 390,
+  "challengeSignals": [],
+  "images": [
+    {"src":"https://mangakatana.com/sample/1.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":1360,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"wrap_img","semanticHints":[]},
+    {"src":"https://mangakatana.com/sample/2.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":2720,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"wrap_img","semanticHints":[]},
+    {"src":"https://mangakatana.com/sample/3.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":4080,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"wrap_img","semanticHints":[]},
+    {"src":"https://mangakatana.com/sample/4.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":5440,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"wrap_img","semanticHints":[]},
+    {"src":"https://mangakatana.com/sample/5.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":6800,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"wrap_img","semanticHints":[]},
+    {"src":"https://mangakatana.com/sample/6.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":8160,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"wrap_img","semanticHints":[]},
+    {"src":"https://mangakatana.com/sample/7.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":9520,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"wrap_img","semanticHints":[]},
+    {"src":"https://mangakatana.com/sample/8.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":10880,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"wrap_img","semanticHints":[]}
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "pageURL": "https://www.mangahere.cc/manga/sample/c006/15.html",
+  "title": "Sample Chapter 6 - Page 15",
+  "documentHeight": 1800,
+  "viewportWidth": 390,
+  "challengeSignals": [],
+  "images": [
+    {
+      "src": "https://fmcdn.mangahere.com/store/manga/sample/15.jpg",
+      "lazySources": [],
+      "srcset": null,
+      "width": 775,
+      "height": 1100,
+      "top": 600,
+      "left": 0,
+      "className": "reader-main-img",
+      "id": null,
+      "alt": "Sample Chapter 6 Page 15",
+      "parentSignature": "reader-main",
+      "semanticHints": []
+    }
+  ]
+}

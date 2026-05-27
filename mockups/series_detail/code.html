@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-primary-fixed": "#25005a",
+            "on-secondary": "#303030",
+            "surface-container-high": "#282a31",
+            "primary-fixed": "#eaddff",
+            "surface-container-lowest": "#0c0e14",
+            "surface": "#12131a",
+            "outline": "#958da1",
+            "primary-fixed-dim": "#d2bbff",
+            "primary": "#d2bbff",
+            "tertiary-fixed-dim": "#c8c6c5",
+            "surface-tint": "#d2bbff",
+            "surface-container-highest": "#33343c",
+            "inverse-primary": "#732ee4",
+            "inverse-surface": "#e2e1eb",
+            "secondary": "#c8c6c5",
+            "tertiary-fixed": "#e5e2e1",
+            "on-surface-variant": "#ccc3d8",
+            "secondary-container": "#474746",
+            "primary-container": "#7c3aed",
+            "on-tertiary-fixed": "#1c1b1b",
+            "on-secondary-container": "#b7b5b4",
+            "on-secondary-fixed": "#1b1c1c",
+            "error-container": "#93000a",
+            "surface-container-low": "#1a1b22",
+            "error": "#ffb4ab",
+            "on-primary-fixed-variant": "#5a00c6",
+            "secondary-fixed-dim": "#c8c6c5",
+            "on-surface": "#e2e1eb",
+            "outline-variant": "#4a4455",
+            "on-background": "#e2e1eb",
+            "tertiary-container": "#676666",
+            "on-tertiary": "#313030",
+            "on-primary": "#3f008e",
+            "tertiary": "#c8c6c5",
+            "surface-container": "#1e1f26",
+            "on-primary-container": "#ede0ff",
+            "surface-bright": "#383940",
+            "on-error": "#690005",
+            "on-tertiary-container": "#e7e5e4",
+            "on-secondary-fixed-variant": "#474746",
+            "on-error-container": "#ffdad6",
+            "inverse-on-surface": "#2f3037",
+            "secondary-fixed": "#e4e2e1",
+            "on-tertiary-fixed-variant": "#474746",
+            "surface-dim": "#12131a",
+            "background": "#12131a",
+            "surface-variant": "#33343c"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "xl": "40px",
+            "gutter": "16px",
+            "md": "16px",
+            "sm": "8px",
+            "container-margin": "20px",
+            "base": "8px",
+            "xs": "4px",
+            "lg": "24px"
+          },
+          "fontFamily": {
+            "body-md": ["Inter"],
+            "body-lg": ["Inter"],
+            "label-sm": ["Inter"],
+            "h1": ["Inter"],
+            "display": ["Inter"],
+            "label-xs": ["Inter"],
+            "h2": ["Inter"]
+          },
+          "fontSize": {
+            "body-md": ["14px", {"lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400"}],
+            "body-lg": ["16px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+            "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "500"}],
+            "h1": ["24px", {"lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+            "display": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+            "label-xs": ["10px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+            "h2": ["20px", {"lineHeight": "1.4", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body { font-family: 'Inter', sans-serif; }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #4a4455; border-radius: 10px; }
+    .hero-gradient {
+      background: linear-gradient(to bottom, rgba(18, 19, 26, 0.4) 0%, rgba(18, 19, 26, 1) 100%);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen selection:bg-primary-container selection:text-on-primary-container">
+<!-- Top Navigation (JSON: TopAppBar Center Aligned) -->
+<header class="fixed top-0 w-full z-40 flex justify-between items-center px-4 bg-surface-container-high border-b border-outline-variant h-14">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-highest transition-colors active:scale-98">
+<span class="material-symbols-outlined text-primary" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-h2 text-h2 text-on-surface">ToonEdge Overview</h1>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-highest transition-colors active:scale-98">
+<span class="material-symbols-outlined text-primary" data-icon="auto_stories">auto_stories</span>
+</button>
+</header>
+<main class="pt-14 pb-20 max-w-7xl mx-auto">
+<!-- Slim Hero Section -->
+<section class="relative w-full h-48 md:h-60 overflow-hidden">
+<img alt="Series Banner" class="w-full h-full object-cover object-top" data-alt="A wide cinematic shot of a futuristic cyberpunk city with neon purple and indigo highlights under a dark atmospheric sky. The visual style is crisp and detailed, maintaining a professional grade digital art aesthetic with high contrast and deep blacks. The lighting is focused on distant glowing skyscrapers, creating a sense of depth and mystery that aligns with a premium dark-themed UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDIhEZa74NvZn2aFlZmpy0M74_2y6XvAL1YrfwdrptZQlzjg8ZGqOkcBewQz7Wx6FAFAzEXskAxYVX3FKQZajOE3iEo3Ljry3kDBS2o_DCk-Z5jn2XzeHAs4FrYw7vRmkJUc-IPNJwqccDgN6Hd1-bagKh764TkwyV5yvLZd91bpu3WZ_22dj0nvS_RdZT1hP2WIeOXFQlR0ckdosjVIzZXbD6MUQQtDNtSUKysoKkuy8VKIZ7oXEOgZ_YSFYR8KCpEpwgWyVpIeA"/>
+<div class="absolute inset-0 hero-gradient"></div>
+<!-- Content Overlay -->
+<div class="absolute bottom-0 left-0 w-full px-gutter pb-6 flex flex-col md:flex-row md:items-end gap-lg">
+<div class="flex-1">
+<div class="flex items-center gap-sm mb-xs">
+<span class="bg-primary-container text-on-primary-container text-label-xs font-label-xs px-2 py-0.5 rounded-full">ACTION</span>
+<span class="bg-surface-container-highest text-on-surface-variant text-label-xs font-label-xs px-2 py-0.5 rounded-full">WEEKLY</span>
+</div>
+<h2 class="font-display text-display text-on-surface tracking-tight mb-xs">Neon Protocol</h2>
+<p class="text-on-surface-variant text-body-md font-body-md max-w-2xl line-clamp-1">In the year 2099, the boundary between biological and digital life ceases to exist. A lone coder uncovers a conspiracy that threatens to reboot human consciousness.</p>
+</div>
+<div class="flex items-center gap-md">
+<button class="flex flex-col items-center bg-primary-container text-on-primary-container font-semibold py-2 px-6 rounded-lg hover:opacity-90 transition-opacity active:scale-95">
+<span class="text-body-md">Continue Chapter 142</span>
+<span class="text-label-xs opacity-80 font-normal">Page 1 / 24</span>
+</button>
+<button class="bg-surface-container-highest border border-outline-variant text-on-surface font-semibold p-2 rounded-lg hover:bg-surface-variant transition-colors h-full flex items-center justify-center">
+<span class="material-symbols-outlined block" data-icon="bookmark">bookmark</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Content Area: Bento-ish Stats & Utility -->
+<div class="px-gutter mt-md grid grid-cols-1 md:grid-cols-12 gap-lg">
+<!-- Sidebar Stats (Bento Cell) -->
+<aside class="md:col-span-3 flex flex-col gap-md">
+<div class="bg-surface-container-low border border-outline-variant p-md rounded-xl">
+<h3 class="text-label-sm font-label-sm text-outline mb-sm uppercase tracking-widest flex items-center justify-between">
+<span>Library Progress</span>
+<span class="text-on-surface font-bold text-label-sm">75% Complete</span>
+</h3>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden mb-xs">
+<div class="h-full bg-primary-container w-[75%] rounded-full"></div>
+</div>
+<span class="text-label-xs font-label-xs text-on-surface-variant">106 / 142 Chapters</span>
+</div>
+</aside>
+<!-- Main List (Chapter Systematic Rows) -->
+<section class="md:col-span-9 flex flex-col gap-sm">
+<div class="flex items-center justify-between mb-sm">
+<h3 class="text-h2 font-h2 text-on-surface">Chapters</h3>
+<div class="flex items-center gap-sm">
+<button class="flex items-center gap-xs text-on-surface-variant hover:text-primary transition-colors py-1 px-3 bg-surface-container-low border border-outline-variant rounded-full text-label-sm font-label-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="sort">sort</span>
+               Newest First
+             </button>
+<button class="flex items-center gap-xs text-on-surface-variant hover:text-primary transition-colors py-1 px-3 bg-surface-container-low border border-outline-variant rounded-full text-label-sm font-label-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="download">download</span>
+               All
+             </button>
+</div>
+</div>
+<div class="flex flex-col border border-outline-variant rounded-xl overflow-hidden bg-surface-container-low">
+<!-- Chapter Row: New (Violet Badge) -->
+<div class="group flex items-center p-md border-b border-outline-variant hover:bg-surface-container transition-colors cursor-pointer">
+<div class="w-12 h-16 bg-surface-container-highest rounded border border-outline-variant overflow-hidden mr-md flex-shrink-0">
+<img alt="Ch 142" class="w-full h-full object-cover" data-alt="A macro detail shot of digital circuit boards glowing with violet fiber optic lights. The scene is dark, crisp, and futuristic, representing high-tech storytelling. The lighting is sharp with deep shadows, emphasizing a premium technical utility look consistent with the dark mode UI design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMaqXx2DtdlktPtjSf_JeAVwBxO55A4k7jRZzvZ4BMYCsFn8WA6FDoYzyiJLO51JhjxaneCOJVeTSepKQvRZU0Ip3aP2SCkZskwC85AzKm4zjoNyjrU3MPGo4K9DLrR_1fkCOylUdTs6tpx7ad2BHg5l6WTxcvPx4CKxytDxCvjRWd3mDNimfCP2FanUetzwgwAFOusAxhH0ZOh4rCB7guAwsaD9Ve3wHb8K-2w2-Ebzffj5d492AYH308zz1t5AzXJoqwje9rfkc"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-sm mb-1">
+<span class="text-on-primary-container bg-primary-container text-label-xs font-label-xs px-2 py-0.5 rounded uppercase">New</span>
+<span class="text-on-surface font-semibold text-body-lg truncate">Chapter 142: The Breach Protocol</span>
+</div>
+<p class="text-on-surface-variant text-label-sm font-label-sm">Added 2 hours ago • 24 Pages</p>
+</div>
+<div class="flex items-center gap-md ml-md">
+<span class="material-symbols-outlined text-outline" data-icon="download_for_offline" title="Not Downloaded">download_for_offline</span>
+<span class="text-primary font-bold text-label-xs uppercase tracking-wider title='Unread'">Unread</span>
+<div class="w-6 h-6 rounded-full border-2 border-primary"></div>
+</div>
+</div>
+<!-- Chapter Row: In-Progress (Progress Bar) -->
+<div class="group flex items-center p-md border-b border-outline-variant hover:bg-surface-container transition-colors cursor-pointer">
+<div class="w-12 h-16 bg-surface-container-highest rounded border border-outline-variant overflow-hidden mr-md flex-shrink-0">
+<img alt="Ch 141" class="w-full h-full object-cover" data-alt="A dark abstract texture of liquid obsidian with sharp, violet highlights. Minimalist and sophisticated, the visual represents a digital void. High contrast, clinical precision, and professional grade lighting effects create an immersive, utility-first atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiYz7S26TNCQcnXZ1Mj1ZqXpkq_af2-52QDQUBCE6Gii7X3fFGip3RKaInXYieQ1UeoU65MCJpftY5eLs4geiOaCGnj3JPvVSPPVrP9EjQUPamaqCsspR7Hdg0QQIlV50_zJBMMrqZpEk6w75n-uwjOM3op4N1Z2qHFCOfRflIevhNMHGlsVgjvsZ68PYuhzhjRoLvE_cgZvRIIv0ShNBW7S-lza7TvoSf5eGSQvFuh--u63Pg5AzNvTZUQLiR71usZoI8cNk0O5k"/>
+</div>
+<div class="flex-1 min-w-0">
+<span class="text-on-surface font-semibold text-body-lg block mb-1 truncate">Chapter 141: Echoes in the Mesh</span>
+<div class="flex items-center gap-md">
+<div class="w-32 h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary-container w-[60%]"></div>
+</div>
+<p class="text-on-surface-variant text-label-sm font-label-sm">Page 14 / 24</p>
+</div>
+</div>
+<div class="flex items-center gap-md ml-md">
+<span class="material-symbols-outlined text-primary" data-icon="download_done" title="Downloaded">download_done</span>
+<span class="text-on-surface-variant font-bold text-label-xs uppercase tracking-wider" title="In Progress">In Progress</span>
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant flex items-center justify-center">
+<div class="w-2 h-2 rounded-full bg-primary-container"></div>
+</div>
+</div>
+</div>
+<!-- Chapter Row: Read (Checkmark) -->
+<div class="group flex items-center p-md border-b border-outline-variant hover:bg-surface-container transition-colors cursor-pointer bg-surface-container-lowest/50">
+<div class="w-12 h-16 bg-surface-container-highest rounded border border-outline-variant overflow-hidden mr-md flex-shrink-0 opacity-60">
+<img alt="Ch 140" class="w-full h-full object-cover" data-alt="A detailed black and white illustration of mechanical wires and cables woven into a complex web. The lighting is moody and focused, with deep shadows and sharp highlights. The style is industrial, clean, and futuristic, mirroring the professional quality of a high-end comic reader." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpwTI5c65__mJzpm-vgrDIlvjABrAYnIEBmvuoxXXeZ_Vc0IAXm6DozhsB5mEXo6HKEqB7XFBVsFCbcM-30RFyEBqtBcxoptOHu0MCBDL4oUco4g5NTBghPD5X60TOPI_5gXHXKG-57mNQfSNGKSPtwzHBPheRlo4zeGqNku_w16jsg2dyThap7vyb7N2PIKj4wzVdPADLAkHRZ4E9av68Acbvk6hSGbbK1OGK8XXKxKPFqsX47IUGr173aq_LBPAQgCrVhOpgbRo"/>
+</div>
+<div class="flex-1 min-w-0 opacity-60">
+<span class="text-on-surface-variant font-semibold text-body-lg block mb-1 truncate">Chapter 140: Digital Sunset</span>
+<p class="text-on-surface-variant text-label-sm font-label-sm">Read 3 days ago</p>
+</div>
+<div class="flex items-center gap-md ml-md">
+<span class="material-symbols-outlined text-outline" data-icon="download_done" title="Downloaded">download_done</span>
+<span class="text-on-surface-variant font-bold text-label-xs uppercase tracking-wider opacity-60" title="Read">Read</span>
+<span class="material-symbols-outlined text-primary text-[24px]" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Chapter Row: Unread (Dot) -->
+<div class="group flex items-center p-md border-b border-outline-variant hover:bg-surface-container transition-colors cursor-pointer">
+<div class="w-12 h-16 bg-surface-container-highest rounded border border-outline-variant overflow-hidden mr-md flex-shrink-0">
+<img alt="Ch 139" class="w-full h-full object-cover" data-alt="A high-contrast digital rendering of a futuristic user interface panel with data streams flowing in deep violet and white. The background is a true black, making the crisp lines of the interface pop. The mood is clinical and fast-paced, reflecting professional-grade software for power users." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZUVKNdWFnU1RxuFZI2fsPSOYIGCRNJiFUMVgi9ThexTLONAV7cxAVuiGI2fHqglZp9eFTUExK989-fZNlOcvkA2R3Bkj0XNqj3zhljuLIEtlqufK4aGXQMuAg60646RA6fPEk2X_lUayhuh7w0EkjVTnUiByjYzOGpSfYpzxca0tXMUYRcdrtvCGQl3MV4u9tMepA--oFNoxV4RykbAOdwRnw5QhCA7qsp6U2_XXm6KDSkvxkajQm0PdN9hu7c4os6R_6HWvV9IM"/>
+</div>
+<div class="flex-1 min-w-0">
+<span class="text-on-surface font-semibold text-body-lg block mb-1 truncate">Chapter 139: The Ghost Node</span>
+<p class="text-on-surface-variant text-label-sm font-label-sm">Added last week • 30 Pages</p>
+</div>
+<div class="flex items-center gap-md ml-md">
+<span class="material-symbols-outlined text-outline" data-icon="download_for_offline" title="Not Downloaded">download_for_offline</span>
+<span class="text-on-surface-variant font-bold text-label-xs uppercase tracking-wider" title="Unread">Unread</span>
+<div class="w-2.5 h-2.5 rounded-full bg-primary-container mr-1.5"></div>
+</div>
+</div>
+</div>
+<button class="w-full py-4 text-on-surface-variant text-label-sm font-label-sm hover:text-primary transition-colors bg-surface-container-low border border-outline-variant rounded-xl mt-sm active:scale-[0.99]">
+          LOAD MORE CHAPTERS
+        </button>
+</section>
+</div>
+</main>
+<!-- Bottom Navigation (JSON: BottomNavBar) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface-container-lowest border-t border-outline-variant h-16 md:hidden">
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary font-semibold hover:text-primary transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="library_books" style="font-variation-settings: 'FILL' 1;">library_books</span>
+<span class="font-label-sm text-label-sm">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="library_books">library_books</span>
+<span class="font-label-sm text-label-sm">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="download_for_offline">download_for_offline</span>
+<span class="font-label-sm text-label-sm">Downloads</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-sm text-label-sm">Settings</span>
+</a>
+</nav>
+<!-- Desktop Floating Action Button (Contextual: Book a Walk / Read) -->
+<button class="fixed bottom-lg right-lg hidden md:flex items-center gap-sm bg-primary-container text-on-primary-container px-6 py-4 rounded-full shadow-lg hover:opacity-90 active:scale-95 transition-all z-40">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="font-bold">Resume Reading</span>
+</button>
+</body></html>
