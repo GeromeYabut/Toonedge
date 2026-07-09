@@ -3,15 +3,18 @@ import Foundation
 public struct LibraryUpdateRefreshService: LibraryUpdateRefreshing {
     private let library: any LibraryLifecycleManaging
     private let updateChecker: any SeriesUpdateChecking
+    private let chapterIndexRefreshService: (any SeriesChapterIndexRefreshing)?
     private let diagnosticsLogger: (any UpdateCacheDiagnosticsLogging)?
 
     public init(
         library: any LibraryLifecycleManaging,
         updateChecker: any SeriesUpdateChecking,
+        chapterIndexRefreshService: (any SeriesChapterIndexRefreshing)? = nil,
         diagnosticsLogger: (any UpdateCacheDiagnosticsLogging)? = nil
     ) {
         self.library = library
         self.updateChecker = updateChecker
+        self.chapterIndexRefreshService = chapterIndexRefreshService
         self.diagnosticsLogger = diagnosticsLogger
     }
 
@@ -22,6 +25,16 @@ public struct LibraryUpdateRefreshService: LibraryUpdateRefreshing {
 
         for series in snapshot.series {
             do {
+                if let chapterIndexRefreshService {
+                    let outcome = await chapterIndexRefreshService.refreshChapterIndex(for: series)
+                    if outcome.didRefresh {
+                        if outcome.hasUnreadUpdates {
+                            updatedCount += 1
+                        }
+                        continue
+                    }
+                }
+
                 let result = try await updateChecker.checkForUpdates(series: series)
                 try await library.recordUpdateCheckResult(
                     seriesID: result.seriesID,

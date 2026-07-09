@@ -461,6 +461,98 @@ import Testing
     ])
 }
 
+@Test func chapterIndexRefreshServiceRecordsIndexAndUpdateState() async throws {
+    let seriesID = UUID(uuidString: "A2EDB8E4-7F21-4608-9C8C-5DCFE4B35531")!
+    let series = LibrarySeriesSummary.updateCheckFixture(id: seriesID, latestChapterLabel: "106")
+    let library = RecordingChapterIndexLibrary(snapshot: LibrarySnapshot(series: [series]))
+    let fetcher = StubChapterIndexFetcher()
+    fetcher.snapshots[seriesID] = ChapterIndexSnapshot(
+        seriesID: seriesID,
+        entries: [
+            ChapterIndexEntry(
+                title: "Chapter 107",
+                chapterLabel: "107",
+                chapterNumber: 107,
+                sourceURL: URL(string: "https://example.com/chapter-107")!
+            )
+        ],
+        checkedAt: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+    let service = SeriesChapterIndexRefreshService(library: library, indexLibrary: library, fetcher: fetcher)
+
+    let outcome = await service.refreshChapterIndex(for: series)
+
+    #expect(outcome.didRefresh)
+    #expect(outcome.latestChapterLabel == "107")
+    #expect(outcome.hasUnreadUpdates)
+    #expect(library.recordedIndexes.first?.chapters.map(\.chapterLabel) == ["107"])
+    #expect(library.updateResults.first?.latestChapterLabel == "107")
+    #expect(library.updateResults.first?.hasUnreadUpdates == true)
+}
+
+@Test func libraryUpdateRefreshUsesChapterIndexRefreshWhenAvailable() async throws {
+    let seriesID = UUID(uuidString: "41B54FDE-23F9-4D68-8B4B-7A1E05C2AD30")!
+    let series = LibrarySeriesSummary.updateCheckFixture(id: seriesID, latestChapterLabel: "106")
+    let library = RecordingChapterIndexLibrary(snapshot: LibrarySnapshot(series: [series]))
+    let fetcher = StubChapterIndexFetcher()
+    fetcher.snapshots[seriesID] = ChapterIndexSnapshot(
+        seriesID: seriesID,
+        entries: [
+            ChapterIndexEntry(
+                title: "Chapter 107",
+                chapterLabel: "107",
+                chapterNumber: 107,
+                sourceURL: URL(string: "https://example.com/chapter-107")!
+            )
+        ]
+    )
+    let indexRefresh = SeriesChapterIndexRefreshService(library: library, indexLibrary: library, fetcher: fetcher)
+    let refresh = LibraryUpdateRefreshService(
+        library: library,
+        updateChecker: StaticSeriesUpdateChecker(result: .same),
+        chapterIndexRefreshService: indexRefresh
+    )
+
+    let result = await refresh.refreshUpdates()
+
+    #expect(result.checkedCount == 1)
+    #expect(result.updatedCount == 1)
+    #expect(result.failedCount == 0)
+    #expect(fetcher.requestedSeriesIDs == [seriesID])
+}
+
+@Test func libraryUpdateRefreshFallsBackWhenChapterIndexRefreshDoesNotRefresh() async throws {
+    let seriesID = UUID(uuidString: "AF4C0E84-228B-4D06-8EF3-439284D35291")!
+    let series = LibrarySeriesSummary.updateCheckFixture(id: seriesID, latestChapterLabel: "106")
+    let library = RecordingChapterIndexLibrary(snapshot: LibrarySnapshot(series: [series]))
+    let fetcher = StubChapterIndexFetcher()
+    let checker = RecordingSeriesUpdateChecker(resultsBySeriesID: [
+        seriesID: SeriesUpdateCheckResult(
+            seriesID: seriesID,
+            latestChapterLabel: "107",
+            hasUnreadUpdates: true,
+            checkedAt: Date(timeIntervalSince1970: 1_700_000_302),
+            comparison: .newerAvailable
+        )
+    ])
+    let indexRefresh = SeriesChapterIndexRefreshService(library: library, indexLibrary: library, fetcher: fetcher)
+    let refresh = LibraryUpdateRefreshService(
+        library: library,
+        updateChecker: checker,
+        chapterIndexRefreshService: indexRefresh
+    )
+
+    let result = await refresh.refreshUpdates()
+
+    #expect(result.checkedCount == 1)
+    #expect(result.updatedCount == 1)
+    #expect(result.failedCount == 0)
+    #expect(fetcher.requestedSeriesIDs == [seriesID])
+    #expect(await checker.requestedSeriesIDs == [seriesID])
+    #expect(library.updateResults.last?.latestChapterLabel == "107")
+    #expect(library.updateResults.last?.hasUnreadUpdates == true)
+}
+
 @Test func htmlLatestChapterFetcherLogsParserPathWithoutFullURL() async throws {
     let canonicalURL = URL(string: "https://example.com/series?token=secret")!
     let series = LibrarySeriesSummary.updateCheckFixture(latestChapterLabel: "12", canonicalURL: canonicalURL)
@@ -540,6 +632,85 @@ private actor RecordingSeriesUpdateChecker: SeriesUpdateChecking {
             checkedAt: Date(timeIntervalSince1970: 1_700_000_000),
             comparison: .same
         )
+    }
+}
+
+private struct StaticSeriesUpdateChecker: SeriesUpdateChecking {
+    var result: ChapterUpdateComparisonResult
+
+    func checkForUpdates(series: LibrarySeriesSummary) async throws -> SeriesUpdateCheckResult {
+        SeriesUpdateCheckResult(
+            seriesID: series.id,
+            latestChapterLabel: series.latestChapterLabel,
+            hasUnreadUpdates: result != .same,
+            checkedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            comparison: result
+        )
+    }
+}
+
+private final class StubChapterIndexFetcher: SeriesChapterIndexFetching, @unchecked Sendable {
+    var snapshots: [UUID: ChapterIndexSnapshot] = [:]
+    var requestedSeriesIDs: [UUID] = []
+
+    func chapterIndexSnapshot(for series: LibrarySeriesSummary) async throws -> ChapterIndexSnapshot? {
+        requestedSeriesIDs.append(series.id)
+        return snapshots[series.id]
+    }
+}
+
+private final class RecordingChapterIndexLibrary: LibraryLifecycleManaging, LibraryChapterIndexManaging, @unchecked Sendable {
+    var snapshot: LibrarySnapshot
+    var recordedIndexes: [(seriesID: UUID, chapters: [ChapterIndexEntry])] = []
+    var updateResults: [(seriesID: UUID, latestChapterLabel: String?, hasUnreadUpdates: Bool)] = []
+
+    init(snapshot: LibrarySnapshot) {
+        self.snapshot = snapshot
+    }
+
+    func homeSnapshot() async -> HomeSnapshot {
+        HomeSnapshot(continueReading: [], recentlyUpdated: [], library: [])
+    }
+
+    func librarySnapshot() async -> LibrarySnapshot {
+        snapshot
+    }
+
+    func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
+        nil
+    }
+
+    func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {}
+
+    func removeFromLibrary(seriesID: UUID) async throws {}
+
+    func updateLibraryState(_ state: LibraryCollectionState, for seriesID: UUID) async throws {}
+
+    func recordUpdateCheckResult(
+        seriesID: UUID,
+        latestChapterLabel: String?,
+        hasUnreadUpdates: Bool,
+        checkedAt: Date
+    ) async throws {
+        updateResults.append((seriesID, latestChapterLabel, hasUnreadUpdates))
+    }
+
+    func recordReadingProgress(_ progress: ReaderProgress, forChapterID chapterID: UUID, at date: Date) async throws {}
+
+    func continueReadingTarget(for seriesID: UUID) async -> ContinueReadingTarget? { nil }
+
+    func readerSession(forChapterID chapterID: UUID) async -> MockReaderSession? { nil }
+
+    func readerSession(forSourceURL sourceURL: URL) async -> MockReaderSession? { nil }
+
+    func isSaved(canonicalURL: URL) async -> Bool { false }
+
+    func recordAvailableChapters(
+        _ chapters: [ChapterIndexEntry],
+        for seriesID: UUID,
+        indexedAt: Date
+    ) async throws {
+        recordedIndexes.append((seriesID, chapters))
     }
 }
 
