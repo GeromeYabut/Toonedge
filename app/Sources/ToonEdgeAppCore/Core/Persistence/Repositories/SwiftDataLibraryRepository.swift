@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 @MainActor
-public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderProgressStoring, SearchHistoryRecording, RecentReadingRecording, CacheMetadataManaging {
+public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, LibraryChapterIndexManaging, ReaderProgressStoring, SearchHistoryRecording, RecentReadingRecording, CacheMetadataManaging {
     private let modelContext: ModelContext
     private let modelContainer: ModelContainer?
     private let usesModelContextIO: Bool
@@ -199,6 +199,26 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
         series.latestKnownChapterLabel = latestChapterLabel
         series.hasUnreadUpdates = hasUnreadUpdates
         series.updatedAt = checkedAt
+        try saveContextIfNeeded()
+    }
+
+    public func recordAvailableChapters(
+        _ chapters: [ChapterIndexEntry],
+        for seriesID: UUID,
+        indexedAt: Date
+    ) async throws {
+        guard let series = fetchSeries(id: seriesID) else {
+            return
+        }
+
+        for chapter in chapters {
+            upsertIndexedChapter(chapter, seriesID: seriesID, indexedAt: indexedAt)
+        }
+
+        if let latestLabel = chapters.max(by: { ($0.chapterNumber ?? -1) < ($1.chapterNumber ?? -1) })?.chapterLabel {
+            series.latestKnownChapterLabel = latestLabel
+        }
+        series.updatedAt = indexedAt
         try saveContextIfNeeded()
     }
 
@@ -504,6 +524,38 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
             chapterStore[input.id] = chapter
             insert(chapter)
         }
+    }
+
+    private func upsertIndexedChapter(_ input: ChapterIndexEntry, seriesID: UUID, indexedAt: Date) {
+        let sourceURLString = input.sourceURL.absoluteString
+        if let existing = fetchChapter(sourceURLString: sourceURLString) ?? fetchChapter(id: input.id) {
+            existing.seriesID = seriesID
+            existing.title = input.title
+            existing.chapterLabel = input.chapterLabel
+            existing.chapterNumber = input.chapterNumber
+            existing.sourceURLString = sourceURLString
+            existing.publishedAt = input.publishedAt ?? existing.publishedAt
+            existing.updatedAt = indexedAt
+            return
+        }
+
+        let chapter = StoredChapter(
+            id: input.id,
+            seriesID: seriesID,
+            title: input.title,
+            chapterLabel: input.chapterLabel,
+            chapterNumber: input.chapterNumber,
+            sourceURLString: sourceURLString,
+            previousChapterURLString: nil,
+            nextChapterURLString: nil,
+            imageURLStrings: encodeURLStrings([]),
+            isDownloaded: false,
+            publishedAt: input.publishedAt,
+            cachedAt: nil,
+            updatedAt: indexedAt
+        )
+        chapterStore[chapter.id] = chapter
+        insert(chapter)
     }
 
     private func upsertProgress(_ progress: ReaderProgress, chapterID: UUID?, sourceURLString: String, updatedAt: Date) {

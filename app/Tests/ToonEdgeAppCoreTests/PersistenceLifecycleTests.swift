@@ -153,6 +153,111 @@ import Testing
 }
 
 @MainActor
+@Test func swiftDataRepositoryUsesIndexedNextChapterAsSeriesDetailPrimaryAction() async throws {
+    let repository = try makeRepository()
+    let seriesID = UUID(uuidString: "6DB9FA17-D409-4FA3-A066-10368F5EB107")!
+    let chapter106ID = UUID(uuidString: "6DB9FA17-D409-4FA3-A066-10368F5EB106")!
+    let canonicalURL = try #require(URL(string: "https://asurascans.com/comics/the-extras-academy-survival-guide-9a7a1ac5"))
+    let chapter106URL = try #require(URL(string: "https://asurascans.com/comics/the-extras-academy-survival-guide-9a7a1ac5/chapter/106"))
+    let chapter107URL = try #require(URL(string: "https://asurascans.com/comics/the-extras-academy-survival-guide-9a7a1ac5/chapter/107"))
+
+    try await repository.addToLibrary(
+        LibrarySeriesInput(
+            id: seriesID,
+            title: "The Extra’s Academy Survival Guide | Asura Scans",
+            canonicalURL: canonicalURL,
+            sourceDomain: "asurascans.com",
+            coverImageURL: nil,
+            status: "Reading",
+            synopsis: "Saved from Reader Mode.",
+            latestKnownChapterLabel: "106",
+            libraryState: .reading,
+            chapters: [
+                LibraryChapterInput(
+                    id: chapter106ID,
+                    title: "The Extra’s Academy Survival Guide Chapter 106 - Read Online | Asura Scans",
+                    chapterLabel: "106",
+                    chapterNumber: 106,
+                    sourceURL: chapter106URL,
+                    imageURLs: [try #require(URL(string: "https://img.example.com/chapter-106-1.jpg"))],
+                    publishedAt: nil
+                )
+            ]
+        ),
+        context: .reader
+    )
+    try await repository.recordReadingProgress(
+        ReaderProgress(currentImageIndex: 10, totalImageCount: 10),
+        forChapterID: chapter106ID,
+        at: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+
+    try await repository.recordAvailableChapters(
+        [
+            ChapterIndexEntry(
+                title: "The Extra’s Academy Survival Guide Chapter 107 - Read Online | Asura Scans",
+                chapterLabel: "107",
+                chapterNumber: 107,
+                sourceURL: chapter107URL,
+                checkedAt: Date(timeIntervalSince1970: 1_700_000_100)
+            )
+        ],
+        for: seriesID,
+        indexedAt: Date(timeIntervalSince1970: 1_700_000_100)
+    )
+
+    let detail = try #require(await repository.seriesDetail(for: seriesID))
+
+    #expect(detail.primaryActionTitle == "Start Chapter 107")
+    #expect(detail.primaryChapter?.chapterLabel == "107")
+    #expect(detail.primaryChapter?.isOpenable == true)
+}
+
+@MainActor
+@Test func swiftDataRepositoryDoesNotEraseReaderPayloadWhenIndexRefreshSeesExistingChapter() async throws {
+    let repository = try makeRepository()
+    let seriesID = UUID(uuidString: "AE80DD47-9D18-47EB-9DA7-0232898C5100")!
+    let chapterID = UUID(uuidString: "AE80DD47-9D18-47EB-9DA7-0232898C5106")!
+    let chapterURL = try #require(URL(string: "https://example.com/series/extras/chapter/106"))
+    let imageURL = try #require(URL(string: "https://img.example.com/chapter-106-1.jpg"))
+
+    try await repository.addToLibrary(
+        .mock(
+            id: seriesID,
+            title: "The Extra’s Academy Survival Guide",
+            canonicalURL: URL(string: "https://example.com/series/extras")!,
+            chapters: [
+                .mock(
+                    id: chapterID,
+                    title: "Chapter 106",
+                    chapterLabel: "106",
+                    sourceURL: chapterURL,
+                    imageURLs: [imageURL]
+                )
+            ]
+        ),
+        context: .reader
+    )
+
+    try await repository.recordAvailableChapters(
+        [
+            ChapterIndexEntry(
+                title: "Chapter 106",
+                chapterLabel: "106",
+                chapterNumber: 106,
+                sourceURL: chapterURL
+            )
+        ],
+        for: seriesID,
+        indexedAt: Date(timeIntervalSince1970: 1_700_000_100)
+    )
+
+    let session = try #require(await repository.readerSession(forChapterID: chapterID))
+
+    #expect(session.imageURLs == [imageURL])
+}
+
+@MainActor
 @Test func swiftDataRepositorySavesProgressAndRestoresContinueReadingTarget() async throws {
     let repository = try makeRepository()
     let now = Date(timeIntervalSince1970: 1_700_000_000)
