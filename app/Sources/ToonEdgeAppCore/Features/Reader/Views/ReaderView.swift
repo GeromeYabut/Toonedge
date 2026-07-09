@@ -8,6 +8,8 @@ import AppKit
 public struct ReaderView: View {
     @StateObject private var viewModel: ReaderViewModel
     @Binding private var router: AppRouter
+    @State private var isSaveStatePickerPresented = false
+    @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .reader)
     private let readerService: any ReaderSessionProviding
     private let adjacentLoader: (any AdjacentReaderSessionLoading)?
     private let libraryLifecycleService: (any LibraryLifecycleManaging)?
@@ -109,6 +111,19 @@ public struct ReaderView: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $isSaveStatePickerPresented) {
+            AddToLibraryStatePickerView(
+                title: viewModel.session.seriesTitle,
+                selectedState: $saveState,
+                context: .reader,
+                confirm: { state in
+                    confirmLibrarySave(state: state)
+                },
+                cancel: {
+                    isSaveStatePickerPresented = false
+                }
+            )
+        }
     }
 
     private var readerStrip: some View {
@@ -153,10 +168,16 @@ public struct ReaderView: View {
     }
 
     private var chrome: some View {
-        VStack(spacing: 0) {
-            topChrome
-            Spacer()
-            bottomChrome
+        ZStack(alignment: .bottomTrailing) {
+            VStack(spacing: 0) {
+                topChrome
+                Spacer()
+                bottomChrome
+            }
+
+            floatingActionRail
+                .padding(.trailing, ToonEdgeSpacing.large)
+                .padding(.bottom, 132)
         }
         .background(
             LinearGradient(
@@ -200,6 +221,20 @@ public struct ReaderView: View {
 
             Spacer(minLength: ToonEdgeSpacing.small)
 
+            ReaderIconButton(systemImage: "house", label: "Open Home") {
+                router.openHomeRoot()
+            }
+        }
+        .padding(.horizontal, ToonEdgeSpacing.large)
+        .padding(.top, ToonEdgeSpacing.large)
+        .padding(.bottom, ToonEdgeSpacing.medium)
+        .task {
+            await viewModel.refreshSavedState()
+        }
+    }
+
+    private var floatingActionRail: some View {
+        VStack(spacing: ToonEdgeSpacing.small) {
             ReaderIconButton(systemImage: "arrow.down.circle", label: "Retain Chapter Offline") {
                 Task {
                     await viewModel.retainCurrentChapter()
@@ -211,26 +246,17 @@ public struct ReaderView: View {
                     systemImage: viewModel.isSavedToLibrary ? "bookmark.fill" : "bookmark",
                     label: viewModel.isSavedToLibrary ? "Saved to Library" : "Add to Library"
                 ) {
-                    Task {
-                        await viewModel.saveCurrentSessionToLibrary()
-                        emitSaveHaptic()
-                    }
+                    presentLibrarySave()
                 }
+            }
 
-                ReaderIconButton(systemImage: "books.vertical", label: "Open Library") {
-                    router.openLibraryRoot()
-                }
+            ReaderIconButton(systemImage: "safari", label: "View Original Page") {
+                viewOriginalPageAction?() ?? router.viewOriginalPage()
             }
 
             ReaderIconButton(systemImage: "gearshape", label: "Reader Settings") {
                 viewModel.showSettings()
             }
-        }
-        .padding(.horizontal, ToonEdgeSpacing.large)
-        .padding(.top, ToonEdgeSpacing.large)
-        .padding(.bottom, ToonEdgeSpacing.medium)
-        .task {
-            await viewModel.refreshSavedState()
         }
     }
 
@@ -277,25 +303,13 @@ public struct ReaderView: View {
             .font(ToonEdgeTypography.caption)
             .buttonStyle(.plain)
 
-            HStack(spacing: ToonEdgeSpacing.medium) {
-                Button {
-                    viewOriginalPageAction?() ?? router.viewOriginalPage()
-                } label: {
-                    Label("View Original Page", systemImage: "safari")
-                        .labelStyle(.titleAndIcon)
-                }
-
-                Spacer()
-
-                if let message = viewModel.adjacentFailureMessage {
-                    Text(message)
-                        .font(ToonEdgeTypography.caption)
-                        .foregroundStyle(ToonEdgeColor.textSecondary)
-                        .lineLimit(1)
-                }
+            if let message = viewModel.adjacentFailureMessage {
+                Text(message)
+                    .font(ToonEdgeTypography.caption)
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .font(ToonEdgeTypography.caption)
-            .buttonStyle(.plain)
 
             HStack(spacing: ToonEdgeSpacing.medium) {
                 ProgressView(value: viewModel.progress.fractionComplete)
@@ -354,6 +368,51 @@ public struct ReaderView: View {
         #if os(iOS)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         #endif
+    }
+
+    private func presentLibrarySave() {
+        guard !viewModel.isSavedToLibrary else { return }
+        saveState = AddToLibraryStatePickerModel.defaultState(for: .reader)
+        isSaveStatePickerPresented = true
+    }
+
+    private func confirmLibrarySave(state: LibraryCollectionState) {
+        isSaveStatePickerPresented = false
+        Task {
+            await viewModel.saveCurrentSessionToLibrary(libraryState: state)
+            emitSaveHaptic()
+        }
+    }
+}
+
+enum ReaderChromeAction: Equatable {
+    case back
+    case home
+    case download
+    case save
+    case saved
+    case library
+    case viewOriginalPage
+    case settings
+}
+
+struct ReaderChromeLayout: Equatable {
+    var top: [ReaderChromeAction]
+    var floating: [ReaderChromeAction]
+    var bottom: [ReaderChromeAction]
+
+    static func actions(isLibraryAvailable: Bool, isSavedToLibrary: Bool) -> ReaderChromeLayout {
+        var floating: [ReaderChromeAction] = [.download]
+        if isLibraryAvailable {
+            floating.append(isSavedToLibrary ? .saved : .save)
+        }
+        floating.append(contentsOf: [.viewOriginalPage, .settings])
+
+        return ReaderChromeLayout(
+            top: [.back, .home],
+            floating: floating,
+            bottom: []
+        )
     }
 }
 

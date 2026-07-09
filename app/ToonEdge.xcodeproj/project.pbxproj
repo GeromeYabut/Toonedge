@@ -46,6 +46,7 @@
 		A10000000000000000000026 /* ReaderPageImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000026 /* ReaderPageImageLoader.swift */; };
 		A10000000000000000000027 /* HTMLSeriesMetadataFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000027 /* HTMLSeriesMetadataFetcher.swift */; };
 		A10000000000000000000028 /* AdjacentReaderSessionLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000028 /* AdjacentReaderSessionLoader.swift */; };
+		A10000000000000000000029 /* sleepy transparent.png in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000029 /* sleepy transparent.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -89,6 +90,7 @@
 		A20000000000000000000026 /* ReaderPageImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderPageImageLoader.swift; sourceTree = "<group>"; };
 		A20000000000000000000027 /* HTMLSeriesMetadataFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLSeriesMetadataFetcher.swift; sourceTree = "<group>"; };
 		A20000000000000000000028 /* AdjacentReaderSessionLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Loading/AdjacentReaderSessionLoader.swift; sourceTree = "<group>"; };
+		A20000000000000000000029 /* sleepy transparent.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Sources/ToonEdgeAppCore/Resources/Images/sleepy transparent.png"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -150,6 +152,7 @@
 				A2000000000000000000000F /* SettingsView.swift */,
 				A20000000000000000000010 /* ToonEdgePrimitives.swift */,
 				A20000000000000000000011 /* ToonEdgeDesignSystem.swift */,
+				A20000000000000000000029 /* sleepy transparent.png */,
 			);
 			name = ToonEdgeAppCore;
 			sourceTree = "<group>";
@@ -233,6 +236,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000000000000000000029 /* sleepy transparent.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -16,7 +16,8 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "ToonEdgeAppCore"
+            name: "ToonEdgeAppCore",
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "ToonEdgeAppCoreTests",

@@ -260,6 +260,17 @@ import Testing
 }
 
 @MainActor
+@Test func readerViewModelSavesWithSelectedLibraryState() async {
+    let library = RecordingLibraryLifecycleService()
+    let viewModel = ReaderViewModel(session: .sample, libraryLifecycleService: library)
+
+    await viewModel.saveCurrentSessionToLibrary(libraryState: .dropped)
+
+    let recorded = await library.lastAddToLibraryInput
+    #expect(recorded?.libraryState == .dropped)
+}
+
+@MainActor
 @Test func readerViewModelTogglesChromeVisibility() {
     let viewModel = ReaderViewModel(session: .sample)
 
@@ -520,6 +531,20 @@ import Testing
     #expect(router.presentedBrowser == startPoint)
 }
 
+@Test func readerChromeLayoutMovesSecondaryActionsToFloatingRail() {
+    let savedLayout = ReaderChromeLayout.actions(isLibraryAvailable: true, isSavedToLibrary: true)
+    let unsavedLayout = ReaderChromeLayout.actions(isLibraryAvailable: true, isSavedToLibrary: false)
+    let noLibraryLayout = ReaderChromeLayout.actions(isLibraryAvailable: false, isSavedToLibrary: false)
+
+    #expect(savedLayout.top == [.back, .home])
+    #expect(savedLayout.floating == [.download, .saved, .viewOriginalPage, .settings])
+    #expect(savedLayout.bottom.contains(.viewOriginalPage) == false)
+    #expect(savedLayout.top.contains(.library) == false)
+
+    #expect(unsavedLayout.floating == [.download, .save, .viewOriginalPage, .settings])
+    #expect(noLibraryLayout.floating == [.download, .viewOriginalPage, .settings])
+}
+
 private struct FailingCacheMetadataService: CacheMetadataManaging {
     func recordCacheMetadata(_ input: CacheMetadataInput) async throws -> CacheActionResult {
         throw URLError(.cannotWriteToFile)
@@ -585,11 +610,13 @@ private actor RecordingRecentReadingRecorder: RecentReadingRecording {
 
 private actor RecordingLibraryLifecycleService: LibraryLifecycleManaging {
     private var savedCanonicalURLs: Set<URL> = []
+    private(set) var lastAddToLibraryInput: LibrarySeriesInput?
 
     func homeSnapshot() async -> HomeSnapshot { .init(continueReading: [], recentlyUpdated: [], library: []) }
     func librarySnapshot() async -> LibrarySnapshot { .init(series: []) }
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? { nil }
     func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {
+        lastAddToLibraryInput = input
         savedCanonicalURLs.insert(input.canonicalURL)
     }
     func removeFromLibrary(seriesID: UUID) async throws {}

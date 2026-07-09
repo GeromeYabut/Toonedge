@@ -2,6 +2,152 @@
 
 This document tracks confirmed product defects, their evidence, current status, and intended resolution.
 
+## DEF-022 — Reader adjacent navigation masks transient rate-limit/challenge failures
+
+**Status:** Open  
+**Severity:** High  
+**Reported:** 2026-06-05  
+**Area:** Reader adjacent chapter navigation, hidden WebView loading, site challenge/rate-limit handling, failure UX
+
+### User-visible problem
+
+When reading The Extra's Academy Survival Guide chapter 102 and tapping Previous or Next, the Reader can load for an extended period and then fail with a generic message such as "Could not open previous chapter in Reader." or "Could not open next chapter in Reader."
+
+The reporter observed a rate-limited error in another browser around the same time, and retrying a few minutes later worked. This makes the failure intermittent and hard to reproduce consistently.
+
+### Expected behavior
+
+- Adjacent Reader navigation should handle transient site rate limits, challenge pages, and timeouts gracefully.
+- If the hidden adjacent loader hits a challenge/rate-limit/timeout path, the Reader should show an actionable message instead of a generic "could not open" failure.
+- The user should have a clear retry path or a way to open the original adjacent chapter page.
+- The app should avoid rapid repeated hidden loads that could worsen rate limiting.
+
+### Evidence
+
+- Reported on 2026-06-05 with chapter URL:
+  - `https://asurascans.com/comics/the-extras-academy-survival-guide-46f09241/chapter/102`
+- Screenshot evidence shows chapter 102 loaded in Reader with Previous and Next available, and an inline failure message after attempting adjacent navigation.
+- Live investigation on 2026-06-05 found chapters 101, 102, and 103 returning normal HTTP 200 HTML when retried later. The pages included expected previous/next chapter metadata and embedded page image URLs, which suggests the URL pattern and parser path were not permanently broken.
+- `AdjacentReaderSessionLoader` currently requires a high-confidence detection result with non-empty, non-mock images. Challenge pages, low-confidence pages, timeouts, or unavailable adjacent payloads collapse into adjacent-load failure.
+- `ReaderViewModel.navigateAdjacentChapter(_:)` catches all adjacent-load failures and displays the generic direction failure message, losing the underlying reason.
+
+### Initial root-cause hypothesis
+
+Hidden adjacent chapter loading is likely being intermittently blocked by site-side rate limiting or a Cloudflare-style challenge during repeated next/back navigation. The app already has challenge-page detection signals in the detection pipeline, but adjacent Reader navigation does not preserve or surface those diagnostics to the user.
+
+### Proposed fix
+
+1. Add focused tests for adjacent navigation failures caused by challenge/rate-limit signals and hidden-loader timeouts.
+2. Extend `AdjacentReaderSessionLoadError` to carry a reason such as timeout, challenge/rateLimit, unavailable, or lowConfidence.
+3. Propagate challenge/rate-limit diagnostics from detection/page analysis into the adjacent-load failure path.
+4. Update Reader adjacent failure messaging to be actionable, for example: "This site may be rate limiting Reader Mode. Try again in a moment or open the original chapter."
+5. Add a retry/open-original path for adjacent failures where the target adjacent URL is known.
+6. Consider a conservative retry/backoff strategy, but do not auto-loop hidden WebView loads.
+7. Log lightweight diagnostics for adjacent-load URL, direction, elapsed time, detection confidence, parser path, and challenge signals.
+
+### Acceptance criteria
+
+- Rate-limit/challenge/timeout failures show a specific actionable Reader message.
+- The user can retry or open the original adjacent chapter when the target URL is known.
+- Normal adjacent chapter navigation still opens Reader Mode as before.
+- Regression tests cover challenge/rate-limit and timeout failure paths.
+- The app does not issue aggressive repeated hidden loads after a transient failure.
+
+## DEF-021 — Series Detail Continue can reopen chapter 1 after reading later chapters
+
+**Status:** Open  
+**Severity:** High  
+**Reported:** 2026-06-05  
+**Area:** Series Detail continue action, Reader progress persistence, recent chapter selection
+
+### User-visible problem
+
+After reading multiple chapters in a series and returning from Reader to Series Detail using the Reader back button, tapping the large `Continue Chapter` button can reopen chapter 1 instead of the most recently read/in-progress chapter.
+
+### Expected behavior
+
+- Series Detail `Continue Chapter` should open the latest active reading target for that series.
+- If the user is currently reading chapter 3, the detail header should continue chapter 3, not chapter 1.
+- Recent chapter list ordering should not cause an older chapter with lower progress to become the primary continue target.
+- Returning from Reader to Series Detail should preserve the current Reader chapter/progress state for the header CTA.
+
+### Evidence
+
+- Reported on 2026-06-05 with `Past Life Returner`.
+- Screenshot evidence shows Series Detail for `Past Life Returner` with chapters 1, 155, and 169 in Recent.
+- The header CTA displays `Continue Chapter 1` while Reader screenshot from the same flow shows `Past Life Returner Chapter 3` at 7% progress.
+- User reports that after reading a few chapters, tapping Reader back returns to Detail, then tapping Continue opens chapter 1.
+
+### Initial root-cause assessment
+
+- Series Detail primary chapter selection may be derived from the first in-progress chapter in the current chapter list rather than the most recently updated progress record.
+- Reader progress for hidden-loaded or inferred adjacent chapters may not be upserting the current chapter into the saved series detail chapter list before returning.
+- Existing sparse chapter state may make chapter 1 the only stored direct Reader session target, so the header CTA falls back to it even though recent progress exists for chapter 3.
+
+### Proposed implementation plan
+
+1. Add a regression test with a saved series containing chapter 1 and a later recent/progress record for chapter 3.
+2. Verify Series Detail `primaryChapter` and `primaryActionTitle` choose chapter 3 when it is the most recently read/in-progress chapter.
+3. Ensure Reader progress save or recent-reading save updates enough series detail state for the current chapter to become the continue target.
+4. Keep Recent chapter list display ordering separate from primary continue selection rules.
+5. Preserve existing behavior for planned/unread series with no progress, where the primary action can start the earliest or current available chapter according to existing UX.
+
+### Acceptance criteria
+
+- After reading chapter 3 and returning to Series Detail, the header CTA shows `Continue Chapter 3`.
+- Tapping the Series Detail continue CTA opens chapter 3, not chapter 1.
+- The fix works for adjacent chapters reached through inferred/hidden-loaded Reader navigation, not only chapters already stored before opening Reader.
+- Regression coverage proves older in-progress chapters do not override the most recently read chapter.
+
+## DEF-020 — Reader Next can jump to the next recent chapter instead of the next numeric chapter
+
+**Status:** Open  
+**Severity:** High  
+**Reported:** 2026-05-28  
+**Area:** Reader adjacent chapter navigation, Series Detail recent ordering, generated chapter range routing
+
+### User-visible problem
+
+On the test toon `Past Life Returner`, Reader `Next` can jump from chapter 155 to chapter 169 because chapter 169 is the next item in Series Detail `Recent`, rather than navigating to the next numeric chapter.
+
+### Expected behavior
+
+- Reader `Next` should always navigate to the next numeric chapter when the current chapter has a numeric label.
+- Reader `Previous` should navigate to the previous numeric chapter.
+- `Recent` ordering should not define adjacent Reader navigation order.
+- If the next numeric chapter is not stored locally but has a safely inferable source URL, Reader should use the existing adjacent Browser/detection fallback.
+- If the next numeric chapter cannot be safely resolved, Reader should fail gracefully instead of jumping to a non-adjacent recent chapter.
+
+### Evidence
+
+- Reported on 2026-05-28 using `https://manhuaus.com/manga/past-life-returner/chapter-155/`.
+- Screenshot evidence shows Reader open on chapter 155 with `Next` available.
+- After tapping `Next`, Series Detail shows recent progress entries ordered as chapter 155, chapter 169, chapter 1, and the observed navigation lands on chapter 169.
+- This indicates adjacent navigation is being derived from recent/activity ordering or a non-numeric chapter sequence rather than numeric chapter adjacency.
+
+### Initial root-cause assessment
+
+- Story 11.31 introduced `Recent` / `All` chapter modes and generated numeric chapter rows.
+- Reader adjacent controls may still be receiving adjacent chapter candidates from the currently available chapter list order rather than a numeric chapter adjacency resolver.
+- If the repository/session builder uses recent-read ordering, sparse stored chapter payloads, or generated rows without enforcing numeric `current +/- 1`, it can select chapter 169 as the next candidate after 155.
+
+### Proposed implementation plan
+
+1. Add a regression test using known chapters 1, 155, and 169 where Reader is opened at chapter 155.
+2. Verify `Next` resolves to chapter 156 when a safe source URL can be inferred, not chapter 169.
+3. Verify `Previous` resolves to chapter 154 when a safe source URL can be inferred.
+4. Add or update a numeric adjacent chapter resolver that uses the current chapter number and source URL pattern before considering stored list order.
+5. Keep `Recent` solely for display ordering and never use it as Reader adjacent navigation order.
+6. Preserve stored payload preference: if numeric adjacent chapter payload exists locally, open it directly; otherwise fall back through Browser/detection when the URL is safe.
+
+### Acceptance criteria
+
+- From `Past Life Returner` chapter 155, tapping `Next` attempts chapter 156, not chapter 169.
+- From chapter 155, tapping `Previous` attempts chapter 154 when resolvable.
+- Recent activity order does not affect Reader adjacent chapter selection.
+- Generated `All` rows and Reader adjacent controls share the same safe numeric URL inference rules where practical.
+- Regression coverage proves sparse recent chapters do not become adjacent Reader targets.
+
 ## DEF-019 — Same source series can appear twice in Library Recent
 
 **Status:** Implemented  

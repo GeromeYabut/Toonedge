@@ -254,11 +254,15 @@ public final class ReaderViewModel: ObservableObject {
         isSavedToLibrary = await libraryLifecycleService?.isSaved(canonicalURL: session.seriesURL) ?? false
     }
 
-    public func saveCurrentSessionToLibrary() async {
+    public func saveCurrentSessionToLibrary(
+        libraryState: LibraryCollectionState = AddToLibraryStatePickerModel.defaultState(for: .reader)
+    ) async {
         guard let libraryLifecycleService else { return }
         do {
             await enrichSessionMetadataIfNeeded()
-            try await libraryLifecycleService.addToLibrary(session.libraryInput, context: .reader)
+            var input = session.libraryInput
+            input.libraryState = libraryState
+            try await libraryLifecycleService.addToLibrary(input, context: .reader)
             isSavedToLibrary = true
             libraryFeedback = CacheActionFeedback(result: nil, message: "Saved to Library.", isFailure: false)
         } catch {
@@ -361,7 +365,13 @@ public final class ReaderViewModel: ObservableObject {
 
 private extension MockReaderSession {
     var libraryInput: LibrarySeriesInput {
-        LibrarySeriesInput(
+        let chapterLabel = ChapterNumericLabelExtractor.label(
+            chapterNumber: nil,
+            chapterLabel: chapterTitle,
+            title: sourceURL.absoluteString
+        ) ?? chapterTitle
+
+        return LibrarySeriesInput(
             id: seriesID,
             title: seriesTitle,
             canonicalURL: seriesURL,
@@ -369,13 +379,13 @@ private extension MockReaderSession {
             coverImageURL: coverImageURL,
             status: seriesStatus,
             synopsis: seriesSynopsis,
-            latestKnownChapterLabel: chapterTitle.split(separator: " ").last.map(String.init),
+            latestKnownChapterLabel: chapterLabel,
             libraryState: .reading,
             chapters: [
                 LibraryChapterInput(
                     title: chapterTitle,
-                    chapterLabel: chapterTitle.split(separator: " ").last.map(String.init) ?? chapterTitle,
-                    chapterNumber: Double(chapterTitle.split(separator: " ").last.map(String.init) ?? ""),
+                    chapterLabel: chapterLabel,
+                    chapterNumber: Double(chapterLabel),
                     sourceURL: sourceURL,
                     previousChapterURL: previousChapter?.sourceURL,
                     nextChapterURL: nextChapter?.sourceURL,

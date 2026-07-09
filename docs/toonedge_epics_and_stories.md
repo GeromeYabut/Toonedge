@@ -808,6 +808,223 @@ As a reader, I want `Next` and `Previous` in Reader to load adjacent chapters fr
 - Back preserves the original launch context after adjacent transitions.
 - `View Original Page` points to the current Reader chapter’s exact source URL.
 
+### Story 11.28 — Reader chrome action layout refresh
+**Status:** implemented
+
+**User story**
+
+As a reader, I want Reader controls to stay available without crowding the title or bottom chapter navigation, so I can focus on the chapter while still quickly saving, downloading, changing settings, going Home, or viewing the original page.
+
+**Intent**
+
+The Reader top bar should prioritize Back and readable series/chapter title text. Secondary actions should move into a compact floating action stack on the lower-right side of the screen. `View Original Page` remains required, but changes from bottom-bar text to a floating icon action.
+
+**Acceptance criteria**
+- Remove the Reader Library button from the top chrome.
+- Add a Reader Home button in the top chrome where the Library button currently appears.
+- Tapping the Home button dismisses Reader as needed and selects the native Home tab.
+- Preserve origin-aware Back behavior separately from the Home action.
+- Move Save/Saved, Download, Settings, and View Original Page into a floating lower-right action stack.
+- `View Original Page` is represented by a single icon with an accessibility label such as `View Original Page`.
+- Remove the text `View Original Page` action from the bottom chapter-navigation bar.
+- Keep `Previous`, current chapter label, `Next`, and progress display in the bottom bar.
+- Use the top-bar space gained from moving secondary actions to show more of the series/chapter title before truncation.
+- Long titles still truncate gracefully on iPhone-sized screens without overlapping controls.
+- Floating actions remain reachable and readable over dark Reader canvas states.
+- Floating actions do not block chapter images, vertical scrolling, or content-tap chrome toggling more than necessary.
+- Regression coverage verifies Home routing, original-page routing, title truncation, and the absence of the old bottom-bar text action.
+
+### Story 11.29 — Library cards use equal grid dimensions
+**Status:** implemented
+
+**User story**
+
+As a reader, I want Library cards to align cleanly with consistent dimensions, so the collection grid feels stable and polished even when titles, metadata, or chapter labels have different lengths.
+
+**Intent**
+
+Library grid cards should reserve consistent internal regions for cover art, text, progress, and badges. Content should truncate or fall back inside those reserved regions rather than making individual cards taller or shorter than neighboring cards.
+
+**Acceptance criteria**
+- Library grid cards in the same row render at equal height.
+- Card dimensions stay stable across Recent, Reading, and Planned segments.
+- Longer titles and subtitles truncate within reserved text areas instead of increasing card height.
+- Cover artwork keeps a consistent aspect ratio and size across cards.
+- Badges, progress bars, and chapter labels align consistently at the bottom of each card.
+- Empty or missing metadata does not collapse reserved card areas.
+- The layout remains readable on iPhone-sized screens without overlapping text or controls.
+- Regression coverage verifies card layout metrics for short titles, long titles, missing subtitles, and mixed update/chapter badges.
+
+### Story 11.30 — Simplify Library header and toolbar refresh
+**Status:** implemented
+
+**User story**
+
+As a reader, I want the Library screen header to be clean and focused, so I do not see duplicate page titles before my saved and recent series.
+
+**Intent**
+
+Library should use the system navigation title as the single primary page heading. The in-content `Collection` header and subtitle should be removed, and update refresh should move into the trailing navigation toolbar to reduce visual clutter while preserving manual refresh access.
+
+**Acceptance criteria**
+- Library no longer renders the in-content `Collection` heading.
+- Library no longer renders the subtitle `Reading progress and saved titles`.
+- The primary visible page title remains `Library`.
+- Refresh moves to a trailing navigation toolbar icon button.
+- The toolbar refresh button uses `arrow.clockwise` when idle and `hourglass` while refreshing.
+- The toolbar refresh button keeps the accessibility label `Check for new chapters`.
+- The toolbar refresh button is hidden when update refresh is unavailable.
+- Pull-to-refresh remains available.
+- The segmented control moves up after the duplicate header is removed.
+- Regression coverage verifies the Library header model excludes `Collection` and exposes refresh as a toolbar action only when refresh is available.
+
+### Story 11.31 — Series Detail chapter progress and list refresh
+**Status:** implemented
+
+**User story**
+
+As a reader, I want Series Detail to show my actual latest chapter progress and a useful chapter list, so returning from Reader reflects where I really left off and lets me jump to recent or earlier chapters without stale metadata.
+
+**Intent**
+
+Series Detail should focus on actionable reading state. The primary action should always display a clean numeric chapter label, the reader-origin subtitle should be removed, and the chapter list should update after Reader navigation advances to newer chapters. The page should offer a compact `Recent` list for recently read chapters and an `All` list for the available chapter range without downloading or caching every chapter.
+
+**Acceptance criteria**
+- Remove the descriptive subtitle text such as `Saved from Reader Mode.` from the Series Detail header.
+- The primary action title always uses `Continue Chapter <chapter number>` or `Start Chapter <chapter number>` when a chapter number can be derived.
+- Source/domain words such as `Scans`, `Read Online`, or site names are not used as the primary action chapter label.
+- When the user advances from chapter 102 to 103 or 104 in Reader and returns to Series Detail, Series Detail reflects the latest read chapter at the top of recent progress.
+- Series Detail refreshes its snapshot when returning from Reader or when the view becomes active again, instead of showing stale chapter 102 state.
+- Replace the current newest/oldest-only chapter section with a `Recent` / `All` chapter list mode.
+- `Recent` shows up to the 4 most recently read chapters for that series, ordered newest reading activity first.
+- `All` shows the available numeric chapter range from the earliest known chapter through the latest known chapter.
+- If the source exposes chapter 0, `All` includes chapter 0; otherwise the generated visual range starts at chapter 1.
+- Generated visual chapter rows do not require cached page images or stored reader payloads for every prior chapter.
+- Selecting a generated chapter row uses the existing safe fallback: open stored Reader payload when available, otherwise route through Browser/detection for that chapter URL when a source URL is known.
+- If a generated chapter lacks a resolvable source URL, it is shown disabled or omitted rather than opening a broken Reader.
+- Regression coverage verifies clean primary action labels, removal of the reader-origin subtitle, recent ordering after adjacent Reader progress, and generated all-chapter range behavior.
+
+### Story 11.32 — Library refresh pill and centered empty state
+**Status:** implemented
+
+**User story**
+
+As a reader, I want Library refresh and empty states to feel integrated and lightweight, so the screen stays focused on saved titles without extra toolbar clutter or verbose empty-copy blocks.
+
+**Intent**
+
+Library should move manual update refresh out of the navigation toolbar and into the summary pill that says `Reading Library` / `<n> saved titles`. After a refresh completes, the `Update refresh` feedback pill should be dismissible and should automatically disappear after 5 seconds. Empty Library sections should use a quiet centered visual state with the existing `sleepy transparent.png` mascot asset and the message `Nothing saved`.
+
+**Acceptance criteria**
+- Remove the Library refresh icon from the navigation toolbar.
+- Add the refresh action inside the Library summary pill that contains the section label and saved-title count, such as `Reading Library` and `<n> saved titles`.
+- The summary-pill refresh action uses `arrow.clockwise` when idle and `hourglass` while refreshing.
+- The summary-pill refresh action keeps the accessibility label `Check for new chapters`.
+- The summary-pill refresh action is hidden or disabled when update refresh is unavailable.
+- Pull-to-refresh remains available.
+- When the `Update refresh` feedback pill appears after a refresh, it includes an `x` dismiss button at the top of the box.
+- Tapping the `x` immediately dismisses the `Update refresh` feedback pill.
+- The `Update refresh` feedback pill automatically disappears after 5 seconds.
+- If the current Library section has 0 saved titles, replace the current banner-style empty state with a centered empty state.
+- The empty state uses the mascot image asset `sleepy transparent.png`.
+- The empty state message is exactly `Nothing saved`.
+- The empty state should be vertically centered in the available Library content area on iPhone-sized screens.
+- Regression coverage verifies refresh placement, dismissible/auto-expiring refresh feedback, and the centered empty-state model.
+
+### Story 11.33 — Floating Library refresh feedback banner
+**Status:** planned
+
+**User story**
+
+As a reader, I want Library update-refresh feedback to appear without moving the page layout, so refresh results feel lightweight and do not disrupt the Library screen while I am browsing saved titles.
+
+**Intent**
+
+The `Update refresh` feedback should no longer render as an in-flow pill or banner that pushes the segmented control, summary pill, grid, or empty state downward. Instead, refresh feedback should appear as a floating overlay banner above the Library content, fade away automatically after a few seconds, and remain manually dismissible with an `x` button.
+
+**Acceptance criteria**
+- Replace the current in-flow `Update refresh` feedback view with a floating banner overlay.
+- The floating banner does not alter the vertical position of the segmented control, summary pill, grid cards, or empty state when it appears or disappears.
+- The banner appears after a manual refresh or pull-to-refresh completes.
+- The banner includes the title `Update refresh` and the existing refresh result message.
+- The banner includes an `x` dismiss button with accessibility label `Dismiss update refresh`.
+- Tapping the `x` dismisses the banner immediately.
+- The banner automatically fades out after a few seconds.
+- If a newer refresh result appears before the previous banner expires, the newer message replaces the old one and owns the auto-dismiss timer.
+- The banner is positioned safely below the navigation bar and does not cover the segmented control in a way that blocks interaction.
+- Regression coverage verifies the feedback is modeled as an overlay, does not affect content layout state, supports manual dismissal, and auto-dismisses stale messages safely.
+
+### Story 11.34 — Show only current chapter in Library card continue metadata
+**Status:** resolved
+
+**User story**
+
+As a reader, I want each Library card to show only the chapter I am currently on next to `Continue`, so I can choose the right title without scanning extra progress text.
+
+**Intent**
+
+Library cards should make the resume target clear in the metadata line without appending total chapter progress. The current chapter label is already available on `LibrarySeriesSummary`, so this story only changes presentation and keeps persistence, reader progress tracking, and card navigation behavior unchanged.
+
+**Acceptance criteria**
+- In-progress Library cards with a current chapter label show metadata in the form `Continue Ch. <label>`.
+- Completed series do not show `Continue Ch. <label>` in card metadata.
+- Series without a current chapter label fall back to the existing chapter summary text.
+- The existing bottom chapter badge remains unchanged.
+- Regression coverage verifies chapter-only in-progress metadata plus completed and missing-current-chapter fallback formatting.
+
+### Story 11.35 — Scalable Library views and collection grouping
+**Status:** resolved
+
+**User story**
+
+As a reader with dozens of saved manhwas, I want to switch between comfortable cards, compact cards, and a dense list view, and I want to organize saved titles by reading state, so my Library remains fast to scan as it grows.
+
+**Intent**
+
+Library should scale beyond a small visual gallery. The current card grid is useful for a small collection, but larger libraries need denser views and clearer organization. This story adds user-controlled Library density, expands collection groupings, and lets the user choose the saved state when adding a title to Library. The design should move away from overly soft, generic card styling by using tighter radii, less decorative chrome, stronger content hierarchy, and more native list/collection patterns.
+
+**Recommended UX direction**
+- Add a Library view-mode control with three modes: `Comfortable`, `Compact`, and `List`.
+- Keep `Recent` as activity-based, not a saved collection state.
+- Treat saved collection states as `Reading`, `Planned`, `Dropped`, and `Completed`.
+- Show collection states as a horizontally scrollable chip/filter row or a compact filter menu rather than forcing five equal-width segmented tabs on iPhone.
+- Default `Add to Library` from Reader to `Reading`.
+- Default `Add to Library` from Browser or Series Detail to `Planned`.
+- Let the user override the default state in a save confirmation sheet before saving.
+
+**Visual direction**
+- Reduce card corner radius and avoid soft floating-card treatment on every item.
+- Use cover artwork as the primary visual anchor; keep surrounding chrome minimal.
+- Use subtle separators, thin dividers, or tonal background shifts instead of heavy borders around every saved title.
+- Keep purple as an accent for actions and active states, not the dominant styling of every Library surface.
+- Make `List` mode feel dense and native: small cover thumbnail, title, source/domain, `Continue Ch. <label>` when available, update badge, and a compact progress indicator.
+- Make `Compact` mode use smaller covers and tighter metadata while preserving enough artwork to recognize titles.
+- Keep `Comfortable` mode visually close to the current card grid but with tighter radii, less padding, and more intentional hierarchy.
+
+**Acceptance criteria**
+- Library exposes a view-mode control with `Comfortable`, `Compact`, and `List` modes.
+- The selected view mode persists locally and is restored when the Library screen opens again.
+- `Comfortable` mode keeps a visual card grid suitable for smaller collections.
+- `Compact` mode shows more saved titles per viewport than `Comfortable` mode while preserving cover recognition.
+- `List` mode shows the highest-density Library layout for large collections.
+- Library supports collection filters for `Reading`, `Planned`, `Dropped`, and `Completed`.
+- `Recent` remains available as an activity-based view driven by last-read/update activity rather than a stored collection state.
+- Filter counts or summary copy reflect the active group and visible title count.
+- Existing saved title navigation remains unchanged: selecting a title opens native Series Detail.
+- Existing progress, update, completion, and current-chapter metadata remain visible in each mode where space allows.
+- Card/list styling uses tighter corner radii and less decorative container chrome than the current large rounded card treatment.
+- `Add to Library` presents a save confirmation flow that lets the user pick the collection state before saving.
+- Reader-origin saves default to `Reading`.
+- Browser-origin and Series Detail saves default to `Planned`.
+- Changing the selected save state before confirming persists that chosen state.
+- Existing saved-state mutation from Series Detail continues to work for already saved titles.
+- Regression coverage verifies view-mode persistence, state filtering, `Dropped` support, default save states by origin, explicit save-state override, and unchanged navigation to Series Detail.
+
+**MVP boundaries**
+- Do not add cloud sync, tags, custom shelves, recommendations, public catalogs, or social features.
+- Do not add bulk edit, drag-and-drop reordering, or custom user-defined groups in this story.
+- Do not change Reader detection, chapter parsing, or update-check behavior except where save-state defaults are passed through existing Library interfaces.
+
 ---
 
 ## Post-MVP Epic — Multi-Page Chapter Stitching

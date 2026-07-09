@@ -299,6 +299,8 @@ public struct GenericChapterDetector: ChapterPageDetecting {
             return nil
         }
 
+        let inferredAdjacentChapters = inferredAdjacentChapters(for: page)
+
         return MockReaderSession(
             seriesTitle: page.pageURL.host() ?? "Detected Chapter",
             seriesURL: CanonicalSeriesURLResolver.seriesURL(for: page.pageURL),
@@ -310,12 +312,50 @@ public struct GenericChapterDetector: ChapterPageDetecting {
             },
             previousChapter: page.previousChapterURL.map {
                 MockChapter(title: "Previous Chapter", sourceURL: $0)
-            },
+            } ?? inferredAdjacentChapters.previous,
             nextChapter: page.nextChapterURL.map {
                 MockChapter(title: "Next Chapter", sourceURL: $0)
-            },
+            } ?? inferredAdjacentChapters.next,
             launchOrigin: .browser
         )
+    }
+
+    private func inferredAdjacentChapters(for page: DetectionPageAnalysis) -> (previous: MockChapter?, next: MockChapter?) {
+        guard let currentNumber = ChapterURLInference.integerChapterNumber(
+            chapterNumber: nil,
+            chapterLabel: page.title,
+            title: page.pageURL.absoluteString
+        ) else {
+            return (nil, nil)
+        }
+
+        let currentChapter = ChapterURLInference.KnownChapter(
+            number: currentNumber,
+            sourceURL: page.pageURL
+        )
+
+        let previous: MockChapter?
+        if currentNumber > 1,
+           let previousURL = ChapterURLInference.inferredSourceURL(
+            forChapter: currentNumber - 1,
+            knownChapters: [currentChapter]
+           ) {
+            previous = MockChapter(title: "Chapter \(currentNumber - 1)", sourceURL: previousURL)
+        } else {
+            previous = nil
+        }
+
+        let next: MockChapter?
+        if let nextURL = ChapterURLInference.inferredSourceURL(
+            forChapter: currentNumber + 1,
+            knownChapters: [currentChapter]
+        ) {
+            next = MockChapter(title: "Chapter \(currentNumber + 1)", sourceURL: nextURL)
+        } else {
+            next = nil
+        }
+
+        return (previous, next)
     }
 
     private func diagnostics(

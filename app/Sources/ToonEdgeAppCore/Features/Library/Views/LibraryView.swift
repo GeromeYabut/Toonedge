@@ -1,32 +1,46 @@
+import Foundation
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 public struct LibraryView: View {
     private let dependencies: AppDependencies
     @Binding private var router: AppRouter
     @State private var snapshot = LibrarySnapshot(series: [])
     @State private var selectedSegment: LibrarySegment = .recent
+    @State private var selectedViewMode: LibraryViewMode
     @State private var hasLoadedSnapshot = false
     @State private var isRefreshingUpdates = false
-    @State private var refreshMessage: String?
+    @State private var refreshFeedback: LibraryRefreshFeedback?
     @State private var navigationPath: [UUID] = []
+    private let libraryViewPreferences: LibraryViewPreferences
 
     public init(dependencies: AppDependencies, router: Binding<AppRouter>) {
         self.dependencies = dependencies
         self._router = router
+        let preferences = LibraryViewPreferences()
+        self.libraryViewPreferences = preferences
+        self._selectedViewMode = State(initialValue: preferences.selectedViewMode)
     }
 
     public var body: some View {
         NavigationStack(path: $navigationPath) {
             ScrollView {
                 VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
-                    header
-                    refreshStatus
-                    TESegmentedControl(selection: $selectedSegment) { $0.title }
-                    summaryBanner
+                    LibraryFilterRow(selection: $selectedSegment)
+                    summaryPill
+                    LibraryViewModeControl(selection: $selectedViewMode)
                     content
                 }
                 .padding(ToonEdgeSpacing.large)
             }
+            .overlay(alignment: .bottomTrailing) {
+                floatingRefreshFeedback
+            }
+            .animation(.easeInOut(duration: 0.2), value: refreshFeedback)
             .navigationTitle("Library")
             .task {
                 await reloadSnapshot()
@@ -50,6 +64,9 @@ public struct LibraryView: View {
             .refreshable {
                 await refreshUpdates()
             }
+            .onChange(of: selectedViewMode) { _, mode in
+                libraryViewPreferences.selectedViewMode = mode
+            }
             .navigationDestination(for: UUID.self) { seriesID in
                 SeriesDetailView(seriesID: seriesID, dependencies: dependencies, router: $router)
             }
@@ -57,59 +74,36 @@ public struct LibraryView: View {
         }
     }
 
-    private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
-                Text("Collection")
-                    .font(ToonEdgeTypography.title)
-                Text("Reading progress and saved titles")
-                    .font(ToonEdgeTypography.caption)
-                    .foregroundStyle(ToonEdgeColor.textSecondary)
-            }
-
-            Spacer()
-
-            Button {
-                Task {
-                    await refreshUpdates()
-                }
-            } label: {
-                Image(systemName: isRefreshingUpdates ? "hourglass" : "arrow.clockwise")
-                    .font(ToonEdgeTypography.body.weight(.semibold))
-                    .foregroundStyle(ToonEdgeColor.textSecondary)
-                    .frame(width: 40, height: 40)
-                    .background(ToonEdgeColor.panel, in: Circle())
-                    .overlay(Circle().stroke(ToonEdgeColor.border))
-            }
-            .buttonStyle(.plain)
-            .disabled(isRefreshingUpdates || dependencies.updateRefreshService == nil)
-            .accessibilityLabel("Check for new chapters")
-        }
-    }
-
     @ViewBuilder
-    private var refreshStatus: some View {
-        if let refreshMessage {
-            TEBanner(
-                title: "Update refresh",
-                message: refreshMessage,
-                systemImage: "arrow.clockwise"
-            )
+    private var floatingRefreshFeedback: some View {
+        if let refreshFeedback {
+            LibraryRefreshFeedbackView(layout: refreshFeedback.layout) {
+                dismissRefreshFeedback()
+            }
+            .padding(.horizontal, ToonEdgeSpacing.large)
+            .padding(.bottom, ToonEdgeSpacing.large)
+            .transition(.asymmetric(
+                insertion: .move(edge: .bottom).combined(with: .opacity),
+                removal: .opacity
+            ))
+            .zIndex(1)
         }
     }
 
-    private var summaryBanner: some View {
+    private var summaryPill: some View {
         let visible = snapshot.series(for: selectedSegment)
-        let updates = visible.filter(\.hasUnreadUpdates).count
-        let message = updates > 0
-            ? "\(updates) with new chapters"
-            : "\(visible.count) saved \(visible.count == 1 ? "title" : "titles")"
-
-        return TEBanner(
-            title: "\(selectedSegment.title) Library",
-            message: message,
-            systemImage: updates > 0 ? "bell.badge" : "chart.line.uptrend.xyaxis"
+        let layout = LibrarySummaryPillLayout(
+            segment: selectedSegment,
+            visibleSeries: visible,
+            hasUpdateRefreshService: dependencies.updateRefreshService != nil,
+            isRefreshing: isRefreshingUpdates
         )
+
+        return LibrarySummaryPill(layout: layout) {
+            Task {
+                await refreshUpdates()
+            }
+        }
     }
 
     private func reloadSnapshot() async {
@@ -126,70 +120,432 @@ public struct LibraryView: View {
         let result = await updateRefreshService.refreshUpdates()
         await reloadSnapshot()
         isRefreshingUpdates = false
-        refreshMessage = refreshMessage(for: result)
+        showRefreshFeedback(message: refreshMessage(for: result))
     }
 
     private func refreshMessage(for result: LibraryUpdateRefreshResult) -> String {
         if result.failedCount > 0 {
-            return "Checked \(result.checkedCount), found \(result.updatedCount) updates, \(result.failedCount) failed."
+            return "\(result.checkedCount) checked, \(result.updatedCount) \(pluralize("update", count: result.updatedCount)), \(result.failedCount) failed"
         }
 
-        return "Checked \(result.checkedCount), found \(result.updatedCount) updates."
+        return "\(result.checkedCount) checked, \(result.updatedCount) \(pluralize("update", count: result.updatedCount))"
+    }
+
+    private func pluralize(_ singular: String, count: Int) -> String {
+        count == 1 ? singular : "\(singular)s"
     }
 
     @ViewBuilder
     private var content: some View {
         let visible = snapshot.series(for: selectedSegment)
+        let emptyLayout = LibraryEmptyStateLayout(hasLoadedSnapshot: hasLoadedSnapshot, visibleSeries: visible)
 
-        if hasLoadedSnapshot && visible.isEmpty {
-            TEBanner(
-                title: "Nothing in \(selectedSegment.title)",
-                message: "Series will appear here as reading and collection state changes.",
-                systemImage: "tray"
-            )
+        if emptyLayout.isVisible {
+            LibraryEmptyStateView(layout: emptyLayout)
         } else {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 150), spacing: ToonEdgeSpacing.medium)],
+                columns: [GridItem(.adaptive(minimum: gridMinimumWidth), spacing: ToonEdgeSpacing.medium)],
                 spacing: ToonEdgeSpacing.medium
             ) {
                 ForEach(visible) { series in
                     NavigationLink(value: series.id) {
-                        SeriesCard(series: series)
+                        switch selectedViewMode {
+                        case .comfortable:
+                            SeriesCard(series: series, layout: .comfortable)
+                        case .compact:
+                            SeriesCard(series: series, layout: .compact)
+                        case .list:
+                            SeriesListRow(series: series)
+                        }
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
     }
+
+    private var gridMinimumWidth: CGFloat {
+        switch selectedViewMode {
+        case .comfortable:
+            return 150
+        case .compact:
+            return 118
+        case .list:
+            return 320
+        }
+    }
+
+    private func showRefreshFeedback(message: String) {
+        let feedback = LibraryRefreshFeedback(message: message)
+        refreshFeedback = feedback
+
+        Task { [feedbackID = feedback.id] in
+            try? await Task.sleep(for: .seconds(LibraryRefreshFeedbackLayout.autoDismissDelay))
+            if refreshFeedback?.id == feedbackID {
+                refreshFeedback = nil
+            }
+        }
+    }
+
+    private func dismissRefreshFeedback() {
+        refreshFeedback = nil
+    }
+}
+
+struct LibraryHeaderLayout: Equatable, Sendable {
+    var navigationTitle: String
+    var contentTitle: String?
+    var toolbarRefreshIsAvailable: Bool
+
+    init(hasUpdateRefreshService: Bool) {
+        self.navigationTitle = "Library"
+        self.contentTitle = nil
+        self.toolbarRefreshIsAvailable = false
+    }
+}
+
+struct LibrarySummaryPillLayout: Equatable, Sendable {
+    var title: String
+    var message: String
+    var refreshButtonIsVisible: Bool
+    var refreshSystemImage: String
+    var refreshAccessibilityLabel: String
+
+    init(
+        segment: LibrarySegment,
+        visibleSeries: [LibrarySeriesSummary],
+        hasUpdateRefreshService: Bool,
+        isRefreshing: Bool
+    ) {
+        let updateCount = visibleSeries.filter(\.hasUnreadUpdates).count
+
+        self.title = "\(segment.title) Library"
+        self.message = updateCount > 0
+            ? "\(updateCount) with new chapters"
+            : "\(visibleSeries.count) saved \(visibleSeries.count == 1 ? "title" : "titles")"
+        self.refreshButtonIsVisible = hasUpdateRefreshService
+        self.refreshSystemImage = isRefreshing ? "hourglass" : "arrow.clockwise"
+        self.refreshAccessibilityLabel = "Check for new chapters"
+    }
+}
+
+struct LibraryRefreshFeedbackLayout: Equatable, Sendable {
+    static let autoDismissDelay = 5
+
+    var title: String
+    var message: String
+    var presentationStyle: LibraryRefreshFeedbackPresentationStyle
+    var overlayAlignment: LibraryRefreshFeedbackOverlayAlignment
+    var maximumWidth: CGFloat
+    var contentSize: LibraryRefreshFeedbackContentSize
+    var accentColorRole: LibraryRefreshFeedbackAccentColorRole
+    var reservesContentSpace: Bool
+    var dismissAccessibilityLabel: String
+    var autoDismissDelay: Int
+
+    init(message: String) {
+        self.title = "Updated"
+        self.message = message
+        self.presentationStyle = .floatingOverlay
+        self.overlayAlignment = .bottomTrailing
+        self.maximumWidth = 280
+        self.contentSize = .compact
+        self.accentColorRole = .purple
+        self.reservesContentSpace = false
+        self.dismissAccessibilityLabel = "Dismiss update refresh"
+        self.autoDismissDelay = Self.autoDismissDelay
+    }
+}
+
+enum LibraryRefreshFeedbackPresentationStyle: Equatable, Sendable {
+    case floatingOverlay
+}
+
+enum LibraryRefreshFeedbackOverlayAlignment: Equatable, Sendable {
+    case bottomTrailing
+}
+
+enum LibraryRefreshFeedbackContentSize: Equatable, Sendable {
+    case compact
+}
+
+enum LibraryRefreshFeedbackAccentColorRole: Equatable, Sendable {
+    case purple
+}
+
+struct LibraryContentLayout: Equatable, Sendable {
+    var refreshFeedbackIsOverlay: Bool
+    var contentStartsWithSegmentedControl: Bool
+
+    init(refreshFeedback: LibraryRefreshFeedbackLayout?) {
+        self.refreshFeedbackIsOverlay = refreshFeedback?.presentationStyle == .floatingOverlay
+        self.contentStartsWithSegmentedControl = true
+    }
+}
+
+private struct LibraryFilterRow: View {
+    @Binding var selection: LibrarySegment
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: ToonEdgeSpacing.small) {
+                ForEach(LibrarySegment.allCases) { segment in
+                    Button {
+                        selection = segment
+                    } label: {
+                        Text(segment.title)
+                            .font(ToonEdgeTypography.caption)
+                            .padding(.horizontal, ToonEdgeSpacing.medium)
+                            .padding(.vertical, ToonEdgeSpacing.small)
+                            .background(selection == segment ? ToonEdgeColor.accentSoft : ToonEdgeColor.panel)
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(selection == segment ? ToonEdgeColor.accent.opacity(0.45) : ToonEdgeColor.border))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, ToonEdgeSpacing.xsmall)
+        }
+    }
+}
+
+private struct LibraryViewModeControl: View {
+    @Binding var selection: LibraryViewMode
+
+    var body: some View {
+        HStack(spacing: ToonEdgeSpacing.small) {
+            ForEach(LibraryViewMode.allCases) { mode in
+                Button {
+                    selection = mode
+                } label: {
+                    Image(systemName: mode.systemImage)
+                        .frame(width: 34, height: 30)
+                        .background(selection == mode ? ToonEdgeColor.panel : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(selection == mode ? ToonEdgeColor.textPrimary : ToonEdgeColor.textSecondary)
+                .accessibilityLabel("\(mode.title) library view")
+            }
+        }
+        .padding(ToonEdgeSpacing.xsmall)
+        .background(ToonEdgeColor.elevated, in: Capsule())
+        .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+}
+
+struct LibraryEmptyStateLayout: Equatable, Sendable {
+    var isVisible: Bool
+    var message: String
+    var imageName: String
+    var imageURL: URL?
+
+    init(hasLoadedSnapshot: Bool, visibleSeries: [LibrarySeriesSummary]) {
+        self.isVisible = hasLoadedSnapshot && visibleSeries.isEmpty
+        self.message = "Nothing saved"
+        self.imageName = ToonEdgeAppCoreResources.sleepyLibraryEmptyImageName
+        self.imageURL = ToonEdgeAppCoreResources.urlForImage(named: imageName, extension: "png")
+    }
+}
+
+enum ToonEdgeAppCoreResources {
+    static let sleepyLibraryEmptyImageName = "sleepy transparent"
+
+    static var bundle: Bundle {
+        #if SWIFT_PACKAGE
+        Bundle.module
+        #else
+        Bundle.main
+        #endif
+    }
+
+    static func urlForImage(named name: String, extension fileExtension: String) -> URL? {
+        bundle.url(forResource: name, withExtension: fileExtension, subdirectory: "Images")
+            ?? bundle.url(forResource: name, withExtension: fileExtension)
+    }
+}
+
+private struct LibraryRefreshFeedback: Equatable {
+    let id = UUID()
+    let layout: LibraryRefreshFeedbackLayout
+
+    init(message: String) {
+        self.layout = LibraryRefreshFeedbackLayout(message: message)
+    }
+}
+
+private struct LibrarySummaryPill: View {
+    let layout: LibrarySummaryPillLayout
+    let refresh: () -> Void
+
+    var body: some View {
+        HStack(spacing: ToonEdgeSpacing.medium) {
+            Image(systemName: "books.vertical")
+                .foregroundStyle(ToonEdgeColor.accent)
+
+            VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+                Text(layout.title)
+                    .font(ToonEdgeTypography.sectionTitle)
+                Text(layout.message)
+                    .font(ToonEdgeTypography.caption)
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
+            }
+
+            Spacer(minLength: ToonEdgeSpacing.medium)
+
+            if layout.refreshButtonIsVisible {
+                Button(action: refresh) {
+                    Image(systemName: layout.refreshSystemImage)
+                        .frame(width: 36, height: 36)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .buttonStyle(.plain)
+                .disabled(layout.refreshSystemImage == "hourglass")
+                .accessibilityLabel(layout.refreshAccessibilityLabel)
+            }
+        }
+        .padding(.horizontal, ToonEdgeSpacing.large)
+        .padding(.vertical, ToonEdgeSpacing.medium)
+        .background(ToonEdgeColor.panel, in: Capsule())
+        .overlay(Capsule().stroke(ToonEdgeColor.border))
+    }
+}
+
+private struct LibraryRefreshFeedbackView: View {
+    let layout: LibraryRefreshFeedbackLayout
+    let dismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: ToonEdgeSpacing.small) {
+            Image(systemName: "arrow.clockwise")
+                .font(ToonEdgeTypography.caption)
+                .foregroundStyle(accentColor)
+                .frame(width: 24, height: 24)
+                .background(accentColor.opacity(0.14), in: Circle())
+
+            VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+                Text(layout.title)
+                    .font(ToonEdgeTypography.caption)
+                Text(layout.message)
+                    .font(ToonEdgeTypography.caption)
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
+            }
+
+            Spacer(minLength: ToonEdgeSpacing.small)
+
+            Button(action: dismiss) {
+                Image(systemName: "xmark")
+                    .font(ToonEdgeTypography.caption)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(layout.dismissAccessibilityLabel)
+        }
+        .padding(.horizontal, ToonEdgeSpacing.medium)
+        .padding(.vertical, ToonEdgeSpacing.small)
+        .frame(maxWidth: layout.maximumWidth)
+        .background(ToonEdgeColor.accentSoft.opacity(0.72), in: RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+        .overlay(RoundedRectangle(cornerRadius: ToonEdgeRadius.small).stroke(accentColor.opacity(0.38)))
+    }
+
+    private var accentColor: Color {
+        switch layout.accentColorRole {
+        case .purple:
+            return ToonEdgeColor.accent
+        }
+    }
+}
+
+private struct LibraryEmptyStateView: View {
+    let layout: LibraryEmptyStateLayout
+
+    var body: some View {
+        VStack(spacing: ToonEdgeSpacing.medium) {
+            LibraryMascotImage(url: layout.imageURL)
+                .frame(width: 180, height: 160)
+
+            Text(layout.message)
+                .font(ToonEdgeTypography.sectionTitle)
+                .foregroundStyle(ToonEdgeColor.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: 360)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct LibraryMascotImage: View {
+    let url: URL?
+
+    var body: some View {
+        Group {
+            #if canImport(UIKit)
+            if let url, let image = UIImage(contentsOfFile: url.path) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                fallback
+            }
+            #elseif canImport(AppKit)
+            if let url, let image = NSImage(contentsOf: url) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                fallback
+            }
+            #else
+            fallback
+            #endif
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var fallback: some View {
+        Image(systemName: "moon.zzz.fill")
+            .resizable()
+            .scaledToFit()
+            .foregroundStyle(ToonEdgeColor.accent)
+            .padding(ToonEdgeSpacing.xxlarge)
+    }
 }
 
 private struct SeriesCard: View {
     let series: LibrarySeriesSummary
+    let layout: LibrarySeriesCardLayout
+    private var content: LibrarySeriesCardContent {
+        LibrarySeriesCardContent(series: series)
+    }
 
     var body: some View {
         TECard {
-            VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
-                cover
-                    .aspectRatio(0.72, contentMode: .fit)
+            VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                coverSlot
 
                 VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
                     HStack(alignment: .top, spacing: ToonEdgeSpacing.small) {
                         Text(series.title)
                             .font(ToonEdgeTypography.body.weight(.semibold))
-                            .lineLimit(2)
+                            .lineLimit(layout.titleLineLimit)
                             .multilineTextAlignment(.leading)
+                            .frame(height: layout.titleHeight, alignment: .topLeading)
 
                         Spacer(minLength: 0)
                     }
 
-                    Text(metadata)
+                    Text(content.metadata)
                         .font(ToonEdgeTypography.caption)
                         .foregroundStyle(ToonEdgeColor.textSecondary)
-                        .lineLimit(1)
+                        .lineLimit(layout.metadataLineLimit)
+                        .frame(height: layout.metadataHeight, alignment: .leading)
                 }
+
+                Spacer(minLength: 0)
 
                 ProgressView(value: series.progressPercent)
                     .tint(progressTint)
+                    .frame(height: layout.progressHeight)
 
                 HStack(spacing: ToonEdgeSpacing.xsmall) {
                     if series.hasUnreadUpdates {
@@ -202,32 +558,181 @@ private struct SeriesCard: View {
                         TEChip("Ch. \(latestChapterLabel)")
                     }
                 }
+                .frame(height: layout.badgeRowHeight, alignment: .leading)
             }
+            .frame(maxHeight: .infinity, alignment: .top)
         }
+        .frame(height: layout.fixedCardHeight)
     }
 
     @ViewBuilder
-    private var cover: some View {
+    private var coverSlot: some View {
+        if layout.coverSlotUsesFullCardWidth {
+            decoratedCover
+                .frame(width: layout.coverImageWidth, height: layout.coverHeight)
+                .frame(maxWidth: .infinity, minHeight: layout.coverSlotHeight, maxHeight: layout.coverSlotHeight, alignment: layout.coverImageAlignment.swiftUIAlignment)
+        } else {
+            decoratedCover
+                .frame(width: layout.coverImageWidth, height: layout.coverHeight)
+                .frame(width: layout.coverImageWidth, height: layout.coverSlotHeight, alignment: layout.coverImageAlignment.swiftUIAlignment)
+        }
+    }
+
+    private var decoratedCover: some View {
         CachedCoverArtwork(url: series.coverImageURL) {
             MissingCoverView(title: series.title)
         }
-        .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+        .frame(width: layout.coverImageWidth, height: layout.coverHeight)
+        .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
         .overlay(
-            RoundedRectangle(cornerRadius: ToonEdgeRadius.small)
-                .stroke(ToonEdgeColor.border)
+            RoundedRectangle(cornerRadius: layout.cornerRadius)
+                .stroke(ToonEdgeColor.border.opacity(0.65))
         )
-    }
-
-    private var metadata: String {
-        if let currentChapterLabel = series.currentChapterLabel, !series.isCompleted {
-            "Continue \(currentChapterLabel) • \(series.chapterSummaryText)"
-        } else {
-            series.chapterSummaryText
-        }
     }
 
     private var progressTint: Color {
         series.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.accent
+    }
+}
+
+private struct SeriesListRow: View {
+    let series: LibrarySeriesSummary
+    private let layout = LibrarySeriesListRowLayout.default
+    private var content: LibrarySeriesCardContent {
+        LibrarySeriesCardContent(series: series)
+    }
+
+    var body: some View {
+        HStack(spacing: ToonEdgeSpacing.medium) {
+            CachedCoverArtwork(url: series.coverImageURL) {
+                MissingCoverView(title: series.title)
+            }
+            .frame(width: layout.coverWidth, height: layout.coverHeight)
+            .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
+
+            VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+                Text(series.title)
+                    .font(ToonEdgeTypography.body.weight(.semibold))
+                    .lineLimit(1)
+                Text(content.metadata)
+                    .font(ToonEdgeTypography.caption)
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                    .lineLimit(1)
+                ProgressView(value: series.progressPercent)
+                    .tint(series.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.accent)
+                    .frame(height: 4)
+            }
+
+            Spacer(minLength: ToonEdgeSpacing.small)
+
+            if series.hasUnreadUpdates {
+                TEChip("New", isActive: true)
+            } else if series.isCompleted {
+                TEChip("Done")
+            }
+        }
+        .padding(.vertical, ToonEdgeSpacing.small)
+        .padding(.horizontal, ToonEdgeSpacing.small)
+        .frame(height: layout.rowHeight)
+        .background(ToonEdgeColor.elevated.opacity(0.65), in: RoundedRectangle(cornerRadius: layout.cornerRadius))
+    }
+}
+
+struct LibrarySeriesCardContent: Equatable, Sendable {
+    var metadata: String
+
+    init(series: LibrarySeriesSummary) {
+        if let currentChapterLabel = series.currentChapterLabel, !series.isCompleted {
+            self.metadata = "Continue Ch. \(currentChapterLabel)"
+        } else {
+            self.metadata = series.chapterSummaryText
+        }
+    }
+}
+
+struct LibrarySeriesCardLayout: Equatable, Sendable {
+    var fixedCardHeight: CGFloat
+    var coverAspectRatio: CGFloat
+    var coverHeight: CGFloat
+    var coverSlotHeight: CGFloat
+    var coverImageAlignment: LibrarySeriesCardCoverAlignment
+    var coverSlotUsesFullCardWidth: Bool
+    var coverAppliesFrameBeforeDecoration: Bool
+    var titleLineLimit: Int
+    var titleHeight: CGFloat
+    var metadataLineLimit: Int
+    var metadataHeight: CGFloat
+    var progressHeight: CGFloat
+    var badgeRowHeight: CGFloat
+    var cornerRadius: CGFloat
+
+    static let comfortable = LibrarySeriesCardLayout(
+        fixedCardHeight: 350,
+        coverAspectRatio: 0.72,
+        coverHeight: 180,
+        coverSlotHeight: 180,
+        coverImageAlignment: .center,
+        coverSlotUsesFullCardWidth: true,
+        coverAppliesFrameBeforeDecoration: true,
+        titleLineLimit: 2,
+        titleHeight: 48,
+        metadataLineLimit: 1,
+        metadataHeight: 18,
+        progressHeight: 8,
+        badgeRowHeight: 32,
+        cornerRadius: 6
+    )
+
+    static let compact = LibrarySeriesCardLayout(
+        fixedCardHeight: 272,
+        coverAspectRatio: 0.72,
+        coverHeight: 128,
+        coverSlotHeight: 128,
+        coverImageAlignment: .center,
+        coverSlotUsesFullCardWidth: true,
+        coverAppliesFrameBeforeDecoration: true,
+        titleLineLimit: 2,
+        titleHeight: 42,
+        metadataLineLimit: 1,
+        metadataHeight: 16,
+        progressHeight: 6,
+        badgeRowHeight: 28,
+        cornerRadius: 5
+    )
+
+    static let `default` = comfortable
+
+    func cardHeight(for series: LibrarySeriesSummary) -> CGFloat {
+        fixedCardHeight
+    }
+
+    var coverImageWidth: CGFloat {
+        coverHeight * coverAspectRatio
+    }
+}
+
+struct LibrarySeriesListRowLayout: Equatable, Sendable {
+    var rowHeight: CGFloat
+    var coverWidth: CGFloat
+    var coverHeight: CGFloat
+    var cornerRadius: CGFloat
+
+    static let `default` = LibrarySeriesListRowLayout(
+        rowHeight: 82,
+        coverWidth: 46,
+        coverHeight: 64,
+        cornerRadius: 5
+    )
+}
+
+enum LibrarySeriesCardCoverAlignment: Equatable, Sendable {
+    case center
+
+    var swiftUIAlignment: Alignment {
+        switch self {
+        case .center:
+            return .center
+        }
     }
 }
 
@@ -270,9 +775,11 @@ private struct SeriesDetailView: View {
     let dependencies: AppDependencies
     @Binding var router: AppRouter
     @State private var detail: SeriesDetailSnapshot?
-    @State private var sort: ChapterListSort = .newestFirst
+    @State private var chapterListMode: SeriesDetailChapterListMode = .recent
     @State private var hasLoaded = false
     @State private var cacheFeedback: CacheActionFeedback?
+    @State private var pendingSaveDetail: SeriesDetailSnapshot?
+    @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
 
     var body: some View {
         ScrollView {
@@ -296,14 +803,33 @@ private struct SeriesDetailView: View {
         }
         .navigationTitle("")
         .task {
-            detail = await dependencies.libraryService.seriesDetail(for: seriesID)
-            hasLoaded = true
+            await reloadDetail()
+        }
+        .onChange(of: router.presentedReader) { oldValue, newValue in
+            guard oldValue != nil, newValue == nil else { return }
+            Task {
+                await reloadDetail()
+            }
+        }
+        .sheet(item: $pendingSaveDetail) { detail in
+            AddToLibraryStatePickerView(
+                title: detail.title,
+                selectedState: $saveState,
+                context: .seriesDetail,
+                confirm: { state in
+                    confirmSave(detail, state: state)
+                },
+                cancel: {
+                    pendingSaveDetail = nil
+                }
+            )
         }
         .toonEdgeScreen()
     }
 
     private func header(_ detail: SeriesDetailSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
+        let layout = SeriesDetailHeaderLayout(snapshot: detail)
+        return VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
             HStack(alignment: .top, spacing: ToonEdgeSpacing.medium) {
                 cover(for: detail)
                     .frame(width: 96, height: 132)
@@ -314,22 +840,17 @@ private struct SeriesDetailView: View {
                         TEChip(detail.isSaved ? "Saved" : "Follow")
                     }
 
-                    Text(detail.title)
+                    Text(layout.title)
                         .font(ToonEdgeTypography.title)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Text("\(detail.sourceDomain) • \(detail.chaptersRead)/\(detail.totalKnownChapters ?? detail.chapters.count) chapters")
+                    Text(layout.metadata)
                         .font(ToonEdgeTypography.caption)
                         .foregroundStyle(ToonEdgeColor.textSecondary)
                 }
             }
 
-            Text(detail.synopsis)
-                .font(ToonEdgeTypography.body)
-                .foregroundStyle(ToonEdgeColor.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            TEButton(detail.primaryActionTitle, systemImage: "play.fill") {
+            TEButton(layout.primaryActionTitle, systemImage: "play.fill") {
                 open(detail.primaryChapter)
             }
             .disabled(detail.primaryChapter == nil)
@@ -366,6 +887,9 @@ private struct SeriesDetailView: View {
                     Button("Mark Planned") {
                         updateLibraryState(.planned)
                     }
+                    Button("Mark Dropped") {
+                        updateLibraryState(.dropped)
+                    }
                     Button("Mark Completed") {
                         updateLibraryState(.completed)
                     }
@@ -378,13 +902,13 @@ private struct SeriesDetailView: View {
                 .accessibilityLabel(detail.isSaved ? "Saved series" : "Save series")
             }
 
-            TESegmentedControl(selection: $sort) { $0.title }
+            TESegmentedControl(selection: $chapterListMode) { $0.title }
         }
     }
 
     @ViewBuilder
     private func chapterList(_ detail: SeriesDetailSnapshot) -> some View {
-        let chapters = detail.chapters(sortedBy: sort)
+        let chapters = detail.chapterList(for: chapterListMode)
 
         if chapters.isEmpty {
             TEBanner(title: "No chapters yet", message: "Chapter metadata will appear here when available.", systemImage: "list.bullet")
@@ -397,9 +921,12 @@ private struct SeriesDetailView: View {
                         ChapterRow(chapter: chapter)
                     }
                     .buttonStyle(.plain)
+                    .disabled(!chapter.isOpenable)
                     .contextMenu {
-                        Button("Retain Offline", systemImage: "arrow.down.circle") {
-                            retain(chapter)
+                        if chapter.isOpenable {
+                            Button("Retain Offline", systemImage: "arrow.down.circle") {
+                                retain(chapter)
+                            }
                         }
                     }
                 }
@@ -415,8 +942,13 @@ private struct SeriesDetailView: View {
         .overlay(RoundedRectangle(cornerRadius: ToonEdgeRadius.small).stroke(ToonEdgeColor.border))
     }
 
+    private func reloadDetail() async {
+        detail = await dependencies.libraryService.seriesDetail(for: seriesID)
+        hasLoaded = true
+    }
+
     private func open(_ chapter: ChapterSummary?) {
-        guard let chapter else { return }
+        guard let chapter, chapter.isOpenable else { return }
 
         Task {
             if let directSession = await dependencies.libraryLifecycleService?.readerSession(forChapterID: chapter.id) {
@@ -437,9 +969,21 @@ private struct SeriesDetailView: View {
                 try? await lifecycleService.removeFromLibrary(seriesID: detail.id)
                 self.detail = nil
             } else {
-                try? await lifecycleService.addToLibrary(detail.libraryInput, context: .seriesDetail)
-                self.detail = await dependencies.libraryService.seriesDetail(for: detail.id)
+                saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
+                pendingSaveDetail = detail
             }
+        }
+    }
+
+    private func confirmSave(_ detail: SeriesDetailSnapshot, state: LibraryCollectionState) {
+        guard let lifecycleService = dependencies.libraryLifecycleService else { return }
+        pendingSaveDetail = nil
+        var input = detail.libraryInput
+        input.libraryState = state
+
+        Task {
+            try? await lifecycleService.addToLibrary(input, context: .seriesDetail)
+            self.detail = await dependencies.libraryService.seriesDetail(for: detail.id)
         }
     }
 
@@ -466,6 +1010,20 @@ private struct SeriesDetailView: View {
                 cacheFeedback = .failure("Could not retain this chapter offline.")
             }
         }
+    }
+}
+
+struct SeriesDetailHeaderLayout: Equatable, Sendable {
+    var title: String
+    var metadata: String
+    var synopsisText: String?
+    var primaryActionTitle: String
+
+    init(snapshot: SeriesDetailSnapshot) {
+        self.title = snapshot.title
+        self.metadata = "\(snapshot.sourceDomain) • \(snapshot.chaptersRead)/\(snapshot.totalKnownChapters ?? snapshot.chapters.count) chapters"
+        self.synopsisText = nil
+        self.primaryActionTitle = snapshot.primaryActionTitle
     }
 }
 
@@ -550,10 +1108,14 @@ private struct ChapterRow: View {
     }
 
     private var subtitle: String {
+        if !chapter.isOpenable {
+            return "Chapter \(chapter.chapterLabel) • Unavailable"
+        }
+
         if let downloadLabel = chapter.downloadLabel {
-            "Chapter \(chapter.chapterLabel) • \(downloadLabel)"
+            return "Chapter \(chapter.chapterLabel) • \(downloadLabel)"
         } else {
-            "Chapter \(chapter.chapterLabel)"
+            return "Chapter \(chapter.chapterLabel)"
         }
     }
 

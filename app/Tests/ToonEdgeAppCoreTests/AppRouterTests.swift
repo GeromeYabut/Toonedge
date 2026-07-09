@@ -139,3 +139,22 @@ import Testing
     #expect(router.selectedTab == .library)
     #expect(router.pendingLibrarySeriesID == seriesID)
 }
+
+@Test func openingHomeRootDismissesReaderBrowserAndPendingLibraryDestinations() {
+    var router = AppRouter(selectedTab: .library)
+    router.presentSearch()
+    router.presentBrowser(.url("https://example.com/series/chapter-12"))
+    router.presentReader(.sample)
+    router.openLibraryDetail(seriesID: UUID())
+    router.pendingLibrarySegment = .recent
+    router.activeSheet = .search
+
+    router.openHomeRoot()
+
+    #expect(router.selectedTab == .home)
+    #expect(router.activeSheet == nil)
+    #expect(router.presentedReader == nil)
+    #expect(router.presentedBrowser == nil)
+    #expect(router.pendingLibrarySeriesID == nil)
+    #expect(router.pendingLibrarySegment == nil)
+}

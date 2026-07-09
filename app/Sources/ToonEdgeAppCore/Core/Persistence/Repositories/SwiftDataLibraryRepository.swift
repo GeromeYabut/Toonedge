@@ -77,7 +77,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
             status: "Recent",
             synopsis: "Recently read in ToonEdge.",
             sourceDomain: recent.sourceDomain,
-            coverImageURL: nil,
+            coverImageURL: recent.coverImageURLString.flatMap(URL.init(string:)),
             isSaved: false,
             libraryState: .reading,
             progressPercent: ReaderProgress(
@@ -101,7 +101,8 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
                         ).fractionComplete
                     ),
                     isDownloaded: false,
-                    publishedAt: nil
+                    publishedAt: nil,
+                    lastReadAt: recent.lastReadAt
                 )
             ]
         )
@@ -110,12 +111,13 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
     public func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {
         let now = Date()
         let defaultState = input.libraryState ?? defaultLibraryState(for: context)
+        let canonicalURL = CanonicalSeriesURLResolver.seriesURL(for: input.canonicalURL)
 
-        let resolvedSeriesID = fetchSeries(canonicalURLString: input.canonicalURL.absoluteString)?.id ?? input.id
+        let resolvedSeriesID = fetchSeries(canonicalURLString: canonicalURL.absoluteString)?.id ?? input.id
 
-        if let existing = fetchSeries(id: resolvedSeriesID) ?? fetchSeries(canonicalURLString: input.canonicalURL.absoluteString) {
+        if let existing = fetchSeries(id: resolvedSeriesID) ?? fetchSeries(canonicalURLString: canonicalURL.absoluteString) {
             existing.title = input.title
-            existing.canonicalURLString = input.canonicalURL.absoluteString
+            existing.canonicalURLString = canonicalURL.absoluteString
             existing.sourceDomain = input.sourceDomain
             if let coverImageURL = input.coverImageURL {
                 existing.coverImageURLString = coverImageURL.absoluteString
@@ -130,7 +132,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
             let series = StoredSeries(
                 id: resolvedSeriesID,
                 title: input.title,
-                canonicalURLString: input.canonicalURL.absoluteString,
+                canonicalURLString: canonicalURL.absoluteString,
                 sourceDomain: input.sourceDomain,
                 coverImageURLString: input.coverImageURL?.absoluteString,
                 status: input.status,
@@ -590,7 +592,8 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
     }
 
     private func chapterSummary(_ chapter: StoredChapter) -> ChapterSummary {
-        ChapterSummary(
+        let progress = fetchProgress(sourceURLString: chapter.sourceURLString)
+        return ChapterSummary(
             id: chapter.id,
             title: chapter.title,
             chapterLabel: chapter.chapterLabel,
@@ -598,7 +601,10 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
             sourceURL: URL(string: chapter.sourceURLString) ?? URL(string: "about:blank")!,
             readState: readState(for: chapter),
             isDownloaded: chapter.isDownloaded,
-            publishedAt: chapter.publishedAt
+            publishedAt: chapter.publishedAt,
+            lastReadAt: progress?.updatedAt,
+            isGeneratedPlaceholder: false,
+            isOpenable: true
         )
     }
 
@@ -733,6 +739,37 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
 
     private func adjacentChapters(for chapter: StoredChapter, in seriesID: UUID) -> (previous: MockChapter?, next: MockChapter?) {
         let chapters = fetchChapters(seriesID: seriesID).sorted(by: chapterOrder)
+        guard let currentNumber = integerChapterNumber(for: chapter) else {
+            return adjacentChaptersByStoredOrder(for: chapter, in: chapters)
+        }
+
+        var chaptersByNumber: [Int: StoredChapter] = [:]
+        for storedChapter in chapters {
+            guard let number = integerChapterNumber(for: storedChapter),
+                  chaptersByNumber[number] == nil else {
+                continue
+            }
+            chaptersByNumber[number] = storedChapter
+        }
+
+        return (
+            previous: numericAdjacentChapter(
+                targetNumber: currentNumber - 1,
+                currentChapter: chapter,
+                chaptersByNumber: chaptersByNumber
+            ),
+            next: numericAdjacentChapter(
+                targetNumber: currentNumber + 1,
+                currentChapter: chapter,
+                chaptersByNumber: chaptersByNumber
+            )
+        )
+    }
+
+    private func adjacentChaptersByStoredOrder(
+        for chapter: StoredChapter,
+        in chapters: [StoredChapter]
+    ) -> (previous: MockChapter?, next: MockChapter?) {
         guard let index = chapters.firstIndex(where: { $0.id == chapter.id }) else {
             return (nil, nil)
         }
@@ -741,6 +778,40 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
         let nextIndex = chapters.index(after: index)
         let next = nextIndex < chapters.endIndex ? mockChapter(from: chapters[nextIndex]) : nil
         return (previous, next)
+    }
+
+    private func numericAdjacentChapter(
+        targetNumber: Int,
+        currentChapter: StoredChapter,
+        chaptersByNumber: [Int: StoredChapter]
+    ) -> MockChapter? {
+        guard targetNumber >= 0 else {
+            return nil
+        }
+
+        if let storedChapter = chaptersByNumber[targetNumber] {
+            return mockChapter(from: storedChapter)
+        }
+
+        guard targetNumber > 0,
+              let currentNumber = integerChapterNumber(for: currentChapter),
+              let currentSourceURL = URL(string: currentChapter.sourceURLString),
+              let inferredURL = ChapterURLInference.inferredSourceURL(
+                forChapter: targetNumber,
+                knownChapters: [
+                    ChapterURLInference.KnownChapter(
+                        number: currentNumber,
+                        sourceURL: currentSourceURL
+                    )
+                ]
+              ) else {
+            return nil
+        }
+
+        return MockChapter(
+            title: "Chapter \(targetNumber)",
+            sourceURL: inferredURL
+        )
     }
 
     private func mockChapter(from chapter: StoredChapter) -> MockChapter? {
@@ -752,6 +823,14 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
             id: chapter.id,
             title: chapter.title,
             sourceURL: sourceURL
+        )
+    }
+
+    private func integerChapterNumber(for chapter: StoredChapter) -> Int? {
+        ChapterURLInference.integerChapterNumber(
+            chapterNumber: chapter.chapterNumber,
+            chapterLabel: chapter.chapterLabel,
+            title: chapter.title
         )
     }
 
@@ -802,16 +881,11 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
     }
 
     private func defaultLibraryState(for context: LibraryAddContext) -> LibraryCollectionState {
-        switch context {
-        case .reader:
-            .reading
-        case .browser, .seriesDetail:
-            .planned
-        }
+        AddToLibraryStatePickerModel.defaultState(for: context)
     }
 
     private func libraryState(for series: StoredSeries) -> LibraryCollectionState {
-        LibraryCollectionState(rawValue: series.libraryStateRaw) ?? .planned
+        LibraryCollectionState.decoded(persistedRawValue: series.libraryStateRaw)
     }
 
     private func encodeURLStrings(_ urls: [URL]) -> String {
@@ -850,7 +924,9 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
     }
 
     private func fetchSeries(canonicalURLString: String) -> StoredSeries? {
-        fetchSeries().first { $0.canonicalURLString == canonicalURLString }
+        fetchSeries().first {
+            normalizedCanonicalURLString($0.canonicalURLString) == normalizedCanonicalURLString(canonicalURLString)
+        }
     }
 
     private func fetchChapters(seriesID: UUID) -> [StoredChapter] {
@@ -930,9 +1006,10 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
     }
 
     private func normalizeDuplicateRecordsIfNeeded() {
-        for duplicates in Dictionary(grouping: fetchSeries(), by: \.canonicalURLString).values where duplicates.count > 1 {
+        for duplicates in Dictionary(grouping: fetchSeries(), by: { normalizedCanonicalURLString($0.canonicalURLString) }).values where duplicates.count > 1 {
             let ordered = duplicates.sorted { $0.updatedAt > $1.updatedAt }
             guard let keeper = ordered.first else { continue }
+            keeper.canonicalURLString = normalizedCanonicalURLString(keeper.canonicalURLString)
             for duplicate in ordered.dropFirst() {
                 for chapter in fetchChapters(seriesID: duplicate.id) {
                     chapter.seriesID = keeper.id
@@ -962,6 +1039,14 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, ReaderP
         }
 
         try? saveContextIfNeeded()
+    }
+
+    private func normalizedCanonicalURLString(_ value: String) -> String {
+        guard let url = URL(string: value) else {
+            return value
+        }
+
+        return CanonicalSeriesURLResolver.seriesURL(for: url).absoluteString
     }
 
     private func fetchAllChapters() -> [StoredChapter] {

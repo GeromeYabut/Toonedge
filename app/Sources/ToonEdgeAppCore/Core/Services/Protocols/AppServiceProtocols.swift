@@ -84,6 +84,23 @@ public protocol SeriesLatestChapterFetching: Sendable {
     func latestChapterSnapshot(for series: LibrarySeriesSummary) async throws -> SeriesLatestChapterSnapshot?
 }
 
+public protocol SeriesChapterIndexFetching: Sendable {
+    func chapterIndexSnapshot(for series: LibrarySeriesSummary) async throws -> ChapterIndexSnapshot?
+}
+
+public protocol LibraryChapterIndexManaging: Sendable {
+    func recordAvailableChapters(
+        _ chapters: [ChapterIndexEntry],
+        for seriesID: UUID,
+        indexedAt: Date
+    ) async throws
+}
+
+public protocol SeriesChapterIndexRefreshing: Sendable {
+    func refreshChapterIndex(for series: LibrarySeriesSummary) async -> ChapterIndexRefreshOutcome
+    func refreshChapterIndex(for seriesID: UUID) async -> ChapterIndexRefreshOutcome?
+}
+
 public protocol SeriesUpdateChecking: Sendable {
     func checkForUpdates(series: LibrarySeriesSummary) async throws -> SeriesUpdateCheckResult
 }

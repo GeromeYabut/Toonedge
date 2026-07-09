@@ -68,6 +68,103 @@ public struct TECard<Content: View>: View {
     }
 }
 
+public struct AddToLibraryStatePickerView: View {
+    private let title: String
+    @Binding private var selectedState: LibraryCollectionState
+    private let context: LibraryAddContext
+    private let confirm: (LibraryCollectionState) -> Void
+    private let cancel: () -> Void
+
+    public init(
+        title: String,
+        selectedState: Binding<LibraryCollectionState>,
+        context: LibraryAddContext,
+        confirm: @escaping (LibraryCollectionState) -> Void,
+        cancel: @escaping () -> Void
+    ) {
+        self.title = title
+        self._selectedState = selectedState
+        self.context = context
+        self.confirm = confirm
+        self.cancel = cancel
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
+            VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+                Text("Save to Library")
+                    .font(ToonEdgeTypography.title)
+                Text(title)
+                    .font(ToonEdgeTypography.body)
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                    .lineLimit(2)
+            }
+
+            VStack(spacing: ToonEdgeSpacing.small) {
+                ForEach(AddToLibraryStatePickerModel.availableStates, id: \.self) { state in
+                    Button {
+                        selectedState = state
+                    } label: {
+                        HStack(spacing: ToonEdgeSpacing.medium) {
+                            Image(systemName: selectedState == state ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(selectedState == state ? ToonEdgeColor.accent : ToonEdgeColor.textSecondary)
+                            VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+                                Text(state.title)
+                                    .font(ToonEdgeTypography.body.weight(.semibold))
+                                Text(subtitle(for: state))
+                                    .font(ToonEdgeTypography.caption)
+                                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                            }
+                            Spacer()
+                        }
+                        .padding(ToonEdgeSpacing.medium)
+                        .background(
+                            selectedState == state ? ToonEdgeColor.panel : ToonEdgeColor.elevated,
+                            in: RoundedRectangle(cornerRadius: ToonEdgeRadius.small)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            HStack(spacing: ToonEdgeSpacing.medium) {
+                Button("Cancel", action: cancel)
+                    .font(ToonEdgeTypography.body.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, ToonEdgeSpacing.medium)
+                    .background(ToonEdgeColor.panel, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+
+                Button("Save") {
+                    confirm(selectedState)
+                }
+                .font(ToonEdgeTypography.body.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, ToonEdgeSpacing.medium)
+                .background(ToonEdgeColor.accent, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(ToonEdgeSpacing.xlarge)
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+        .background(ToonEdgeColor.background)
+        .foregroundStyle(ToonEdgeColor.textPrimary)
+    }
+
+    private func subtitle(for state: LibraryCollectionState) -> String {
+        switch state {
+        case .reading:
+            return context == .reader ? "Resume from your current chapter" : "Actively reading"
+        case .planned:
+            return "Saved for later"
+        case .dropped, .archived:
+            return "Paused or no longer following"
+        case .completed:
+            return "Finished title"
+        }
+    }
+}
+
 public struct TEBanner: View {
     private let title: String
     private let message: String

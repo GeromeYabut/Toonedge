@@ -97,6 +97,15 @@ public struct AppRouter: Equatable, Sendable {
         presentedBrowser = nil
     }
 
+    public mutating func openHomeRoot() {
+        selectedTab = .home
+        activeSheet = nil
+        pendingLibrarySeriesID = nil
+        pendingLibrarySegment = nil
+        presentedReader = nil
+        presentedBrowser = nil
+    }
+
     public mutating func openLibraryRecent() {
         selectedTab = .library
         pendingLibrarySeriesID = nil

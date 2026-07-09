@@ -36,6 +36,23 @@ import Testing
     #expect(!viewModel.isLoading)
 }
 
+@Test func detectedSessionLibraryInputUsesExplicitSaveState() throws {
+    let session = MockReaderSession(
+        seriesTitle: "Moonlit Edge",
+        chapterTitle: "Chapter 12",
+        sourceURL: try #require(URL(string: "https://example.com/series/chapter-12")),
+        imageURLs: [try #require(URL(string: "https://img.example.com/1.jpg"))]
+    )
+
+    let input = DetectedSessionLibraryInputBuilder.input(
+        for: session,
+        addressDisplay: "example.com",
+        libraryState: .dropped
+    )
+
+    #expect(input.libraryState == .dropped)
+}
+
 @MainActor
 @Test func browserViewModelCanLoadExplicitURLIntoExistingBrowser() throws {
     let viewModel = BrowserViewModel(startPoint: .url("https://example.com/chapter-12"))
@@ -185,6 +202,40 @@ import Testing
     viewModel.presentPendingReaderInsideBrowser(session)
 
     #expect(logger.events == [.pendingBrowserOwnedReader, .browserOwnedReaderVisible])
+}
+
+@Test func detectedSessionLibraryInputUsesCanonicalSeriesURLAndNumericChapterLabel() throws {
+    let sourceURL = try #require(URL(string: "https://asurascans.com/comics/the-cold-blooded-warrior-46f09241/chapter/3"))
+    let session = MockReaderSession(
+        seriesTitle: "The Cold-Blooded Warrior | Asura Scans",
+        chapterTitle: "The Cold-Blooded Warrior Chapter 3 - Read Online | Asura Scans",
+        sourceURL: sourceURL,
+        imageURLs: [try #require(URL(string: "https://img.example.com/page-1.jpg"))]
+    )
+
+    let input = DetectedSessionLibraryInputBuilder.input(
+        for: session,
+        addressDisplay: "asurascans.com"
+    )
+
+    #expect(input.canonicalURL == URL(string: "https://asurascans.com/comics/the-cold-blooded-warrior-46f09241")!)
+    #expect(input.latestKnownChapterLabel == "3")
+    #expect(input.chapters.first?.chapterLabel == "3")
+    #expect(input.chapters.first?.chapterNumber == 3)
+}
+
+@Test func homeContinueReadingNavigationDoesNotFallbackToMockExampleDomain() throws {
+    #expect(HomeContinueReadingNavigation.browserStartPoint(for: nil) == nil)
+
+    let sourceURL = try #require(URL(string: "https://asurascans.com/comics/sample/chapter/4"))
+    let target = ContinueReadingTarget(
+        seriesID: UUID(),
+        chapterID: UUID(),
+        sourceURL: sourceURL,
+        progress: ReaderProgress(currentImageIndex: 0, totalImageCount: 1)
+    )
+
+    #expect(HomeContinueReadingNavigation.browserStartPoint(for: target) == .url(sourceURL.absoluteString))
 }
 
 private final class RecordingBrowserReaderPresentationLogger: BrowserReaderPresentationLogging, @unchecked Sendable {

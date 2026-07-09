@@ -652,6 +652,22 @@ import Testing
     #expect(result.readerSession?.launchOrigin == .browser)
 }
 
+@Test func detectedReaderSessionInfersAdjacentChapterLinksFromNumericURLWhenLinksAreMissing() throws {
+    let pageURL = try #require(URL(string: "https://asurascans.com/comics/the-cold-blooded-warrior-46f09241/chapter/3"))
+    let page = DetectionPageAnalysis(
+        pageURL: pageURL,
+        title: "The Cold-Blooded Warrior Chapter 3",
+        documentHeight: 18_000,
+        viewportWidth: 390,
+        images: chapterImages(host: "asurascans.com")
+    )
+
+    let result = GenericChapterDetector().detect(page: page)
+
+    #expect(result.readerSession?.previousChapter?.sourceURL == URL(string: "https://asurascans.com/comics/the-cold-blooded-warrior-46f09241/chapter/2")!)
+    #expect(result.readerSession?.nextChapter?.sourceURL == URL(string: "https://asurascans.com/comics/the-cold-blooded-warrior-46f09241/chapter/4")!)
+}
+
 @MainActor
 @Test func browserAutoOpensReaderOnlyForHighConfidence() throws {
     let pageURL = try #require(URL(string: "https://example.com/series/chapter-12"))

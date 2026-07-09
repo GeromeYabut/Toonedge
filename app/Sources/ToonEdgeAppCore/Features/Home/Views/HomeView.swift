@@ -201,7 +201,10 @@ public struct HomeView: View {
                 router.presentReader(librarySession)
                 return
             }
-            router.presentBrowser(.url((target?.sourceURL ?? MockChapter.sample.sourceURL).absoluteString))
+
+            if let startPoint = HomeContinueReadingNavigation.browserStartPoint(for: target) {
+                router.presentBrowser(startPoint)
+            }
         }
     }
 
@@ -239,7 +242,13 @@ public struct HomeView: View {
             return "Chapter \(subtitle.replacingOccurrences(of: "Continue ", with: ""))"
         }
 
-        return MockChapter.sample.title
+        return "Chapter"
+    }
+}
+
+enum HomeContinueReadingNavigation {
+    static func browserStartPoint(for target: ContinueReadingTarget?) -> BrowserStartPoint? {
+        target.map { .url($0.sourceURL.absoluteString) }
     }
 }
 

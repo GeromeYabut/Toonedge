@@ -166,6 +166,45 @@ import Testing
     #expect(snapshot?.sourceURL == URL(string: "https://unlisted.example/story/chapter-2")!)
 }
 
+@Test func chapterIndexParserExtractsOrderedChapterLinks() throws {
+    let seriesID = UUID(uuidString: "6E13CFE1-D6BB-4F6A-9CF3-8A01A9E97E01")!
+    let baseURL = try #require(URL(string: "https://asurascans.com/comics/the-extras-academy-survival-guide-9a7a1ac5"))
+    let html = """
+    <main>
+      <a href="/comics/the-extras-academy-survival-guide-9a7a1ac5/chapter/107">The Extra's Academy Survival Guide Chapter 107 - Read Online</a>
+      <a href="/comics/the-extras-academy-survival-guide-9a7a1ac5/chapter/106">Chapter 106</a>
+      <a href="/privacy">Privacy Policy</a>
+    </main>
+    """
+
+    let snapshot = HTMLChapterIndexParser.parse(
+        html: html,
+        baseURL: baseURL,
+        seriesID: seriesID,
+        checkedAt: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+
+    #expect(snapshot.seriesID == seriesID)
+    #expect(snapshot.entries.map(\.chapterLabel) == ["106", "107"])
+    #expect(snapshot.entries.map(\.chapterNumber) == [106, 107])
+    #expect(snapshot.entries[1].sourceURL.absoluteString == "https://asurascans.com/comics/the-extras-academy-survival-guide-9a7a1ac5/chapter/107")
+    #expect(snapshot.latestChapterLabel == "107")
+}
+
+@Test func chapterIndexParserDeduplicatesSameChapterURL() throws {
+    let seriesID = UUID(uuidString: "CC308F48-53EF-4C5F-96A2-694CF89F10F1")!
+    let baseURL = try #require(URL(string: "https://example.com/series/moonlit-edge"))
+    let html = """
+    <a href="/series/moonlit-edge/chapter-12">Chapter 12</a>
+    <a href="/series/moonlit-edge/chapter-12">Read Chapter 12 Online</a>
+    <a href="/series/moonlit-edge/chapter-13">Chapter 13</a>
+    """
+
+    let snapshot = HTMLChapterIndexParser.parse(html: html, baseURL: baseURL, seriesID: seriesID)
+
+    #expect(snapshot.entries.map(\.chapterLabel) == ["12", "13"])
+}
+
 @Test func htmlLatestChapterFetcherRequestsSeriesCanonicalURL() async throws {
     let canonicalURL = URL(string: "https://example.com/series")!
     let series = LibrarySeriesSummary.updateCheckFixture(latestChapterLabel: "12", canonicalURL: canonicalURL)

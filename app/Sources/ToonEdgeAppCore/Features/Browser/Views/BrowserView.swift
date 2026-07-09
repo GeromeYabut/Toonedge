@@ -4,6 +4,8 @@ public struct BrowserView: View {
     private let dependencies: AppDependencies
     @Binding private var router: AppRouter
     @StateObject private var viewModel: BrowserViewModel
+    @State private var pendingLibrarySaveSession: MockReaderSession?
+    @State private var librarySaveState = AddToLibraryStatePickerModel.defaultState(for: .browser)
 
     public init(
         startPoint: BrowserStartPoint,
@@ -57,6 +59,19 @@ public struct BrowserView: View {
         .onChange(of: viewModel.pendingReaderSession) { _, session in
             guard let session else { return }
             viewModel.presentPendingReaderInsideBrowser(session)
+        }
+        .sheet(item: $pendingLibrarySaveSession) { session in
+            AddToLibraryStatePickerView(
+                title: session.seriesTitle,
+                selectedState: $librarySaveState,
+                context: .browser,
+                confirm: { state in
+                    confirmDetectedSessionLibrarySave(session, state: state)
+                },
+                cancel: {
+                    pendingLibrarySaveSession = nil
+                }
+            )
         }
     }
 
@@ -138,7 +153,7 @@ public struct BrowserView: View {
 
             if viewModel.detectionResult?.readerSession != nil, dependencies.libraryLifecycleService != nil {
                 Button {
-                    addDetectedSessionToLibrary()
+                    presentDetectedSessionLibrarySave()
                 } label: {
                     Image(systemName: "bookmark")
                         .font(.system(size: 15, weight: .semibold))
@@ -250,44 +265,69 @@ public struct BrowserView: View {
         .background(ToonEdgeColor.background)
     }
 
-    private func addDetectedSessionToLibrary() {
-        guard let session = viewModel.detectionResult?.readerSession,
-              let lifecycleService = dependencies.libraryLifecycleService else {
+    private func presentDetectedSessionLibrarySave() {
+        guard let session = viewModel.detectionResult?.readerSession else {
+            return
+        }
+
+        librarySaveState = AddToLibraryStatePickerModel.defaultState(for: .browser)
+        pendingLibrarySaveSession = session
+    }
+
+    private func confirmDetectedSessionLibrarySave(_ session: MockReaderSession, state: LibraryCollectionState) {
+        pendingLibrarySaveSession = nil
+        guard let lifecycleService = dependencies.libraryLifecycleService else {
             return
         }
 
         Task {
             try? await lifecycleService.addToLibrary(
-                LibrarySeriesInput(
-                    title: session.seriesTitle,
-                    canonicalURL: session.sourceURL.deletingLastPathComponent(),
-                    sourceDomain: session.sourceURL.host() ?? viewModel.addressDisplay,
-                    coverImageURL: nil,
-                    status: "Reading",
-                    synopsis: "Saved from Browser.",
-                    latestKnownChapterLabel: chapterLabel(from: session.chapterTitle),
-                    libraryState: .planned,
-                    chapters: [
-                        LibraryChapterInput(
-                            title: session.chapterTitle,
-                            chapterLabel: chapterLabel(from: session.chapterTitle),
-                            chapterNumber: Double(chapterLabel(from: session.chapterTitle)),
-                            sourceURL: session.sourceURL,
-                            imageURLs: session.imageURLs,
-                            publishedAt: nil
-                        )
-                    ]
+                DetectedSessionLibraryInputBuilder.input(
+                    for: session,
+                    addressDisplay: viewModel.addressDisplay,
+                    libraryState: state
                 ),
                 context: .browser
             )
         }
     }
+}
 
-    private func chapterLabel(from title: String) -> String {
-        title
-            .split(separator: " ")
-            .last
-            .map(String.init) ?? title
+enum DetectedSessionLibraryInputBuilder {
+    static func input(
+        for session: MockReaderSession,
+        addressDisplay: String,
+        libraryState: LibraryCollectionState = AddToLibraryStatePickerModel.defaultState(for: .browser)
+    ) -> LibrarySeriesInput {
+        let chapterLabel = ChapterNumericLabelExtractor.label(
+            chapterNumber: nil,
+            chapterLabel: session.chapterTitle,
+            title: session.sourceURL.absoluteString
+        ) ?? session.chapterTitle
+
+        return LibrarySeriesInput(
+            id: session.seriesID,
+            title: session.seriesTitle,
+            canonicalURL: CanonicalSeriesURLResolver.seriesURL(for: session.sourceURL),
+            sourceDomain: session.sourceURL.host() ?? addressDisplay,
+            coverImageURL: session.coverImageURL,
+            status: "Reading",
+            synopsis: "Saved from Browser.",
+            latestKnownChapterLabel: chapterLabel,
+            libraryState: libraryState,
+            chapters: [
+                LibraryChapterInput(
+                    title: session.chapterTitle,
+                    chapterLabel: chapterLabel,
+                    chapterNumber: Double(chapterLabel),
+                    sourceURL: session.sourceURL,
+                    previousChapterURL: session.previousChapter?.sourceURL,
+                    nextChapterURL: session.nextChapter?.sourceURL,
+                    imageURLs: session.imageURLs,
+                    publishedAt: nil
+                )
+            ]
+        )
     }
 }
 
