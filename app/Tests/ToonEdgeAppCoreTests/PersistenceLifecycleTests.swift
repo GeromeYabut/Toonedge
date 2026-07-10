@@ -207,10 +207,14 @@ import Testing
     )
 
     let detail = try #require(await repository.seriesDetail(for: seriesID))
+    let chapter107 = try #require(detail.primaryChapter)
+    let directSession = await repository.readerSession(forChapterID: chapter107.id)
 
     #expect(detail.primaryActionTitle == "Start Chapter 107")
-    #expect(detail.primaryChapter?.chapterLabel == "107")
-    #expect(detail.primaryChapter?.isOpenable == true)
+    #expect(chapter107.chapterLabel == "107")
+    #expect(directSession == nil)
+    #expect(chapter107.sourceURL == chapter107URL)
+    #expect(chapter107.isOpenable)
 }
 
 @MainActor
