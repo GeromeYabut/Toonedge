@@ -2,6 +2,29 @@
 
 This document tracks confirmed product defects, their evidence, current status, and intended resolution.
 
+## DEF-028 — Series Detail can show all known local chapters read while the next source chapter exists
+
+**Status:** Implemented
+**Severity:** Medium
+**Reported:** 2026-07-09
+**Area:** Series Detail primary action, update refresh, chapter availability indexing
+
+### User-visible problem
+
+After chapter 106 is fully read, Series Detail can show `All Chapters Read` even though chapter 107 is available on the source site. The app may have a latest-known label from update metadata, but no stored chapter URL for chapter 107.
+
+### Expected behavior
+
+- Refresh and Series Detail opening should index available chapter links when possible.
+- If chapter 107 is indexed and chapter 106 is read, Series Detail should offer `Start Chapter 107`.
+- If every indexed available chapter is read, Series Detail can show `All Chapters Read`.
+
+### Resolution
+
+- Added lightweight available-chapter indexing from source series pages.
+- Manual Library refresh and opportunistic Series Detail loading update the local chapter index.
+- Series Detail primary action now uses indexed chapter rows as openable reading targets without requiring cached reader image payloads.
+
 ## DEF-022 — Reader adjacent navigation masks transient rate-limit/challenge failures
 
 **Status:** Open  

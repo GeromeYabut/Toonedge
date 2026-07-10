@@ -1025,6 +1025,55 @@ Library should scale beyond a small visual gallery. The current card grid is use
 - Do not add bulk edit, drag-and-drop reordering, or custom user-defined groups in this story.
 - Do not change Reader detection, chapter parsing, or update-check behavior except where save-state defaults are passed through existing Library interfaces.
 
+### Story 11.40 — Local available-chapter index and Series Detail reading target
+**Status:** implemented
+
+**User story**
+
+As a reader who keeps saved series in my Library, I want ToonEdge to know which chapters are available locally after refresh or when I open a Series Detail page, so the detail screen can offer the next available chapter instead of saying `All Chapters Read` too early.
+
+**Intent**
+
+Current Series Detail behavior can only choose from chapters already stored as saved/reader/progress rows. A series may have `latestKnownChapterLabel` from update metadata, but without a stored chapter URL for the next chapter, the app cannot safely make `Start Chapter 107` clickable. This creates a confusing state: the app may know a high-level latest label such as `237`, while Series Detail only knows concrete local chapter rows such as `102-106`.
+
+This story introduces a lightweight local available-chapter index. Refresh actions and opportunistic Series Detail loading should discover available chapter links from the source series page, store lightweight chapter metadata locally, and use that index to determine the next reading target. Indexed chapters should be openable through the existing Browser/Reader conversion path without requiring full reader image extraction at index time.
+
+**Recommended UX direction**
+- Treat Library refresh as an index update for saved series, not only a latest-label check.
+- When Series Detail opens, opportunistically refresh that specific series' available-chapter index in the background.
+- Store available chapters efficiently: title, numeric/label, source URL, discovered/last-seen timestamps, and enough source identity to match the saved series.
+- Do not store image URLs or full Reader sessions during indexing unless the user actually opens a chapter or existing reader extraction already produced the payload.
+- Series Detail primary action should use the indexed chapter list to choose the next available unread chapter after the latest completed chapter.
+- If chapter 106 is read and chapter 107 is indexed, the primary action should show `Start Chapter 107`.
+- If every indexed available chapter is read, Series Detail can show `All Chapters Read`.
+- Replace the `Recent` / `All` chapter segmented control in Series Detail with a single `All` chapter section.
+- Default the chapter list scroll position near the user’s next reading target; if there is no next target, scroll near the latest read chapter.
+- Keep Library compact/comfortable/list metadata display consistent with the current/resume chapter semantics from Stories 11.38 and 11.39.
+
+**Acceptance criteria**
+- Manual Library refresh updates the local available-chapter index for saved series when a canonical series URL is available.
+- Opening Series Detail opportunistically refreshes that series' available-chapter index without blocking the initial detail render.
+- Refresh/index failures do not delete existing indexed chapters or prevent Series Detail from showing previously known local data.
+- Indexed chapter rows are lightweight and do not require cached images, downloaded files, or stored Reader image payloads.
+- Indexed chapters include stable source URLs so tapping an indexed-but-not-yet-extracted chapter can launch the existing Reader extraction flow.
+- Given known chapters 102-106 where 106 is read, and the source index contains chapter 107, Series Detail primary action shows `Start Chapter 107`.
+- Given all indexed chapters are read, Series Detail shows `All Chapters Read`.
+- Given a forward in-progress indexed chapter exists, Series Detail primary action shows `Continue Chapter <label>` for that chapter.
+- Update/unread state is derived from indexed chapters where possible, rather than only comparing a single latest-known label.
+- Series Detail removes the `Recent` / `All` segmented control and displays a single `All` chapter list.
+- The chapter list initially positions near the next reading target, or near the latest read chapter when no next target exists.
+- Existing Reader detection, Browser behavior, save-to-library grouping, Library filters, and local-first Library snapshots remain intact.
+- Regression coverage verifies index refresh from Library refresh, opportunistic Series Detail refresh, next-target selection from indexed chapter 107, no destructive clearing on failed refresh, and the single-section Series Detail chapter list behavior.
+
+**MVP boundaries**
+- Do not add a public catalog, recommendations, source browsing, or hosted content features.
+- Do not add cloud sync or cross-device reading state.
+- Do not download chapter images during index refresh.
+- Do not require multi-page chapter stitching.
+- Do not aggressively infer chapter URLs when the source index does not provide a link; URL inference may remain a guarded fallback only where existing adjacent navigation logic already treats it as safe.
+- Do not block Series Detail rendering on network refresh; use existing local data first and update when refresh completes.
+- Do not remove existing update-check safeguards for unsupported, rate-limited, or challenge pages.
+
 ---
 
 ## Post-MVP Epic — Multi-Page Chapter Stitching
