@@ -205,6 +205,13 @@ import Testing
     #expect(snapshot.entries.map(\.chapterLabel) == ["12", "13"])
 }
 
+@MainActor
+@Test func persistentDependenciesExposeChapterIndexRefreshService() throws {
+    let dependencies = try AppDependencies.persistent(inMemory: true, usesModelContextIO: false)
+
+    #expect(dependencies.chapterIndexRefreshService != nil)
+}
+
 @Test func htmlLatestChapterFetcherRequestsSeriesCanonicalURL() async throws {
     let canonicalURL = URL(string: "https://example.com/series")!
     let series = LibrarySeriesSummary.updateCheckFixture(latestChapterLabel: "12", canonicalURL: canonicalURL)

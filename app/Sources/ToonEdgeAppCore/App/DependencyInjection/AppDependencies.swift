@@ -11,6 +11,7 @@ public struct AppDependencies: Sendable {
     public var downloadService: any DownloadProviding
     public var cacheMetadataService: any CacheMetadataManaging
     public var cacheStorageMeasurementService: (any CacheStorageMeasuring)?
+    public var chapterIndexRefreshService: (any SeriesChapterIndexRefreshing)?
     public var updateRefreshService: (any LibraryUpdateRefreshing)?
     public var settingsService: any SettingsProviding
     public var browserService: any BrowserCoordinating
@@ -30,6 +31,7 @@ public struct AppDependencies: Sendable {
         downloadService: any DownloadProviding,
         cacheMetadataService: any CacheMetadataManaging,
         cacheStorageMeasurementService: (any CacheStorageMeasuring)? = nil,
+        chapterIndexRefreshService: (any SeriesChapterIndexRefreshing)? = nil,
         updateRefreshService: (any LibraryUpdateRefreshing)? = nil,
         settingsService: any SettingsProviding,
         browserService: any BrowserCoordinating,
@@ -48,6 +50,7 @@ public struct AppDependencies: Sendable {
         self.downloadService = downloadService
         self.cacheMetadataService = cacheMetadataService
         self.cacheStorageMeasurementService = cacheStorageMeasurementService
+        self.chapterIndexRefreshService = chapterIndexRefreshService
         self.updateRefreshService = updateRefreshService
         self.settingsService = settingsService
         self.browserService = browserService
@@ -67,6 +70,7 @@ public struct AppDependencies: Sendable {
             downloadService: cacheMetadataService,
             cacheMetadataService: cacheMetadataService,
             cacheStorageMeasurementService: assetCache.map(CacheStorageMeasurementService.init(assetCache:)),
+            chapterIndexRefreshService: MockSeriesChapterIndexRefreshService(),
             updateRefreshService: MockLibraryUpdateRefreshService(),
             settingsService: MockSettingsService(),
             browserService: MockBrowserService(),
@@ -91,6 +95,11 @@ public struct AppDependencies: Sendable {
         )
         let assetCache = try? FileBackedChapterAssetCache(rootDirectory: defaultCacheDirectory())
         let diagnosticsLogger = UpdateCacheDiagnosticsLogger()
+        let chapterIndexRefreshService = SeriesChapterIndexRefreshService(
+            library: repository,
+            indexLibrary: repository,
+            fetcher: HTMLChapterIndexFetcher()
+        )
 
         return AppDependencies(
             persistenceContainer: container,
@@ -102,11 +111,13 @@ public struct AppDependencies: Sendable {
             downloadService: repository,
             cacheMetadataService: repository,
             cacheStorageMeasurementService: assetCache.map(CacheStorageMeasurementService.init(assetCache:)),
+            chapterIndexRefreshService: chapterIndexRefreshService,
             updateRefreshService: LibraryUpdateRefreshService(
                 library: repository,
                 updateChecker: SeriesUpdateChecker(
                     fetcher: HTMLLatestChapterFetcher(diagnosticsLogger: diagnosticsLogger)
                 ),
+                chapterIndexRefreshService: chapterIndexRefreshService,
                 diagnosticsLogger: diagnosticsLogger
             ),
             settingsService: MockSettingsService(),

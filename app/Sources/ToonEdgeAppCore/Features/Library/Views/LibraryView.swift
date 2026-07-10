@@ -777,6 +777,7 @@ private struct SeriesDetailView: View {
     @State private var detail: SeriesDetailSnapshot?
     @State private var chapterListMode: SeriesDetailChapterListMode = .recent
     @State private var hasLoaded = false
+    @State private var hasAttemptedChapterIndexRefresh = false
     @State private var cacheFeedback: CacheActionFeedback?
     @State private var pendingSaveDetail: SeriesDetailSnapshot?
     @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
@@ -804,6 +805,7 @@ private struct SeriesDetailView: View {
         .navigationTitle("")
         .task {
             await reloadDetail()
+            await refreshChapterIndexIfAvailable()
         }
         .onChange(of: router.presentedReader) { oldValue, newValue in
             guard oldValue != nil, newValue == nil else { return }
@@ -947,6 +949,21 @@ private struct SeriesDetailView: View {
         hasLoaded = true
     }
 
+    private func refreshChapterIndexIfAvailable() async {
+        guard SeriesDetailRefreshBehavior.shouldAttemptRefresh(
+            hasAttemptedChapterIndexRefresh: hasAttemptedChapterIndexRefresh,
+            chapterIndexRefreshService: dependencies.chapterIndexRefreshService
+        ) else {
+            return
+        }
+
+        hasAttemptedChapterIndexRefresh = true
+        let outcome = await dependencies.chapterIndexRefreshService?.refreshChapterIndex(for: seriesID)
+        if SeriesDetailRefreshBehavior.shouldReloadDetail(after: outcome) {
+            await reloadDetail()
+        }
+    }
+
     private func open(_ chapter: ChapterSummary?) {
         guard let chapter, chapter.isOpenable else { return }
 
@@ -1024,6 +1041,19 @@ struct SeriesDetailHeaderLayout: Equatable, Sendable {
         self.metadata = "\(snapshot.sourceDomain) • \(snapshot.chaptersRead)/\(snapshot.totalKnownChapters ?? snapshot.chapters.count) chapters"
         self.synopsisText = nil
         self.primaryActionTitle = snapshot.primaryActionTitle
+    }
+}
+
+struct SeriesDetailRefreshBehavior {
+    static func shouldAttemptRefresh(
+        hasAttemptedChapterIndexRefresh: Bool,
+        chapterIndexRefreshService: (any SeriesChapterIndexRefreshing)?
+    ) -> Bool {
+        !hasAttemptedChapterIndexRefresh && chapterIndexRefreshService != nil
+    }
+
+    static func shouldReloadDetail(after outcome: ChapterIndexRefreshOutcome?) -> Bool {
+        outcome?.didRefresh == true
     }
 }
 

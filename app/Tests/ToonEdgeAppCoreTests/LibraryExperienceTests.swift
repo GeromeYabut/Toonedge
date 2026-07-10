@@ -201,6 +201,43 @@ import Testing
     #expect(!layout.metadata.contains("Saved from Reader Mode"))
 }
 
+@Test func seriesDetailRefreshBehaviorAttemptsOnlyWhenServiceExistsAndNotYetTried() {
+    #expect(SeriesDetailRefreshBehavior.shouldAttemptRefresh(
+        hasAttemptedChapterIndexRefresh: false,
+        chapterIndexRefreshService: MockSeriesChapterIndexRefreshService()
+    ))
+    #expect(!SeriesDetailRefreshBehavior.shouldAttemptRefresh(
+        hasAttemptedChapterIndexRefresh: true,
+        chapterIndexRefreshService: MockSeriesChapterIndexRefreshService()
+    ))
+    #expect(!SeriesDetailRefreshBehavior.shouldAttemptRefresh(
+        hasAttemptedChapterIndexRefresh: false,
+        chapterIndexRefreshService: nil
+    ))
+}
+
+@Test func seriesDetailRefreshBehaviorReloadsOnlyWhenRefreshActuallyMutatesLocalData() {
+    #expect(SeriesDetailRefreshBehavior.shouldReloadDetail(
+        after: ChapterIndexRefreshOutcome(
+            seriesID: UUID(),
+            indexedChapterCount: 12,
+            latestChapterLabel: "12",
+            hasUnreadUpdates: true,
+            didRefresh: true
+        )
+    ))
+    #expect(!SeriesDetailRefreshBehavior.shouldReloadDetail(
+        after: ChapterIndexRefreshOutcome(
+            seriesID: UUID(),
+            indexedChapterCount: 0,
+            latestChapterLabel: nil,
+            hasUnreadUpdates: false,
+            didRefresh: false
+        )
+    ))
+    #expect(!SeriesDetailRefreshBehavior.shouldReloadDetail(after: nil))
+}
+
 @Test func seriesDetailPrimaryActionStartsFirstUnreadWhenNoProgressExists() {
     let detail = SeriesDetailSnapshot.mock(
         chapters: [

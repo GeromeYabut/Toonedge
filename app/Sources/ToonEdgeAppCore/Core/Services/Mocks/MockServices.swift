@@ -486,6 +486,34 @@ public struct MockLibraryUpdateRefreshService: LibraryUpdateRefreshing {
     }
 }
 
+public final class MockSeriesChapterIndexRefreshService: SeriesChapterIndexRefreshing, @unchecked Sendable {
+    public private(set) var refreshedSeriesIDs: [UUID] = []
+
+    public init() {}
+
+    public func refreshChapterIndex(for series: LibrarySeriesSummary) async -> ChapterIndexRefreshOutcome {
+        refreshedSeriesIDs.append(series.id)
+        return ChapterIndexRefreshOutcome(
+            seriesID: series.id,
+            indexedChapterCount: 0,
+            latestChapterLabel: series.latestChapterLabel,
+            hasUnreadUpdates: false,
+            didRefresh: false
+        )
+    }
+
+    public func refreshChapterIndex(for seriesID: UUID) async -> ChapterIndexRefreshOutcome? {
+        refreshedSeriesIDs.append(seriesID)
+        return ChapterIndexRefreshOutcome(
+            seriesID: seriesID,
+            indexedChapterCount: 0,
+            latestChapterLabel: nil,
+            hasUnreadUpdates: false,
+            didRefresh: false
+        )
+    }
+}
+
 public struct MockSeriesLatestChapterFetcher: SeriesLatestChapterFetching {
     private let snapshotsBySeriesID: [UUID: SeriesLatestChapterSnapshot]
 
