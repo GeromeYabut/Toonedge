@@ -310,6 +310,45 @@ import Testing
     #expect(generated?.isOpenable == false)
 }
 
+@Test func seriesDetailChapterListAnchorPrefersPrimaryChapterThenLatestReadChapter() {
+    let now = Date(timeIntervalSince1970: 1_700_000_000)
+    let chapter106 = ChapterSummary.mock(
+        chapterLabel: "106",
+        chapterNumber: 106,
+        readState: .read,
+        lastReadAt: now
+    )
+    let chapter107 = ChapterSummary.mock(
+        chapterLabel: "107",
+        chapterNumber: 107,
+        readState: .unread
+    )
+    let withNextTarget = SeriesDetailSnapshot.mock(chapters: [chapter106, chapter107])
+
+    #expect(withNextTarget.chapterListAnchorID == chapter107.id)
+
+    let allRead = SeriesDetailSnapshot.mock(
+        chapters: [
+            ChapterSummary.mock(
+                chapterLabel: "105",
+                chapterNumber: 105,
+                readState: .read,
+                lastReadAt: now.addingTimeInterval(-60)
+            ),
+            chapter106
+        ]
+    )
+
+    #expect(allRead.chapterListAnchorID == chapter106.id)
+}
+
+@Test func seriesDetailChapterSectionUsesSingleAllList() {
+    let layout = SeriesDetailChapterSectionLayout()
+
+    #expect(layout.showsSegmentedControl == false)
+    #expect(layout.defaultMode == .all)
+}
+
 @Test func chapterRowStateExposesDistinctLabels() {
     #expect(ChapterReadState.new.displayLabel == "New")
     #expect(ChapterReadState.unread.displayLabel == "Unread")

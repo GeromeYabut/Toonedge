@@ -775,7 +775,6 @@ private struct SeriesDetailView: View {
     let dependencies: AppDependencies
     @Binding var router: AppRouter
     @State private var detail: SeriesDetailSnapshot?
-    @State private var chapterListMode: SeriesDetailChapterListMode = .recent
     @State private var hasLoaded = false
     @State private var hasAttemptedChapterIndexRefresh = false
     @State private var cacheFeedback: CacheActionFeedback?
@@ -783,24 +782,31 @@ private struct SeriesDetailView: View {
     @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
-                if let detail {
-                    header(detail)
-                    cacheStatus
-                    chapterToolbar(detail)
-                    chapterList(detail)
-                } else if hasLoaded {
-                    TEBanner(
-                        title: "Series unavailable",
-                        message: "This saved title could not be loaded from the mock repository.",
-                        systemImage: "exclamationmark.triangle"
-                    )
-                } else {
-                    TEBanner(title: "Loading series", message: "Preparing chapter state.", systemImage: "hourglass")
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
+                    if let detail {
+                        header(detail)
+                        cacheStatus
+                        chapterToolbar(detail)
+                        chapterList(detail)
+                    } else if hasLoaded {
+                        TEBanner(
+                            title: "Series unavailable",
+                            message: "This saved title could not be loaded from the mock repository.",
+                            systemImage: "exclamationmark.triangle"
+                        )
+                    } else {
+                        TEBanner(title: "Loading series", message: "Preparing chapter state.", systemImage: "hourglass")
+                    }
                 }
+                .padding(ToonEdgeSpacing.large)
             }
-            .padding(ToonEdgeSpacing.large)
+            .task(id: detail?.chapterListAnchorID) {
+                guard let anchorID = detail?.chapterListAnchorID else { return }
+                try? await Task.sleep(for: .milliseconds(100))
+                proxy.scrollTo(anchorID, anchor: .center)
+            }
         }
         .navigationTitle("")
         .task {
@@ -903,14 +909,12 @@ private struct SeriesDetailView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(detail.isSaved ? "Saved series" : "Save series")
             }
-
-            TESegmentedControl(selection: $chapterListMode) { $0.title }
         }
     }
 
     @ViewBuilder
     private func chapterList(_ detail: SeriesDetailSnapshot) -> some View {
-        let chapters = detail.chapterList(for: chapterListMode)
+        let chapters = detail.chapterList(for: .all)
 
         if chapters.isEmpty {
             TEBanner(title: "No chapters yet", message: "Chapter metadata will appear here when available.", systemImage: "list.bullet")
@@ -931,6 +935,7 @@ private struct SeriesDetailView: View {
                             }
                         }
                     }
+                    .id(chapter.id)
                 }
             }
         }
@@ -1041,6 +1046,16 @@ struct SeriesDetailHeaderLayout: Equatable, Sendable {
         self.metadata = "\(snapshot.sourceDomain) • \(snapshot.chaptersRead)/\(snapshot.totalKnownChapters ?? snapshot.chapters.count) chapters"
         self.synopsisText = nil
         self.primaryActionTitle = snapshot.primaryActionTitle
+    }
+}
+
+struct SeriesDetailChapterSectionLayout: Equatable, Sendable {
+    var showsSegmentedControl: Bool
+    var defaultMode: SeriesDetailChapterListMode
+
+    init() {
+        self.showsSegmentedControl = false
+        self.defaultMode = .all
     }
 }
 

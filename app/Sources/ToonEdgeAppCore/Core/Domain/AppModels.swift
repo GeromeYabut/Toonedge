@@ -709,6 +709,33 @@ public struct SeriesDetailSnapshot: Identifiable, Equatable, Sendable {
         return "Start Chapter \(label)"
     }
 
+    public var chapterListAnchorID: UUID? {
+        if let primaryChapter {
+            return primaryChapter.id
+        }
+
+        return chapters
+            .filter { $0.lastReadAt != nil }
+            .sorted { lhs, rhs in
+                switch (lhs.lastReadAt, rhs.lastReadAt) {
+                case let (lhsDate?, rhsDate?):
+                    return lhsDate > rhsDate
+                case (_?, nil):
+                    return true
+                case (nil, _?):
+                    return false
+                case (nil, nil):
+                    return (numericChapterValue(for: lhs) ?? -1) > (numericChapterValue(for: rhs) ?? -1)
+                }
+            }
+            .first?
+            .id
+    }
+
+    private func numericChapterValue(for chapter: ChapterSummary) -> Double? {
+        ChapterNumericLabelExtractor.label(for: chapter).flatMap(Double.init) ?? chapter.chapterNumber
+    }
+
     public func chapterList(for mode: SeriesDetailChapterListMode) -> [ChapterSummary] {
         switch mode {
         case .recent:
