@@ -497,6 +497,80 @@ import Testing
     #expect(library.updateResults.first?.hasUnreadUpdates == true)
 }
 
+@Test func chapterIndexRefreshServiceKeepsUnreadUpdateWhenLatestIndexedChapterIsStillUnread() async throws {
+    let seriesID = UUID(uuidString: "F76C2254-6D63-4F00-879B-97F390615E21")!
+    let chapter107ID = UUID(uuidString: "A99FA534-2A9F-41B1-A77D-74E987EF71BC")!
+    let series = LibrarySeriesSummary.updateCheckFixture(
+        id: seriesID,
+        latestChapterLabel: "107",
+        hasUnreadUpdates: true
+    )
+    let chapter107URL = URL(string: "https://example.com/chapter-107")!
+    let library = RecordingChapterIndexLibrary(snapshot: LibrarySnapshot(series: [series]))
+    library.details[seriesID] = SeriesDetailSnapshot(
+        id: seriesID,
+        title: "Moonlit Edge",
+        status: "Reading",
+        synopsis: "",
+        sourceDomain: "example.com",
+        coverImageURL: nil,
+        isSaved: true,
+        libraryState: .reading,
+        progressPercent: 0.5,
+        chaptersRead: 1,
+        totalKnownChapters: 2,
+        hasUnreadUpdates: true,
+        chapters: [
+            ChapterSummary(
+                id: UUID(),
+                title: "Chapter 106",
+                chapterLabel: "106",
+                chapterNumber: 106,
+                sourceURL: URL(string: "https://example.com/chapter-106")!,
+                readState: .read,
+                isDownloaded: false,
+                publishedAt: nil,
+                lastReadAt: Date(timeIntervalSince1970: 1_700_000_000),
+                isGeneratedPlaceholder: false,
+                isOpenable: true
+            ),
+            ChapterSummary(
+                id: chapter107ID,
+                title: "Chapter 107",
+                chapterLabel: "107",
+                chapterNumber: 107,
+                sourceURL: chapter107URL,
+                readState: .unread,
+                isDownloaded: false,
+                publishedAt: nil,
+                lastReadAt: nil,
+                isGeneratedPlaceholder: false,
+                isOpenable: true
+            )
+        ]
+    )
+    let fetcher = StubChapterIndexFetcher()
+    fetcher.snapshots[seriesID] = ChapterIndexSnapshot(
+        seriesID: seriesID,
+        entries: [
+            ChapterIndexEntry(
+                title: "Chapter 107",
+                chapterLabel: "107",
+                chapterNumber: 107,
+                sourceURL: chapter107URL
+            )
+        ]
+    )
+    let service = SeriesChapterIndexRefreshService(library: library, indexLibrary: library, fetcher: fetcher)
+
+    let outcome = await service.refreshChapterIndex(for: series)
+
+    #expect(outcome.didRefresh)
+    #expect(outcome.latestChapterLabel == "107")
+    #expect(outcome.hasUnreadUpdates)
+    #expect(library.updateResults.last?.hasUnreadUpdates == true)
+}
+
 @Test func libraryUpdateRefreshUsesChapterIndexRefreshWhenAvailable() async throws {
     let seriesID = UUID(uuidString: "41B54FDE-23F9-4D68-8B4B-7A1E05C2AD30")!
     let series = LibrarySeriesSummary.updateCheckFixture(id: seriesID, latestChapterLabel: "106")
@@ -668,6 +742,7 @@ private final class StubChapterIndexFetcher: SeriesChapterIndexFetching, @unchec
 
 private final class RecordingChapterIndexLibrary: LibraryLifecycleManaging, LibraryChapterIndexManaging, @unchecked Sendable {
     var snapshot: LibrarySnapshot
+    var details: [UUID: SeriesDetailSnapshot] = [:]
     var recordedIndexes: [(seriesID: UUID, chapters: [ChapterIndexEntry])] = []
     var updateResults: [(seriesID: UUID, latestChapterLabel: String?, hasUnreadUpdates: Bool)] = []
 
@@ -684,7 +759,7 @@ private final class RecordingChapterIndexLibrary: LibraryLifecycleManaging, Libr
     }
 
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
-        nil
+        details[seriesID]
     }
 
     func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {}

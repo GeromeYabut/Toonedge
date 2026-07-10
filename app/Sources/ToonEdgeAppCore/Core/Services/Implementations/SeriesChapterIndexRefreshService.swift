@@ -47,7 +47,10 @@ public struct SeriesChapterIndexRefreshService: SeriesChapterIndexRefreshing {
                 storedLatest: series.latestChapterLabel,
                 fetchedLatest: snapshot.latestChapterLabel
             )
-            let hasUnreadUpdates = comparison != .same
+            let hasUnreadUpdates = await hasReadableIndexedChapter(
+                for: series.id,
+                indexedChapterURLs: Set(snapshot.entries.map(\.sourceURL))
+            ) ?? (comparison != .same)
 
             try await library.recordUpdateCheckResult(
                 seriesID: series.id,
@@ -72,6 +75,20 @@ public struct SeriesChapterIndexRefreshService: SeriesChapterIndexRefreshing {
                 hasUnreadUpdates: false,
                 didRefresh: false
             )
+        }
+    }
+
+    private func hasReadableIndexedChapter(
+        for seriesID: UUID,
+        indexedChapterURLs: Set<URL>
+    ) async -> Bool? {
+        guard !indexedChapterURLs.isEmpty,
+              let detail = await library.seriesDetail(for: seriesID) else {
+            return nil
+        }
+
+        return detail.chapters.contains { chapter in
+            indexedChapterURLs.contains(chapter.sourceURL) && chapter.readState.isReadableNext
         }
     }
 }
