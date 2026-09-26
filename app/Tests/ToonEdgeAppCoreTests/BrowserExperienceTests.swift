@@ -495,15 +495,40 @@ private final class RecordingBrowserReaderPresentationLogger: BrowserReaderPrese
     var policy = BrowserDetectionRetryPolicy()
     let firstURL = try #require(URL(string: "https://mangafire.to/read/sample/en/chapter-1"))
     let secondURL = try #require(URL(string: "https://mangafire.to/read/sample/en/chapter-2"))
-    let firstAttempt = policy.shouldScheduleFollowUp(for: firstURL, recommendation: .browserSessionFollowUp)
-    let duplicateAttempt = policy.shouldScheduleFollowUp(for: firstURL, recommendation: .browserSessionFollowUp)
-    let nonRetryAttempt = policy.shouldScheduleFollowUp(for: firstURL, recommendation: .none)
-    let secondURLAttempt = policy.shouldScheduleFollowUp(for: secondURL, recommendation: .browserSessionFollowUp)
+    let firstAttempt = policy.shouldScheduleFollowUp(for: firstURL, recommendation: .browserSessionFollowUp, confidence: .low)
+    let duplicateAttempt = policy.shouldScheduleFollowUp(for: firstURL, recommendation: .browserSessionFollowUp, confidence: .low)
+    let nonRetryAttempt = policy.shouldScheduleFollowUp(for: firstURL, recommendation: .none, confidence: .low)
+    let secondURLAttempt = policy.shouldScheduleFollowUp(for: secondURL, recommendation: .browserSessionFollowUp, confidence: .low)
 
     #expect(firstAttempt)
     #expect(!duplicateAttempt)
     #expect(!nonRetryAttempt)
     #expect(secondURLAttempt)
+}
+
+@Test func browserSessionFollowUpWaitsForDelayedSPAContentToSettle() throws {
+    let vortexURL = try #require(URL(string: "https://vortexscans.org/series/sample/chapter-168"))
+    let defaultURL = try #require(URL(string: "https://mangafire.to/read/sample/en/chapter-1"))
+
+    #expect(BrowserDetectionRetryPolicy.followUpDelayNanoseconds(for: vortexURL) == 12_000_000_000)
+    #expect(BrowserDetectionRetryPolicy.followUpDelayNanoseconds(for: defaultURL) == 900_000_000)
+}
+
+@Test func vortexLowConfidenceRouteGetsOneBoundedFollowUpWithoutAProfileRetry() throws {
+    var policy = BrowserDetectionRetryPolicy()
+    var highConfidencePolicy = BrowserDetectionRetryPolicy()
+    let url = try #require(URL(string: "https://vortexscans.org/series/sample/chapter-168"))
+    let firstAttempt = policy.shouldScheduleFollowUp(for: url, recommendation: .none, confidence: .low)
+    let duplicateAttempt = policy.shouldScheduleFollowUp(for: url, recommendation: .none, confidence: .low)
+    let highConfidenceAttempt = highConfidencePolicy.shouldScheduleFollowUp(
+        for: url,
+        recommendation: .none,
+        confidence: .high
+    )
+
+    #expect(firstAttempt)
+    #expect(!duplicateAttempt)
+    #expect(!highConfidenceAttempt)
 }
 
 @Test func browserPopupPolicyBlocksThirdPartyTargetWindowPopups() throws {

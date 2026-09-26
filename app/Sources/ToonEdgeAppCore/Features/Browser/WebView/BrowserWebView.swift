@@ -80,11 +80,21 @@ public struct BrowserDetectionRetryPolicy {
 
     public init() {}
 
+    public static func followUpDelayNanoseconds(for url: URL) -> UInt64 {
+        let host = url.host()?.lowercased() ?? ""
+        return host == "vortexscans.org" || host.hasSuffix(".vortexscans.org")
+            ? 12_000_000_000
+            : 900_000_000
+    }
+
     public mutating func shouldScheduleFollowUp(
         for url: URL,
-        recommendation: DetectionRetryRecommendation
+        recommendation: DetectionRetryRecommendation,
+        confidence: DetectionConfidence
     ) -> Bool {
-        guard recommendation == .browserSessionFollowUp else {
+        let host = url.host()?.lowercased() ?? ""
+        let isVortexRoute = host == "vortexscans.org" || host.hasSuffix(".vortexscans.org")
+        guard recommendation == .browserSessionFollowUp || (isVortexRoute && confidence == .low) else {
             return false
         }
 
@@ -337,7 +347,8 @@ public extension BrowserWebView {
                     await self.deliverDetectionResult(result, in: webView)
                     if self.retryPolicy.shouldScheduleFollowUp(
                         for: page.pageURL,
-                        recommendation: result.retryRecommendation
+                        recommendation: result.retryRecommendation,
+                        confidence: result.confidence
                     ) {
                         self.scheduleFollowUpDetection(for: webView, url: page.pageURL)
                     }
@@ -368,7 +379,9 @@ public extension BrowserWebView {
         @MainActor
         private func scheduleFollowUpDetection(for webView: WKWebView, url: URL) {
             Task { @MainActor [weak webView, detector] in
-                try? await Task.sleep(nanoseconds: 900_000_000)
+                try? await Task.sleep(
+                    nanoseconds: BrowserDetectionRetryPolicy.followUpDelayNanoseconds(for: url)
+                )
                 guard let webView, webView.url == url else {
                     return
                 }

@@ -349,7 +349,7 @@ Reader opens with page 1 failed, and Retry fails again. View Original Page retur
 
 ## DEF-036 — Vortex chapter detection differs between in-site and direct navigation
 
-**Status:** Open — implementation and sanitized fixture coverage pass; live in-site route recheck pending  
+**Status:** Open — bounded route follow-up and sanitized fixture coverage pass; live Reader parity is not verified
 **Severity:** High  
 **Reported:** 2026-09-22  
 **Area:** Browser navigation observation, WebKit route changes, detection scheduling
@@ -382,6 +382,13 @@ In-site navigation stays in Browser; direct navigation opens Reader.
 - A WebKit integration test reproduces a client-side or same-WebView route transition from series to chapter.
 - Detection runs once after the new chapter content is ready and auto-opens the same viable Reader session as direct load.
 - Repeated callbacks do not cause duplicate detection or presentation.
+
+### 2026-09-26 revalidation
+
+- The dedicated iPhone 16e reproduced the original difference before remediation: in-site chapter 168 remained low-confidence while a direct load produced a high-confidence, viable 41-image Reader session.
+- Vortex low-confidence route results now receive one host-scoped, 12-second settled-content follow-up. URL/KVO/navigation callback duplication remains suppressed by the existing per-URL navigation and retry policies.
+- The deterministic Vortex fixture and route-policy regressions pass.
+- Repeated live checks later in the session returned only one viable candidate for both in-site and direct chapter 168 loads, including after the bounded follow-up. Because the live site no longer produced a viable direct control, parity and Reader presentation could not be independently verified. The defect remains open.
 
 ## DEF-035 — Protected WEBTOON episodes incorrectly receive a Clean Mode prompt
 
