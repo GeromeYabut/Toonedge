@@ -526,11 +526,20 @@ public struct MockSeriesLatestChapterFetcher: SeriesLatestChapterFetching {
     }
 }
 
-public struct MockSettingsService: SettingsProviding {
-    public init() {}
+public final class MockSettingsService: SettingsManaging, @unchecked Sendable {
+    private let lock = NSLock()
+    private var settings: ReaderSettings
+
+    public init(settings: ReaderSettings = .default) {
+        self.settings = settings
+    }
 
     public func currentSettings() -> ReaderSettings {
-        .default
+        lock.withLock { settings }
+    }
+
+    public func updateSettings(_ settings: ReaderSettings) async {
+        lock.withLock { self.settings = settings }
     }
 }
 

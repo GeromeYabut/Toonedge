@@ -7,6 +7,7 @@ public struct AppRouter: Equatable, Sendable {
     public var presentedReader: MockReaderSession?
     public var pendingLibrarySeriesID: UUID?
     public var pendingLibrarySegment: LibrarySegment?
+    public var presentedBrowserReaderLaunchOrigin: ReaderLaunchOrigin?
 
     public init(
         selectedTab: AppTab = .home,
@@ -14,7 +15,8 @@ public struct AppRouter: Equatable, Sendable {
         presentedBrowser: BrowserStartPoint? = nil,
         presentedReader: MockReaderSession? = nil,
         pendingLibrarySeriesID: UUID? = nil,
-        pendingLibrarySegment: LibrarySegment? = nil
+        pendingLibrarySegment: LibrarySegment? = nil,
+        presentedBrowserReaderLaunchOrigin: ReaderLaunchOrigin? = nil
     ) {
         self.selectedTab = selectedTab
         self.activeSheet = activeSheet
@@ -22,6 +24,7 @@ public struct AppRouter: Equatable, Sendable {
         self.presentedReader = presentedReader
         self.pendingLibrarySeriesID = pendingLibrarySeriesID
         self.pendingLibrarySegment = pendingLibrarySegment
+        self.presentedBrowserReaderLaunchOrigin = presentedBrowserReaderLaunchOrigin
     }
 
     public mutating func presentSearch() {
@@ -32,13 +35,22 @@ public struct AppRouter: Equatable, Sendable {
         activeSheet = nil
     }
 
-    public mutating func presentBrowser(_ startPoint: BrowserStartPoint) {
+    public mutating func presentBrowser(
+        _ startPoint: BrowserStartPoint,
+        readerLaunchOrigin: ReaderLaunchOrigin? = nil
+    ) {
         activeSheet = nil
         presentedBrowser = startPoint
+        presentedBrowserReaderLaunchOrigin = readerLaunchOrigin
     }
 
     public mutating func dismissBrowser() {
         presentedBrowser = nil
+        presentedBrowserReaderLaunchOrigin = nil
+    }
+
+    public mutating func clearPresentedBrowserReaderLaunchOrigin() {
+        presentedBrowserReaderLaunchOrigin = nil
     }
 
     public mutating func presentReader(_ session: MockReaderSession) {
@@ -95,6 +107,7 @@ public struct AppRouter: Equatable, Sendable {
         pendingLibrarySegment = nil
         presentedReader = nil
         presentedBrowser = nil
+        presentedBrowserReaderLaunchOrigin = nil
     }
 
     public mutating func openHomeRoot() {
@@ -104,6 +117,7 @@ public struct AppRouter: Equatable, Sendable {
         pendingLibrarySegment = nil
         presentedReader = nil
         presentedBrowser = nil
+        presentedBrowserReaderLaunchOrigin = nil
     }
 
     public mutating func openLibraryRecent() {
@@ -112,6 +126,7 @@ public struct AppRouter: Equatable, Sendable {
         pendingLibrarySegment = .recent
         presentedReader = nil
         presentedBrowser = nil
+        presentedBrowserReaderLaunchOrigin = nil
     }
 
     public mutating func openLibraryDetail(seriesID: UUID) {
@@ -120,6 +135,7 @@ public struct AppRouter: Equatable, Sendable {
         pendingLibrarySegment = nil
         presentedReader = nil
         presentedBrowser = nil
+        presentedBrowserReaderLaunchOrigin = nil
     }
 
     public mutating func consumePendingLibrarySeriesID() -> UUID? {

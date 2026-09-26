@@ -1,0 +1,587 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project app/ToonEdge.xcodeproj -scheme ToonEdge -sdk iphonesimulator -destination "generic/platform=iOS Simulator" -derivedDataPath /private/tmp/toonedge-review-1138/build build CODE_SIGNING_ALLOWED=NO
+
+Build settings from command line:
+    CODE_SIGNING_ALLOWED = NO
+    SDKROOT = iphonesimulator18.5
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'ToonEdge' in project 'ToonEdge' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 191e72caef198bcf42534d456d49014e
+Build description path: /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/XCBuildData/191e72caef198bcf42534d456d49014e.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk /tmp/toonedge-review-1138/build/SDKStatCaches.noindex/iphonesimulator18.5-22F76-d5fc8ad4295d2ef488fb7d0f804ce0c4.sdkstatcache
+    cd /Users/geromeyabut/Developer/Toonedge/app/ToonEdge.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -o /tmp/toonedge-review-1138/build/SDKStatCaches.noindex/iphonesimulator18.5-22F76-d5fc8ad4295d2ef488fb7d0f804ce0c4.sdkstatcache
+
+ProcessInfoPlistFile /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/Info.plist /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/empty-ToonEdge.plist (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-infoPlistUtility /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/empty-ToonEdge.plist -producttype com.apple.product-type.application -genpkginfo /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/PkgInfo -expandbuildsettings -format binary -platform iphonesimulator -o /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/Info.plist
+
+SwiftDriver ToonEdge normal arm64 com.apple.xcode.tools.swift.compiler (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name ToonEdge -Onone -enforce-exclusivity\=checked @/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.SwiftFileList -DDEBUG -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /tmp/toonedge-review-1138/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/toonedge-review-1138/build/Index.noindex/DataStore -swift-version 6 -I /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -F /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64 -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/toonedge-review-1138/build/SDKStatCaches.noindex/iphonesimulator18.5-22F76-d5fc8ad4295d2ef488fb7d0f804ce0c4.sdkstatcache -output-file-map /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/toonedge-review-1138/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-generated-files.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-own-target-headers.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-project-headers.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources-normal/arm64 -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources/arm64 -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge-Swift.h -working-directory /Users/geromeyabut/Developer/Toonedge/app -experimental-emit-module-separately -disable-cmo
+
+SwiftDriver ToonEdge normal x86_64 com.apple.xcode.tools.swift.compiler (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name ToonEdge -Onone -enforce-exclusivity\=checked @/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.SwiftFileList -DDEBUG -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -target x86_64-apple-ios17.0-simulator -g -module-cache-path /tmp/toonedge-review-1138/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/toonedge-review-1138/build/Index.noindex/DataStore -swift-version 6 -I /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -F /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64 -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/toonedge-review-1138/build/SDKStatCaches.noindex/iphonesimulator18.5-22F76-d5fc8ad4295d2ef488fb7d0f804ce0c4.sdkstatcache -output-file-map /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/toonedge-review-1138/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-generated-files.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-own-target-headers.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-project-headers.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources-normal/x86_64 -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources/x86_64 -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge-Swift.h -working-directory /Users/geromeyabut/Developer/Toonedge/app -experimental-emit-module-separately -disable-cmo
+
+SwiftCompile normal x86_64 Compiling\ SwiftDataLibraryRepository.swift,\ AppServiceProtocols.swift,\ BrowserView.swift,\ BrowserViewModel.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Persistence/Repositories/SwiftDataLibraryRepository.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Protocols/AppServiceProtocols.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Browser/Views/BrowserView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Browser/ViewModels/BrowserViewModel.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Persistence/Repositories/SwiftDataLibraryRepository.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Protocols/AppServiceProtocols.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Browser/Views/BrowserView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Browser/ViewModels/BrowserViewModel.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 Compiling\ HTMLChapterIndexFetcher.swift,\ HTMLSeriesMetadataFetcher.swift,\ LibraryUpdateRefreshService.swift,\ SeriesChapterIndexRefreshService.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLChapterIndexFetcher.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLSeriesMetadataFetcher.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/LibraryUpdateRefreshService.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/SeriesChapterIndexRefreshService.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLChapterIndexFetcher.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLSeriesMetadataFetcher.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/LibraryUpdateRefreshService.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/SeriesChapterIndexRefreshService.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftEmitModule normal x86_64 Emitting\ module\ for\ ToonEdge (in target 'ToonEdge' from project 'ToonEdge')
+
+EmitSwiftModule normal x86_64 (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 Compiling\ SearchOverlayView.swift,\ SettingsView.swift,\ ToonEdgePrimitives.swift,\ ToonEdgeDesignSystem.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Search/Views/SearchOverlayView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Settings/Views/SettingsView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/SharedUI/Components/ToonEdgePrimitives.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/SharedUI/DesignSystem/ToonEdgeDesignSystem.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Search/Views/SearchOverlayView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Settings/Views/SettingsView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/SharedUI/Components/ToonEdgePrimitives.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/SharedUI/DesignSystem/ToonEdgeDesignSystem.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 Compiling\ HomeView.swift,\ LibraryView.swift,\ ReaderPlaceholderView.swift,\ ReaderView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Home/Views/HomeView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Library/Views/LibraryView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Views/ReaderPlaceholderView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Views/ReaderView.swift (in target 'ToonEdge' from project 'ToonEdge')
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Home/Views/HomeView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Library/Views/LibraryView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Views/ReaderPlaceholderView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Views/ReaderView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 Compiling\ ReaderPageImageLoader.swift,\ AdjacentReaderSessionLoader.swift,\ ReaderViewModel.swift,\ ReaderSettingsView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderPageImageLoader.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Loading/AdjacentReaderSessionLoader.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/ViewModels/ReaderViewModel.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Settings/ReaderSettingsView.swift (in target 'ToonEdge' from project 'ToonEdge')
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderPageImageLoader.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Loading/AdjacentReaderSessionLoader.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/ViewModels/ReaderViewModel.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Settings/ReaderSettingsView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 Compiling\ AppModels.swift,\ MockServices.swift,\ UserDefaultsReaderProgressRepository.swift,\ HTMLLatestChapterFetcher.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Domain/AppModels.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Mocks/MockServices.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/UserDefaultsReaderProgressRepository.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLLatestChapterFetcher.swift (in target 'ToonEdge' from project 'ToonEdge')
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Domain/AppModels.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Mocks/MockServices.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/UserDefaultsReaderProgressRepository.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLLatestChapterFetcher.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 Compiling\ BrowserWebView.swift,\ DetectionModels.swift,\ GenericChapterDetector.swift,\ PageAnalysisScript.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Browser/WebView/BrowserWebView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Models/DetectionModels.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Scoring/GenericChapterDetector.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/JavaScript/PageAnalysisScript.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Browser/WebView/BrowserWebView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Models/DetectionModels.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Scoring/GenericChapterDetector.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/JavaScript/PageAnalysisScript.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 Compiling\ SiteProfileRegistry.swift,\ ProfileAwareChapterDetector.swift,\ DetectionDiagnosticsLogger.swift,\ DownloadsView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/SiteProfiles/SiteProfileRegistry.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Services/ProfileAwareChapterDetector.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Services/DetectionDiagnosticsLogger.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Downloads/Views/DownloadsView.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/SiteProfiles/SiteProfileRegistry.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Services/ProfileAwareChapterDetector.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Services/DetectionDiagnosticsLogger.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Downloads/Views/DownloadsView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ ToonEdge (in target 'ToonEdge' from project 'ToonEdge')
+
+EmitSwiftModule normal arm64 (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 Compiling\ SearchOverlayView.swift,\ SettingsView.swift,\ ToonEdgePrimitives.swift,\ ToonEdgeDesignSystem.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Search/Views/SearchOverlayView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Settings/Views/SettingsView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/SharedUI/Components/ToonEdgePrimitives.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/SharedUI/DesignSystem/ToonEdgeDesignSystem.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Search/Views/SearchOverlayView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Settings/Views/SettingsView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/SharedUI/Components/ToonEdgePrimitives.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/SharedUI/DesignSystem/ToonEdgeDesignSystem.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftDriverJobDiscovery normal x86_64 Emitting module for ToonEdge (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftDriver\ Compilation\ Requirements ToonEdge normal x86_64 com.apple.xcode.tools.swift.compiler (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name ToonEdge -Onone -enforce-exclusivity\=checked @/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.SwiftFileList -DDEBUG -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -target x86_64-apple-ios17.0-simulator -g -module-cache-path /tmp/toonedge-review-1138/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/toonedge-review-1138/build/Index.noindex/DataStore -swift-version 6 -I /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -F /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64 -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/toonedge-review-1138/build/SDKStatCaches.noindex/iphonesimulator18.5-22F76-d5fc8ad4295d2ef488fb7d0f804ce0c4.sdkstatcache -output-file-map /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/toonedge-review-1138/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-generated-files.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-own-target-headers.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-project-headers.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources-normal/x86_64 -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources/x86_64 -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge-Swift.h -working-directory /Users/geromeyabut/Developer/Toonedge/app -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal x86_64 Compiling HTMLChapterIndexFetcher.swift, HTMLSeriesMetadataFetcher.swift, LibraryUpdateRefreshService.swift, SeriesChapterIndexRefreshService.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal arm64 Compiling\ SiteProfileRegistry.swift,\ ProfileAwareChapterDetector.swift,\ DetectionDiagnosticsLogger.swift,\ DownloadsView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/SiteProfiles/SiteProfileRegistry.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Services/ProfileAwareChapterDetector.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Services/DetectionDiagnosticsLogger.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Downloads/Views/DownloadsView.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/SiteProfiles/SiteProfileRegistry.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Services/ProfileAwareChapterDetector.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Services/DetectionDiagnosticsLogger.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Downloads/Views/DownloadsView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftDriverJobDiscovery normal x86_64 Compiling SearchOverlayView.swift, SettingsView.swift, ToonEdgePrimitives.swift, ToonEdgeDesignSystem.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+Copy /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/x86_64-apple-ios-simulator.swiftmodule /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.swiftmodule (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.swiftmodule /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/x86_64-apple-ios-simulator.swiftmodule
+
+Copy /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/x86_64-apple-ios-simulator.swiftdoc /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.swiftdoc (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.swiftdoc /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/x86_64-apple-ios-simulator.swiftdoc
+
+Copy /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/x86_64-apple-ios-simulator.abi.json /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.abi.json (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.abi.json /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/x86_64-apple-ios-simulator.abi.json
+
+Copy /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/Project/x86_64-apple-ios-simulator.swiftsourceinfo /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.swiftsourceinfo (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.swiftsourceinfo /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/Project/x86_64-apple-ios-simulator.swiftsourceinfo
+
+SwiftCompile normal arm64 Compiling\ SwiftDataLibraryRepository.swift,\ AppServiceProtocols.swift,\ BrowserView.swift,\ BrowserViewModel.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Persistence/Repositories/SwiftDataLibraryRepository.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Protocols/AppServiceProtocols.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Browser/Views/BrowserView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Browser/ViewModels/BrowserViewModel.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Persistence/Repositories/SwiftDataLibraryRepository.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Protocols/AppServiceProtocols.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Browser/Views/BrowserView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Browser/ViewModels/BrowserViewModel.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 Compiling\ ToonEdgeAppEntry.swift,\ AppShellView.swift,\ AppDependencies.swift,\ AppRouter.swift,\ ToonEdgeApp.swift /Users/geromeyabut/Developer/Toonedge/app/ToonEdge/ToonEdgeAppEntry.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/AppShell/AppShellView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/DependencyInjection/AppDependencies.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/Routing/AppRouter.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/ToonEdgeApp.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/ToonEdge/ToonEdgeAppEntry.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/AppShell/AppShellView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/DependencyInjection/AppDependencies.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/Routing/AppRouter.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/ToonEdgeApp.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftDriverJobDiscovery normal x86_64 Compiling SiteProfileRegistry.swift, ProfileAwareChapterDetector.swift, DetectionDiagnosticsLogger.swift, DownloadsView.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal x86_64 Compiling\ ToonEdgeAppEntry.swift,\ AppShellView.swift,\ AppDependencies.swift,\ AppRouter.swift,\ ToonEdgeApp.swift /Users/geromeyabut/Developer/Toonedge/app/ToonEdge/ToonEdgeAppEntry.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/AppShell/AppShellView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/DependencyInjection/AppDependencies.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/Routing/AppRouter.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/ToonEdgeApp.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/ToonEdge/ToonEdgeAppEntry.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/AppShell/AppShellView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/DependencyInjection/AppDependencies.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/Routing/AppRouter.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/App/ToonEdgeApp.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftDriverJobDiscovery normal x86_64 Compiling SwiftDataLibraryRepository.swift, AppServiceProtocols.swift, BrowserView.swift, BrowserViewModel.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal x86_64 Compiling\ BrowserWebView.swift,\ DetectionModels.swift,\ GenericChapterDetector.swift,\ PageAnalysisScript.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Browser/WebView/BrowserWebView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Models/DetectionModels.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Scoring/GenericChapterDetector.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/JavaScript/PageAnalysisScript.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Browser/WebView/BrowserWebView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Models/DetectionModels.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/Scoring/GenericChapterDetector.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Detection/JavaScript/PageAnalysisScript.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftDriverJobDiscovery normal x86_64 Compiling ToonEdgeAppEntry.swift, AppShellView.swift, AppDependencies.swift, AppRouter.swift, ToonEdgeApp.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal x86_64 Compiling\ FileBackedChapterAssetCache.swift,\ CacheStorageMeasurementService.swift,\ UpdateCacheDiagnosticsLogger.swift,\ ToonEdgePersistentModels.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/FileBackedChapterAssetCache.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/CacheStorageMeasurementService.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/UpdateCacheDiagnosticsLogger.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Persistence/Models/ToonEdgePersistentModels.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/FileBackedChapterAssetCache.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/CacheStorageMeasurementService.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/UpdateCacheDiagnosticsLogger.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Persistence/Models/ToonEdgePersistentModels.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for ToonEdge (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftDriver\ Compilation\ Requirements ToonEdge normal arm64 com.apple.xcode.tools.swift.compiler (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name ToonEdge -Onone -enforce-exclusivity\=checked @/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.SwiftFileList -DDEBUG -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /tmp/toonedge-review-1138/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/toonedge-review-1138/build/Index.noindex/DataStore -swift-version 6 -I /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -F /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64 -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/toonedge-review-1138/build/SDKStatCaches.noindex/iphonesimulator18.5-22F76-d5fc8ad4295d2ef488fb7d0f804ce0c4.sdkstatcache -output-file-map /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/toonedge-review-1138/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-generated-files.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-own-target-headers.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-project-headers.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources-normal/arm64 -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources/arm64 -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge-Swift.h -working-directory /Users/geromeyabut/Developer/Toonedge/app -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal x86_64 Compiling BrowserWebView.swift, DetectionModels.swift, GenericChapterDetector.swift, PageAnalysisScript.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal arm64 Compiling\ HomeView.swift,\ LibraryView.swift,\ ReaderPlaceholderView.swift,\ ReaderView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Home/Views/HomeView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Library/Views/LibraryView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Views/ReaderPlaceholderView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Views/ReaderView.swift (in target 'ToonEdge' from project 'ToonEdge')
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Home/Views/HomeView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Library/Views/LibraryView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Views/ReaderPlaceholderView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Views/ReaderView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftMergeGeneratedHeaders /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources/ToonEdge-Swift.h /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge-Swift.h /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge-Swift.h (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-swiftHeaderTool -arch arm64 /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge-Swift.h -arch x86_64 /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge-Swift.h -o /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources/ToonEdge-Swift.h
+
+SwiftDriverJobDiscovery normal x86_64 Compiling HomeView.swift, LibraryView.swift, ReaderPlaceholderView.swift, ReaderView.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+Copy /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/arm64-apple-ios-simulator.swiftmodule /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.swiftmodule (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.swiftmodule /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/arm64-apple-ios-simulator.swiftmodule
+
+Copy /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/arm64-apple-ios-simulator.swiftdoc /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.swiftdoc (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.swiftdoc /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/arm64-apple-ios-simulator.swiftdoc
+
+Copy /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/arm64-apple-ios-simulator.abi.json /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.abi.json (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.abi.json /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Copy /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.swiftsourceinfo (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.swiftsourceinfo /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
+
+SwiftCompile normal x86_64 Compiling\ AppModels.swift,\ MockServices.swift,\ UserDefaultsReaderProgressRepository.swift,\ HTMLLatestChapterFetcher.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Domain/AppModels.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Mocks/MockServices.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/UserDefaultsReaderProgressRepository.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLLatestChapterFetcher.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Domain/AppModels.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Mocks/MockServices.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/UserDefaultsReaderProgressRepository.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLLatestChapterFetcher.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 Compiling\ FileBackedChapterAssetCache.swift,\ CacheStorageMeasurementService.swift,\ UpdateCacheDiagnosticsLogger.swift,\ ToonEdgePersistentModels.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/FileBackedChapterAssetCache.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/CacheStorageMeasurementService.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/UpdateCacheDiagnosticsLogger.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Persistence/Models/ToonEdgePersistentModels.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/FileBackedChapterAssetCache.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/CacheStorageMeasurementService.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/UpdateCacheDiagnosticsLogger.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Persistence/Models/ToonEdgePersistentModels.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftDriverJobDiscovery normal x86_64 Compiling FileBackedChapterAssetCache.swift, CacheStorageMeasurementService.swift, UpdateCacheDiagnosticsLogger.swift, ToonEdgePersistentModels.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal arm64 Compiling\ HTMLChapterIndexFetcher.swift,\ HTMLSeriesMetadataFetcher.swift,\ LibraryUpdateRefreshService.swift,\ SeriesChapterIndexRefreshService.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLChapterIndexFetcher.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLSeriesMetadataFetcher.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/LibraryUpdateRefreshService.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/SeriesChapterIndexRefreshService.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLChapterIndexFetcher.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLSeriesMetadataFetcher.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/LibraryUpdateRefreshService.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal arm64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Core/Services/Implementations/SeriesChapterIndexRefreshService.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling BrowserWebView.swift, DetectionModels.swift, GenericChapterDetector.swift, PageAnalysisScript.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal x86_64 Compiling\ ReaderPageImageLoader.swift,\ AdjacentReaderSessionLoader.swift,\ ReaderViewModel.swift,\ ReaderSettingsView.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderPageImageLoader.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Loading/AdjacentReaderSessionLoader.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/ViewModels/ReaderViewModel.swift /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Settings/ReaderSettingsView.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderPageImageLoader.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Loading/AdjacentReaderSessionLoader.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/ViewModels/ReaderViewModel.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftCompile normal x86_64 /Users/geromeyabut/Developer/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Settings/ReaderSettingsView.swift (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling SearchOverlayView.swift, SettingsView.swift, ToonEdgePrimitives.swift, ToonEdgeDesignSystem.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftDriverJobDiscovery normal arm64 Compiling SiteProfileRegistry.swift, ProfileAwareChapterDetector.swift, DetectionDiagnosticsLogger.swift, DownloadsView.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftDriverJobDiscovery normal arm64 Compiling ToonEdgeAppEntry.swift, AppShellView.swift, AppDependencies.swift, AppRouter.swift, ToonEdgeApp.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftDriverJobDiscovery normal arm64 Compiling SwiftDataLibraryRepository.swift, AppServiceProtocols.swift, BrowserView.swift, BrowserViewModel.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftDriverJobDiscovery normal arm64 Compiling ReaderPageImageLoader.swift, AdjacentReaderSessionLoader.swift, ReaderViewModel.swift, ReaderSettingsView.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftDriverJobDiscovery normal arm64 Compiling AppModels.swift, MockServices.swift, UserDefaultsReaderProgressRepository.swift, HTMLLatestChapterFetcher.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftDriverJobDiscovery normal arm64 Compiling HTMLChapterIndexFetcher.swift, HTMLSeriesMetadataFetcher.swift, LibraryUpdateRefreshService.swift, SeriesChapterIndexRefreshService.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftDriverJobDiscovery normal x86_64 Compiling ReaderPageImageLoader.swift, AdjacentReaderSessionLoader.swift, ReaderViewModel.swift, ReaderSettingsView.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftDriverJobDiscovery normal arm64 Compiling FileBackedChapterAssetCache.swift, CacheStorageMeasurementService.swift, UpdateCacheDiagnosticsLogger.swift, ToonEdgePersistentModels.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftDriverJobDiscovery normal x86_64 Compiling AppModels.swift, MockServices.swift, UserDefaultsReaderProgressRepository.swift, HTMLLatestChapterFetcher.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftDriver\ Compilation ToonEdge normal x86_64 com.apple.xcode.tools.swift.compiler (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name ToonEdge -Onone -enforce-exclusivity\=checked @/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.SwiftFileList -DDEBUG -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -target x86_64-apple-ios17.0-simulator -g -module-cache-path /tmp/toonedge-review-1138/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/toonedge-review-1138/build/Index.noindex/DataStore -swift-version 6 -I /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -F /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64 -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/toonedge-review-1138/build/SDKStatCaches.noindex/iphonesimulator18.5-22F76-d5fc8ad4295d2ef488fb7d0f804ce0c4.sdkstatcache -output-file-map /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/toonedge-review-1138/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-generated-files.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-own-target-headers.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-project-headers.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources-normal/x86_64 -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources/x86_64 -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge-Swift.h -working-directory /Users/geromeyabut/Developer/Toonedge/app -experimental-emit-module-separately -disable-cmo
+
+Ld /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/Binary/ToonEdge.debug.dylib normal x86_64 (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target x86_64-apple-ios17.0-simulator -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -O0 -L/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -F/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -filelist /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.LinkFileList -install_name @rpath/ToonEdge.debug.dylib -dead_strip -Xlinker -object_path_lto -Xlinker /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.swiftmodule -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -o /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/Binary/ToonEdge.debug.dylib
+
+ConstructStubExecutorLinkFileList /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-ExecutorLinkFileList-normal-x86_64.txt (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    construct-stub-executor-link-file-list /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/Binary/ToonEdge.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-ExecutorLinkFileList-normal-x86_64.txt
+note: Using stub executor library with Swift entry point. (in target 'ToonEdge' from project 'ToonEdge')
+
+Ld /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/Binary/ToonEdge normal x86_64 (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target x86_64-apple-ios17.0-simulator -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -O0 -L/tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -F/tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -Xlinker -rpath -Xlinker @executable_path -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-DebugDylibPath-normal-x86_64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-DebugDylibInstallName-normal-x86_64.txt -Xlinker -filelist -Xlinker /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-ExecutorLinkFileList-normal-x86_64.txt /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/Binary/ToonEdge.debug.dylib -o /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/Binary/ToonEdge
+
+SwiftDriverJobDiscovery normal arm64 Compiling HomeView.swift, LibraryView.swift, ReaderPlaceholderView.swift, ReaderView.swift (in target 'ToonEdge' from project 'ToonEdge')
+
+SwiftDriver\ Compilation ToonEdge normal arm64 com.apple.xcode.tools.swift.compiler (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name ToonEdge -Onone -enforce-exclusivity\=checked @/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.SwiftFileList -DDEBUG -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /tmp/toonedge-review-1138/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/toonedge-review-1138/build/Index.noindex/DataStore -swift-version 6 -I /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -F /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64 -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/toonedge-review-1138/build/SDKStatCaches.noindex/iphonesimulator18.5-22F76-d5fc8ad4295d2ef488fb7d0f804ce0c4.sdkstatcache -output-file-map /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/toonedge-review-1138/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-generated-files.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-own-target-headers.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-project-headers.hmap -Xcc -I/tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources-normal/arm64 -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources/arm64 -Xcc -I/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge-Swift.h -working-directory /Users/geromeyabut/Developer/Toonedge/app -experimental-emit-module-separately -disable-cmo
+
+Ld /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/Binary/ToonEdge.debug.dylib normal arm64 (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -O0 -L/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -F/tmp/toonedge-review-1138/build/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -filelist /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.LinkFileList -install_name @rpath/ToonEdge.debug.dylib -dead_strip -Xlinker -object_path_lto -Xlinker /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.swiftmodule -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -o /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/Binary/ToonEdge.debug.dylib
+
+CreateUniversalBinary /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/ToonEdge.debug.dylib normal arm64\ x86_64 (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo -create /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/Binary/ToonEdge.debug.dylib /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/Binary/ToonEdge.debug.dylib -output /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/ToonEdge.debug.dylib
+
+ConstructStubExecutorLinkFileList /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-ExecutorLinkFileList-normal-arm64.txt (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    construct-stub-executor-link-file-list /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/Binary/ToonEdge.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'ToonEdge' from project 'ToonEdge')
+
+Ld /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/Binary/ToonEdge normal arm64 (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk -O0 -L/tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -F/tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator -Xlinker -rpath -Xlinker @executable_path -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge-ExecutorLinkFileList-normal-arm64.txt /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/Binary/ToonEdge.debug.dylib -o /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/Binary/ToonEdge
+
+CreateUniversalBinary /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/ToonEdge normal arm64\ x86_64 (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo -create /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/Binary/ToonEdge /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/Binary/ToonEdge -output /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/ToonEdge
+
+CopySwiftLibs /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/ToonEdge.debug.dylib --scan-folder /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/Frameworks --scan-folder /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/PlugIns --scan-folder /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/SystemExtensions --scan-folder /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+Ignoring --strip-bitcode because --sign was not passed
+
+ExtractAppIntentsMetadata (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name ToonEdge --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator18.5.sdk --xcode-version 16F6 --platform-family iOS --deployment-target 17.0 --bundle-identifier com.toonedge.app --output /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app --target-triple arm64-apple-ios17.0-simulator --target-triple x86_64-apple-ios17.0-simulator --binary-file /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/ToonEdge --dependency-file /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge_dependency_info.dat --dependency-file /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge_dependency_info.dat --stringsdata-file /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --stringsdata-file /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.SwiftFileList --source-file-list /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.SwiftFileList --metadata-file-list /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge.DependencyMetadataFileList --static-metadata-file-list /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/arm64/ToonEdge.SwiftConstValuesFileList --swift-const-vals-list /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/Objects-normal/x86_64/ToonEdge.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-09-22 11:40:35.354 appintentsmetadataprocessor[49444:43284120] Starting appintentsmetadataprocessor export
+2026-09-22 11:40:35.356 appintentsmetadataprocessor[49444:43284120] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+AppIntentsSSUTraining (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsnltrainingprocessor --infoplist-path /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/Info.plist --temp-dir-path /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ssu --bundle-id com.toonedge.app --product-path /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app --extracted-metadata-path /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app/Metadata.appintents --metadata-file-list /tmp/toonedge-review-1138/build/Build/Intermediates.noindex/ToonEdge.build/Debug-iphonesimulator/ToonEdge.build/ToonEdge.DependencyMetadataFileList --archive-ssu-assets
+2026-09-22 11:40:35.374 appintentsnltrainingprocessor[49445:43284122] Parsing options for appintentsnltrainingprocessor
+2026-09-22 11:40:35.374 appintentsnltrainingprocessor[49445:43284122] No AppShortcuts found - Skipping.
+
+RegisterExecutionPolicyException /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-RegisterExecutionPolicyException /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app
+
+Validate /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    builtin-validationUtility /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app -infoplist-subpath Info.plist
+
+Touch /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app (in target 'ToonEdge' from project 'ToonEdge')
+    cd /Users/geromeyabut/Developer/Toonedge/app
+    /usr/bin/touch -c /tmp/toonedge-review-1138/build/Build/Products/Debug-iphonesimulator/ToonEdge.app
+
+** BUILD SUCCEEDED **
+

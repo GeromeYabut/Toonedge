@@ -2,6 +2,25 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@Test func chapterIdentityPrefersExplicitNumberOverNoisyLabel() {
+    #expect(ChapterNumericLabelExtractor.label(chapterNumber: 1, chapterLabel: "Top", title: "Chapter 7 - Manhua Top") == "1")
+    #expect(ChapterNumericLabelExtractor.label(chapterNumber: 7, chapterLabel: "Chapter", title: "Chapter 1") == "7")
+}
+
+@MainActor
+@Test func readerChapterIdentityRejectsTrailingBrandToken() throws {
+    let session = MockReaderSession(
+        seriesTitle: "Sample",
+        chapterTitle: "Sample Manhwa - Chapter 1 - Manhwa Manhua Top",
+        sourceURL: try #require(URL(string: "https://manhuatop.org/manhua/sample/chapter-1/")),
+        imageURLs: []
+    )
+    let viewModel = ReaderViewModel(session: session)
+
+    #expect(viewModel.currentChapterDisplayLabel == "Chapter 1")
+    #expect(viewModel.canonicalChapterLabel == "1")
+}
+
 @MainActor
 @Test func readerViewModelStartsWithChromeHiddenAndComputesInitialProgress() {
     let session = MockReaderSession.sample
@@ -719,6 +738,121 @@ private struct StubSeriesMetadataFetcher: SeriesMetadataFetching {
     #expect(await client.requestCount == 2)
 }
 
+@MainActor
+@Test func readerPageImageLoaderPreservesEphemeralRequestHeadersOnRetry() async throws {
+    let imageURL = try #require(URL(string: "https://images.example.test/chapter/001.jpg"))
+    let referer = try #require(URL(string: "https://comizy.io/sample/chapter-1"))
+    let client = RecordingRequestHTTPDataLoader()
+    let loader = ReaderPageImageLoader(
+        imageURL: imageURL,
+        requestContext: ReaderImageRequestContext(referer: referer, cookieHeader: "session=fixture", userAgent: "Fixture Mobile Safari"),
+        httpClient: client,
+        maxAttempts: 1,
+        retryDelayNanoseconds: 0
+    )
+
+    await loader.load()
+    await loader.retry()
+
+    let requests = await client.requests
+    #expect(requests.count == 2)
+    #expect(requests.allSatisfy { $0.value(forHTTPHeaderField: "Referer") == referer.absoluteString })
+    #expect(requests.allSatisfy { $0.value(forHTTPHeaderField: "Cookie") == "session=fixture" })
+    #expect(requests.allSatisfy { $0.value(forHTTPHeaderField: "User-Agent") == "Fixture Mobile Safari" })
+}
+
+@MainActor
+@Test func readerPageImageLoaderUsesRetainedAssetWithoutNetwork() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let cache = try FileBackedChapterAssetCache(rootDirectory: root)
+    let sourceURL = try #require(URL(string: "https://fixture.example/chapter-1"))
+    let imageURL = try #require(URL(string: "https://images.example.test/chapter-1/001.png"))
+    let expected = Data([9, 8, 7])
+    try cache.store(expected, for: imageURL, sourceURL: sourceURL)
+    let client = AlwaysFailingHTTPDataLoader()
+    let loader = ReaderPageImageLoader(
+        imageURL: imageURL,
+        sourceURL: sourceURL,
+        assetCache: cache,
+        httpClient: client,
+        retryDelayNanoseconds: 0
+    )
+
+    await loader.load()
+
+    #expect(loader.state == .loaded(expected))
+    #expect(await client.requestCount == 0)
+}
+
+@Test func chapterAssetRetentionDownloadsEveryPageInOrder() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let cache = try FileBackedChapterAssetCache(rootDirectory: root)
+    let png = try #require(Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg=="))
+    let client = FixedHTTPDataLoader(response: HTTPDataResponse(data: png, statusCode: 200))
+    let service = ChapterAssetRetentionService(assetCache: cache, httpClient: client)
+    let sourceURL = try #require(URL(string: "https://fixture.example/chapter-1"))
+    let imageURLs = try (1...3).map { index in
+        try #require(URL(string: "https://images.example.test/chapter-1/00\(index).png"))
+    }
+    let session = MockReaderSession(
+        seriesTitle: "Fixture",
+        chapterTitle: "Chapter 1",
+        sourceURL: sourceURL,
+        imageURLs: imageURLs
+    )
+
+    let retainedBytes = try await service.retainAssets(for: session)
+
+    #expect(retainedBytes == Int64(png.count * imageURLs.count))
+    #expect(imageURLs.allSatisfy { cache.cachedAssetURL(for: $0, sourceURL: sourceURL) != nil })
+}
+
+private actor RecordingRequestHTTPDataLoader: HTTPDataLoading {
+    private(set) var requests: [URLRequest] = []
+
+    func data(from url: URL) async throws -> HTTPDataResponse {
+        throw URLError(.badURL)
+    }
+
+    func data(for request: URLRequest) async throws -> HTTPDataResponse {
+        requests.append(request)
+        return HTTPDataResponse(data: Data([1, 2, 3]), statusCode: 200)
+    }
+}
+
+@Test func readerPreflightRejectsSuccessfulHTMLInsteadOfImage() async throws {
+    let client = FixedHTTPDataLoader(response: HTTPDataResponse(data: Data("<html>challenge</html>".utf8), statusCode: 200))
+    let session = MockReaderSession(
+        seriesTitle: "Fixture",
+        chapterTitle: "Chapter 1",
+        sourceURL: try #require(URL(string: "https://comizy.io/sample/chapter-1")),
+        imageURLs: [try #require(URL(string: "https://images.example.test/001.jpg"))]
+    )
+
+    let result = await ReaderSessionImagePreflight(httpClient: client).isViable(session)
+
+    #expect(!result)
+}
+
+@Test func readerPreflightAcceptsDecodableImage() async throws {
+    let png = try #require(Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg=="))
+    let client = FixedHTTPDataLoader(response: HTTPDataResponse(data: png, statusCode: 200))
+    let session = MockReaderSession(
+        seriesTitle: "Fixture",
+        chapterTitle: "Chapter 1",
+        sourceURL: try #require(URL(string: "https://comizy.io/sample/chapter-1")),
+        imageURLs: [try #require(URL(string: "https://images.example.test/001.png"))]
+    )
+
+    #expect(await ReaderSessionImagePreflight(httpClient: client).isViable(session))
+}
+
+private struct FixedHTTPDataLoader: HTTPDataLoading {
+    let response: HTTPDataResponse
+
+    func data(from url: URL) async throws -> HTTPDataResponse { response }
+}
+
 private actor SequencedHTTPDataLoader: HTTPDataLoading {
     private var responses: [Result<HTTPDataResponse, Error>]
     private(set) var requestCount = 0
@@ -734,5 +868,14 @@ private actor SequencedHTTPDataLoader: HTTPDataLoading {
         }
 
         return try responses.removeFirst().get()
+    }
+}
+
+private actor AlwaysFailingHTTPDataLoader: HTTPDataLoading {
+    private(set) var requestCount = 0
+
+    func data(from url: URL) async throws -> HTTPDataResponse {
+        requestCount += 1
+        throw URLError(.notConnectedToInternet)
     }
 }

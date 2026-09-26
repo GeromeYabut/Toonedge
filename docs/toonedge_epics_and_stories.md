@@ -932,7 +932,7 @@ Library should move manual update refresh out of the navigation toolbar and into
 - Regression coverage verifies refresh placement, dismissible/auto-expiring refresh feedback, and the centered empty-state model.
 
 ### Story 11.33 — Floating Library refresh feedback banner
-**Status:** planned
+**Status:** implemented
 
 **User story**
 
@@ -1025,6 +1025,152 @@ Library should scale beyond a small visual gallery. The current card grid is use
 - Do not add bulk edit, drag-and-drop reordering, or custom user-defined groups in this story.
 - Do not change Reader detection, chapter parsing, or update-check behavior except where save-state defaults are passed through existing Library interfaces.
 
+### Story 11.36 — Native collection Library visual refinement
+**Status:** implemented
+
+**User story**
+
+As a reader with dozens of saved manhwas, I want the Library to feel like a dense native collection instead of a set of large generated-looking cards, so I can scan more titles quickly while the artwork remains the primary visual anchor.
+
+**Intent**
+
+The previous scalable Library story added grouping and multiple view modes, but the first implementation still uses the same rounded card container for comfortable and compact modes. This keeps the Library visually soft and generic, and it makes compact mode feel too close to comfortable mode. This story refines the existing modes into a cover-first native collection pattern: comfortable remains a 2-column poster grid, compact becomes a true 4-column square-thumbnail grid, and list remains the highest-density row layout.
+
+**Recommended UX direction**
+- Remove the grey outlined card container from grid items.
+- Let cover artwork be the main visual object, with title and chapter metadata below the artwork.
+- Keep `Comfortable` as a 2-column poster grid for browsing.
+- Redefine `Compact` as a 4-column grid with square-ish thumbnails, one-line titles, and a small chapter label.
+- Keep `List` as the dense management view for fastest scanning.
+- Reduce repeated capsule/pill styling on Library filters, summary, and view-mode controls.
+- Keep purple as an active/accent color only, not the dominant treatment for every Library surface.
+
+**Acceptance criteria**
+- Comfortable mode uses a 2-column cover-first grid on iPhone-sized widths.
+- Comfortable grid items no longer use the shared grey `TECard` outline/background as the outer item container.
+- Comfortable grid items show cover art, title, current resume metadata, progress where space allows, and latest chapter/update status where space allows.
+- Compact mode uses 4 columns on iPhone-sized widths.
+- Compact mode uses square or near-square cover art, one-line title text, and a compact chapter label such as `Ch. 237`.
+- Compact mode omits large progress bars and chip rows so it materially differs from comfortable mode.
+- List mode remains available and remains the highest-density view for management.
+- View mode tests verify compact mode has a 4-column layout target and substantially smaller item height than comfortable mode.
+- Styling tests verify grid item layouts do not require an outer card container.
+- Library group filters remain available for `Recent`, `Reading`, `Planned`, `Dropped`, and `Completed`.
+- Existing Library navigation remains unchanged: selecting any visible title opens Series Detail.
+- Existing save-to-library grouping behavior remains unchanged.
+
+**MVP boundaries**
+- Do not add custom shelves, tags, bulk editing, or sort menus in this story.
+- Do not change persistence schema, Reader detection, chapter parsing, or update-check behavior.
+- Do not redesign Home, Reader, Browser, or Series Detail beyond any shared primitive impact explicitly needed by the Library.
+
+### Story 11.37 — Reading dashboard Home visual refinement
+**Status:** implemented
+
+**User story**
+
+As a returning reader, I want Home to feel like a focused reading dashboard instead of a generic generated card feed, so I can immediately resume reading while search remains available when I want to start somewhere new.
+
+**Intent**
+
+The current Home screen satisfies the basic search, continue-reading, recently updated, and library preview requirements, but its visual language relies heavily on pill/circle controls, repeated `TECard` containers, and generic banners. After the Library native collection refinement, Home should adopt the same restrained native direction while preserving Home's product role: search remains available near the top, but Continue Reading becomes the primary dashboard object for returning users.
+
+**Recommended UX direction**
+- Keep the universal search/URL entry near the top, but style it as a compact command bar rather than a large capsule hero.
+- Make Continue Reading the main dashboard section immediately after search.
+- Show the most recent continue-reading item as a cover-first current-read hero with title, chapter/resume metadata, and a subtle progress indicator.
+- Show additional continue-reading items, recently updated titles, and library preview entries as compact cover-first shelves or dense native rows.
+- Remove the outer grey `TECard` treatment from Home reading cards where practical.
+- Replace circular accessory buttons with restrained rounded-rectangle icon controls.
+- Move refresh feedback into a quiet inline status treatment instead of a large generic banner.
+- Keep purple as an accent for actions and active states, not the dominant surface treatment.
+
+**Acceptance criteria**
+- Home preserves the required content hierarchy: search, Continue Reading, Recently Updated, All Library.
+- Home reads as a reading dashboard: Continue Reading is the most prominent content section after the search command bar.
+- The search entry uses copy similar to `Search the web or paste a chapter link`.
+- Search remains tappable and still opens the existing search overlay.
+- Continue Reading still opens the last-read chapter using existing routing.
+- Continue Reading uses a cover-first hero treatment for the first available item.
+- Additional reading/update/library previews use compact cover-first treatments rather than repeated large generated-looking cards.
+- Home reading cards do not require the shared grey `TECard` outline/background as their outer item container.
+- Refresh remains available through pull-to-refresh and any existing explicit refresh affordance, but feedback uses restrained inline status styling.
+- Settings remains reachable from Home.
+- Empty state remains available and still points users toward starting a search/web reading session.
+- No persistence schema, Reader detection, Browser behavior, chapter parsing, update checks, or save-to-library grouping behavior changes are introduced.
+
+**MVP boundaries**
+- Do not add recommendations, public catalogs, social/community features, or custom Home widgets.
+- Do not change search classification, browser launch semantics, Reader launch semantics, update-check comparison, or library persistence.
+- Do not redesign Library, Reader, Browser, Series Detail, Downloads, or Settings in this story.
+
+### Story 11.38 — Library metadata label refinement
+**Status:** implemented
+
+**User story**
+
+As a reader scanning saved titles in Library, I want each Library mode to show the most useful metadata for that layout, so I can quickly identify where a title came from in grid mode and where I left off in list mode.
+
+**Intent**
+
+Story 11.36 made Library feel more like a native collection, but the same resume metadata string is still used in places where it is not useful. In comfortable grid mode, `Continue Ch. Scans` can look noisy and misleading when a parser captured a non-chapter token from source page text. In list mode, the source context is less important than the chapter number because list is the highest-density management/resume view.
+
+**Recommended UX direction**
+- Comfortable grid metadata should show the source website/domain, such as `asurascans.com`, instead of `Continue Ch. Scans`.
+- List mode metadata should show a chapter label, such as `Ch. 16`, when a chapter number is available.
+- List mode should not display noisy non-chapter labels like `Scans` as a chapter value.
+- Compact mode should keep its existing compact chapter label behavior from Story 11.36.
+- Prefer existing stored `sourceDomain`, `currentChapterLabel`, and `latestChapterLabel` data; do not change persistence or parser behavior in this story.
+
+**Acceptance criteria**
+- Comfortable Library cards display the source website/domain as the subtitle under the title.
+- Given a saved title from `https://asurascans.com/comics/the-regressed-mercenarys-machinations-a80d257e/chapter/16`, the comfortable grid subtitle reads `asurascans.com`.
+- List rows display a chapter number label such as `Ch. 16` when a numeric current or latest chapter label is available.
+- List rows do not display `Continue Ch. Scans` when a non-chapter label like `Scans` is present and a numeric chapter label is available elsewhere on the summary.
+- Compact grid behavior remains unchanged: compact cards still prefer short labels like `Ch. 16`.
+- Existing Library filters, view modes, navigation to Series Detail, save-to-library grouping, update checks, Reader detection, Browser behavior, and persistence schema remain unchanged.
+
+**MVP boundaries**
+- Do not change chapter parsing, source-domain extraction, persistence schema, update-check comparison, Reader detection, Browser behavior, or save-to-library grouping.
+- Do not add new metadata fields to persistent models.
+- Do not redesign Library layout beyond the metadata text shown in existing cells.
+
+### Story 11.39 — Library summary card demotion
+**Status:** implemented
+
+**User story**
+
+As a reader browsing my saved Library, I want the collection controls to stay useful without taking over the top of the screen, so more cover artwork is visible and the Library feels like a native collection instead of a dashboard of cards.
+
+**Intent**
+
+Story 11.36 shifted Library toward a cover-first native collection, and Story 11.38 made cell metadata more useful by mode. The large `Recent Library` summary card now repeats context already shown by the selected filter and page title, while pushing cover art lower on the screen. The useful parts of that card are the saved-title count and manual refresh affordance; those should remain available in a quieter inline treatment near the view-mode controls.
+
+**Recommended UX direction**
+- Remove the large rounded `Recent Library` / group summary card from the Library content flow.
+- Replace it with a compact inline collection status row that shows the current visible title count, such as `4 titles`.
+- Keep refresh available when `LibraryUpdateRefreshService` exists, but render it as a small icon button in the inline controls area rather than inside a large card.
+- Keep the view-mode segmented control close to the collection it controls.
+- Prefer a single horizontal controls row between filters and the collection grid/list: count on the leading side, view-mode control and refresh on the trailing side.
+- Keep pull-to-refresh behavior and existing refresh feedback behavior unchanged.
+
+**Acceptance criteria**
+- The Library screen no longer displays a large summary card labeled `Recent Library`, `Reading Library`, `Planned Library`, `Dropped Library`, or `Completed Library`.
+- The visible saved-title count remains available in a compact inline treatment.
+- The inline count reflects the active filter and visible series count, including singular/plural copy such as `1 title` and `4 titles`.
+- Manual update refresh remains available when the update refresh service exists.
+- Manual update refresh is hidden when the update refresh service is unavailable.
+- The view-mode control remains available for `Comfortable`, `Compact`, and `List`.
+- Pull-to-refresh remains available and refresh feedback remains dismissible/auto-expiring.
+- Existing Library filters remain available for `Recent`, `Reading`, `Planned`, `Dropped`, and `Completed`.
+- Selecting a Library item still opens Series Detail.
+- Existing save-to-library grouping, persistence schema, Reader detection, Browser behavior, chapter parsing, and update checks remain unchanged.
+
+**MVP boundaries**
+- Do not add sorting, bulk edit, custom shelves, or new metadata fields in this story.
+- Do not change Library grouping semantics, update-check comparison, persistence schema, Reader detection, Browser behavior, chapter parsing, or save-to-library behavior.
+- Do not redesign Library cells beyond spacing changes required by removing the large summary card.
+
 ### Story 11.40 — Local available-chapter index and Series Detail reading target
 **Status:** implemented
 
@@ -1073,6 +1219,299 @@ This story introduces a lightweight local available-chapter index. Refresh actio
 - Do not aggressively infer chapter URLs when the source index does not provide a link; URL inference may remain a guarded fallback only where existing adjacent navigation logic already treats it as safe.
 - Do not block Series Detail rendering on network refresh; use existing local data first and update when refresh completes.
 - Do not remove existing update-check safeguards for unsupported, rate-limited, or challenge pages.
+
+### Story 11.41 — Series Detail non-blocking local first render
+**Status:** implemented
+
+**User story**
+
+As a reader opening a saved series that ToonEdge already knows about, I want Series Detail to show my local series data immediately, so I can continue reading without waiting for opportunistic update checks.
+
+**Intent**
+
+Story 11.40 added opportunistic available-chapter indexing when Series Detail opens. That refresh is valuable, but it must feel like a background improvement rather than a blocking navigation step. If the app already has local title, cover, progress, and chapter rows, Series Detail should render those first and let the user tap Continue while the chapter index refresh runs in the background.
+
+The `Loading series` banner should remain reserved for the brief local repository lookup or for truly unknown series data. Network refresh, source-page parsing, and update-state reconciliation should not keep the user on a loading-only screen.
+
+**Recommended UX direction**
+- Render existing local `SeriesDetailSnapshot` as the first priority.
+- Start the opportunistic chapter-index refresh only after a local detail snapshot exists.
+- Keep the Continue button active from the local snapshot while the refresh is in flight.
+- If refresh finds new indexed chapters, update Series Detail in place after refresh completes.
+- If refresh fails, leave the already-rendered local detail visible and do not replace it with an error or loading state.
+- Avoid adding visible “refreshing” copy unless a later story proves users need it; the refresh should be quiet.
+
+**Acceptance criteria**
+- Opening Series Detail for a locally known series shows the local detail view before any chapter-index refresh result is required.
+- Series Detail does not await opportunistic network refresh in the same startup task that performs the initial local detail load.
+- The opportunistic refresh begins only after local detail has loaded at least once.
+- The header Continue action remains available from local data while refresh is in flight.
+- If refresh mutates the local chapter index, Series Detail reloads and reflects the new reading target.
+- If refresh returns `nil`, fails, or reports `didRefresh == false`, the existing local detail remains visible.
+- Unknown or missing series can still show the existing unavailable/loading states.
+- Existing Reader detection, Browser behavior, Library filters, save-to-library grouping, chapter parsing, update comparison, and persistence schema remain unchanged.
+
+**MVP boundaries**
+- Do not add a new visible refresh spinner, progress bar, toast, or status copy to Series Detail.
+- Do not preload all Series Detail snapshots from the Library grid.
+- Do not change chapter-index fetching, parsing, persistence, or update-check comparison logic.
+- Do not change the Library grid/list layout.
+- Do not change Reader launch behavior beyond preserving the existing Continue action availability.
+
+### Story 11.42 — Series Detail seeded shell from Library selection
+**Status:** implemented
+
+**User story**
+
+As a reader tapping a known series in my Library, I want Series Detail to show the title, cover, and local progress context immediately, so navigation feels instant instead of showing a loading screen.
+
+**Intent**
+
+Story 11.41 separated the initial local detail load from opportunistic network refresh, but Series Detail can still briefly show `Loading series` because navigation currently passes only a `seriesID`. The Library cell already has useful local context: title, cover, source domain, visible progress, current/latest labels, and unread state. Series Detail should use that tapped-row summary as an immediate visual seed while the full `SeriesDetailSnapshot` hydrates from the repository.
+
+This story removes the loading-only experience for normal Library-origin navigation. The seeded shell is a visual bridge, not a replacement for hydrated detail. Accurate Continue behavior must still come from the full local detail snapshot, because only detail hydration has concrete chapter rows and safe source URLs.
+
+**Recommended UX direction**
+- When a Library card/list row is tapped, pass a route value that includes the selected `LibrarySeriesSummary`.
+- Series Detail should render a lightweight seeded header immediately from that summary: cover, title, source/progress metadata, saved/reading state, and update indicator.
+- Do not show the `Loading series` banner for Library-origin routes that include a seed summary.
+- Hydrate the full `SeriesDetailSnapshot` in the background as today.
+- Show the real Continue action only after hydrated detail exists, so chapter targets remain accurate.
+- After hydration, replace the seeded shell with the full Series Detail header, chapter toolbar, and chapter list.
+- Opportunistic chapter-index refresh remains a later background phase after local detail hydration.
+- Router-driven deep links that only have a `seriesID` can continue to use the existing loading/unavailable states.
+
+**Acceptance criteria**
+- Tapping a visible Library item passes a route that includes the selected `LibrarySeriesSummary`.
+- Series Detail accepts an optional seed summary.
+- Given a seed summary and no hydrated detail yet, Series Detail renders a seeded shell instead of the `Loading series` banner.
+- The seeded shell displays the series title, cover fallback/cover URL, source domain, and local progress count when available.
+- The seeded shell does not expose an enabled Continue action until hydrated local detail provides a concrete `primaryChapter`.
+- Given local detail has chapters 101 and 102 with 101 read and 102 unread, hydration shows `Start Chapter 102` without waiting for online refresh.
+- Given local detail is fully read but online chapter 201 is available only after refresh, the page can first hydrate to `All Chapters Read`, then update to `Start Chapter 201` after background indexing completes.
+- Router-driven navigation with only a `seriesID` still shows the current loading/unavailable flow.
+- Existing Reader detection, Browser behavior, Library filters, save-to-library grouping, chapter parsing, update comparison, and persistence schema remain unchanged.
+
+**MVP boundaries**
+- Do not make `LibrarySeriesSummary` the source of truth for Continue.
+- Do not infer new chapter URLs from summary labels.
+- Do not preload full Series Detail snapshots for every Library row.
+- Do not change persistence schema, chapter-index fetching/parsing, update-check comparison, Reader detection, Browser behavior, or Library collection layout.
+- Do not add new network requests before first render.
+
+### Story 11.43 — Series Detail local-ready instant entry
+**Status:** implemented
+
+**User story**
+
+As a reader opening a saved series that ToonEdge already knows locally, I want Series Detail to become fully actionable immediately when my next chapter can be determined from local data, so I can start reading without waiting for a background refresh.
+
+**Intent**
+
+Story 11.42 removed the loading-only transition by rendering a seeded shell from the tapped Library row. That shell is useful visually, but it intentionally does not expose Continue because it does not own concrete chapter targets. When ToonEdge already has a hydrated detail snapshot in the current session, or has enough local indexed chapter data to compute the next readable chapter, the page should skip the seed-only state and render the full Series Detail experience immediately.
+
+This story makes instant entry depend on local readiness, not latest-online certainty. If local state says the reader has completed chapter 100 and the local available-chapter index already knows chapters through 200, the app can safely show `Start Chapter 101` without waiting for a source refresh. A background refresh is only relevant to improve edge cases such as `200/200` where chapter 201 may have appeared online.
+
+**Recommended UX direction**
+- Prefer a locally cached hydrated `SeriesDetailSnapshot` over the seed-only shell when re-entering a series during the same app session.
+- Use local repository detail immediately when it contains a concrete primary chapter, such as `Start Chapter 101` for local state `100/200`.
+- Keep Continue available while opportunistic refresh runs in the background.
+- If local data says all indexed chapters are read, the page may show `All Chapters Read` immediately while refresh checks for a newly available chapter.
+- If refresh finds a new chapter, update the already-visible page in place.
+- If no hydrated detail is available yet, keep the Story 11.42 seeded shell behavior as the visual fallback.
+
+**Acceptance criteria**
+- Given a cached hydrated detail snapshot, Series Detail renders the full detail page immediately on re-entry instead of the seed-only shell or loading banner.
+- Given local indexed chapters `1...200` and the latest completed chapter is `100`, Series Detail renders immediately with `Start Chapter 101` and does not wait for online refresh.
+- Given local indexed chapters `1...200` and chapter `100` is in progress, Series Detail renders immediately with `Continue Chapter 100`.
+- Given local indexed chapters `1...200` and every chapter is read, Series Detail can render `All Chapters Read` immediately while background refresh checks for chapter `201`.
+- The opportunistic chapter-index refresh still runs in the background after local detail exists and updates the page in place when it changes the index.
+- Session caching is in-memory only and does not introduce a persistence schema change.
+- Router-driven navigation with only a `seriesID` can still use the existing loading/unavailable state until local detail resolves.
+- Existing Reader detection, Browser behavior, chapter parsing, update checks, save-to-library grouping, Library filters, and Library layouts remain unchanged.
+
+**MVP boundaries**
+- Do not preload full Series Detail snapshots for every Library item.
+- Do not block on network refresh when local data can produce a safe primary chapter.
+- Do not infer new chapter URLs from labels or summary metadata.
+- Do not change the available-chapter indexing schema introduced by Story 11.40.
+- Do not add visible refresh banners, spinners, or status copy to Series Detail.
+
+### Story 11.44 — Series Detail fixed header with independently scrolling chapters
+**Status:** implemented
+
+**User story**
+
+As a reader managing chapters from Series Detail, I want the series title, cover, state chips, progress metadata, and Continue action to remain visible while I browse the chapter list, so the page keeps its context and primary action available.
+
+**Intent**
+
+Series Detail currently scrolls as one long page. On series with many indexed chapters, the title/header and Continue action can disappear while the user browses the chapter list. Since Story 11.40 moved Series Detail toward a single `All` chapter section, the header can act as a persistent context area while the chapter list scrolls independently below it.
+
+This is a layout refinement only. It should not change chapter selection, Reader launch behavior, background refresh timing, update-state logic, or persistence. The fixed region should feel native and compact, not like a floating marketing card.
+
+**Recommended UX direction**
+- Keep the navigation bar at the top as-is.
+- Render the cover/title/chips/source metadata and primary Continue action in a fixed header area.
+- Put the `Chapters` toolbar and all chapter rows in an independently scrolling region below the header.
+- Preserve automatic initial positioning near `chapterListAnchorID` inside the chapter scroller.
+- Ensure rows do not render underneath the bottom tab bar or fixed header.
+- Keep the layout usable on iPhone widths with long titles and dynamic text.
+
+**Acceptance criteria**
+- The Series Detail title/header region remains visible while the chapter list scrolls.
+- The primary Continue action remains visible and tappable while browsing chapters.
+- The chapter list scrolls independently and can still anchor near the next reading target or latest read chapter.
+- Empty chapter states still appear in the chapter-scroll region.
+- Cache feedback and save-state controls remain available without overlapping the fixed header or chapter rows.
+- The fixed-header layout works with seeded-shell, hydrated-detail, unavailable, and loading states.
+- Existing Reader detection, Browser behavior, chapter parsing, update checks, save-to-library grouping, Library filters, and persistence remain unchanged.
+
+**MVP boundaries**
+- Do not redesign Library, Home, Browser, Reader, Downloads, or Settings.
+- Do not add new chapter filtering or sorting modes.
+- Do not change the `Recent` / `All` single-section decision from Story 11.40.
+- Do not add decorative hero imagery, gradients, or marketing-style copy.
+- Do not change chapter row semantics or context menu behavior.
+
+### Story 11.45 — Series Detail negligible entry and stable initial position
+**Status:** implemented
+
+**User story**
+
+As a reader opening a locally known series from my Library, I want the cover, Continue action, and saved chapter position to be ready immediately, so the detail page feels native and I can start reading without waiting on visible hydration.
+
+**Intent**
+
+Stories 11.41 through 11.44 made Series Detail local-first, seeded from Library, cache-aware on re-entry, and fixed-header. A remaining first-entry gap is that the seeded shell is still visual-only: it can show the title and cover context before hydration, but it cannot offer Continue until the full `SeriesDetailSnapshot` finishes loading. The cover artwork can also flicker from placeholder to image because memory-cache lookup happens inside an async task, and the chapter list can visibly jump because initial positioning is delayed.
+
+This story tightens the existing flow without changing persistence schema or chapter parsing. Library-origin navigation may carry a concrete local resume target only when local stored/indexed chapter data already provides a safe `ChapterSummary` with a source URL. That route target is an immediate action seed, not the long-term source of truth. Hydrated Series Detail still replaces the seed when the local detail snapshot loads, and opportunistic refresh remains background-only.
+
+**Recommended UX direction**
+- Show the tapped series header immediately from the Library seed.
+- If the route seed includes a concrete local resume target, show an enabled primary action immediately.
+- If the route seed does not include a concrete source URL, keep the primary action unavailable until hydrated detail exists.
+- Prefer cached cover artwork on the first frame when the shared memory cache already has image bytes.
+- Position the chapter list near the primary/last-read chapter without a visible delayed jump; use no-animation initial positioning rather than a "fast" animated scroll.
+- Keep background refresh invisible unless it changes the local detail snapshot, in which case the page updates in place.
+
+**Acceptance criteria**
+- Given a Library-origin route with a concrete local resume target for chapter 101, Series Detail seed state exposes `Start Chapter 101` immediately.
+- Given a Library-origin route with a concrete in-progress local resume target for chapter 100, Series Detail seed state exposes `Continue Chapter 100` immediately.
+- Given a Library-origin seed with only latest-label or current-label text and no safe chapter source URL, Series Detail does not expose a fake Continue action.
+- Hydrated detail remains authoritative after local detail load and can replace the seeded action.
+- Visible Library rows may be prewarmed into the existing in-memory detail cache, but the app does not preload full detail snapshots for every Library item.
+- Cached cover data is available synchronously to `CachedCoverArtwork` when `CoverArtworkMemoryCache` already contains bytes for the URL.
+- Series Detail no longer uses a fixed 100ms delay before scrolling the chapter list to `chapterListAnchorID`.
+- Initial chapter positioning should not animate or visibly jitter after the chapter list is first shown.
+- Existing Reader detection, Browser behavior, chapter parsing, update checks, save-to-library grouping, Library filters, Library layouts, and persistence schema remain unchanged.
+
+**MVP boundaries**
+- Do not infer chapter URLs from `latestChapterLabel`, `currentChapterLabel`, title text, or source-specific URL patterns.
+- Do not add disk-backed image caching in this story.
+- Do not add visible refresh banners, loading copy, progress bars, or spinners to Series Detail.
+- Do not redesign the Series Detail header or chapter rows beyond the action-readiness and positioning changes.
+- Do not change available-chapter indexing behavior from Story 11.40.
+
+### Story 11.46 — Library snapshot performance and scoped detail readiness
+**Status:** implemented
+
+**User story**
+
+As a reader with local sample data and many indexed chapters, I want Home-to-Library navigation, Library filter changes, and opening a toon to feel immediate, so the app does not trade Series Detail readiness for sluggish collection browsing.
+
+**Intent**
+
+Story 11.45 made Series Detail more immediately actionable by adding concrete local resume targets and visible-row detail prewarming. The user experience now shows a different bottleneck: Library itself can feel slow when opening from Home, switching filters, and tapping a toon. The likely cause is that summary screens are doing detail-level repository work and visible cells are starting many detail prewarm tasks at once.
+
+This story keeps the good part of Story 11.45, which is safe seeded Continue actions, but changes how the data is produced. Library and Home snapshots should remain lightweight summary projections. Detail hydration should remain available, but it should be scoped to actual navigation or a bounded explicit user intent, not every visible cell.
+
+**Recommended UX direction**
+- Library should show immediately with the best already-known local snapshot.
+- Switching `Recent`, `Reading`, `Planned`, `Dropped`, and `Completed` should feel like filtering an in-memory collection.
+- Do not launch detail prewarming for every visible Library row during tab entry or filter switches.
+- Keep seeded Series Detail actions when a safe local `resumeTarget` is already known from summary data.
+- If a resume target cannot be produced cheaply, prefer a fast visual seed over blocking Library or segment interactions.
+- Optimize repository fetches so local sample data size affects only the specific series/detail being loaded, not every summary surface.
+
+**Acceptance criteria**
+- Home-to-Library tab switching does not synchronously trigger per-visible-row detail loads.
+- Library filter switching does not trigger per-visible-row detail loads.
+- `LibrarySeriesSummary.resumeTarget` is still populated when the repository has a safe concrete local chapter target.
+- `LibrarySeriesSummary.resumeTarget` is computed without constructing full `SeriesDetailSnapshot`s for every series in `librarySnapshot()`.
+- SwiftData repository lookups for series, chapters, progress, and recent readings use targeted predicates where available.
+- Duplicate cleanup is not run on every `librarySnapshot()` call.
+- Series Detail still hydrates full detail after navigation and still runs opportunistic chapter-index refresh in the background.
+- Existing Reader detection, Browser behavior, chapter parsing, update checks, save-to-library grouping, Library filters, Library visual layout, and persistence schema remain unchanged.
+
+**MVP boundaries**
+- Do not introduce a new persistence schema or migration.
+- Do not remove seeded Continue actions introduced by Story 11.45.
+- Do not add speculative network refreshes, online chapter checks, or source parsing to Library tab entry.
+- Do not redesign Home, Library, Reader, Browser, Downloads, or Settings.
+- Do not add user-visible loading copy, progress indicators, or performance diagnostics in this story.
+
+### Story 11.47 — Library comfortable grid metadata containment
+**Status:** implemented
+
+**User story**
+
+As a reader browsing the Library comfortable grid, I want every series item to have clean separation between rows, so cover art, titles, progress, and chapter badges never collide visually.
+
+**Intent**
+
+Comfortable mode should remain the cover-first, visually rich Library density, but it needs stricter cell height and spacing guarantees. The layout should behave like a native collection grid where each item owns its full metadata area, even when titles wrap or badges appear.
+
+**Recommended UX direction**
+- Keep comfortable mode as the 2-column cover-first iPhone layout.
+- Reserve stable vertical space for cover, title, source domain, progress, and chapter/update pills.
+- Avoid nested card containers or heavy outlines; this is a spacing/layout correction only.
+- Do not reduce compact mode density to solve comfortable-mode spacing.
+- Make the row rhythm resilient to long titles, `New` badges, chapter pills, and mixed progress states.
+
+**Acceptance criteria**
+- Comfortable mode reserves stable vertical space for the full metadata stack.
+- Chapter badges and update pills never render beneath the next row's cover.
+- Long titles, source domains, progress bars, `New` badges, and chapter pills fit without overlap.
+- Compact mode remains the high-density 4-column layout.
+- List mode remains the highest-density management view.
+- Existing Library filters and Series Detail navigation remain unchanged.
+
+**MVP boundaries**
+- Do not change persistence schema, Reader detection, Browser behavior, chapter parsing, update checks, or save-to-library grouping.
+- Do not redesign Library filters, collection controls, or the tab bar.
+- Do not change compact/list semantics beyond any shared helper needed to keep metadata layout consistent.
+
+### Story 11.48 — Library chapter metadata uses resume-target semantics
+**Status:** implemented
+
+**User story**
+
+As a reader looking at my Library, I want the chapter label on each card to describe where I should read next, so the grid matches what I see when I open Series Detail.
+
+**Intent**
+
+Library cards currently risk mixing two different concepts: latest known chapter and next/current reading chapter. The card should prioritize the concrete local resume target introduced for Series Detail. Latest-known chapter information can remain available only when it is clearly presented as update/latest state, not as the user's current chapter.
+
+**Recommended UX direction**
+- Treat the Library chapter label as a reading-position/resume affordance first.
+- Prefer `LibrarySeriesSummary.resumeTarget` when it exists.
+- If no safe resume target exists, use current chapter progress before considering latest-known/update labels.
+- Keep `New` update signaling visually distinct from current/resume chapter labels.
+- Make comfortable, compact, and list modes use the same semantic label source.
+
+**Acceptance criteria**
+- Library comfortable, compact, and list modes prefer `resumeTarget` / primary reading target for chapter metadata.
+- Newly saved indexed series with no progress show first-readable chapter semantics instead of latest-known chapter as current progress.
+- Series Detail primary action and Library card chapter label agree for the same local data.
+- `New` update indicators remain visually distinct from current/resume chapter labels.
+- Existing update check, available-chapter indexing, save-to-library grouping, Reader detection, and Browser behavior remain unchanged.
+
+**MVP boundaries**
+- Do not infer chapter URLs from labels or source-specific URL patterns.
+- Do not change update-check comparison or available-chapter indexing behavior.
+- Do not change persistence schema.
+- Do not remove latest-known/update information; only prevent it from masquerading as current reading position.
 
 ---
 

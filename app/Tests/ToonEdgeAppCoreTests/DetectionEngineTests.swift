@@ -286,7 +286,10 @@ import Testing
 @Test func defaultSiteProfileRegistryIncludesInitialSupportTiers() throws {
     let registry = SiteProfileRegistry.default
 
-    #expect(registry.profile(for: try #require(URL(string: "https://webtoons.com/en/action/sample/episode-1")))?.supportTier == .enabledPublic)
+    #expect(registry.profile(for: try #require(URL(string: "https://webtoons.com/en/action/sample/episode-1")))?.supportTier == .browserOnly)
+    #expect(registry.profile(for: try #require(URL(string: "https://m.webtoons.com/en/action/sample/viewer")))?.compatibilityClass == .browserOnly)
+    #expect(registry.profile(for: try #require(URL(string: "https://globalcomix.com/c/sample/chapters/en/1")))?.supportTier == .browserOnly)
+    #expect(registry.profile(for: try #require(URL(string: "https://www.globalcomix.com/c/sample/chapters/en/1")))?.compatibilityClass == .browserOnly)
     #expect(registry.profile(for: try #require(URL(string: "https://asuracomic.net/series/sample/chapter-1")))?.supportTier == .approvedNonPromoted)
     #expect(registry.profile(for: try #require(URL(string: "https://asurascans.com/series/sample/chapter-1")))?.supportTier == .approvedNonPromoted)
     #expect(registry.profile(for: try #require(URL(string: "https://manhwatop.com/manga/sample/chapter-1")))?.supportTier == .approvedNonPromoted)
@@ -338,10 +341,78 @@ import Testing
     let registry = SiteProfileRegistry.default
     let promotedDomains = registry.promotedSuggestionDomains
 
-    #expect(promotedDomains.contains("webtoons.com"))
+    #expect(!promotedDomains.contains("webtoons.com"))
+    #expect(!promotedDomains.contains("globalcomix.com"))
     #expect(!promotedDomains.contains("asuracomic.net"))
     #expect(!promotedDomains.contains("asurascans.com"))
     #expect(!promotedDomains.contains("manhwatop.com"))
+}
+
+@Test func protectedReaderImagesCannotProduceReaderPresentation() throws {
+    for host in ["m.webtoons.com", "www.globalcomix.com"] {
+        let page = DetectionPageAnalysis(
+            pageURL: try #require(URL(string: "https://\(host)/sample/chapter-1/viewer")),
+            title: "Sample Chapter 1",
+            documentHeight: 20_000,
+            viewportWidth: 390,
+            images: chapterImages(host: "images.example.com")
+        )
+
+        let result = ProfileAwareChapterDetector().detect(page: page)
+
+        #expect(result.confidence == .low)
+        #expect(result.readerSession == nil)
+        #expect(result.diagnostics.parserPath == .browserOnlyProfile)
+    }
+}
+
+@Test func vortexRouteFixtureProducesOrderedReaderSession() throws {
+    let page = try detectionFixture(named: "vortex_spa_chapter_169")
+    let result = ProfileAwareChapterDetector().detect(page: page)
+
+    #expect(result.confidence == .high)
+    #expect(result.readerSession?.sourceURL == page.pageURL)
+    #expect(result.readerSession?.imageURLs.map(\.lastPathComponent) == [
+        "001.jpg", "002.jpg", "003.jpg", "004.jpg", "005.jpg", "006.jpg", "007.jpg", "008.jpg"
+    ])
+}
+
+@Test func comizyRedirectFixtureRetainsCanonicalURLAndOrderedImages() throws {
+    let page = try detectionFixture(named: "comizy_redirected_chapter")
+    let result = ProfileAwareChapterDetector().detect(page: page)
+    let session = try #require(result.readerSession)
+
+    #expect(session.sourceURL.host() == "comizy.io")
+    #expect(session.seriesURL.absoluteString == "https://comizy.io/kono-manga-no-heroine-wa-morisaki-amane-desu/")
+    #expect(session.imageURLs.count == 10)
+    #expect(session.imageURLs.map(\.lastPathComponent) == (1...10).map { String(format: "%03d.jpg", $0) })
+}
+
+@Test func remediationSiteFixturesRemainSanitizedOrderedAndPolicyAccurate() throws {
+    let readableFixtures = [
+        "vortex_spa_chapter_169",
+        "mangakatana_hydrated_dom",
+        "mangapill_hydrated_dom",
+        "comizy_redirected_chapter"
+    ]
+
+    for name in readableFixtures {
+        let page = try detectionFixture(named: name)
+        let result = ProfileAwareChapterDetector().detect(page: page)
+        let session = try #require(result.readerSession)
+        #expect(result.confidence == .high)
+        #expect(session.imageURLs.count == page.images.count)
+        #expect(session.imageURLs.allSatisfy { $0.host() == "images.example.test" })
+        #expect(session.imageURLs == session.imageURLs.sorted {
+            $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending
+        })
+    }
+
+    let challenge = try detectionFixture(named: "manhwatop_browser_only")
+    let challengeResult = ProfileAwareChapterDetector().detect(page: challenge)
+    #expect(challengeResult.confidence == .low)
+    #expect(challengeResult.readerSession == nil)
+    #expect(!challenge.challengeSignals.isEmpty)
 }
 
 @Test func embeddedHTMLProfileUsesSiteProfileDetectionPath() throws {

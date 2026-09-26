@@ -2,6 +2,50 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@Test func routeObservationSchedulesSettledURLOnce() throws {
+    let series = try #require(URL(string: "https://vortexscans.org/series/past-life-returner"))
+    let chapter = try #require(URL(string: "https://vortexscans.org/series/past-life-returner/chapter-169"))
+    var policy = BrowserDetectionNavigationPolicy()
+
+    let loadingSeries = policy.shouldSchedule(url: series, isLoading: true)
+    let settledSeries = policy.shouldSchedule(url: series, isLoading: false)
+    let loadingChapter = policy.shouldSchedule(url: chapter, isLoading: true)
+    let settledChapter = policy.shouldSchedule(url: chapter, isLoading: false)
+    let duplicateChapter = policy.shouldSchedule(url: chapter, isLoading: false)
+    #expect(!loadingSeries)
+    #expect(settledSeries)
+    #expect(!loadingChapter)
+    #expect(settledChapter)
+    #expect(!duplicateChapter)
+}
+
+@MainActor
+@Test func unreadableDetectedSessionStaysInBrowserWithFallbackMessage() throws {
+    let sourceURL = try #require(URL(string: "https://comizy.io/sample/chapter-1"))
+    let session = MockReaderSession(
+        seriesTitle: "Fixture",
+        chapterTitle: "Chapter 1",
+        sourceURL: sourceURL,
+        imageURLs: [try #require(URL(string: "https://images.example.test/001.jpg"))]
+    )
+    let viewModel = BrowserViewModel(startPoint: .url(sourceURL.absoluteString))
+    let result = DetectionResult(
+        pageURL: sourceURL,
+        confidence: .high,
+        score: 90,
+        candidates: [],
+        readerSession: session,
+        diagnostics: .init(confidence: .high, score: 90, parserPath: .genericHeuristic)
+    )
+
+    viewModel.handleUnreadableDetectionResult(result)
+
+    #expect(viewModel.pendingReaderSession == nil)
+    #expect(!viewModel.showsCleanModeCTA)
+    #expect(viewModel.readerUnavailableMessage != nil)
+    #expect(viewModel.currentURL == sourceURL)
+}
+
 @Test func directURLStartPointBuildsInitialBrowserRequest() throws {
     let request = try #require(BrowserRequest(startPoint: .url("https://example.com/chapter-12")))
 
@@ -144,6 +188,195 @@ import Testing
     viewModel.presentPendingReaderInsideBrowser(session)
 
     #expect(viewModel.readerPresentationState == .browserOwnedReaderVisible)
+}
+
+@MainActor
+@Test func browserReaderPresentationAppliesLibraryLaunchOriginOverrideForInitialURL() throws {
+    let seriesID = UUID()
+    let pageURL = try #require(URL(string: "https://example.com/series/chapter-107"))
+    let viewModel = BrowserViewModel(
+        startPoint: .url(pageURL.absoluteString),
+        readerLaunchOriginOverride: .library(seriesID: seriesID)
+    )
+    let session = MockReaderSession(
+        seriesTitle: "The Extra's Academy Survival Guide",
+        chapterTitle: "Chapter 107",
+        sourceURL: pageURL,
+        imageURLs: [try #require(URL(string: "https://img.example.com/1.jpg"))],
+        launchOrigin: .browser
+    )
+
+    viewModel.handleDetectionResult(
+        DetectionResult(
+            pageURL: pageURL,
+            confidence: .high,
+            score: 100,
+            candidates: [],
+            readerSession: session,
+            diagnostics: .init(confidence: .high, score: 100, parserPath: .genericHeuristic)
+        )
+    )
+    viewModel.presentPendingReaderInsideBrowser(session)
+
+    #expect(viewModel.browserOwnedReaderSession?.launchOrigin == .library(seriesID: seriesID))
+    #expect(viewModel.readerPresentationState == .browserOwnedReaderVisible)
+}
+
+@Test func browserOwnedReaderBackFromLibraryOriginReturnsToSeriesDetail() {
+    let seriesID = UUID()
+    var router = AppRouter(selectedTab: .library)
+    var session = MockReaderSession.sample
+    session.launchOrigin = .library(seriesID: seriesID)
+
+    BrowserOwnedReaderBackRoute(session: session).apply(to: &router)
+
+    #expect(router.selectedTab == .library)
+    #expect(router.pendingLibrarySeriesID == seriesID)
+    #expect(router.presentedBrowser == nil)
+    #expect(router.presentedReader == nil)
+}
+
+@MainActor
+@Test func browserReaderPresentationKeepsBrowserOriginWithoutOverride() throws {
+    let pageURL = try #require(URL(string: "https://example.com/series/chapter-12"))
+    let viewModel = BrowserViewModel(startPoint: .url(pageURL.absoluteString))
+    let session = MockReaderSession(
+        seriesTitle: "Moonlit Edge",
+        chapterTitle: "Chapter 12",
+        sourceURL: pageURL,
+        imageURLs: [try #require(URL(string: "https://img.example.com/1.jpg"))],
+        launchOrigin: .browser
+    )
+
+    viewModel.handleDetectionResult(
+        DetectionResult(
+            pageURL: pageURL,
+            confidence: .high,
+            score: 100,
+            candidates: [],
+            readerSession: session,
+            diagnostics: .init(confidence: .high, score: 100, parserPath: .genericHeuristic)
+        )
+    )
+    viewModel.presentPendingReaderInsideBrowser(session)
+
+    #expect(viewModel.browserOwnedReaderSession?.launchOrigin == .browser)
+}
+
+@MainActor
+@Test func browserReaderLaunchOriginOverrideDoesNotApplyToDifferentURL() throws {
+    let initialURL = try #require(URL(string: "https://example.com/series/chapter-107"))
+    let navigatedURL = try #require(URL(string: "https://example.com/other/chapter-1"))
+    let viewModel = BrowserViewModel(
+        startPoint: .url(initialURL.absoluteString),
+        readerLaunchOriginOverride: .library(seriesID: UUID())
+    )
+    let session = MockReaderSession(
+        seriesTitle: "Other Series",
+        chapterTitle: "Chapter 1",
+        sourceURL: navigatedURL,
+        imageURLs: [try #require(URL(string: "https://img.example.com/1.jpg"))],
+        launchOrigin: .browser
+    )
+
+    viewModel.updateNavigation(
+        url: navigatedURL,
+        title: "Other Series Chapter 1",
+        canGoBack: true,
+        canGoForward: false,
+        isLoading: false
+    )
+    viewModel.handleDetectionResult(
+        DetectionResult(
+            pageURL: navigatedURL,
+            confidence: .high,
+            score: 100,
+            candidates: [],
+            readerSession: session,
+            diagnostics: .init(confidence: .high, score: 100, parserPath: .genericHeuristic)
+        )
+    )
+    viewModel.presentPendingReaderInsideBrowser(session)
+
+    #expect(viewModel.browserOwnedReaderSession?.launchOrigin == .browser)
+    #expect(viewModel.readerPresentationState == .browserOwnedReaderVisible)
+
+    let initialSession = MockReaderSession(
+        seriesTitle: "The Extra's Academy Survival Guide",
+        chapterTitle: "Chapter 107",
+        sourceURL: initialURL,
+        imageURLs: [try #require(URL(string: "https://img.example.com/2.jpg"))],
+        launchOrigin: .browser
+    )
+
+    viewModel.dismissBrowserOwnedReader()
+    viewModel.presentPendingReaderInsideBrowser(initialSession)
+
+    #expect(viewModel.browserOwnedReaderSession?.launchOrigin == .browser)
+}
+
+@MainActor
+@Test func browserReaderLaunchOriginOverrideIsConsumedAfterVisibleReaderPresentation() throws {
+    let seriesID = UUID()
+    let pageURL = try #require(URL(string: "https://example.com/series/chapter-107"))
+    let viewModel = BrowserViewModel(
+        startPoint: .url(pageURL.absoluteString),
+        readerLaunchOriginOverride: .library(seriesID: seriesID)
+    )
+    let firstSession = MockReaderSession(
+        seriesTitle: "The Extra's Academy Survival Guide",
+        chapterTitle: "Chapter 107",
+        sourceURL: pageURL,
+        imageURLs: [try #require(URL(string: "https://img.example.com/1.jpg"))],
+        launchOrigin: .browser
+    )
+    let secondSession = MockReaderSession(
+        seriesTitle: "The Extra's Academy Survival Guide",
+        chapterTitle: "Chapter 107",
+        sourceURL: pageURL,
+        imageURLs: [try #require(URL(string: "https://img.example.com/2.jpg"))],
+        launchOrigin: .browser
+    )
+
+    viewModel.presentPendingReaderInsideBrowser(firstSession)
+    #expect(viewModel.browserOwnedReaderSession?.launchOrigin == .library(seriesID: seriesID))
+
+    viewModel.dismissBrowserOwnedReader()
+    viewModel.presentPendingReaderInsideBrowser(secondSession)
+
+    #expect(viewModel.browserOwnedReaderSession?.launchOrigin == .browser)
+}
+
+@MainActor
+@Test func browserReaderLaunchOriginOverrideDoesNotPromoteLowConfidenceDetection() throws {
+    let pageURL = try #require(URL(string: "https://example.com/series/chapter-107"))
+    let viewModel = BrowserViewModel(
+        startPoint: .url(pageURL.absoluteString),
+        readerLaunchOriginOverride: .library(seriesID: UUID())
+    )
+    let session = MockReaderSession(
+        seriesTitle: "The Extra's Academy Survival Guide",
+        chapterTitle: "Chapter 107",
+        sourceURL: pageURL,
+        imageURLs: [try #require(URL(string: "https://img.example.com/1.jpg"))],
+        launchOrigin: .browser
+    )
+
+    viewModel.handleDetectionResult(
+        DetectionResult(
+            pageURL: pageURL,
+            confidence: .low,
+            score: 20,
+            candidates: [],
+            readerSession: session,
+            diagnostics: .init(confidence: .low, score: 20, parserPath: .genericHeuristic)
+        )
+    )
+
+    #expect(viewModel.pendingReaderSession == nil)
+    #expect(viewModel.browserOwnedReaderSession == nil)
+    #expect(viewModel.readerPresentationState == .none)
+    #expect(!viewModel.isLoading)
 }
 
 @MainActor

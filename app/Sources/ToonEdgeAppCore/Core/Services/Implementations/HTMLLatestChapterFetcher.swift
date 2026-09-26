@@ -12,6 +12,12 @@ public struct URLSessionHTTPDataLoader: HTTPDataLoading {
         let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
         return HTTPDataResponse(data: data, statusCode: statusCode)
     }
+
+    public func data(for request: URLRequest) async throws -> HTTPDataResponse {
+        let (data, response) = try await session.data(for: request)
+        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+        return HTTPDataResponse(data: data, statusCode: statusCode)
+    }
 }
 
 public struct HTMLLatestChapterFetcher: SeriesLatestChapterFetching {

@@ -60,6 +60,127 @@ import Testing
 }
 
 @MainActor
+@Test func adjacentLoaderFallsBackToStaticHTMLForVortexReaderPageWhenHiddenLoadFails() async throws {
+    let sourceURL = URL(string: "https://vortexscans.org/series/past-life-returner/chapter-170")!
+    let loader = AdjacentReaderSessionLoader(
+        detector: GenericChapterDetector(),
+        pageLoader: StubAdjacentPageLoader.failure(URLError(.timedOut)),
+        htmlLoader: StubAdjacentHTMLLoader(
+            html: """
+            <html>
+              <head><title>Past Life Returner Chapter 170</title></head>
+              <body>
+                <figure><img src="https://storage.vortexscans.org/upload/series/past-life-returner/chapter-170/page-0001.webp" width="800" height="5000" alt="Past Life Returner Chapter 170 Page 1" class="h-auto w-full object-contain" data-reader-page-image data-reader-index="0"></figure>
+                <figure><img src="https://storage.vortexscans.org/upload/series/past-life-returner/chapter-170/page-0002.webp" width="800" height="5000" alt="Past Life Returner Chapter 170 Page 2" class="h-auto w-full object-contain" data-reader-page-image data-reader-index="1"></figure>
+                <figure><img src="https://storage.vortexscans.org/upload/series/past-life-returner/chapter-170/page-0003.webp" width="800" height="5000" alt="Past Life Returner Chapter 170 Page 3" class="h-auto w-full object-contain" data-reader-page-image data-reader-index="2"></figure>
+                <figure><img src="https://storage.vortexscans.org/upload/series/past-life-returner/chapter-170/page-0004.webp" width="800" height="5000" alt="Past Life Returner Chapter 170 Page 4" class="h-auto w-full object-contain" data-reader-page-image data-reader-index="3"></figure>
+                <figure><img src="https://storage.vortexscans.org/upload/series/past-life-returner/chapter-170/page-0005.webp" width="800" height="5000" alt="Past Life Returner Chapter 170 Page 5" class="h-auto w-full object-contain" data-reader-page-image data-reader-index="4"></figure>
+                <nav aria-label="Chapter navigation">
+                  <a href="/series/past-life-returner/chapter-169">Prev</a>
+                  <a href="/series/past-life-returner/chapter-171">Next</a>
+                </nav>
+              </body>
+            </html>
+            """
+        )
+    )
+
+    let loaded = try await loader.loadAdjacentReaderSession(
+        from: sourceURL,
+        context: AdjacentReaderSessionLoadContext(currentSession: .sample, direction: .next)
+    )
+
+    #expect(loaded.sourceURL == sourceURL)
+    #expect(loaded.chapterTitle == "Past Life Returner Chapter 170")
+    #expect(loaded.imageURLs.count == 5)
+    #expect(loaded.previousChapter?.sourceURL == URL(string: "https://vortexscans.org/series/past-life-returner/chapter-169")!)
+    #expect(loaded.nextChapter?.sourceURL == URL(string: "https://vortexscans.org/series/past-life-returner/chapter-171")!)
+}
+
+@MainActor
+@Test func adjacentLoaderFallsBackToStaticHTMLWhenHiddenAnalysisIsNotViable() async throws {
+    let sourceURL = URL(string: "https://vortexscans.org/series/past-life-returner/chapter-170")!
+    let loader = AdjacentReaderSessionLoader(
+        detector: GenericChapterDetector(),
+        pageLoader: StubAdjacentPageLoader.analysis(
+            DetectionPageAnalysis(
+                pageURL: sourceURL,
+                title: "Past Life Returner Chapter 170",
+                documentHeight: 1_000,
+                viewportWidth: 390,
+                images: []
+            )
+        ),
+        htmlLoader: StubAdjacentHTMLLoader(html: vortexChapterHTML(pageNumberCount: 5))
+    )
+
+    let loaded = try await loader.loadAdjacentReaderSession(
+        from: sourceURL,
+        context: AdjacentReaderSessionLoadContext(currentSession: .sample, direction: .next)
+    )
+
+    #expect(loaded.sourceURL == sourceURL)
+    #expect(loaded.imageURLs.count == 5)
+}
+
+@MainActor
+@Test func adjacentLoaderStaticHTMLFallbackWorksWithProductionProfileAwareDetector() async throws {
+    let sourceURL = URL(string: "https://vortexscans.org/series/past-life-returner/chapter-170")!
+    let loader = AdjacentReaderSessionLoader(
+        detector: ProfileAwareChapterDetector(),
+        pageLoader: StubAdjacentPageLoader.analysis(
+            DetectionPageAnalysis(
+                pageURL: sourceURL,
+                title: "Past Life Returner Chapter 170",
+                documentHeight: 1_000,
+                viewportWidth: 390,
+                images: []
+            )
+        ),
+        htmlLoader: StubAdjacentHTMLLoader(html: vortexChapterHTML(pageNumberCount: 5))
+    )
+
+    let loaded = try await loader.loadAdjacentReaderSession(
+        from: sourceURL,
+        context: AdjacentReaderSessionLoadContext(currentSession: .sample, direction: .next)
+    )
+
+    #expect(loaded.sourceURL == sourceURL)
+    #expect(loaded.imageURLs.count == 5)
+}
+
+@MainActor
+@Test func adjacentLoaderExtractsStaticHTMLNavigationWhenLabelsContainIconEntities() async throws {
+    let sourceURL = URL(string: "https://vortexscans.org/series/past-life-returner/chapter-170")!
+    let loader = AdjacentReaderSessionLoader(
+        detector: GenericChapterDetector(),
+        pageLoader: StubAdjacentPageLoader.failure(URLError(.timedOut)),
+        htmlLoader: StubAdjacentHTMLLoader(
+            html: """
+            <html>
+              <head><title>Past Life Returner Chapter 170</title></head>
+              <body>
+                \(vortexImageTags(pageNumberCount: 5))
+                <nav aria-label="Chapter navigation">
+                  <a href="/series/past-life-returner/chapter-169"><span aria-hidden="true">&larr;</span>Prev</a>
+                  <a href="/series/past-life-returner/chapter-171">Next<span aria-hidden="true">&rarr;</span></a>
+                </nav>
+              </body>
+            </html>
+            """
+        )
+    )
+
+    let loaded = try await loader.loadAdjacentReaderSession(
+        from: sourceURL,
+        context: AdjacentReaderSessionLoadContext(currentSession: .sample, direction: .next)
+    )
+
+    #expect(loaded.previousChapter?.sourceURL == URL(string: "https://vortexscans.org/series/past-life-returner/chapter-169")!)
+    #expect(loaded.nextChapter?.sourceURL == URL(string: "https://vortexscans.org/series/past-life-returner/chapter-171")!)
+}
+
+@MainActor
 @Test func adjacentLoaderRejectsHighConfidenceBlankSession() async throws {
     let sourceURL = URL(string: "https://example.com/chapter-2")!
     var session = MockReaderSession.sample
@@ -122,13 +243,47 @@ private struct StubChapterDetector: ChapterPageDetecting {
 
 private enum StubAdjacentPageLoader: AdjacentChapterPageLoading {
     case analysis(DetectionPageAnalysis)
+    case failure(Error)
 
     func loadPageAnalysis(from url: URL) async throws -> DetectionPageAnalysis {
         switch self {
         case .analysis(let analysis):
             analysis
+        case .failure(let error):
+            throw error
         }
     }
+}
+
+private struct StubAdjacentHTMLLoader: AdjacentChapterHTMLLoading {
+    let html: String
+
+    func loadHTML(from url: URL) async throws -> String {
+        html
+    }
+}
+
+private func vortexChapterHTML(pageNumberCount: Int) -> String {
+    return """
+    <html>
+      <head><title>Past Life Returner Chapter 170</title></head>
+      <body>
+        \(vortexImageTags(pageNumberCount: pageNumberCount))
+        <nav aria-label="Chapter navigation">
+          <a href="/series/past-life-returner/chapter-169">Prev</a>
+          <a href="/series/past-life-returner/chapter-171">Next</a>
+        </nav>
+      </body>
+    </html>
+    """
+}
+
+private func vortexImageTags(pageNumberCount: Int) -> String {
+    (1...pageNumberCount).map { page in
+        """
+        <figure><img src="https://storage.vortexscans.org/upload/series/past-life-returner/chapter-170/page-\(String(format: "%04d", page)).webp" width="800" height="5000" alt="Past Life Returner Chapter 170 Page \(page)" class="h-auto w-full object-contain" data-reader-page-image data-reader-index="\(page - 1)"></figure>
+        """
+    }.joined(separator: "\n")
 }
 
 private extension DetectionPageAnalysis {

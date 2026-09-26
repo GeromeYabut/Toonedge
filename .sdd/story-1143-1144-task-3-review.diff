@@ -1,0 +1,2070 @@
+diff --git a/app/Sources/ToonEdgeAppCore/Features/Library/Views/LibraryView.swift b/app/Sources/ToonEdgeAppCore/Features/Library/Views/LibraryView.swift
+index dec5e3a..7c011c2 100644
+--- a/app/Sources/ToonEdgeAppCore/Features/Library/Views/LibraryView.swift
++++ b/app/Sources/ToonEdgeAppCore/Features/Library/Views/LibraryView.swift
+@@ -8,74 +8,87 @@ import AppKit
+ 
+ public struct LibraryView: View {
+     private let dependencies: AppDependencies
+     @Binding private var router: AppRouter
+     @State private var snapshot = LibrarySnapshot(series: [])
+     @State private var selectedSegment: LibrarySegment = .recent
+     @State private var selectedViewMode: LibraryViewMode
+     @State private var hasLoadedSnapshot = false
+     @State private var isRefreshingUpdates = false
+     @State private var refreshFeedback: LibraryRefreshFeedback?
+-    @State private var navigationPath: [UUID] = []
++    @State private var navigationPath: [LibrarySeriesDetailRoute] = []
++    @State private var seriesDetailCache: [UUID: SeriesDetailSnapshot] = [:]
+     private let libraryViewPreferences: LibraryViewPreferences
+ 
+     public init(dependencies: AppDependencies, router: Binding<AppRouter>) {
+         self.dependencies = dependencies
+         self._router = router
+         let preferences = LibraryViewPreferences()
+         self.libraryViewPreferences = preferences
+         self._selectedViewMode = State(initialValue: preferences.selectedViewMode)
+     }
+ 
+     public var body: some View {
+         NavigationStack(path: $navigationPath) {
+             ScrollView {
+                 VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
+                     LibraryFilterRow(selection: $selectedSegment)
+-                    summaryPill
+-                    LibraryViewModeControl(selection: $selectedViewMode)
++                    collectionControls
+                     content
+                 }
+                 .padding(ToonEdgeSpacing.large)
+             }
+             .overlay(alignment: .bottomTrailing) {
+                 floatingRefreshFeedback
+             }
+             .animation(.easeInOut(duration: 0.2), value: refreshFeedback)
+             .navigationTitle("Library")
+             .task {
+                 await reloadSnapshot()
+                 if let segment = router.consumePendingLibrarySegment() {
+                     selectedSegment = segment
+                 }
+                 if let seriesID = router.consumePendingLibrarySeriesID() {
+-                    navigationPath = [seriesID]
++                    navigationPath = [LibrarySeriesDetailRoute(seriesID: seriesID)]
+                 }
+             }
+             .onChange(of: router.pendingLibrarySegment) { _, pendingSegment in
+                 guard let pendingSegment else { return }
+                 selectedSegment = pendingSegment
+                 _ = router.consumePendingLibrarySegment()
+             }
+             .onChange(of: router.pendingLibrarySeriesID) { _, pendingSeriesID in
+                 guard let pendingSeriesID else { return }
+-                navigationPath = [pendingSeriesID]
++                navigationPath = [LibrarySeriesDetailRoute(seriesID: pendingSeriesID)]
+                 _ = router.consumePendingLibrarySeriesID()
+             }
+             .refreshable {
+                 await refreshUpdates()
+             }
+             .onChange(of: selectedViewMode) { _, mode in
+                 libraryViewPreferences.selectedViewMode = mode
+             }
+-            .navigationDestination(for: UUID.self) { seriesID in
+-                SeriesDetailView(seriesID: seriesID, dependencies: dependencies, router: $router)
++            .navigationDestination(for: LibrarySeriesDetailRoute.self) { route in
++                SeriesDetailView(
++                    seriesID: route.seriesID,
++                    seedSummary: route.seedSummary,
++                    cachedDetail: seriesDetailCache[route.seriesID],
++                    dependencies: dependencies,
++                    router: $router,
++                    onDetailHydrated: { hydratedDetail in
++                        if let hydratedDetail {
++                            seriesDetailCache[route.seriesID] = hydratedDetail
++                        } else {
++                            seriesDetailCache.removeValue(forKey: route.seriesID)
++                        }
++                    }
++                )
+             }
+             .toonEdgeScreen()
+         }
+     }
+ 
+     @ViewBuilder
+     private var floatingRefreshFeedback: some View {
+         if let refreshFeedback {
+             LibraryRefreshFeedbackView(layout: refreshFeedback.layout) {
+                 dismissRefreshFeedback()
+@@ -83,30 +96,29 @@ public struct LibraryView: View {
+             .padding(.horizontal, ToonEdgeSpacing.large)
+             .padding(.bottom, ToonEdgeSpacing.large)
+             .transition(.asymmetric(
+                 insertion: .move(edge: .bottom).combined(with: .opacity),
+                 removal: .opacity
+             ))
+             .zIndex(1)
+         }
+     }
+ 
+-    private var summaryPill: some View {
++    private var collectionControls: some View {
+         let visible = snapshot.series(for: selectedSegment)
+-        let layout = LibrarySummaryPillLayout(
+-            segment: selectedSegment,
++        let layout = LibraryCollectionControlsLayout(
+             visibleSeries: visible,
+             hasUpdateRefreshService: dependencies.updateRefreshService != nil,
+             isRefreshing: isRefreshingUpdates
+         )
+ 
+-        return LibrarySummaryPill(layout: layout) {
++        return LibraryCollectionControls(layout: layout, selection: $selectedViewMode) {
+             Task {
+                 await refreshUpdates()
+             }
+         }
+     }
+ 
+     private func reloadSnapshot() async {
+         snapshot = await dependencies.libraryService.librarySnapshot()
+         hasLoadedSnapshot = true
+     }
+@@ -136,52 +148,43 @@ public struct LibraryView: View {
+     }
+ 
+     @ViewBuilder
+     private var content: some View {
+         let visible = snapshot.series(for: selectedSegment)
+         let emptyLayout = LibraryEmptyStateLayout(hasLoadedSnapshot: hasLoadedSnapshot, visibleSeries: visible)
+ 
+         if emptyLayout.isVisible {
+             LibraryEmptyStateView(layout: emptyLayout)
+         } else {
++            let gridLayout = LibraryGridLayout(mode: selectedViewMode)
++
+             LazyVGrid(
+-                columns: [GridItem(.adaptive(minimum: gridMinimumWidth), spacing: ToonEdgeSpacing.medium)],
+-                spacing: ToonEdgeSpacing.medium
++                columns: gridLayout.columns,
++                spacing: gridLayout.itemSpacing
+             ) {
+                 ForEach(visible) { series in
+-                    NavigationLink(value: series.id) {
++                    NavigationLink(value: LibrarySeriesDetailRoute(summary: series)) {
+                         switch selectedViewMode {
+                         case .comfortable:
+                             SeriesCard(series: series, layout: .comfortable)
+                         case .compact:
+-                            SeriesCard(series: series, layout: .compact)
++                            SeriesCompactTile(series: series, layout: .compact)
+                         case .list:
+                             SeriesListRow(series: series)
+                         }
+                     }
+                     .buttonStyle(.plain)
+                 }
+             }
+         }
+     }
+ 
+-    private var gridMinimumWidth: CGFloat {
+-        switch selectedViewMode {
+-        case .comfortable:
+-            return 150
+-        case .compact:
+-            return 118
+-        case .list:
+-            return 320
+-        }
+-    }
+-
+     private func showRefreshFeedback(message: String) {
+         let feedback = LibraryRefreshFeedback(message: message)
+         refreshFeedback = feedback
+ 
+         Task { [feedbackID = feedback.id] in
+             try? await Task.sleep(for: .seconds(LibraryRefreshFeedbackLayout.autoDismissDelay))
+             if refreshFeedback?.id == feedbackID {
+                 refreshFeedback = nil
+             }
+         }
+@@ -197,42 +200,90 @@ struct LibraryHeaderLayout: Equatable, Sendable {
+     var contentTitle: String?
+     var toolbarRefreshIsAvailable: Bool
+ 
+     init(hasUpdateRefreshService: Bool) {
+         self.navigationTitle = "Library"
+         self.contentTitle = nil
+         self.toolbarRefreshIsAvailable = false
+     }
+ }
+ 
+-struct LibrarySummaryPillLayout: Equatable, Sendable {
+-    var title: String
+-    var message: String
++struct LibrarySeriesDetailRoute: Hashable, Sendable {
++    var seriesID: UUID
++    var seedSummary: LibrarySeriesSummary?
++
++    init(seriesID: UUID, seedSummary: LibrarySeriesSummary? = nil) {
++        self.seriesID = seriesID
++        self.seedSummary = seedSummary
++    }
++
++    init(summary: LibrarySeriesSummary) {
++        self.seriesID = summary.id
++        self.seedSummary = summary
++    }
++
++    static func == (lhs: LibrarySeriesDetailRoute, rhs: LibrarySeriesDetailRoute) -> Bool {
++        lhs.seriesID == rhs.seriesID
++    }
++
++    func hash(into hasher: inout Hasher) {
++        hasher.combine(seriesID)
++    }
++}
++
++struct LibraryCollectionControlsLayout: Equatable, Sendable {
+     var refreshButtonIsVisible: Bool
+     var refreshSystemImage: String
+     var refreshAccessibilityLabel: String
++    var countText: String
++    var usesLargeSummaryCard: Bool
+ 
+     init(
+-        segment: LibrarySegment,
+         visibleSeries: [LibrarySeriesSummary],
+         hasUpdateRefreshService: Bool,
+         isRefreshing: Bool
+     ) {
+-        let updateCount = visibleSeries.filter(\.hasUnreadUpdates).count
+-
+-        self.title = "\(segment.title) Library"
+-        self.message = updateCount > 0
+-            ? "\(updateCount) with new chapters"
+-            : "\(visibleSeries.count) saved \(visibleSeries.count == 1 ? "title" : "titles")"
+         self.refreshButtonIsVisible = hasUpdateRefreshService
+         self.refreshSystemImage = isRefreshing ? "hourglass" : "arrow.clockwise"
+         self.refreshAccessibilityLabel = "Check for new chapters"
++        self.countText = "\(visibleSeries.count) \(visibleSeries.count == 1 ? "title" : "titles")"
++        self.usesLargeSummaryCard = false
++    }
++}
++
++struct SeriesDetailSeedShellLayout: Equatable, Sendable {
++    var title: String
++    var metadata: String
++    var coverImageURL: URL?
++    var status: String
++    var hasUnreadUpdates: Bool
++    var showsLoadingBanner: Bool
++    var exposesContinueAction: Bool
++
++    init(summary: LibrarySeriesSummary) {
++        self.title = summary.title
++        self.metadata = "\(summary.sourceDomain) • \(summary.chapterSummaryText)"
++        self.coverImageURL = summary.coverImageURL
++        self.status = summary.libraryState.title
++        self.hasUnreadUpdates = summary.hasUnreadUpdates
++        self.showsLoadingBanner = false
++        self.exposesContinueAction = false
++    }
++}
++
++struct SeriesDetailCoverLayout: Equatable, Sendable {
++    var coverImageURL: URL?
++    var usesPlaceholder: Bool
++
++    init(coverImageURL: URL?) {
++        self.coverImageURL = coverImageURL
++        self.usesPlaceholder = coverImageURL == nil
+     }
+ }
+ 
+ struct LibraryRefreshFeedbackLayout: Equatable, Sendable {
+     static let autoDismissDelay = 5
+ 
+     var title: String
+     var message: String
+     var presentationStyle: LibraryRefreshFeedbackPresentationStyle
+     var overlayAlignment: LibraryRefreshFeedbackOverlayAlignment
+@@ -276,37 +327,96 @@ enum LibraryRefreshFeedbackAccentColorRole: Equatable, Sendable {
+ struct LibraryContentLayout: Equatable, Sendable {
+     var refreshFeedbackIsOverlay: Bool
+     var contentStartsWithSegmentedControl: Bool
+ 
+     init(refreshFeedback: LibraryRefreshFeedbackLayout?) {
+         self.refreshFeedbackIsOverlay = refreshFeedback?.presentationStyle == .floatingOverlay
+         self.contentStartsWithSegmentedControl = true
+     }
+ }
+ 
++struct LibraryGridLayout: Equatable, Sendable {
++    var columnStyle: LibraryGridColumnStyle
++    var itemSpacing: CGFloat
++    var horizontalContentPadding: CGFloat
++
++    init(mode: LibraryViewMode) {
++        switch mode {
++        case .comfortable:
++            self.columnStyle = .fixedCount(2)
++            self.itemSpacing = ToonEdgeSpacing.large
++            self.horizontalContentPadding = ToonEdgeSpacing.large
++        case .compact:
++            self.columnStyle = .fixedCount(4)
++            self.itemSpacing = ToonEdgeSpacing.small
++            self.horizontalContentPadding = ToonEdgeSpacing.medium
++        case .list:
++            self.columnStyle = .adaptiveMinimum(320)
++            self.itemSpacing = ToonEdgeSpacing.small
++            self.horizontalContentPadding = ToonEdgeSpacing.large
++        }
++    }
++
++    var columns: [GridItem] {
++        switch columnStyle {
++        case .fixedCount(let count):
++            return Array(
++                repeating: GridItem(.flexible(), spacing: itemSpacing, alignment: .top),
++                count: count
++            )
++        case .adaptiveMinimum(let minimum):
++            return [GridItem(.adaptive(minimum: minimum), spacing: itemSpacing, alignment: .top)]
++        }
++    }
++}
++
++enum LibraryGridColumnStyle: Equatable, Sendable {
++    case fixedCount(Int)
++    case adaptiveMinimum(CGFloat)
++}
++
++struct LibraryFilterChipLayout: Equatable, Sendable {
++    var cornerRadius: CGFloat
++    var usesCapsuleShape: Bool
++    var backgroundOpacity: Double
++
++    init(isSelected: Bool) {
++        self.cornerRadius = 8
++        self.usesCapsuleShape = false
++        self.backgroundOpacity = isSelected ? 1 : 0.72
++    }
++}
++
+ private struct LibraryFilterRow: View {
+     @Binding var selection: LibrarySegment
+ 
+     var body: some View {
+         ScrollView(.horizontal, showsIndicators: false) {
+             HStack(spacing: ToonEdgeSpacing.small) {
+                 ForEach(LibrarySegment.allCases) { segment in
+                     Button {
+                         selection = segment
+                     } label: {
++                        let layout = LibraryFilterChipLayout(isSelected: selection == segment)
++
+                         Text(segment.title)
+                             .font(ToonEdgeTypography.caption)
+                             .padding(.horizontal, ToonEdgeSpacing.medium)
+                             .padding(.vertical, ToonEdgeSpacing.small)
+-                            .background(selection == segment ? ToonEdgeColor.accentSoft : ToonEdgeColor.panel)
+-                            .clipShape(Capsule())
+-                            .overlay(Capsule().stroke(selection == segment ? ToonEdgeColor.accent.opacity(0.45) : ToonEdgeColor.border))
++                            .background(
++                                selection == segment ? ToonEdgeColor.accentSoft : ToonEdgeColor.panel.opacity(layout.backgroundOpacity),
++                                in: RoundedRectangle(cornerRadius: layout.cornerRadius)
++                            )
++                            .overlay(
++                                RoundedRectangle(cornerRadius: layout.cornerRadius)
++                                    .stroke(selection == segment ? ToonEdgeColor.accent.opacity(0.45) : ToonEdgeColor.border.opacity(0.5))
++                            )
+                     }
+                     .buttonStyle(.plain)
+                 }
+             }
+             .padding(.vertical, ToonEdgeSpacing.xsmall)
+         }
+     }
+ }
+ 
+ private struct LibraryViewModeControl: View {
+@@ -322,21 +432,21 @@ private struct LibraryViewModeControl: View {
+                         .frame(width: 34, height: 30)
+                         .background(selection == mode ? ToonEdgeColor.panel : Color.clear)
+                         .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+                 }
+                 .buttonStyle(.plain)
+                 .foregroundStyle(selection == mode ? ToonEdgeColor.textPrimary : ToonEdgeColor.textSecondary)
+                 .accessibilityLabel("\(mode.title) library view")
+             }
+         }
+         .padding(ToonEdgeSpacing.xsmall)
+-        .background(ToonEdgeColor.elevated, in: Capsule())
++        .background(ToonEdgeColor.elevated.opacity(0.72), in: RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+         .frame(maxWidth: .infinity, alignment: .trailing)
+     }
+ }
+ 
+ struct LibraryEmptyStateLayout: Equatable, Sendable {
+     var isVisible: Bool
+     var message: String
+     var imageName: String
+     var imageURL: URL?
+ 
+@@ -367,54 +477,47 @@ enum ToonEdgeAppCoreResources {
+ 
+ private struct LibraryRefreshFeedback: Equatable {
+     let id = UUID()
+     let layout: LibraryRefreshFeedbackLayout
+ 
+     init(message: String) {
+         self.layout = LibraryRefreshFeedbackLayout(message: message)
+     }
+ }
+ 
+-private struct LibrarySummaryPill: View {
+-    let layout: LibrarySummaryPillLayout
++private struct LibraryCollectionControls: View {
++    let layout: LibraryCollectionControlsLayout
++    @Binding var selection: LibraryViewMode
+     let refresh: () -> Void
+ 
+     var body: some View {
+-        HStack(spacing: ToonEdgeSpacing.medium) {
+-            Image(systemName: "books.vertical")
+-                .foregroundStyle(ToonEdgeColor.accent)
++        HStack(spacing: ToonEdgeSpacing.small) {
++            Text(layout.countText)
++                .font(ToonEdgeTypography.caption.weight(.semibold))
++                .foregroundStyle(ToonEdgeColor.textSecondary)
++                .lineLimit(1)
+ 
+-            VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+-                Text(layout.title)
+-                    .font(ToonEdgeTypography.sectionTitle)
+-                Text(layout.message)
+-                    .font(ToonEdgeTypography.caption)
+-                    .foregroundStyle(ToonEdgeColor.textSecondary)
+-            }
++            Spacer(minLength: ToonEdgeSpacing.small)
+ 
+-            Spacer(minLength: ToonEdgeSpacing.medium)
++            LibraryViewModeControl(selection: $selection)
+ 
+             if layout.refreshButtonIsVisible {
+                 Button(action: refresh) {
+                     Image(systemName: layout.refreshSystemImage)
+                         .frame(width: 36, height: 36)
+                         .contentTransition(.symbolEffect(.replace))
+                 }
+                 .buttonStyle(.plain)
+                 .disabled(layout.refreshSystemImage == "hourglass")
+                 .accessibilityLabel(layout.refreshAccessibilityLabel)
+             }
+         }
+-        .padding(.horizontal, ToonEdgeSpacing.large)
+-        .padding(.vertical, ToonEdgeSpacing.medium)
+-        .background(ToonEdgeColor.panel, in: Capsule())
+-        .overlay(Capsule().stroke(ToonEdgeColor.border))
+     }
+ }
+ 
+ private struct LibraryRefreshFeedbackView: View {
+     let layout: LibraryRefreshFeedbackLayout
+     let dismiss: () -> Void
+ 
+     var body: some View {
+         HStack(alignment: .center, spacing: ToonEdgeSpacing.small) {
+             Image(systemName: "arrow.clockwise")
+@@ -512,64 +615,52 @@ private struct LibraryMascotImage: View {
+ }
+ 
+ private struct SeriesCard: View {
+     let series: LibrarySeriesSummary
+     let layout: LibrarySeriesCardLayout
+     private var content: LibrarySeriesCardContent {
+         LibrarySeriesCardContent(series: series)
+     }
+ 
+     var body: some View {
+-        TECard {
+-            VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+-                coverSlot
+-
+-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+-                    HStack(alignment: .top, spacing: ToonEdgeSpacing.small) {
+-                        Text(series.title)
+-                            .font(ToonEdgeTypography.body.weight(.semibold))
+-                            .lineLimit(layout.titleLineLimit)
+-                            .multilineTextAlignment(.leading)
+-                            .frame(height: layout.titleHeight, alignment: .topLeading)
+-
+-                        Spacer(minLength: 0)
+-                    }
++        VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
++            coverSlot
+ 
+-                    Text(content.metadata)
+-                        .font(ToonEdgeTypography.caption)
+-                        .foregroundStyle(ToonEdgeColor.textSecondary)
+-                        .lineLimit(layout.metadataLineLimit)
+-                        .frame(height: layout.metadataHeight, alignment: .leading)
+-                }
++            Text(series.title)
++                .font(ToonEdgeTypography.body.weight(.semibold))
++                .lineLimit(layout.titleLineLimit)
++                .multilineTextAlignment(.leading)
++                .frame(height: layout.titleHeight, alignment: .topLeading)
+ 
+-                Spacer(minLength: 0)
++            Text(content.sourceMetadata)
++                .font(ToonEdgeTypography.caption)
++                .foregroundStyle(ToonEdgeColor.textSecondary)
++                .lineLimit(layout.metadataLineLimit)
++                .frame(height: layout.metadataHeight, alignment: .leading)
+ 
+-                ProgressView(value: series.progressPercent)
+-                    .tint(progressTint)
+-                    .frame(height: layout.progressHeight)
++            ProgressView(value: series.progressPercent)
++                .tint(progressTint)
++                .frame(height: layout.progressHeight)
+ 
+-                HStack(spacing: ToonEdgeSpacing.xsmall) {
+-                    if series.hasUnreadUpdates {
+-                        TEChip("New", isActive: true)
+-                    }
++            HStack(spacing: ToonEdgeSpacing.xsmall) {
++                if series.hasUnreadUpdates {
++                    TEChip("New", isActive: true)
++                }
+ 
+-                    if series.isCompleted {
+-                        TEChip("Complete")
+-                    } else if let latestChapterLabel = series.latestChapterLabel {
+-                        TEChip("Ch. \(latestChapterLabel)")
+-                    }
++                if let comfortableBadgeMetadata = content.comfortableBadgeMetadata {
++                    TEChip(comfortableBadgeMetadata)
+                 }
+-                .frame(height: layout.badgeRowHeight, alignment: .leading)
+             }
+-            .frame(maxHeight: .infinity, alignment: .top)
++            .frame(height: layout.badgeRowHeight, alignment: .leading)
+         }
+-        .frame(height: layout.fixedCardHeight)
++        .frame(height: layout.fixedCardHeight, alignment: .top)
++        .contentShape(Rectangle())
+     }
+ 
+     @ViewBuilder
+     private var coverSlot: some View {
+         if layout.coverSlotUsesFullCardWidth {
+             decoratedCover
+                 .frame(width: layout.coverImageWidth, height: layout.coverHeight)
+                 .frame(maxWidth: .infinity, minHeight: layout.coverSlotHeight, maxHeight: layout.coverSlotHeight, alignment: layout.coverImageAlignment.swiftUIAlignment)
+         } else {
+             decoratedCover
+@@ -588,40 +679,77 @@ private struct SeriesCard: View {
+             RoundedRectangle(cornerRadius: layout.cornerRadius)
+                 .stroke(ToonEdgeColor.border.opacity(0.65))
+         )
+     }
+ 
+     private var progressTint: Color {
+         series.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.accent
+     }
+ }
+ 
++private struct SeriesCompactTile: View {
++    let series: LibrarySeriesSummary
++    let layout: LibrarySeriesCardLayout
++    private var content: LibrarySeriesCardContent {
++        LibrarySeriesCardContent(series: series)
++    }
++
++    var body: some View {
++        VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
++            CachedCoverArtwork(url: series.coverImageURL) {
++                MissingCoverView(title: series.title)
++            }
++            .aspectRatio(1, contentMode: .fill)
++            .frame(maxWidth: .infinity)
++            .frame(height: layout.coverHeight)
++            .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
++            .overlay(
++                RoundedRectangle(cornerRadius: layout.cornerRadius)
++                    .stroke(ToonEdgeColor.border.opacity(0.45))
++            )
++
++            Text(series.title)
++                .font(ToonEdgeTypography.caption.weight(.semibold))
++                .lineLimit(1)
++                .frame(height: layout.titleHeight, alignment: .topLeading)
++
++            Text(content.compactMetadata)
++                .font(ToonEdgeTypography.caption)
++                .foregroundStyle(series.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.textSecondary)
++                .lineLimit(1)
++                .frame(height: layout.metadataHeight, alignment: .leading)
++        }
++        .frame(height: layout.fixedCardHeight, alignment: .top)
++        .contentShape(Rectangle())
++    }
++}
++
+ private struct SeriesListRow: View {
+     let series: LibrarySeriesSummary
+     private let layout = LibrarySeriesListRowLayout.default
+     private var content: LibrarySeriesCardContent {
+         LibrarySeriesCardContent(series: series)
+     }
+ 
+     var body: some View {
+         HStack(spacing: ToonEdgeSpacing.medium) {
+             CachedCoverArtwork(url: series.coverImageURL) {
+                 MissingCoverView(title: series.title)
+             }
+             .frame(width: layout.coverWidth, height: layout.coverHeight)
+             .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
+ 
+             VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+                 Text(series.title)
+                     .font(ToonEdgeTypography.body.weight(.semibold))
+                     .lineLimit(1)
+-                Text(content.metadata)
++                Text(content.listMetadata)
+                     .font(ToonEdgeTypography.caption)
+                     .foregroundStyle(ToonEdgeColor.textSecondary)
+                     .lineLimit(1)
+                 ProgressView(value: series.progressPercent)
+                     .tint(series.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.accent)
+                     .frame(height: 4)
+             }
+ 
+             Spacer(minLength: ToonEdgeSpacing.small)
+ 
+@@ -633,78 +761,146 @@ private struct SeriesListRow: View {
+         }
+         .padding(.vertical, ToonEdgeSpacing.small)
+         .padding(.horizontal, ToonEdgeSpacing.small)
+         .frame(height: layout.rowHeight)
+         .background(ToonEdgeColor.elevated.opacity(0.65), in: RoundedRectangle(cornerRadius: layout.cornerRadius))
+     }
+ }
+ 
+ struct LibrarySeriesCardContent: Equatable, Sendable {
+     var metadata: String
++    var compactMetadata: String
++    var sourceMetadata: String
++    var listMetadata: String
++    var comfortableBadgeMetadata: String?
+ 
+     init(series: LibrarySeriesSummary) {
+         if let currentChapterLabel = series.currentChapterLabel, !series.isCompleted {
+             self.metadata = "Continue Ch. \(currentChapterLabel)"
+         } else {
+             self.metadata = series.chapterSummaryText
+         }
++
++        if let currentChapterLabel = series.currentChapterLabel,
++           !series.isCompleted,
++           let chapterBadge = Self.chapterBadgeLabel(from: currentChapterLabel) {
++            self.compactMetadata = chapterBadge
++        } else if let latestChapterLabel = series.latestChapterLabel,
++                  let chapterBadge = Self.chapterBadgeLabel(from: latestChapterLabel) {
++            self.compactMetadata = chapterBadge
++        } else if let latestChapterLabel = series.latestChapterLabel {
++            self.compactMetadata = "Ch. \(latestChapterLabel)"
++        } else {
++            self.compactMetadata = series.chapterSummaryText
++        }
++
++        let sourceDomain = Self.normalizedDomain(series.sourceDomain)
++        if !sourceDomain.isEmpty {
++            self.sourceMetadata = sourceDomain
++        } else if let canonicalURL = series.canonicalURL {
++            let canonicalHost = Self.normalizedDomain(canonicalURL.host ?? "")
++            self.sourceMetadata = canonicalHost.isEmpty ? series.chapterSummaryText : canonicalHost
++        } else {
++            self.sourceMetadata = series.chapterSummaryText
++        }
++
++        if series.isCompleted {
++            self.comfortableBadgeMetadata = "Complete"
++        } else if let currentChapterLabel = series.currentChapterLabel,
++                  let chapterBadge = Self.chapterBadgeLabel(from: currentChapterLabel) {
++            self.comfortableBadgeMetadata = chapterBadge
++        } else if let latestChapterLabel = series.latestChapterLabel,
++                  let chapterBadge = Self.chapterBadgeLabel(from: latestChapterLabel) {
++            self.comfortableBadgeMetadata = chapterBadge
++        } else {
++            self.comfortableBadgeMetadata = nil
++        }
++
++        if let currentChapterLabel = series.currentChapterLabel, Self.isNumericChapterLabel(currentChapterLabel) {
++            self.listMetadata = "Ch. \(currentChapterLabel.trimmingCharacters(in: .whitespacesAndNewlines))"
++        } else if let latestChapterLabel = series.latestChapterLabel, Self.isNumericChapterLabel(latestChapterLabel) {
++            self.listMetadata = "Ch. \(latestChapterLabel.trimmingCharacters(in: .whitespacesAndNewlines))"
++        } else {
++            self.listMetadata = metadata
++        }
++    }
++
++    private static func normalizedDomain(_ domain: String) -> String {
++        domain.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
++    }
++
++    private static func chapterBadgeLabel(from label: String) -> String? {
++        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
++        guard isNumericChapterLabel(trimmed) else { return nil }
++        return "Ch. \(trimmed)"
++    }
++
++    private static func isNumericChapterLabel(_ label: String) -> Bool {
++        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
++        guard !trimmed.isEmpty else { return false }
++        let decimalParts = trimmed.split(separator: ".", omittingEmptySubsequences: false)
++        guard decimalParts.count == 1 || decimalParts.count == 2 else { return false }
++        return decimalParts.allSatisfy { part in !part.isEmpty && part.allSatisfy { character in character.isNumber } }
+     }
+ }
+ 
+ struct LibrarySeriesCardLayout: Equatable, Sendable {
+     var fixedCardHeight: CGFloat
+     var coverAspectRatio: CGFloat
+     var coverHeight: CGFloat
+     var coverSlotHeight: CGFloat
+     var coverImageAlignment: LibrarySeriesCardCoverAlignment
+     var coverSlotUsesFullCardWidth: Bool
+     var coverAppliesFrameBeforeDecoration: Bool
+     var titleLineLimit: Int
+     var titleHeight: CGFloat
+     var metadataLineLimit: Int
+     var metadataHeight: CGFloat
+     var progressHeight: CGFloat
+     var badgeRowHeight: CGFloat
+     var cornerRadius: CGFloat
++    var usesOuterCardContainer: Bool
+ 
+     static let comfortable = LibrarySeriesCardLayout(
+-        fixedCardHeight: 350,
++        fixedCardHeight: 286,
+         coverAspectRatio: 0.72,
+-        coverHeight: 180,
+-        coverSlotHeight: 180,
++        coverHeight: 190,
++        coverSlotHeight: 190,
+         coverImageAlignment: .center,
+         coverSlotUsesFullCardWidth: true,
+         coverAppliesFrameBeforeDecoration: true,
+         titleLineLimit: 2,
+-        titleHeight: 48,
++        titleHeight: 46,
+         metadataLineLimit: 1,
+         metadataHeight: 18,
+-        progressHeight: 8,
+-        badgeRowHeight: 32,
+-        cornerRadius: 6
++        progressHeight: 4,
++        badgeRowHeight: 24,
++        cornerRadius: 4,
++        usesOuterCardContainer: false
+     )
+ 
+     static let compact = LibrarySeriesCardLayout(
+-        fixedCardHeight: 272,
+-        coverAspectRatio: 0.72,
+-        coverHeight: 128,
+-        coverSlotHeight: 128,
++        fixedCardHeight: 142,
++        coverAspectRatio: 1,
++        coverHeight: 76,
++        coverSlotHeight: 76,
+         coverImageAlignment: .center,
+         coverSlotUsesFullCardWidth: true,
+         coverAppliesFrameBeforeDecoration: true,
+-        titleLineLimit: 2,
+-        titleHeight: 42,
++        titleLineLimit: 1,
++        titleHeight: 22,
+         metadataLineLimit: 1,
+         metadataHeight: 16,
+-        progressHeight: 6,
+-        badgeRowHeight: 28,
+-        cornerRadius: 5
++        progressHeight: 0,
++        badgeRowHeight: 0,
++        cornerRadius: 4,
++        usesOuterCardContainer: false
+     )
+ 
+     static let `default` = comfortable
+ 
+     func cardHeight(for series: LibrarySeriesSummary) -> CGFloat {
+         fixedCardHeight
+     }
+ 
+     var coverImageWidth: CGFloat {
+         coverHeight * coverAspectRatio
+@@ -714,21 +910,21 @@ struct LibrarySeriesCardLayout: Equatable, Sendable {
+ struct LibrarySeriesListRowLayout: Equatable, Sendable {
+     var rowHeight: CGFloat
+     var coverWidth: CGFloat
+     var coverHeight: CGFloat
+     var cornerRadius: CGFloat
+ 
+     static let `default` = LibrarySeriesListRowLayout(
+         rowHeight: 82,
+         coverWidth: 46,
+         coverHeight: 64,
+-        cornerRadius: 5
++        cornerRadius: 4
+     )
+ }
+ 
+ enum LibrarySeriesCardCoverAlignment: Equatable, Sendable {
+     case center
+ 
+     var swiftUIAlignment: Alignment {
+         switch self {
+         case .center:
+             return .center
+@@ -765,81 +961,133 @@ private struct MissingCoverView: View {
+             .prefix(2)
+             .compactMap(\.first)
+             .map(String.init)
+             .joined()
+             .uppercased()
+     }
+ }
+ 
+ private struct SeriesDetailView: View {
+     let seriesID: UUID
++    let seedSummary: LibrarySeriesSummary?
+     let dependencies: AppDependencies
++    let onDetailHydrated: @MainActor (SeriesDetailSnapshot?) -> Void
+     @Binding var router: AppRouter
+     @State private var detail: SeriesDetailSnapshot?
+     @State private var hasLoaded = false
+     @State private var hasAttemptedChapterIndexRefresh = false
+     @State private var cacheFeedback: CacheActionFeedback?
+     @State private var pendingSaveDetail: SeriesDetailSnapshot?
+     @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
+ 
++    init(
++        seriesID: UUID,
++        seedSummary: LibrarySeriesSummary? = nil,
++        cachedDetail: SeriesDetailSnapshot? = nil,
++        dependencies: AppDependencies,
++        router: Binding<AppRouter>,
++        onDetailHydrated: @escaping @MainActor (SeriesDetailSnapshot?) -> Void = { _ in }
++    ) {
++        self.seriesID = seriesID
++        self.seedSummary = seedSummary
++        self.dependencies = dependencies
++        self._router = router
++        self.onDetailHydrated = onDetailHydrated
++        self._detail = State(initialValue: cachedDetail)
++    }
++
+     var body: some View {
+-        ScrollViewReader { proxy in
+-            ScrollView {
+-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
+-                    if let detail {
+-                        header(detail)
+-                        cacheStatus
+-                        chapterToolbar(detail)
+-                        chapterList(detail)
+-                    } else if hasLoaded {
+-                        TEBanner(
+-                            title: "Series unavailable",
+-                            message: "This saved title could not be loaded from the mock repository.",
+-                            systemImage: "exclamationmark.triangle"
+-                        )
+-                    } else {
+-                        TEBanner(title: "Loading series", message: "Preparing chapter state.", systemImage: "hourglass")
+-                    }
++        content
++            .navigationTitle("")
++            .task {
++                await reloadDetail()
++            }
++            .task(id: detail?.id) {
++                guard detail != nil else { return }
++                await refreshChapterIndexIfAvailable()
++            }
++            .onChange(of: router.presentedReader) { oldValue, newValue in
++                guard oldValue != nil, newValue == nil else { return }
++                Task {
++                    await reloadDetail()
+                 }
++            }
++            .sheet(item: $pendingSaveDetail) { detail in
++                AddToLibraryStatePickerView(
++                    title: detail.title,
++                    selectedState: $saveState,
++                    context: .seriesDetail,
++                    confirm: { state in
++                        confirmSave(detail, state: state)
++                    },
++                    cancel: {
++                        pendingSaveDetail = nil
++                    }
++                )
++            }
++            .toonEdgeScreen()
++    }
++
++    @ViewBuilder
++    private var content: some View {
++        if let detail {
++            hydratedContent(detail)
++        } else if let seedSummary {
++            ScrollView {
++                seedShell(seedSummary)
++                    .padding(ToonEdgeSpacing.large)
++            }
++        } else if hasLoaded {
++            ScrollView {
++                TEBanner(
++                    title: "Series unavailable",
++                    message: "This saved title could not be loaded from the mock repository.",
++                    systemImage: "exclamationmark.triangle"
++                )
+                 .padding(ToonEdgeSpacing.large)
+             }
+-            .task(id: detail?.chapterListAnchorID) {
+-                guard let anchorID = detail?.chapterListAnchorID else { return }
+-                try? await Task.sleep(for: .milliseconds(100))
+-                proxy.scrollTo(anchorID, anchor: .center)
++        } else {
++            ScrollView {
++                TEBanner(title: "Loading series", message: "Preparing chapter state.", systemImage: "hourglass")
++                    .padding(ToonEdgeSpacing.large)
+             }
+         }
+-        .navigationTitle("")
+-        .task {
+-            await reloadDetail()
+-            await refreshChapterIndexIfAvailable()
+-        }
+-        .onChange(of: router.presentedReader) { oldValue, newValue in
+-            guard oldValue != nil, newValue == nil else { return }
+-            Task {
+-                await reloadDetail()
++    }
++
++    private func hydratedContent(_ detail: SeriesDetailSnapshot) -> some View {
++        VStack(alignment: .leading, spacing: 0) {
++            VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
++                header(detail)
++                cacheStatus
+             }
+-        }
+-        .sheet(item: $pendingSaveDetail) { detail in
+-            AddToLibraryStatePickerView(
+-                title: detail.title,
+-                selectedState: $saveState,
+-                context: .seriesDetail,
+-                confirm: { state in
+-                    confirmSave(detail, state: state)
+-                },
+-                cancel: {
+-                    pendingSaveDetail = nil
++            .padding(ToonEdgeSpacing.large)
++            .background(ToonEdgeColor.background)
++
++            Divider()
++                .overlay(ToonEdgeColor.border)
++
++            ScrollViewReader { proxy in
++                ScrollView {
++                    VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
++                        chapterToolbar(detail)
++                        chapterList(detail)
++                    }
++                    .padding(ToonEdgeSpacing.large)
++                    .padding(.bottom, ToonEdgeSpacing.large)
+                 }
+-            )
++                .task(id: detail.chapterListAnchorID) {
++                    guard let anchorID = detail.chapterListAnchorID else { return }
++                    try? await Task.sleep(for: .milliseconds(100))
++                    proxy.scrollTo(anchorID, anchor: .center)
++                }
++            }
+         }
+-        .toonEdgeScreen()
+     }
+ 
+     private func header(_ detail: SeriesDetailSnapshot) -> some View {
+         let layout = SeriesDetailHeaderLayout(snapshot: detail)
+         return VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
+             HStack(alignment: .top, spacing: ToonEdgeSpacing.medium) {
+                 cover(for: detail)
+                     .frame(width: 96, height: 132)
+ 
+                 VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+@@ -858,20 +1106,49 @@ private struct SeriesDetailView: View {
+                 }
+             }
+ 
+             TEButton(layout.primaryActionTitle, systemImage: "play.fill") {
+                 open(detail.primaryChapter)
+             }
+             .disabled(detail.primaryChapter == nil)
+         }
+     }
+ 
++    private func seedShell(_ summary: LibrarySeriesSummary) -> some View {
++        let layout = SeriesDetailSeedShellLayout(summary: summary)
++        return VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
++            HStack(alignment: .top, spacing: ToonEdgeSpacing.medium) {
++                CachedCoverArtwork(url: layout.coverImageURL) {
++                    MissingCoverView(title: layout.title)
++                }
++                .frame(width: 96, height: 132)
++                .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
++                .overlay(RoundedRectangle(cornerRadius: ToonEdgeRadius.small).stroke(ToonEdgeColor.border))
++
++                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
++                    HStack(spacing: ToonEdgeSpacing.small) {
++                        TEChip(layout.status, isActive: layout.hasUnreadUpdates)
++                        TEChip("Saved")
++                    }
++
++                    Text(layout.title)
++                        .font(ToonEdgeTypography.title)
++                        .fixedSize(horizontal: false, vertical: true)
++
++                    Text(layout.metadata)
++                        .font(ToonEdgeTypography.caption)
++                        .foregroundStyle(ToonEdgeColor.textSecondary)
++                }
++            }
++        }
++    }
++
+     @ViewBuilder
+     private var cacheStatus: some View {
+         if let cacheFeedback {
+             TEBanner(
+                 title: cacheFeedback.isFailure ? "Cache action failed" : "Cache updated",
+                 message: cacheFeedback.message,
+                 systemImage: cacheFeedback.isFailure ? "exclamationmark.triangle" : "checkmark.circle"
+             )
+         }
+     }
+@@ -943,26 +1220,29 @@ private struct SeriesDetailView: View {
+ 
+     private func cover(for detail: SeriesDetailSnapshot) -> some View {
+         CachedCoverArtwork(url: detail.coverImageURL) {
+             MissingCoverView(title: detail.title)
+         }
+         .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+         .overlay(RoundedRectangle(cornerRadius: ToonEdgeRadius.small).stroke(ToonEdgeColor.border))
+     }
+ 
+     private func reloadDetail() async {
+-        detail = await dependencies.libraryService.seriesDetail(for: seriesID)
++        let loadedDetail = await dependencies.libraryService.seriesDetail(for: seriesID)
++        detail = loadedDetail
+         hasLoaded = true
++        onDetailHydrated(loadedDetail)
+     }
+ 
+     private func refreshChapterIndexIfAvailable() async {
+         guard SeriesDetailRefreshBehavior.shouldAttemptRefresh(
++            detail: detail,
+             hasAttemptedChapterIndexRefresh: hasAttemptedChapterIndexRefresh,
+             chapterIndexRefreshService: dependencies.chapterIndexRefreshService
+         ) else {
+             return
+         }
+ 
+         hasAttemptedChapterIndexRefresh = true
+         let outcome = await dependencies.chapterIndexRefreshService?.refreshChapterIndex(for: seriesID)
+         if SeriesDetailRefreshBehavior.shouldReloadDetail(after: outcome) {
+             await reloadDetail()
+@@ -1042,43 +1322,142 @@ struct SeriesDetailHeaderLayout: Equatable, Sendable {
+     var primaryActionTitle: String
+ 
+     init(snapshot: SeriesDetailSnapshot) {
+         self.title = snapshot.title
+         self.metadata = "\(snapshot.sourceDomain) • \(snapshot.chaptersRead)/\(snapshot.totalKnownChapters ?? snapshot.chapters.count) chapters"
+         self.synopsisText = nil
+         self.primaryActionTitle = snapshot.primaryActionTitle
+     }
+ }
+ 
++struct SeriesDetailPageLayout: Equatable, Sendable {
++    enum StateKind: Equatable, Sendable {
++        case hydrated
++        case seeded
++        case loading
++        case unavailable
++    }
++
++    var stateKind: StateKind
++    var keepsHeaderFixed: Bool
++    var scrollsChaptersIndependently: Bool
++    var keepsPrimaryActionVisible: Bool
++
++    init(detail: SeriesDetailSnapshot?, seedSummary: LibrarySeriesSummary?, hasLoaded: Bool) {
++        if let detail {
++            self.stateKind = .hydrated
++            self.keepsHeaderFixed = true
++            self.scrollsChaptersIndependently = true
++            self.keepsPrimaryActionVisible = detail.primaryChapter != nil
++        } else if seedSummary != nil {
++            self.stateKind = .seeded
++            self.keepsHeaderFixed = true
++            self.scrollsChaptersIndependently = false
++            self.keepsPrimaryActionVisible = false
++        } else if hasLoaded {
++            self.stateKind = .unavailable
++            self.keepsHeaderFixed = false
++            self.scrollsChaptersIndependently = false
++            self.keepsPrimaryActionVisible = false
++        } else {
++            self.stateKind = .loading
++            self.keepsHeaderFixed = false
++            self.scrollsChaptersIndependently = false
++            self.keepsPrimaryActionVisible = false
++        }
++    }
++}
++
+ struct SeriesDetailChapterSectionLayout: Equatable, Sendable {
+     var showsSegmentedControl: Bool
+     var defaultMode: SeriesDetailChapterListMode
+ 
+     init() {
+         self.showsSegmentedControl = false
+         self.defaultMode = .all
+     }
+ }
+ 
+ struct SeriesDetailRefreshBehavior {
+     static func shouldAttemptRefresh(
++        detail: SeriesDetailSnapshot?,
+         hasAttemptedChapterIndexRefresh: Bool,
+         chapterIndexRefreshService: (any SeriesChapterIndexRefreshing)?
+     ) -> Bool {
+-        !hasAttemptedChapterIndexRefresh && chapterIndexRefreshService != nil
++        detail != nil && !hasAttemptedChapterIndexRefresh && chapterIndexRefreshService != nil
+     }
+ 
+     static func shouldReloadDetail(after outcome: ChapterIndexRefreshOutcome?) -> Bool {
+         outcome?.didRefresh == true
+     }
+ }
+ 
++struct SeriesDetailStartupPlan: Equatable, Sendable {
++    enum Phase: Equatable, Sendable {
++        case loadLocalDetail
++        case startBackgroundRefresh
++        case idle
++    }
++
++    var localDetailLoaded: Bool
++    var refreshAttempted: Bool
++
++    var nextPhase: Phase {
++        if !localDetailLoaded {
++            return .loadLocalDetail
++        }
++
++        if !refreshAttempted {
++            return .startBackgroundRefresh
++        }
++
++        return .idle
++    }
++}
++
++struct SeriesDetailEntryLayout: Equatable, Sendable {
++    enum VisibleState: Equatable, Sendable {
++        case hydratedDetail
++        case seededShell
++        case loading
++        case unavailable
++    }
++
++    var visibleState: VisibleState
++    var exposesContinueAction: Bool
++    var startsBackgroundRefresh: Bool
++
++    init(
++        cachedDetail: SeriesDetailSnapshot?,
++        seedSummary: LibrarySeriesSummary?,
++        hasLoaded: Bool
++    ) {
++        if let cachedDetail {
++            self.visibleState = .hydratedDetail
++            self.exposesContinueAction = cachedDetail.primaryChapter != nil
++            self.startsBackgroundRefresh = true
++        } else if seedSummary != nil {
++            self.visibleState = .seededShell
++            self.exposesContinueAction = false
++            self.startsBackgroundRefresh = false
++        } else if hasLoaded {
++            self.visibleState = .unavailable
++            self.exposesContinueAction = false
++            self.startsBackgroundRefresh = false
++        } else {
++            self.visibleState = .loading
++            self.exposesContinueAction = false
++            self.startsBackgroundRefresh = false
++        }
++    }
++}
++
+ private extension SeriesDetailSnapshot {
+     var libraryInput: LibrarySeriesInput {
+         LibrarySeriesInput(
+             id: id,
+             title: title,
+             canonicalURL: canonicalURL,
+             sourceDomain: sourceDomain,
+             coverImageURL: coverImageURL,
+             status: status,
+             synopsis: synopsis,
+diff --git a/app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift b/app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift
+index e1d3862..f665faf 100644
+--- a/app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift
++++ b/app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift
+@@ -68,66 +68,87 @@ import Testing
+ @Test func libraryHeaderLayoutUsesNavigationTitleWithoutToolbarRefresh() {
+     let refreshable = LibraryHeaderLayout(hasUpdateRefreshService: true)
+     let localOnly = LibraryHeaderLayout(hasUpdateRefreshService: false)
+ 
+     #expect(refreshable.navigationTitle == "Library")
+     #expect(refreshable.contentTitle == nil)
+     #expect(!refreshable.toolbarRefreshIsAvailable)
+     #expect(!localOnly.toolbarRefreshIsAvailable)
+ }
+ 
+-@Test func librarySummaryPillExposesRefreshOnlyWhenServiceExists() {
++@Test func libraryCollectionControlsKeepCountRefreshAndViewModesInline() {
++    let controls = LibraryCollectionControlsLayout(
++        visibleSeries: [
++            LibrarySeriesSummary.mock(title: "A"),
++            LibrarySeriesSummary.mock(title: "B"),
++            LibrarySeriesSummary.mock(title: "C"),
++            LibrarySeriesSummary.mock(title: "D")
++        ],
++        hasUpdateRefreshService: true,
++        isRefreshing: false
++    )
++
++    #expect(controls.countText == "4 titles")
++    #expect(controls.refreshButtonIsVisible)
++    #expect(controls.refreshSystemImage == "arrow.clockwise")
++    #expect(LibraryViewMode.allCases == [.comfortable, .compact, .list])
++    #expect(!controls.usesLargeSummaryCard)
++}
++
++@Test func libraryCollectionControlsExposeCountAndRefreshOnlyWhenServiceExists() {
+     let series = [
+         LibrarySeriesSummary.mock(title: "A"),
+         LibrarySeriesSummary.mock(title: "B")
+     ]
+ 
+-    let refreshable = LibrarySummaryPillLayout(
+-        segment: .reading,
++    let refreshable = LibraryCollectionControlsLayout(
+         visibleSeries: series,
+         hasUpdateRefreshService: true,
+         isRefreshing: false
+     )
+-    let localOnly = LibrarySummaryPillLayout(
+-        segment: .reading,
++    let localOnly = LibraryCollectionControlsLayout(
+         visibleSeries: series,
+         hasUpdateRefreshService: false,
+         isRefreshing: false
+     )
++    let singular = LibraryCollectionControlsLayout(
++        visibleSeries: [LibrarySeriesSummary.mock(title: "Only")],
++        hasUpdateRefreshService: true,
++        isRefreshing: false
++    )
+ 
+-    #expect(refreshable.title == "Reading Library")
+-    #expect(refreshable.message == "2 saved titles")
++    #expect(refreshable.countText == "2 titles")
++    #expect(singular.countText == "1 title")
+     #expect(refreshable.refreshButtonIsVisible)
+     #expect(!localOnly.refreshButtonIsVisible)
++    #expect(!refreshable.usesLargeSummaryCard)
+ }
+ 
+-@Test func librarySummaryPillUsesUpdateCountAndRefreshIconState() {
++@Test func libraryCollectionControlsUseRefreshIconStateWithoutUpdateSummaryCopy() {
+     let series = [
+         LibrarySeriesSummary.mock(title: "A", hasUnreadUpdates: true),
+         LibrarySeriesSummary.mock(title: "B", hasUnreadUpdates: false),
+         LibrarySeriesSummary.mock(title: "C", hasUnreadUpdates: true)
+     ]
+ 
+-    let idle = LibrarySummaryPillLayout(
+-        segment: .recent,
++    let idle = LibraryCollectionControlsLayout(
+         visibleSeries: series,
+         hasUpdateRefreshService: true,
+         isRefreshing: false
+     )
+-    let refreshing = LibrarySummaryPillLayout(
+-        segment: .recent,
++    let refreshing = LibraryCollectionControlsLayout(
+         visibleSeries: series,
+         hasUpdateRefreshService: true,
+         isRefreshing: true
+     )
+ 
+-    #expect(idle.message == "2 with new chapters")
++    #expect(idle.countText == "3 titles")
+     #expect(idle.refreshSystemImage == "arrow.clockwise")
+     #expect(refreshing.refreshSystemImage == "hourglass")
+     #expect(idle.refreshAccessibilityLabel == "Check for new chapters")
+ }
+ 
+ @Test func libraryRefreshFeedbackLayoutIsDismissibleAndAutoExpires() {
+     let layout = LibraryRefreshFeedbackLayout(message: "2 checked, 1 update")
+ 
+     #expect(layout.title == "Updated")
+     #expect(layout.message == "2 checked, 1 update")
+@@ -181,48 +202,412 @@ import Testing
+                 chapterLabel: "Chapter Scans",
+                 chapterNumber: 103,
+                 readState: .unread
+             )
+         ]
+     )
+ 
+     #expect(detail.primaryActionTitle == "Continue Chapter 102")
+ }
+ 
++@Test func seriesDetailPrimaryActionPrefersNextAfterLatestCompletedOverOlderUnfinishedChapter() {
++    let now = Date(timeIntervalSince1970: 1_700_000_000)
++    let detail = SeriesDetailSnapshot.mock(
++        chapters: [
++            ChapterSummary.mock(
++                chapterLabel: "103",
++                chapterNumber: 103,
++                readState: .read,
++                lastReadAt: now.addingTimeInterval(-30)
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "105",
++                chapterNumber: 105,
++                readState: .read,
++                lastReadAt: now
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "104",
++                chapterNumber: 104,
++                readState: .read,
++                lastReadAt: now.addingTimeInterval(-10)
++            ),
++            ChapterSummary.mock(
++                title: "The Extra’s Academy Survival Guide Chapter 102 - Read Online | Asura Scans",
++                chapterLabel: "Scans",
++                chapterNumber: nil,
++                readState: .inProgress(progressPercent: 0.0),
++                lastReadAt: now.addingTimeInterval(-60)
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "106",
++                chapterNumber: 106,
++                readState: .unread
++            )
++        ]
++    )
++
++    #expect(detail.primaryActionTitle == "Start Chapter 106")
++    #expect(detail.primaryChapter?.chapterLabel == "106")
++}
++
++@Test func seriesDetailPrimaryActionContinuesForwardInProgressChapterAfterLatestCompletedChapter() {
++    let now = Date(timeIntervalSince1970: 1_700_000_000)
++    let detail = SeriesDetailSnapshot.mock(
++        chapters: [
++            ChapterSummary.mock(
++                chapterLabel: "103",
++                chapterNumber: 103,
++                readState: .read,
++                lastReadAt: now.addingTimeInterval(-30)
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "105",
++                chapterNumber: 105,
++                readState: .read,
++                lastReadAt: now
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "106",
++                chapterNumber: 106,
++                readState: .inProgress(progressPercent: 0.25),
++                lastReadAt: now.addingTimeInterval(-10)
++            )
++        ]
++    )
++
++    #expect(detail.primaryActionTitle == "Continue Chapter 106")
++    #expect(detail.primaryChapter?.chapterLabel == "106")
++}
++
++@Test func seriesDetailPrimaryActionDoesNotReturnToOlderInProgressAfterLatestKnownChapterIsRead() {
++    let now = Date(timeIntervalSince1970: 1_700_000_000)
++    let detail = SeriesDetailSnapshot.mock(
++        chapters: [
++            ChapterSummary.mock(
++                title: "The Extra’s Academy Survival Guide Chapter 102 - Read Online | Asura Scans",
++                chapterLabel: "Scans",
++                chapterNumber: nil,
++                readState: .inProgress(progressPercent: 0.0),
++                lastReadAt: now.addingTimeInterval(-240)
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "103",
++                chapterNumber: 103,
++                readState: .read,
++                lastReadAt: now.addingTimeInterval(-180)
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "104",
++                chapterNumber: 104,
++                readState: .read,
++                lastReadAt: now.addingTimeInterval(-120)
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "105",
++                chapterNumber: 105,
++                readState: .read,
++                lastReadAt: now.addingTimeInterval(-60)
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "106",
++                chapterNumber: 106,
++                readState: .read,
++                lastReadAt: now
++            )
++        ]
++    )
++
++    #expect(detail.primaryActionTitle == "All Chapters Read")
++    #expect(detail.primaryChapter == nil)
++}
++
+ @Test func seriesDetailHeaderLayoutDoesNotExposeReaderOriginCopy() {
+     let detail = SeriesDetailSnapshot.mock(
+         synopsis: "Saved from Reader Mode.",
+         chapters: [ChapterSummary.mock(chapterLabel: "102")]
+     )
+ 
+     let layout = SeriesDetailHeaderLayout(snapshot: detail)
+ 
+     #expect(layout.title == "Moonlit Edge")
+     #expect(layout.synopsisText == nil)
+     #expect(!layout.metadata.contains("Saved from Reader Mode"))
+ }
+ 
+-@Test func seriesDetailRefreshBehaviorAttemptsOnlyWhenServiceExistsAndNotYetTried() {
++@Test func hydratedSeriesDetailLayoutKeepsHeaderFixedAndChaptersScrollable() {
++    let detail = SeriesDetailSnapshot.mock(
++        chapters: [
++            ChapterSummary.mock(chapterLabel: "100", readState: .read),
++            ChapterSummary.mock(chapterLabel: "101", readState: .unread)
++        ]
++    )
++
++    let layout = SeriesDetailPageLayout(detail: detail, seedSummary: nil, hasLoaded: true)
++
++    #expect(layout.stateKind == .hydrated)
++    #expect(layout.keepsHeaderFixed)
++    #expect(layout.scrollsChaptersIndependently)
++    #expect(layout.keepsPrimaryActionVisible)
++}
++
++@Test func seededSeriesDetailLayoutKeepsSeedHeaderVisibleWithoutChapterScroller() {
++    let summary = LibrarySeriesSummary.mock(title: "Past Life Returner")
++
++    let layout = SeriesDetailPageLayout(detail: nil, seedSummary: summary, hasLoaded: false)
++
++    #expect(layout.stateKind == .seeded)
++    #expect(layout.keepsHeaderFixed)
++    #expect(!layout.scrollsChaptersIndependently)
++    #expect(!layout.keepsPrimaryActionVisible)
++}
++
++@Test func nonHydratedSeriesDetailStatesDoNotCreateEmptyChapterScroller() {
++    let loading = SeriesDetailPageLayout(detail: nil, seedSummary: nil, hasLoaded: false)
++    let unavailable = SeriesDetailPageLayout(detail: nil, seedSummary: nil, hasLoaded: true)
++
++    #expect(loading.stateKind == .loading)
++    #expect(!loading.scrollsChaptersIndependently)
++    #expect(unavailable.stateKind == .unavailable)
++    #expect(!unavailable.scrollsChaptersIndependently)
++}
++
++@Test func librarySeriesDetailRouteIdentityUsesSeriesIDAndCarriesOptionalSeed() {
++    let seriesID = UUID(uuidString: "C8D607B4-91EC-4D18-B28B-0626E9A8C748")!
++    let firstSeed = LibrarySeriesSummary.mock(
++        id: seriesID,
++        title: "The Extra's Academy Survival Guide",
++        sourceDomain: "asurascans.com",
++        currentChapterLabel: "101"
++    )
++    let refreshedSeed = LibrarySeriesSummary.mock(
++        id: seriesID,
++        title: "The Extra's Academy Survival Guide | Asura Scans",
++        sourceDomain: "asurascans.com",
++        currentChapterLabel: "102"
++    )
++
++    let firstRoute = LibrarySeriesDetailRoute(seriesID: seriesID, seedSummary: firstSeed)
++    let refreshedRoute = LibrarySeriesDetailRoute(seriesID: seriesID, seedSummary: refreshedSeed)
++    let unseededRoute = LibrarySeriesDetailRoute(seriesID: seriesID, seedSummary: nil)
++
++    #expect(firstRoute == refreshedRoute)
++    #expect(firstRoute == unseededRoute)
++    #expect(firstRoute.seedSummary?.title == "The Extra's Academy Survival Guide")
++}
++
++@Test func librarySeriesDetailRouteUsesVisibleSeriesAsSeed() {
++    let summary = LibrarySeriesSummary.mock(
++        title: "The Extra's Academy Survival Guide",
++        sourceDomain: "asurascans.com"
++    )
++    let route = LibrarySeriesDetailRoute(summary: summary)
++
++    #expect(route.seriesID == summary.id)
++    #expect(route.seedSummary == summary)
++}
++
++@Test func seriesDetailSeedShellShowsLibrarySummaryWithoutContinueAction() {
++    let summary = LibrarySeriesSummary.mock(
++        title: "Past Life Returner",
++        sourceDomain: "vortexscans.org",
++        libraryState: .reading,
++        progressPercent: 0.48,
++        chaptersRead: 101,
++        totalKnownChapters: 200,
++        hasUnreadUpdates: false,
++        currentChapterLabel: "101"
++    )
++
++    let layout = SeriesDetailSeedShellLayout(summary: summary)
++
++    #expect(layout.title == "Past Life Returner")
++    #expect(layout.metadata == "vortexscans.org • 101/200 chapters")
++    #expect(layout.status == "Reading")
++    #expect(!layout.hasUnreadUpdates)
++    #expect(!layout.showsLoadingBanner)
++    #expect(!layout.exposesContinueAction)
++}
++
++@Test func seriesDetailSeedShellPreservesKnownLibraryCoverURL() {
++    let coverURL = URL(string: "https://asurascans.com/covers/extras-academy.jpg")!
++    let summary = LibrarySeriesSummary.mock(
++        title: "The Extra's Academy Survival Guide | Asura Scans",
++        sourceDomain: "asurascans.com",
++        coverImageURL: coverURL,
++        chaptersRead: 4,
++        totalKnownChapters: 122
++    )
++
++    let layout = SeriesDetailSeedShellLayout(summary: summary)
++    let cover = SeriesDetailCoverLayout(coverImageURL: layout.coverImageURL)
++
++    #expect(layout.coverImageURL == coverURL)
++    #expect(cover.coverImageURL == coverURL)
++    #expect(!cover.usesPlaceholder)
++}
++
++@Test func seededSeriesDetailUsesHydratedDetailForContinueAction() {
++    let summary = LibrarySeriesSummary.mock(
++        title: "Past Life Returner",
++        sourceDomain: "vortexscans.org",
++        chaptersRead: 101,
++        totalKnownChapters: 200,
++        currentChapterLabel: "101"
++    )
++    let chapter101 = ChapterSummary.mock(chapterLabel: "101", chapterNumber: 101, readState: .read)
++    let chapter102 = ChapterSummary.mock(chapterLabel: "102", chapterNumber: 102, readState: .unread)
++    let detail = SeriesDetailSnapshot.mock(chapters: [chapter101, chapter102])
++
++    let seedLayout = SeriesDetailSeedShellLayout(summary: summary)
++    let hydratedLayout = SeriesDetailHeaderLayout(snapshot: detail)
++
++    #expect(!seedLayout.exposesContinueAction)
++    #expect(hydratedLayout.primaryActionTitle == "Start Chapter 102")
++}
++
++@Test func hydratedSeriesDetailKeepsKnownCoverURLFromStoredDetail() {
++    let coverURL = URL(string: "https://asurascans.com/covers/extras-academy.jpg")!
++    let detail = SeriesDetailSnapshot.mock(
++        title: "The Extra's Academy Survival Guide | Asura Scans",
++        coverImageURL: coverURL,
++        chapters: [
++            ChapterSummary.mock(chapterLabel: "101", readState: .read),
++            ChapterSummary.mock(chapterLabel: "102", readState: .unread)
++        ]
++    )
++
++    let cover = SeriesDetailCoverLayout(coverImageURL: detail.coverImageURL)
++
++    #expect(cover.coverImageURL == coverURL)
++    #expect(!cover.usesPlaceholder)
++}
++
++@Test func seriesDetailRefreshBehaviorStartsOnlyAfterLocalDetailExists() {
++    let detail = SeriesDetailSnapshot.mock(
++        chapters: [
++            ChapterSummary.mock(chapterLabel: "106", readState: .read),
++            ChapterSummary.mock(chapterLabel: "107", readState: .unread)
++        ]
++    )
++
++    #expect(!SeriesDetailRefreshBehavior.shouldAttemptRefresh(
++        detail: nil,
++        hasAttemptedChapterIndexRefresh: false,
++        chapterIndexRefreshService: MockSeriesChapterIndexRefreshService()
++    ))
+     #expect(SeriesDetailRefreshBehavior.shouldAttemptRefresh(
++        detail: detail,
+         hasAttemptedChapterIndexRefresh: false,
+         chapterIndexRefreshService: MockSeriesChapterIndexRefreshService()
+     ))
+     #expect(!SeriesDetailRefreshBehavior.shouldAttemptRefresh(
++        detail: detail,
+         hasAttemptedChapterIndexRefresh: true,
+         chapterIndexRefreshService: MockSeriesChapterIndexRefreshService()
+     ))
+     #expect(!SeriesDetailRefreshBehavior.shouldAttemptRefresh(
++        detail: detail,
+         hasAttemptedChapterIndexRefresh: false,
+         chapterIndexRefreshService: nil
+     ))
+ }
+ 
++@Test func seriesDetailStartupKeepsLocalLoadAndBackgroundRefreshAsSeparatePhases() {
++    let plan = SeriesDetailStartupPlan(localDetailLoaded: false, refreshAttempted: false)
++    #expect(plan.nextPhase == .loadLocalDetail)
++
++    let loadedPlan = SeriesDetailStartupPlan(localDetailLoaded: true, refreshAttempted: false)
++    #expect(loadedPlan.nextPhase == .startBackgroundRefresh)
++
++    let refreshedPlan = SeriesDetailStartupPlan(localDetailLoaded: true, refreshAttempted: true)
++    #expect(refreshedPlan.nextPhase == .idle)
++}
++
++@Test func seriesDetailEntryUsesCachedHydratedDetailBeforeSeedShell() {
++    let detail = SeriesDetailSnapshot.mock(
++        chapters: [
++            ChapterSummary.mock(chapterLabel: "100", readState: .read),
++            ChapterSummary.mock(chapterLabel: "101", readState: .unread)
++        ]
++    )
++    let seed = LibrarySeriesSummary.mock(title: detail.title)
++
++    let layout = SeriesDetailEntryLayout(
++        cachedDetail: detail,
++        seedSummary: seed,
++        hasLoaded: false
++    )
++
++    #expect(layout.visibleState == .hydratedDetail)
++    #expect(layout.exposesContinueAction)
++    #expect(layout.startsBackgroundRefresh)
++}
++
++@Test func seriesDetailEntryIsActionableWhenLocalIndexHasNextChapter() {
++    let chapters = (1...200).map { number in
++        ChapterSummary.mock(
++            chapterLabel: "\(number)",
++            chapterNumber: Double(number),
++            readState: number <= 100 ? .read : .unread
++        )
++    }
++    let detail = SeriesDetailSnapshot.mock(chapters: chapters)
++
++    let layout = SeriesDetailEntryLayout(
++        cachedDetail: detail,
++        seedSummary: nil,
++        hasLoaded: false
++    )
++
++    #expect(detail.primaryActionTitle == "Start Chapter 101")
++    #expect(detail.primaryChapter?.chapterLabel == "101")
++    #expect(layout.visibleState == .hydratedDetail)
++    #expect(layout.exposesContinueAction)
++}
++
++@Test func seriesDetailEntryContinuesForwardInProgressChapterFromLocalIndex() {
++    let chapters = (1...200).map { number in
++        ChapterSummary.mock(
++            chapterLabel: "\(number)",
++            chapterNumber: Double(number),
++            readState: number < 100 ? .read : (number == 100 ? .inProgress(progressPercent: 0.42) : .unread)
++        )
++    }
++    let detail = SeriesDetailSnapshot.mock(chapters: chapters)
++
++    #expect(detail.primaryActionTitle == "Continue Chapter 100")
++    #expect(detail.primaryChapter?.chapterLabel == "100")
++}
++
++@Test func seriesDetailEntryCanShowAllReadWhileEdgeRefreshRunsInBackground() {
++    let chapters = (1...200).map { number in
++        ChapterSummary.mock(
++            chapterLabel: "\(number)",
++            chapterNumber: Double(number),
++            readState: .read
++        )
++    }
++    let detail = SeriesDetailSnapshot.mock(chapters: chapters)
++    let layout = SeriesDetailEntryLayout(
++        cachedDetail: detail,
++        seedSummary: nil,
++        hasLoaded: false
++    )
++
++    #expect(detail.primaryActionTitle == "All Chapters Read")
++    #expect(detail.primaryChapter == nil)
++    #expect(layout.visibleState == .hydratedDetail)
++    #expect(!layout.exposesContinueAction)
++    #expect(layout.startsBackgroundRefresh)
++}
++
+ @Test func seriesDetailRefreshBehaviorReloadsOnlyWhenRefreshActuallyMutatesLocalData() {
+     #expect(SeriesDetailRefreshBehavior.shouldReloadDetail(
+         after: ChapterIndexRefreshOutcome(
+             seriesID: UUID(),
+             indexedChapterCount: 12,
+             latestChapterLabel: "12",
+             hasUnreadUpdates: true,
+             didRefresh: true
+         )
+     ))
+@@ -350,20 +735,73 @@ import Testing
+ }
+ 
+ @Test func chapterRowStateExposesDistinctLabels() {
+     #expect(ChapterReadState.new.displayLabel == "New")
+     #expect(ChapterReadState.unread.displayLabel == "Unread")
+     #expect(ChapterReadState.inProgress(progressPercent: 0.4).displayLabel == "40%")
+     #expect(ChapterReadState.read.displayLabel == "Read")
+     #expect(ChapterSummary.mock(isDownloaded: true).downloadLabel == "Downloaded")
+ }
+ 
++@Test func homeReadingDashboardPrioritizesCurrentReadingAfterSearch() {
++    let layout = HomeDashboardLayout()
++
++    #expect(layout.contentPriority == [.search, .continueReading, .recentlyUpdated, .libraryPreview])
++    #expect(layout.searchPlacement == .compactCommandBar)
++    #expect(layout.refreshPlacement == .inlineStatus)
++    #expect(layout.usesCircularTopAccessoryButtons == false)
++}
++
++@Test func homeSearchEntryUsesRestrainedBrowserCommandBarStyling() {
++    let layout = HomeSearchEntryLayout()
++
++    #expect(layout.placeholder == "Search the web or paste a chapter link")
++    #expect(layout.height == 44)
++    #expect(layout.cornerRadius == 10)
++    #expect(layout.usesCapsuleShape == false)
++    #expect(layout.horizontalPadding == ToonEdgeSpacing.medium)
++}
++
++@Test func homeChromeUsesQuietDashboardControls() {
++    let accessory = HomeTopAccessoryLayout()
++    let status = HomeRefreshStatusLayout(message: "Checked 2, found 1 update.")
++
++    #expect(accessory.size == 40)
++    #expect(accessory.cornerRadius == 10)
++    #expect(accessory.usesCircleShape == false)
++    #expect(status.message == "Checked 2, found 1 update.")
++    #expect(status.cornerRadius == 10)
++    #expect(status.usesBannerContainer == false)
++}
++
++@Test func homeReadingDashboardCardsUseCoverFirstNativeLayouts() {
++    let featured = HomeSeriesCardLayout(style: .featured)
++    let compact = HomeSeriesCardLayout(style: .compact)
++
++    #expect(!featured.usesOuterCardContainer)
++    #expect(!compact.usesOuterCardContainer)
++    #expect(featured.coverWidth > compact.coverWidth)
++    #expect(featured.coverHeight > compact.coverHeight)
++    #expect(featured.progressHeight == 4)
++    #expect(compact.progressHeight == 0)
++    #expect(compact.titleLineLimit == 1)
++}
++
++@Test func homeReadingDashboardHeroHasProminentCurrentReadScale() {
++    let featured = HomeSeriesCardLayout(style: .featured)
++
++    #expect(featured.fixedHeight == 156)
++    #expect(featured.coverWidth == 92)
++    #expect(featured.coverHeight == 132)
++    #expect(featured.cornerRadius == 6)
++}
++
+ @Test func homeContinueReadingUsesRecentDistinctSeriesOrderingAndLimit() {
+     let now = Date(timeIntervalSince1970: 1_700_000_000)
+     let duplicateOlder = LibrarySeriesSummary.mock(
+         id: UUID(uuidString: "4B81C535-7563-4184-9975-09409E5B9876")!,
+         title: "A Recent",
+         canonicalURL: URL(string: "https://example.com/a")!,
+         lastReadAt: now.addingTimeInterval(-90),
+         currentChapterLabel: "4"
+     )
+     let duplicateNewer = LibrarySeriesSummary.mock(
+@@ -443,111 +881,230 @@ import Testing
+     )
+     let missingCurrentChapter = LibrarySeriesSummary.mock(
+         currentChapterLabel: nil
+     )
+ 
+     #expect(LibrarySeriesCardContent(series: inProgress).metadata == "Continue Ch. 237")
+     #expect(LibrarySeriesCardContent(series: completed).metadata == "100/100 chapters")
+     #expect(LibrarySeriesCardContent(series: missingCurrentChapter).metadata == "50/100 chapters")
+ }
+ 
++@Test func libraryCompactCardMetadataPrefersShortChapterLabel() {
++    let latest = LibrarySeriesSummary.mock(
++        currentChapterLabel: "3",
++        latestChapterLabel: "237"
++    )
++    let currentOnly = LibrarySeriesSummary.mock(
++        currentChapterLabel: "3",
++        latestChapterLabel: nil
++    )
++    let noChapter = LibrarySeriesSummary.mock(
++        currentChapterLabel: nil,
++        latestChapterLabel: nil
++    )
++    let noisyCurrentWithLatest = LibrarySeriesSummary.mock(
++        sourceDomain: "asurascans.com",
++        currentChapterLabel: "Scans",
++        latestChapterLabel: "16"
++    )
++
++    #expect(LibrarySeriesCardContent(series: latest).compactMetadata == "Ch. 3")
++    #expect(LibrarySeriesCardContent(series: currentOnly).compactMetadata == "Ch. 3")
++    #expect(LibrarySeriesCardContent(series: noChapter).compactMetadata == "50/100 chapters")
++    #expect(LibrarySeriesCardContent(series: noisyCurrentWithLatest).compactMetadata == "Ch. 16")
++}
++
++@Test func libraryComfortableCardMetadataShowsSourceWebsite() {
++    let asura = LibrarySeriesSummary.mock(
++        title: "The Regressed Mercenary",
++        sourceDomain: "asurascans.com",
++        canonicalURL: URL(string: "https://asurascans.com/comics/the-regressed-mercenarys-machinations-a80d257e/chapter/16")!,
++        currentChapterLabel: "Scans",
++        latestChapterLabel: "16"
++    )
++
++    #expect(LibrarySeriesCardContent(series: asura).sourceMetadata == "asurascans.com")
++}
++
++@Test func libraryComfortableCardBadgePrefersCurrentChapterOverLatestChapter() {
++    let inProgress = LibrarySeriesSummary.mock(
++        currentChapterLabel: "102",
++        latestChapterLabel: "237"
++    )
++    let planned = LibrarySeriesSummary.mock(
++        currentChapterLabel: nil,
++        latestChapterLabel: "237"
++    )
++    let completed = LibrarySeriesSummary.mock(
++        progressPercent: 1,
++        currentChapterLabel: "102",
++        latestChapterLabel: "237"
++    )
++
++    #expect(LibrarySeriesCardContent(series: inProgress).comfortableBadgeMetadata == "Ch. 102")
++    #expect(LibrarySeriesCardContent(series: planned).comfortableBadgeMetadata == "Ch. 237")
++    #expect(LibrarySeriesCardContent(series: completed).comfortableBadgeMetadata == "Complete")
++}
++
++@Test func libraryListMetadataPrefersNumericChapterLabelOverNoisyCurrentLabel() {
++    let noisyCurrent = LibrarySeriesSummary.mock(
++        sourceDomain: "asurascans.com",
++        currentChapterLabel: "Scans",
++        latestChapterLabel: "16"
++    )
++    let numericCurrent = LibrarySeriesSummary.mock(
++        currentChapterLabel: "237",
++        latestChapterLabel: "300"
++    )
++
++    #expect(LibrarySeriesCardContent(series: noisyCurrent).listMetadata == "Ch. 16")
++    #expect(LibrarySeriesCardContent(series: numericCurrent).listMetadata == "Ch. 237")
++}
++
+ @Test func libraryViewModePreferencesPersistSelectedDensity() {
+     let suiteName = "ToonEdgeLibraryViewMode-\(UUID().uuidString)"
+     let defaults = UserDefaults(suiteName: suiteName)!
+     defaults.removePersistentDomain(forName: suiteName)
+     let preferences = LibraryViewPreferences(userDefaults: defaults)
+ 
+     #expect(preferences.selectedViewMode == .comfortable)
+ 
+     preferences.selectedViewMode = .list
+     #expect(LibraryViewPreferences(userDefaults: defaults).selectedViewMode == .list)
+ 
+     preferences.selectedViewMode = .compact
+     #expect(LibraryViewPreferences(userDefaults: defaults).selectedViewMode == .compact)
+ 
+     defaults.removePersistentDomain(forName: suiteName)
+ }
+ 
++@Test func libraryNativeCollectionLayoutsUseDistinctGridDensity() {
++    let comfortableGrid = LibraryGridLayout(mode: .comfortable)
++    let compactGrid = LibraryGridLayout(mode: .compact)
++    let listGrid = LibraryGridLayout(mode: .list)
++
++    #expect(comfortableGrid.columnStyle == .fixedCount(2))
++    #expect(compactGrid.columnStyle == .fixedCount(4))
++    #expect(listGrid.columnStyle == .adaptiveMinimum(320))
++    #expect(compactGrid.itemSpacing < comfortableGrid.itemSpacing)
++    #expect(compactGrid.horizontalContentPadding <= comfortableGrid.horizontalContentPadding)
++}
++
++@Test func libraryGridCardsAvoidOuterGeneratedCardContainer() {
++    #expect(!LibrarySeriesCardLayout.comfortable.usesOuterCardContainer)
++    #expect(!LibrarySeriesCardLayout.compact.usesOuterCardContainer)
++    #expect(LibrarySeriesCardLayout.compact.fixedCardHeight <= 150)
++    #expect(LibrarySeriesCardLayout.compact.coverAspectRatio == 1)
++    #expect(LibrarySeriesCardLayout.compact.titleLineLimit == 1)
++    #expect(LibrarySeriesCardLayout.compact.progressHeight == 0)
++    #expect(LibrarySeriesCardLayout.compact.badgeRowHeight == 0)
++}
++
+ @Test func libraryViewModesExposeIncreasingDensityLayouts() {
+     #expect(LibraryViewMode.allCases == [.comfortable, .compact, .list])
+     #expect(LibraryViewMode.comfortable.title == "Comfortable")
+     #expect(LibraryViewMode.compact.title == "Compact")
+     #expect(LibraryViewMode.list.title == "List")
+ 
+     let comfortable = LibrarySeriesCardLayout.comfortable
+     let compact = LibrarySeriesCardLayout.compact
+     let list = LibrarySeriesListRowLayout.default
+ 
+     #expect(compact.fixedCardHeight < comfortable.fixedCardHeight)
+     #expect(compact.coverHeight < comfortable.coverHeight)
+     #expect(compact.cornerRadius <= comfortable.cornerRadius)
+     #expect(list.rowHeight < compact.fixedCardHeight)
+     #expect(list.cornerRadius <= compact.cornerRadius)
+ }
+ 
++@Test func libraryChromeUsesRestrainedNativeCollectionStyling() {
++    let filter = LibraryFilterChipLayout(isSelected: true)
++    let inactiveFilter = LibraryFilterChipLayout(isSelected: false)
++    let controls = LibraryCollectionControlsLayout(
++        visibleSeries: [LibrarySeriesSummary.mock()],
++        hasUpdateRefreshService: true,
++        isRefreshing: false
++    )
++
++    #expect(filter.cornerRadius == 8)
++    #expect(inactiveFilter.cornerRadius == 8)
++    #expect(filter.usesCapsuleShape == false)
++    #expect(!controls.usesLargeSummaryCard)
++}
++
+ @Test func addToLibraryStatePickerDefaultsByOriginAndAllowsOverride() {
+     #expect(AddToLibraryStatePickerModel.defaultState(for: .reader) == .reading)
+     #expect(AddToLibraryStatePickerModel.defaultState(for: .browser) == .planned)
+     #expect(AddToLibraryStatePickerModel.defaultState(for: .seriesDetail) == .planned)
+     #expect(AddToLibraryStatePickerModel.availableStates == [.reading, .planned, .dropped, .completed])
+ 
+     var model = AddToLibraryStatePickerModel(title: "Moonlit Edge", context: .reader)
+     #expect(model.selectedState == .reading)
+ 
+     model.select(.dropped)
+     #expect(model.selectedState == .dropped)
+ }
+ 
+ private extension LibrarySeriesSummary {
+     static func mock(
+         id: UUID = UUID(),
+         title: String = "Moonlit Edge",
++        sourceDomain: String = "example.com",
+         canonicalURL: URL? = nil,
++        coverImageURL: URL? = nil,
+         libraryState: LibraryCollectionState = .reading,
+         progressPercent: Double = 0.5,
++        chaptersRead: Int? = nil,
++        totalKnownChapters: Int? = nil,
+         hasUnreadUpdates: Bool = false,
+         lastReadAt: Date? = Date(timeIntervalSince1970: 1_700_000_000),
+         currentChapterLabel: String? = "42",
+         latestChapterLabel: String? = "100"
+     ) -> LibrarySeriesSummary {
+         LibrarySeriesSummary(
+             id: id,
+             title: title,
+-            sourceDomain: "example.com",
++            sourceDomain: sourceDomain,
+             canonicalURL: canonicalURL,
+-            coverImageURL: nil,
++            coverImageURL: coverImageURL,
+             progressPercent: progressPercent,
+-            chaptersRead: Int(progressPercent * 100),
+-            totalKnownChapters: 100,
++            chaptersRead: chaptersRead ?? Int(progressPercent * 100),
++            totalKnownChapters: totalKnownChapters ?? 100,
+             lastReadAt: lastReadAt,
+             libraryState: libraryState,
+             hasUnreadUpdates: hasUnreadUpdates,
+             isCompleted: progressPercent >= 1,
+             latestChapterLabel: latestChapterLabel,
+             currentChapterLabel: currentChapterLabel
+         )
+     }
+ }
+ 
+ private extension SeriesDetailSnapshot {
+-    static func mock(synopsis: String = "A compact mock synopsis.", chapters: [ChapterSummary]) -> SeriesDetailSnapshot {
++    static func mock(
++        title: String = "Moonlit Edge",
++        synopsis: String = "A compact mock synopsis.",
++        sourceDomain: String = "example.com",
++        coverImageURL: URL? = nil,
++        chapters: [ChapterSummary]
++    ) -> SeriesDetailSnapshot {
+         SeriesDetailSnapshot(
+             id: UUID(),
+-            title: "Moonlit Edge",
++            title: title,
+             status: "Ongoing",
+             synopsis: synopsis,
+-            sourceDomain: "example.com",
+-            coverImageURL: nil,
++            sourceDomain: sourceDomain,
++            coverImageURL: coverImageURL,
+             isSaved: true,
+             libraryState: .reading,
+             progressPercent: 0.35,
+-            chaptersRead: 12,
++            chaptersRead: chapters.filter { $0.readState == .read }.count,
+             totalKnownChapters: chapters.count,
+             hasUnreadUpdates: chapters.contains { $0.readState == .new },
+             chapters: chapters
+         )
+     }
+ }
+ 
+ private extension ChapterSummary {
+     static func mock(
+         title: String? = nil,

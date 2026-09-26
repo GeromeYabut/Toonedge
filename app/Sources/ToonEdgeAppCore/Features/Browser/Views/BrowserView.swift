@@ -9,12 +9,18 @@ public struct BrowserView: View {
 
     public init(
         startPoint: BrowserStartPoint,
+        readerLaunchOriginOverride: ReaderLaunchOrigin? = nil,
         dependencies: AppDependencies,
         router: Binding<AppRouter>
     ) {
         self.dependencies = dependencies
         self._router = router
-        self._viewModel = StateObject(wrappedValue: BrowserViewModel(startPoint: startPoint))
+        self._viewModel = StateObject(
+            wrappedValue: BrowserViewModel(
+                startPoint: startPoint,
+                readerLaunchOriginOverride: readerLaunchOriginOverride
+            )
+        )
     }
 
     public var body: some View {
@@ -28,9 +34,12 @@ public struct BrowserView: View {
                     adjacentLoader: dependencies.adjacentReaderSessionLoader,
                     progressRepository: dependencies.readerProgressRepository,
                     cacheMetadataManager: dependencies.cacheMetadataService,
+                    chapterAssetCache: dependencies.chapterAssetCache,
+                    chapterAssetRetainer: dependencies.chapterAssetRetainer,
                     recentReadingRecorder: dependencies.recentReadingRecorder,
                     seriesMetadataService: dependencies.seriesMetadataService,
                     libraryLifecycleService: dependencies.libraryLifecycleService,
+                    settingsManager: dependencies.settingsService,
                     dismissAction: {
                         viewModel.dismissBrowserOwnedReader()
                     },
@@ -38,8 +47,15 @@ public struct BrowserView: View {
                         viewModel.dismissBrowserOwnedReader()
                     },
                     backAction: {
-                        viewModel.dismissBrowserOwnedReader()
-                        viewModel.load(session.seriesURL)
+                        switch BrowserOwnedReaderBackRoute(session: session).apply(to: &router) {
+                        case .handledByRouter:
+                            viewModel.dismissBrowserOwnedReader()
+                        case .showBrowserSeriesPage(let seriesURL):
+                            viewModel.dismissBrowserOwnedReader()
+                            viewModel.load(seriesURL)
+                        case .dismissReaderOnly:
+                            viewModel.dismissBrowserOwnedReader()
+                        }
                     },
                     navigateAdjacentChapterAction: { chapter in
                         viewModel.load(chapter.sourceURL)
@@ -59,6 +75,9 @@ public struct BrowserView: View {
         .onChange(of: viewModel.pendingReaderSession) { _, session in
             guard let session else { return }
             viewModel.presentPendingReaderInsideBrowser(session)
+            if viewModel.browserOwnedReaderSession != nil {
+                router.clearPresentedBrowserReaderLaunchOrigin()
+            }
         }
         .sheet(item: $pendingLibrarySaveSession) { session in
             AddToLibraryStatePickerView(
@@ -96,6 +115,10 @@ public struct BrowserView: View {
 
                 if viewModel.showsCleanModeCTA {
                     cleanModeBanner
+                        .padding(.horizontal, ToonEdgeSpacing.medium)
+                        .padding(.top, ToonEdgeSpacing.medium)
+                } else if let message = viewModel.readerUnavailableMessage {
+                    TEBanner(title: "Original page available", message: message, systemImage: "globe")
                         .padding(.horizontal, ToonEdgeSpacing.medium)
                         .padding(.top, ToonEdgeSpacing.medium)
                 }
@@ -289,6 +312,36 @@ public struct BrowserView: View {
                 ),
                 context: .browser
             )
+        }
+    }
+}
+
+public enum BrowserOwnedReaderBackResolution: Equatable, Sendable {
+    case handledByRouter
+    case showBrowserSeriesPage(URL)
+    case dismissReaderOnly
+}
+
+public struct BrowserOwnedReaderBackRoute: Equatable, Sendable {
+    public var session: MockReaderSession
+
+    public init(session: MockReaderSession) {
+        self.session = session
+    }
+
+    @discardableResult
+    public func apply(to router: inout AppRouter) -> BrowserOwnedReaderBackResolution {
+        switch session.launchOrigin {
+        case .library(let seriesID):
+            router.openLibraryDetail(seriesID: seriesID)
+            return .handledByRouter
+        case .homeContinueReading:
+            router.openHomeRoot()
+            return .handledByRouter
+        case .browser:
+            return .showBrowserSeriesPage(session.seriesURL)
+        case .direct:
+            return .dismissReaderOnly
         }
     }
 }

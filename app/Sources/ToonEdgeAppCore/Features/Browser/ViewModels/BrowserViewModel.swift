@@ -37,13 +37,17 @@ public final class BrowserViewModel: ObservableObject {
     @Published public private(set) var pendingCommand: BrowserCommand?
     @Published public private(set) var detectionResult: DetectionResult?
     @Published public private(set) var showsCleanModeCTA: Bool
+    @Published public private(set) var readerUnavailableMessage: String?
     @Published public private(set) var pendingReaderSession: MockReaderSession?
     @Published public private(set) var browserOwnedReaderSession: MockReaderSession?
     private let readerPresentationLogger: any BrowserReaderPresentationLogging
+    private var pendingReaderLaunchOriginOverride: ReaderLaunchOrigin?
+    private let readerLaunchOriginOverrideSourceURL: URL?
 
     public init(
         startPoint: BrowserStartPoint,
-        readerPresentationLogger: any BrowserReaderPresentationLogging = OSLogBrowserReaderPresentationLogger()
+        readerPresentationLogger: any BrowserReaderPresentationLogging = OSLogBrowserReaderPresentationLogger(),
+        readerLaunchOriginOverride: ReaderLaunchOrigin? = nil
     ) {
         self.startPoint = startPoint
         self.initialRequest = BrowserRequest(startPoint: startPoint)
@@ -54,9 +58,12 @@ public final class BrowserViewModel: ObservableObject {
         self.isLoading = false
         self.detectionResult = nil
         self.showsCleanModeCTA = false
+        self.readerUnavailableMessage = nil
         self.pendingReaderSession = nil
         self.browserOwnedReaderSession = nil
         self.readerPresentationLogger = readerPresentationLogger
+        self.pendingReaderLaunchOriginOverride = readerLaunchOriginOverride
+        self.readerLaunchOriginOverrideSourceURL = initialRequest?.url
     }
 
     public var addressDisplay: String {
@@ -123,10 +130,12 @@ public final class BrowserViewModel: ObservableObject {
         detectionResult = nil
         showsCleanModeCTA = false
         pendingReaderSession = nil
+        readerUnavailableMessage = nil
     }
 
     public func handleDetectionResult(_ result: DetectionResult) {
         detectionResult = result
+        readerUnavailableMessage = nil
 
         switch result.confidence {
         case .high:
@@ -140,6 +149,13 @@ public final class BrowserViewModel: ObservableObject {
         case .low:
             showsCleanModeCTA = false
         }
+    }
+
+    public func handleUnreadableDetectionResult(_ result: DetectionResult) {
+        detectionResult = result
+        showsCleanModeCTA = false
+        pendingReaderSession = nil
+        readerUnavailableMessage = "Clean Reader could not load this page. Continue on the original site."
     }
 
     public func enterCleanModeManually() {
@@ -163,7 +179,8 @@ public final class BrowserViewModel: ObservableObject {
             return
         }
 
-        browserOwnedReaderSession = session
+        browserOwnedReaderSession = readerSessionPreparedForBrowserPresentation(session)
+        pendingReaderLaunchOriginOverride = nil
         clearPendingReaderSession(session)
         readerPresentationLogger.log(.browserOwnedReaderVisible)
     }
@@ -189,5 +206,16 @@ public final class BrowserViewModel: ObservableObject {
 
     private func isViableReaderSession(_ session: MockReaderSession) -> Bool {
         !session.imageURLs.isEmpty
+    }
+
+    private func readerSessionPreparedForBrowserPresentation(_ session: MockReaderSession) -> MockReaderSession {
+        guard let override = pendingReaderLaunchOriginOverride,
+              session.sourceURL == readerLaunchOriginOverrideSourceURL else {
+            return session
+        }
+
+        var preparedSession = session
+        preparedSession.launchOrigin = override
+        return preparedSession
     }
 }

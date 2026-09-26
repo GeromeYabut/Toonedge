@@ -1,0 +1,321 @@
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:2:import Testing
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:5:@Test func directURLStartPointBuildsInitialBrowserRequest() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:12:@Test func queryStartPointBuildsSearchResultsRequest() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:21:@Test func browserViewModelTracksNavigationState() {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:39:@Test func detectedSessionLibraryInputUsesExplicitSaveState() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:57:@Test func browserViewModelCanLoadExplicitURLIntoExistingBrowser() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:67:@Test func browserOwnsDetectedReaderPresentationWithoutChangingAppShellReader() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:99:@Test func dismissingBrowserOwnedReaderKeepsBrowserPresented() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:121:@Test func browserReaderPresentationStateTracksPendingAndVisibleReader() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:150:@Test func browserReaderPresentationAppliesLibraryLaunchOriginOverrideForInitialURL() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:181:@Test func browserOwnedReaderBackFromLibraryOriginReturnsToSeriesDetail() {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:196:@Test func browserReaderPresentationKeepsBrowserOriginWithoutOverride() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:223:@Test func browserReaderLaunchOriginOverrideDoesNotApplyToDifferentURL() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:275:@Test func browserReaderLaunchOriginOverrideIsConsumedAfterVisibleReaderPresentation() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:307:@Test func browserReaderLaunchOriginOverrideDoesNotPromoteLowConfidenceDetection() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:339:@Test func browserDoesNotPresentEmptyReaderSession() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:367:@Test func browserReaderPresentationLogsPendingAndVisibleTransitions() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:396:@Test func detectedSessionLibraryInputUsesCanonicalSeriesURLAndNumericChapterLabel() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:416:@Test func homeContinueReadingNavigationDoesNotFallbackToMockExampleDomain() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:438:@Test func viewOriginalPageKeepsExistingBrowserStateWhenReaderWasOpenedAboveBrowser() {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:450:@Test func browserDetectionRetryPolicyAllowsOnlyOneFollowUpPerURL() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:465:@Test func browserPopupPolicyBlocksThirdPartyTargetWindowPopups() throws {
+app/Tests/ToonEdgeAppCoreTests/BrowserExperienceTests.swift:475:@Test func browserPageSanitizerScriptSuppressesCommonAdAndPopupSurfaces() {
+app/Tests/ToonEdgeAppCoreTests/CacheStorageTests.swift:2:import Testing
+app/Tests/ToonEdgeAppCoreTests/CacheStorageTests.swift:5:@Test func fileBackedCacheMapsSourceURLToDeterministicChapterDirectory() throws {
+app/Tests/ToonEdgeAppCoreTests/CacheStorageTests.swift:17:@Test func fileBackedCacheSanitizesInvalidURLCharacters() throws {
+app/Tests/ToonEdgeAppCoreTests/CacheStorageTests.swift:30:@Test func fileBackedCacheMissingFileReturnsCacheMiss() throws {
+app/Tests/ToonEdgeAppCoreTests/CacheStorageTests.swift:41:@Test func fileBackedCacheCanInitializeInTemporaryDirectory() throws {
+app/Tests/ToonEdgeAppCoreTests/CacheStorageTests.swift:52:@Test func storageMeasurementPrefersMeasuredBytesWhenFilesExist() throws {
+app/Tests/ToonEdgeAppCoreTests/CacheStorageTests.swift:70:@Test func storageMeasurementFallsBackToEstimatedBytesWhenFilesAreMissing() throws {
+app/Tests/ToonEdgeAppCoreTests/CacheStorageTests.swift:85:@Test func removingCachedFilesUpdatesMeasuredSummary() throws {
+app/Tests/ToonEdgeAppCoreTests/CacheStorageTests.swift:103:@Test func storageMeasurementIgnoresFilesOutsideCacheNamespace() throws {
+app/Tests/ToonEdgeAppCoreTests/CacheStorageTests.swift:117:@Test func cacheRemoveFailureDiagnosticUsesSanitizedSourceIdentity() {
+app/Tests/ToonEdgeAppCoreTests/CacheStorageTests.swift:130:@Test func metadataWithMissingBackingFileIsSurfacedAsMissing() throws {
+app/Tests/ToonEdgeAppCoreTests/AdjacentReaderSessionLoaderTests.swift:2:import Testing
+app/Tests/ToonEdgeAppCoreTests/AdjacentReaderSessionLoaderTests.swift:6:@Test func adjacentLoaderRejectsLowConfidenceDetectionResult() async throws {
+app/Tests/ToonEdgeAppCoreTests/AdjacentReaderSessionLoaderTests.swift:32:@Test func adjacentLoaderPromotesOnlyHighConfidenceViableSession() async throws {
+app/Tests/ToonEdgeAppCoreTests/AdjacentReaderSessionLoaderTests.swift:63:@Test func adjacentLoaderFallsBackToStaticHTMLForVortexReaderPageWhenHiddenLoadFails() async throws {
+app/Tests/ToonEdgeAppCoreTests/AdjacentReaderSessionLoaderTests.swift:101:@Test func adjacentLoaderFallsBackToStaticHTMLWhenHiddenAnalysisIsNotViable() async throws {
+app/Tests/ToonEdgeAppCoreTests/AdjacentReaderSessionLoaderTests.swift:127:@Test func adjacentLoaderStaticHTMLFallbackWorksWithProductionProfileAwareDetector() async throws {
+app/Tests/ToonEdgeAppCoreTests/AdjacentReaderSessionLoaderTests.swift:153:@Test func adjacentLoaderExtractsStaticHTMLNavigationWhenLabelsContainIconEntities() async throws {
+app/Tests/ToonEdgeAppCoreTests/AdjacentReaderSessionLoaderTests.swift:184:@Test func adjacentLoaderRejectsHighConfidenceBlankSession() async throws {
+app/Tests/ToonEdgeAppCoreTests/AdjacentReaderSessionLoaderTests.swift:211:@Test func adjacentLoaderRejectsHighConfidenceStockImageSession() async throws {
+app/Tests/ToonEdgeAppCoreTests/CacheMetadataTests.swift:3:import Testing
+app/Tests/ToonEdgeAppCoreTests/CacheMetadataTests.swift:7:@Test func recordingRecentCacheMetadataIncrementsDownloadSummaryCount() async throws {
+app/Tests/ToonEdgeAppCoreTests/CacheMetadataTests.swift:20:@Test func retainedCacheMetadataIsRepresentedSeparatelyFromRecentCache() async throws {
+app/Tests/ToonEdgeAppCoreTests/CacheMetadataTests.swift:34:@Test func removingCacheMetadataRemovesItFromDownloadSummary() async throws {
+app/Tests/ToonEdgeAppCoreTests/CacheMetadataTests.swift:48:@Test func downloadSummaryStorageDescriptionIsStableAndHumanReadable() async throws {
+app/Tests/ToonEdgeAppCoreTests/CacheMetadataTests.swift:61:@Test func updatingCacheRetentionMarksChapterRetainedAndCountsOfflineEntry() async throws {
+app/Tests/ToonEdgeAppCoreTests/CacheMetadataTests.swift:110:@Test func persistentCacheActionsReturnTypedResults() async throws {
+app/Tests/ToonEdgeAppCoreTests/CacheMetadataTests.swift:125:@Test func mockCacheActionsReturnTypedResultsConsistently() async throws {
+app/Tests/ToonEdgeAppCoreTests/CacheMetadataTests.swift:145:@Test func downloadsViewModelRemoveActionRefreshesSummaryAfterSuccess() async throws {
+app/Tests/ToonEdgeAppCoreTests/CacheMetadataTests.swift:159:@Test func downloadsViewModelRemoveFailureProducesRetryableFeedback() async {
+app/Tests/ToonEdgeAppCoreTests/CacheMetadataTests.swift:168:@Test func largeCacheSummaryAggregatesCountsAndStorageInOnePass() async throws {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:2:import Testing
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:5:@Test func presentingBrowserStoresStartPoint() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:15:@Test func presentingBrowserCanCarryReaderLaunchOrigin() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:27:@Test func dismissingBrowserClearsReaderLaunchOriginOverride() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:40:@Test func clearingBrowserReaderLaunchOriginKeepsBrowserVisible() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:51:@Test func viewingOriginalPageOpensSourceURLWhenNoBrowserIsPresent() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:62:@Test func viewOriginalPageAfterAdjacentReplacementUsesCurrentChapterURL() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:73:@Test func searchOverlayCanBePresentedAndDismissed() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:83:@Test func dismissingReaderToSeriesOpensCanonicalSeriesURL() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:94:@Test func readerBackFromLibraryReturnsToSeriesDetail() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:108:@Test func readerBackFromLibraryFallbackDetectedReaderReturnsToSeriesDetail() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:127:@Test func readerBackFromHomeContinueReadingReturnsHome() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:141:@Test func readerBackFromBrowserOpensCanonicalSeriesURL() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:153:@Test func openingLibraryRootDismissesReaderWithoutSelectingSeriesDetail() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:165:@Test func openingLibraryRootDismissesBrowserOwnedReaderSoLibraryIsVisible() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:178:@Test func openingLibraryRecentSelectsLibraryRootRecentSegment() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:188:@Test func openingLibraryDetailSelectsLibraryAndStoresDestination() {
+app/Tests/ToonEdgeAppCoreTests/AppRouterTests.swift:198:@Test func openingHomeRootDismissesReaderBrowserAndPendingLibraryDestinations() {
+app/Tests/ToonEdgeAppCoreTests/DesignSystemTests.swift:1:import Testing
+app/Tests/ToonEdgeAppCoreTests/DesignSystemTests.swift:4:@Test func toonEdgeNavigationChromeUsesReadableDarkModeTitleColors() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:2:import Testing
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:5:@Test func librarySnapshotFiltersSeriesBySegment() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:47:@Test func librarySegmentsExposeRecentAndAllCollectionGroups() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:55:@Test func seriesDetailPrimaryActionContinuesInProgressChapter() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:68:@Test func libraryHeaderLayoutUsesNavigationTitleWithoutToolbarRefresh() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:78:@Test func libraryCollectionControlsKeepCountRefreshAndViewModesInline() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:97:@Test func libraryCollectionControlsExposeCountAndRefreshOnlyWhenServiceExists() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:126:@Test func libraryCollectionControlsUseRefreshIconStateWithoutUpdateSummaryCopy() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:150:@Test func libraryRefreshFeedbackLayoutIsDismissibleAndAutoExpires() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:165:@Test func libraryContentLayoutKeepsRefreshFeedbackOutOfFlow() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:172:@Test func libraryEmptyStateUsesCenteredNothingSavedModel() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:185:@Test func sleepyLibraryEmptyStateMascotImageIsBundled() throws {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:192:@Test func coverArtworkStartupPolicyUsesCachedDataImmediately() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:201:@Test func seriesDetailPrimaryActionUsesNumericChapterLabelsFromNoisySourceText() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:222:@Test func seriesDetailPrimaryActionPrefersNextAfterLatestCompletedOverOlderUnfinishedChapter() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:263:@Test func seriesDetailPrimaryActionContinuesForwardInProgressChapterAfterLatestCompletedChapter() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:292:@Test func seriesDetailPrimaryActionDoesNotReturnToOlderInProgressAfterLatestKnownChapterIsRead() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:334:@Test func seriesDetailHeaderLayoutDoesNotExposeReaderOriginCopy() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:347:@Test func hydratedSeriesDetailLayoutKeepsHeaderFixedAndChaptersScrollable() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:363:@Test func seededSeriesDetailLayoutKeepsSeedHeaderVisibleWithoutChapterScroller() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:374:@Test func nonHydratedSeriesDetailStatesDoNotCreateEmptyChapterScroller() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:384:@Test func librarySeriesDetailRouteIdentityUsesSeriesIDAndCarriesOptionalSeed() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:408:@Test func seriesDetailBrowserFallbackCarriesLibraryReaderLaunchOrigin() throws {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:427:@Test func librarySeriesDetailRouteUsesVisibleSeriesAsSeed() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:438:@Test func librarySummaryResumeTargetExposesConcreteStartAction() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:458:@Test func librarySummaryResumeTargetExposesConcreteContinueAction() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:470:@Test func seriesDetailSeedShellShowsLibrarySummaryWithoutContinueAction() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:494:@Test func seriesDetailSeedShellPreservesKnownLibraryCoverURL() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:512:@Test func seriesDetailSeedShellExposesContinueWhenSummaryHasConcreteResumeTarget() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:532:@Test func seededSeriesDetailUsesHydratedDetailForContinueAction() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:551:@Test func hydratedSeriesDetailKeepsKnownCoverURLFromStoredDetail() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:568:@Test func seriesDetailRefreshBehaviorStartsOnlyAfterLocalDetailExists() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:598:@Test func seriesDetailStartupKeepsLocalLoadAndBackgroundRefreshAsSeparatePhases() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:609:@Test func seriesDetailEntryUsesCachedHydratedDetailBeforeSeedShell() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:629:@Test func seriesDetailEntryIsActionableWhenLocalIndexHasNextChapter() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:651:@Test func seriesDetailEntryContinuesForwardInProgressChapterFromLocalIndex() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:665:@Test func seriesDetailEntryCanShowAllReadWhileEdgeRefreshRunsInBackground() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:687:@Test func seriesDetailCachePolicyPublishesHydratedMutationResults() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:701:@Test func seriesDetailCachePolicyClearsRemovedOrUnavailableDetail() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:708:@Test func libraryDetailPrewarmPolicyDoesNotAutomaticallyPrewarmVisibleRows() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:715:@Test func seriesDetailRefreshBehaviorReloadsOnlyWhenRefreshActuallyMutatesLocalData() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:737:@Test func seriesDetailPrimaryActionStartsFirstUnreadWhenNoProgressExists() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:750:@Test func chapterListRecentReturnsMostRecentReadingActivity() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:765:@Test func chapterListAllGeneratesNumericRangeAndIncludesZeroOnlyWhenKnown() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:787:@Test func chapterListAllDisablesGeneratedRowsWithoutSafeSourceURL() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:809:@Test func seriesDetailChapterListAnchorPrefersPrimaryChapterThenLatestReadChapter() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:841:@Test func seriesDetailInitialScrollBehaviorUsesNoDelayAndDisablesAnimation() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:852:@Test func seriesDetailChapterSectionUsesSingleAllList() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:859:@Test func chapterRowStateExposesDistinctLabels() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:867:@Test func homeReadingDashboardPrioritizesCurrentReadingAfterSearch() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:876:@Test func homeSearchEntryUsesRestrainedBrowserCommandBarStyling() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:886:@Test func homeChromeUsesQuietDashboardControls() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:898:@Test func homeReadingDashboardCardsUseCoverFirstNativeLayouts() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:911:@Test func homeReadingDashboardHeroHasProminentCurrentReadScale() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:920:@Test func homeContinueReadingUsesRecentDistinctSeriesOrderingAndLimit() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:949:@Test func homeContinueReadingViewAllAvailabilityTracksRecentEntries() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:961:@Test func librarySeriesCardLayoutKeepsFixedHeightForMixedContent() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:995:@Test func libraryComfortableCardLayoutReservesFullMetadataStack() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:1004:@Test func librarySeriesCardMetadataShowsOnlyCurrentChapterNextToContinue() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:1022:@Test func libraryCardMetadataPrefersResumeTargetOverLatestKnownChapter() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:1046:@Test func libraryCardMetadataDoesNotPresentLatestKnownAsCurrentWhenResumeTargetIsMissing() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:1059:@Test func libraryCardMetadataKeepsNewUpdateSeparateFromResumeChapter() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:1081:@Test func libraryCompactCardMetadataPrefersShortChapterLabel() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:1106:@Test func libraryComfortableCardMetadataShowsSourceWebsite() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:1118:@Test func libraryComfortableCardBadgePrefersCurrentChapterOverLatestChapter() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:1138:@Test func libraryListMetadataPrefersNumericChapterLabelOverNoisyCurrentLabel() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:1153:@Test func libraryViewModePreferencesPersistSelectedDensity() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:1170:@Test func libraryNativeCollectionLayoutsUseDistinctGridDensity() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:1182:@Test func libraryGridCardsAvoidOuterGeneratedCardContainer() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:1192:@Test func libraryViewModesExposeIncreasingDensityLayouts() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:1209:@Test func libraryChromeUsesRestrainedNativeCollectionStyling() {
+app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift:1224:@Test func addToLibraryStatePickerDefaultsByOriginAndAllowsOverride() {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:3:import Testing
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:7:@Test func swiftDataRepositoryAddsSeriesAndBuildsLibrarySnapshots() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:50:@Test func swiftDataRepositoryAssignsReadingStateWhenAddingFromReader() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:60:@Test func swiftDataRepositoryPersistsLibraryStateTransitions() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:80:@Test func swiftDataRepositoryMergesSeriesSavedWithChapterIndexCanonicalURL() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:127:@Test func swiftDataRepositoryPersistsUpdateCheckResultForHomeAndRecentLibrary() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:156:@Test func swiftDataRepositoryUsesIndexedNextChapterAsSeriesDetailPrimaryAction() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:221:@Test func librarySnapshotSummaryCarriesConcreteResumeTargetFromIndexedChapters() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:275:@Test func librarySummaryResumeTargetStartsAtFirstReadableChapterWhenLatestKnownIsHigher() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:328:@Test func librarySnapshotSummaryDoesNotInventResumeTargetWithoutSourceURL() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:349:@Test func swiftDataRepositoryDoesNotEraseReaderPayloadWhenIndexRefreshSeesExistingChapter() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:393:@Test func swiftDataRepositorySavesProgressAndRestoresContinueReadingTarget() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:430:@Test func swiftDataRepositoryBuildsStoredReaderSessionWhenChapterPayloadExists() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:466:@Test func swiftDataRepositoryDerivesAdjacentReaderControlsFromSavedChapterListWhenLinksAreMissing() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:500:@Test func swiftDataRepositoryDerivesNumericAdjacentReaderControlsForSparseChapterLists() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:538:@Test func swiftDataRepositoryReconcilesRecentReadingWithSavedChapterContinueTarget() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:595:@Test func librarySummaryResumeTargetMatchesSeriesDetailPrimaryChapterWithoutDetailSnapshotConstruction() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:626:@Test func swiftDataRepositoryTargetedLookupsPreserveSeriesDetailAndProgress() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:672:@Test func swiftDataRepositoryAddsRecentAdjacentChapterToSavedSeriesDetail() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:730:@Test func swiftDataRepositoryRepairsExistingRecentAdjacentChapterWhenSeriesDetailLoads() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:786:@Test func swiftDataRepositoryPrefersStoredNumericAdjacentChapterWhenPayloadExists() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:821:@Test func swiftDataRepositoryDoesNotJumpToSparseStoredChapterWhenNumericAdjacentURLIsUnsafe() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:851:@Test func swiftDataRepositorySkipsStoredReaderSessionWhenChapterPayloadIsMissing() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:863:@Test func swiftDataRepositoryPersistsReaderProgressBySourceURL() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:875:@Test func swiftDataRepositoryUpdatesSeriesStateWhenSavingKnownAdjacentChapterProgressByURL() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:931:@Test func swiftDataRepositoryOnlyBuildsDirectReaderSessionForStoredChapterPayloads() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:961:@Test func swiftDataRepositoryStoresRecentSearchHistoryInPriorityOrder() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:985:@Test func swiftDataRepositoryStoresUnsavedRecentReadingWithoutAddingToLibrary() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:1017:@Test func savedLibrarySeriesDoesNotDuplicateMatchingRecentReadingEntry() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:1049:@Test func recentReadingMergesDifferentSessionIDsByCanonicalSeriesURL() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:1083:@Test func recentReadingDoesNotEraseExistingCoverWhenInputCoverIsNil() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:1131:@Test func librarySnapshotSuppressesDomainPlaceholderWhenRealSeriesExists() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:1184:@Test func librarySnapshotMergesRealTitleRecentReadingWithSavedSeriesBySourceIdentity() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:1242:@Test func librarySnapshotDerivesCurrentChapterLabelFromNoisyStoredChapterTitle() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:1284:@Test func homeSnapshotCarriesCoverArtworkForContinueReadingCards() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:1324:@Test func addingSameCanonicalSeriesWithSameChapterURLDoesNotDuplicateSeriesOrChapter() async throws {
+app/Tests/ToonEdgeAppCoreTests/PersistenceLifecycleTests.swift:1357:@Test func repeatedLibrarySnapshotsPreserveDeduplicatedVisibleResults() async throws {
+app/Tests/ToonEdgeAppCoreTests/AppDependenciesTests.swift:1:import Testing
+app/Tests/ToonEdgeAppCoreTests/AppDependenciesTests.swift:4:@Test func mockDependenciesExposeStableFeatureData() async {
+app/Tests/ToonEdgeAppCoreTests/AppDependenciesTests.swift:19:@Test func persistentDependenciesUseSingleLifecycleRepositoryForLibraryAndProgress() throws {
+app/Tests/ToonEdgeAppCoreTests/AppDependenciesTests.swift:29:@Test func persistentDependenciesExposeLifecycleAndSearchHistoryServices() throws {
+app/Tests/ToonEdgeAppCoreTests/AppDependenciesTests.swift:38:@Test func persistentDependenciesUseCacheBackedDownloadSummary() throws {
+app/Tests/ToonEdgeAppCoreTests/AppDependenciesTests.swift:45:@Test func mockDependenciesExposeUpdateRefreshService() {
+app/Tests/ToonEdgeAppCoreTests/AppDependenciesTests.swift:52:@Test func persistentDependenciesExposeUpdateRefreshService() throws {
+app/Tests/ToonEdgeAppCoreTests/AppDependenciesTests.swift:59:@Test func persistentDependenciesExposeAdjacentReaderSessionLoader() throws {
+app/Tests/ToonEdgeAppCoreTests/AppDependenciesTests.swift:65:@Test func mockBrowserServiceRecordsRequestedStartPoint() async {
+app/Tests/ToonEdgeAppCoreTests/AppDependenciesTests.swift:74:@Test func mockReaderServiceBuildsSessionWithoutExtraction() async throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:2:import Testing
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:5:@Test func detectorNormalizesLazyLoadedImageSources() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:34:@Test func pageAnalysisScriptCollectsLazySrcsetAttributes() {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:39:@Test func pageAnalysisScriptCollectsReaderSemanticHints() {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:44:@Test func pageAnalysisScriptCollectsChallengeSignals() {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:49:@Test func pageAnalysisScriptCollectsAdjacentChapterLinks() {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:54:@Test func detectorClassifiesLongVerticalChapterAsHighConfidence() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:84:@Test func detectedReaderSessionPreservesPageDimensions() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:102:@Test func detectorKeepsThumbnailGridAtLowConfidence() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:132:@Test func detectorClassifiesSparseButUsableChapterAsMediumConfidence() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:162:@Test func genericDetectorExcludesLargeAdImagesOutsideReaderFlow() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:219:@Test func detectorClassifiesReaderTaggedImagesBeforeDimensionsLoad() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:250:@Test func detectorKeepsChallengePagesOutOfReaderEvenWhenImagesLookUsable() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:268:@Test func siteProfileRegistryMatchesDomainsAndSubdomains() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:286:@Test func defaultSiteProfileRegistryIncludesInitialSupportTiers() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:296:@Test func defaultSiteProfileRegistryIncludesRepresentativeCompatibilityClasses() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:308:@Test func relatedAsuraDomainsReuseEmbeddedHTMLTemplate() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:318:@Test func canonicalSeriesURLResolverHandlesAsuraComicChapterURLs() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:326:@Test func siteProfilesExposeSelectorHintExtractionStrategy() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:337:@Test func approvedNonPromotedProfilesAreNotSearchSuggestionSources() {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:347:@Test func embeddedHTMLProfileUsesSiteProfileDetectionPath() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:358:@Test func hydratedDOMProfileUsesSiteProfileDetectionPath() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:369:@Test func secondHydratedDOMSiteReusesExistingTemplate() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:380:@Test func browserSessionProfileSuppressesUnsafeGenericConversion() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:392:@Test func browserSessionFollowUpCanPromoteAfterHydration() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:402:@Test func manhuaUSBrowserSessionFollowUpPromotesOnlyReaderImages() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:450:@Test func browserSessionFollowUpWithoutViableCandidatesStaysLowConfidence() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:461:@Test func challengePagesDoNotRecommendBrowserSessionRetry() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:472:@Test func profileAwareDetectorLogsStructuredDiagnostics() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:493:@Test func manhwaTopChallengePageSuppressesReaderConversion() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:504:@Test func manhwaTopProfileCanPromoteViableChapterIntoReader() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:534:@Test func manhwaTopProfileRejectsBlankPlaceholderImages() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:563:@Test func paginatedSinglePageProfileReportsUnsupportedPaginatedDiagnostics() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:575:@Test func profileAwareDetectorUsesProfileSelectorHintsBeforeGenericFallback() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:616:@Test func detectionDiagnosticsExposeConfidenceAndParserPath() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:634:@Test func detectedReaderSessionPreservesAdjacentChapterLinks() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:655:@Test func detectedReaderSessionInfersAdjacentChapterLinksFromNumericURLWhenLinksAreMissing() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:672:@Test func browserAutoOpensReaderOnlyForHighConfidence() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:698:@Test func browserShowsCTAForMediumConfidenceAndManualOverridePresentsReader() throws {
+app/Tests/ToonEdgeAppCoreTests/DetectionEngineTests.swift:729:@Test func browserLeavesLowConfidencePageInBrowser() throws {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:2:import Testing
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:5:@Test func searchOverlayFirstOpenLayoutKeepsInputInContentHeader() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:13:@Test func searchInputClassifierTreatsHttpLinksAsURLs() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:20:@Test func searchInputClassifierAddsSchemeForLikelyDomains() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:27:@Test func searchInputClassifierTreatsSpacedTextAsSearchQuery() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:34:@Test func searchInputClassifierTrimsInputBeforeRouting() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:41:@Test func searchInputClassifierNormalizesProtocolRelativeLinks() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:48:@Test func searchInputClassifierTreatsLocalhostWithPortAsURL() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:55:@Test func searchInputClassifierTreatsIPv4AddressAsURL() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:62:@Test func searchInputClassifierAvoidsDottedPhraseFalsePositive() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:69:@Test func searchInputClassifierTreatsUnsupportedSchemesAsSearchQueries() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:76:@Test func searchSuggestionsFollowUXPriorityOrder() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:89:@Test func searchSuggestionsIncludeExplicitSearchActionWhileTyping() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:103:@Test func historyBackedSuggestionsPrioritizePersistedRecentSearchesOverStaticHistory() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:133:@Test func commonSiteSuggestionsLabelEnabledPublicProfilesOnly() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:152:@Test func homeSnapshotReportsEmptyWhenAllSectionsAreEmpty() {
+app/Tests/ToonEdgeAppCoreTests/SearchEntryModelTests.swift:165:@Test func coverArtworkMemoryCacheRetainsLoadedArtworkAcrossCardRecreation() throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:2:import Testing
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:5:@Test func updateComparisonDetectsNewerNumericChapter() {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:11:@Test func updateComparisonDetectsNewerDecimalChapter() {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:17:@Test func updateComparisonTreatsChangedNonNumericLabelAsUnknownChange() {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:23:@Test func updateComparisonDoesNotMarkSameLatestLabelAsUpdate() {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:29:@Test func updateComparisonDetectsFetchedLabelWhenStoredLabelIsMissing() {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:35:@Test func updateComparisonDoesNotCreateFalseUpdateWhenFetchedLabelIsMissing() {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:41:@Test func updateComparisonTreatsInvalidChangedLabelsConservatively() {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:47:@Test func updateCheckerRequestsLatestChapterMetadataFromFetcher() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:64:@Test func updateCheckerMapsNewerFetchedChapterToUnreadUpdates() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:84:@Test func updateCheckerKeepsSameFetchedChapterWithoutUnreadUpdates() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:103:@Test func latestChapterParserExtractsHighestNumericChapterLink() throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:120:@Test func latestChapterParserExtractsDecimalChapterLabels() throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:137:@Test func latestChapterParserReturnsNilWithoutChapterLikeLinks() throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:153:@Test func latestChapterParserDoesNotRequireKnownSourceDomain() throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:169:@Test func chapterIndexParserExtractsOrderedChapterLinks() throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:194:@Test func chapterIndexParserDeduplicatesSameChapterURL() throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:209:@Test func persistentDependenciesExposeChapterIndexRefreshService() throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:215:@Test func htmlLatestChapterFetcherRequestsSeriesCanonicalURL() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:238:@Test func htmlLatestChapterFetcherReturnsNilOnNetworkFailure() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:252:@Test func htmlLatestChapterFetcherReturnsNilForNonHTTPURL() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:268:@Test func htmlLatestChapterFetcherReturnsNilForInvalidHTTPResponse() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:284:@Test func htmlSeriesMetadataParserExtractsOpenGraphCover() throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:301:@Test func htmlSeriesMetadataParserPrefersStructuredPortraitCoverOverSocialPreviewImage() throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:337:@Test func htmlSeriesMetadataParserExtractsAsuraStyleSeriesCoverImage() throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:358:@Test func htmlSeriesMetadataFetcherRequestsCanonicalSeriesURL() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:376:@Test func libraryUpdateRefreshChecksAllSavedSeries() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:408:@Test func libraryUpdateRefreshPersistsUpdateResults() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:437:@Test func libraryUpdateRefreshDoesNotClearExistingUpdateStateWhenFetchFails() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:455:@Test func libraryUpdateRefreshLogsCheckedUpdatedAndFailedCounts() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:471:@Test func chapterIndexRefreshServiceRecordsIndexAndUpdateState() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:500:@Test func chapterIndexRefreshServiceKeepsUnreadUpdateWhenLatestIndexedChapterIsStillUnread() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:574:@Test func libraryUpdateRefreshUsesChapterIndexRefreshWhenAvailable() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:605:@Test func libraryUpdateRefreshFallsBackWhenChapterIndexRefreshDoesNotRefresh() async throws {
+app/Tests/ToonEdgeAppCoreTests/UpdateCheckTests.swift:637:@Test func htmlLatestChapterFetcherLogsParserPathWithoutFullURL() async throws {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:2:import Testing
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:6:@Test func readerViewModelStartsWithChromeHiddenAndComputesInitialProgress() {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:17:@Test func readerDefaultsToSeamlessPageFlow() {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:23:@Test func mockReaderProgressRepositoryPersistsProgressBySourceURL() async {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:34:@Test func userDefaultsReaderProgressRepositoryPersistsProgressAcrossInstances() async throws {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:52:@Test func readerViewModelRestoresSavedProgressWhenSessionOpens() async {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:68:@Test func readerViewModelDoesNotOverwriteSavedProgressBeforeRestoreCompletes() async {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:84:@Test func readerViewModelSavesProgressWhenVisibleImageChanges() async {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:98:@Test func readerVisiblePlaceholderDoesNotAdvanceProgressUntilImageLoads() async {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:116:@Test func readerViewModelRecordsRecentCacheMetadataWhenProgressIsSaved() async throws {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:139:@Test func readerViewModelRecordsRecentReadingWhenProgressIsSaved() async {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:160:@Test func readerViewModelEnrichesRecentReadingWithSeriesCoverMetadata() async throws {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:179:@Test func readerViewModelRefreshesExistingPreviewImageWithPreferredSeriesCoverMetadata() async throws {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:201:@Test func readerProgressUpdatesThrottleCacheMetadataWritesButKeepFinalProgress() async {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:223:@Test func readerRetainActionPublishesCacheFeedback() async {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:237:@Test func readerRetainFailurePublishesNonBlockingFailureFeedback() async {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:249:@Test func readerViewModelReflectsSuccessfulSaveState() async {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:263:@Test func readerViewModelSavesWithSelectedLibraryState() async {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:274:@Test func readerViewModelTogglesChromeVisibility() {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:285:@Test func readerViewModelExposesConciseCurrentChapterDisplayLabel() {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:295:@Test func readerViewModelUpdatesCurrentChapterDisplayLabelAfterSessionReplacement() async {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:308:@Test func adjacentNavigationUsesStoredPayloadBeforeHiddenLoad() async throws {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:332:@Test func readerViewModelUsesAdjacentLoaderForUnstoredAppOriginNextChapter() async throws {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:357:@Test func adjacentNavigationHiddenLoadSuccessPreservesLaunchContext() async throws {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:380:@Test func unseenAdjacentNavigationPreservesHomeBackContext() async throws {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:401:@Test func adjacentNavigationFailureLeavesCurrentChapterIntact() async throws {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:419:@Test func adjacentNavigationRejectsBlankHiddenLoadedReaderSession() async throws {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:439:@Test func adjacentNavigationDoesNotPromoteMockStockImageFallbackForAppOriginSession() async throws {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:458:@Test func readerProgressClampsToAvailableImageRange() async {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:470:@Test func readerSettingsMutationsUpdateSessionPreferences() {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:484:@Test func readerPlaceholderHeightUsesDetectedAspectRatioWhenAvailable() {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:496:@Test func readerPlaceholderHeightFallsBackWhenMetadataIsUnavailable() {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:506:@Test func mockReaderServiceLoadsLinkedPreviousAndNextChapters() async throws {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:522:@Test func viewOriginalPageKeepsExistingBrowserWhenReaderIsAboveBrowser() {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:534:@Test func readerChromeLayoutMovesSecondaryActionsToFloatingRail() {
+app/Tests/ToonEdgeAppCoreTests/ReaderExperienceTests.swift:706:@Test func readerPageImageLoaderRetriesTransientFailureBeforeLoading() async throws {

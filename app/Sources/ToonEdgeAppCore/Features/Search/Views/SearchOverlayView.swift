@@ -33,6 +33,7 @@ public struct SearchOverlayView: View {
     private let firstOpenLayout: SearchOverlayFirstOpenLayout
     @Binding private var router: AppRouter
     @State private var query = ""
+    @State private var validationMessage: String?
     @State private var recentHistory: [SearchHistoryEntry] = []
     @FocusState private var isSearchFocused: Bool
 
@@ -51,6 +52,12 @@ public struct SearchOverlayView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
             searchHeader
+
+            if let validationMessage {
+                Text(validationMessage)
+                    .font(ToonEdgeTypography.caption)
+                    .foregroundStyle(.red)
+            }
 
             if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text("Suggestions")
@@ -130,6 +137,7 @@ public struct SearchOverlayView: View {
                     .focused($isSearchFocused)
                     .submitLabel(.go)
                     .onSubmit(openCurrentQuery)
+                    .onChange(of: query) { _, _ in validationMessage = nil }
                     #if os(iOS)
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
@@ -196,7 +204,16 @@ public struct SearchOverlayView: View {
     }
 
     private func openValue(_ value: String, title: String) {
-        let input = SearchInputClassifier.classify(value)
+        let input: SearchInput
+        switch SearchInputClassifier.validate(value) {
+        case .empty:
+            return
+        case .invalidURL:
+            validationMessage = "Enter a complete web address or search phrase."
+            return
+        case .valid(let validatedInput):
+            input = validatedInput
+        }
         if let searchHistoryRecorder {
             Task {
                 try? await searchHistoryRecorder.recordSearchHistory(

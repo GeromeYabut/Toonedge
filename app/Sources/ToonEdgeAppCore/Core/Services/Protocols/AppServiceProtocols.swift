@@ -12,6 +12,14 @@ public struct HTTPDataResponse: Equatable, Sendable {
 
 public protocol HTTPDataLoading: Sendable {
     func data(from url: URL) async throws -> HTTPDataResponse
+    func data(for request: URLRequest) async throws -> HTTPDataResponse
+}
+
+public extension HTTPDataLoading {
+    func data(for request: URLRequest) async throws -> HTTPDataResponse {
+        guard let url = request.url else { throw URLError(.badURL) }
+        return try await data(from: url)
+    }
 }
 
 public protocol LibraryProviding: Sendable {
@@ -64,6 +72,11 @@ public protocol CacheMetadataManaging: DownloadProviding {
 public protocol ChapterAssetCaching: Sendable {
     func chapterDirectory(for sourceURL: URL) -> URL
     func cachedAssetURL(for assetURL: URL, sourceURL: URL) -> URL?
+    func store(_ data: Data, for assetURL: URL, sourceURL: URL) throws
+}
+
+public protocol ChapterAssetRetaining: Sendable {
+    func retainAssets(for session: MockReaderSession) async throws -> Int64
 }
 
 public protocol CacheStorageMeasuring: Sendable {
@@ -135,6 +148,10 @@ public struct SeriesUpdateChecker: SeriesUpdateChecking {
 
 public protocol SettingsProviding: Sendable {
     func currentSettings() -> ReaderSettings
+}
+
+public protocol SettingsManaging: SettingsProviding {
+    func updateSettings(_ settings: ReaderSettings) async
 }
 
 public protocol BrowserCoordinating: Sendable {

@@ -2,6 +2,17 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@Test func homeContinueBrowserFallbackPreservesHomeOrigin() throws {
+    let sourceURL = try #require(URL(string: "https://example.com/series/chapter-12"))
+    let target = ContinueReadingTarget(seriesID: UUID(), chapterID: UUID(), sourceURL: sourceURL, progress: .init(currentImageIndex: 0, totalImageCount: 0))
+    var router = AppRouter()
+
+    HomeContinueReadingNavigation.presentBrowserFallback(for: target, router: &router)
+
+    #expect(router.presentedBrowser == .url(sourceURL.absoluteString))
+    #expect(router.presentedBrowserReaderLaunchOrigin == .homeContinueReading)
+}
+
 @Test func presentingBrowserStoresStartPoint() {
     var router = AppRouter()
     let startPoint = BrowserStartPoint.url("https://example.com/chapter-1")
@@ -10,6 +21,42 @@ import Testing
 
     #expect(router.presentedBrowser == startPoint)
     #expect(router.activeSheet == nil)
+}
+
+@Test func presentingBrowserCanCarryReaderLaunchOrigin() {
+    var router = AppRouter()
+    let startPoint = BrowserStartPoint.url("https://example.com/series/chapter-107")
+    let seriesID = UUID()
+
+    router.presentBrowser(startPoint, readerLaunchOrigin: .library(seriesID: seriesID))
+
+    #expect(router.presentedBrowser == startPoint)
+    #expect(router.presentedBrowserReaderLaunchOrigin == .library(seriesID: seriesID))
+    #expect(router.activeSheet == nil)
+}
+
+@Test func dismissingBrowserClearsReaderLaunchOriginOverride() {
+    var router = AppRouter()
+    router.presentBrowser(
+        .url("https://example.com/series/chapter-107"),
+        readerLaunchOrigin: .library(seriesID: UUID())
+    )
+
+    router.dismissBrowser()
+
+    #expect(router.presentedBrowser == nil)
+    #expect(router.presentedBrowserReaderLaunchOrigin == nil)
+}
+
+@Test func clearingBrowserReaderLaunchOriginKeepsBrowserVisible() {
+    var router = AppRouter()
+    let startPoint = BrowserStartPoint.url("https://example.com/series/chapter-107")
+    router.presentBrowser(startPoint, readerLaunchOrigin: .library(seriesID: UUID()))
+
+    router.clearPresentedBrowserReaderLaunchOrigin()
+
+    #expect(router.presentedBrowser == startPoint)
+    #expect(router.presentedBrowserReaderLaunchOrigin == nil)
 }
 
 @Test func viewingOriginalPageOpensSourceURLWhenNoBrowserIsPresent() {
@@ -67,6 +114,25 @@ import Testing
     #expect(router.presentedReader == nil)
     #expect(router.selectedTab == .library)
     #expect(router.pendingLibrarySeriesID == seriesID)
+}
+
+@Test func readerBackFromLibraryFallbackDetectedReaderReturnsToSeriesDetail() {
+    var router = AppRouter(selectedTab: .library)
+    let seriesID = UUID()
+    let startPoint = BrowserStartPoint.url("https://example.com/series/chapter-107")
+    var detectedSession = MockReaderSession.sample
+    detectedSession.launchOrigin = .library(seriesID: seriesID)
+
+    router.presentBrowser(startPoint, readerLaunchOrigin: .library(seriesID: seriesID))
+    router.presentReader(detectedSession)
+    router.clearPresentedBrowserReaderLaunchOrigin()
+    router.navigateBackFromReader()
+
+    #expect(router.presentedReader == nil)
+    #expect(router.presentedBrowser == nil)
+    #expect(router.selectedTab == .library)
+    #expect(router.pendingLibrarySeriesID == seriesID)
+    #expect(router.presentedBrowserReaderLaunchOrigin == nil)
 }
 
 @Test func readerBackFromHomeContinueReadingReturnsHome() {

@@ -1,0 +1,21 @@
+{
+  "pageURL": "https://comizy.io/kono-manga-no-heroine-wa-morisaki-amane-desu/chapter-1",
+  "title": "Kono Manga no Heroine wa Morisaki Amane desu Chapter 1",
+  "documentHeight": 20000,
+  "viewportWidth": 390,
+  "previousChapterURL": null,
+  "nextChapterURL": "https://comizy.io/kono-manga-no-heroine-wa-morisaki-amane-desu/chapter-2",
+  "challengeSignals": [],
+  "images": [
+    {"src":"https://images.example.test/comizy/chapter-1/001.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":1360,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"main-reader","semanticHints":[]},
+    {"src":"https://images.example.test/comizy/chapter-1/002.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":2720,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"main-reader","semanticHints":[]},
+    {"src":"https://images.example.test/comizy/chapter-1/003.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":4080,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"main-reader","semanticHints":[]},
+    {"src":"https://images.example.test/comizy/chapter-1/004.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":5440,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"main-reader","semanticHints":[]},
+    {"src":"https://images.example.test/comizy/chapter-1/005.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":6800,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"main-reader","semanticHints":[]},
+    {"src":"https://images.example.test/comizy/chapter-1/006.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":8160,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"main-reader","semanticHints":[]},
+    {"src":"https://images.example.test/comizy/chapter-1/007.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":9520,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"main-reader","semanticHints":[]},
+    {"src":"https://images.example.test/comizy/chapter-1/008.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":10880,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"main-reader","semanticHints":[]},
+    {"src":"https://images.example.test/comizy/chapter-1/009.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":12240,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"main-reader","semanticHints":[]},
+    {"src":"https://images.example.test/comizy/chapter-1/010.jpg","lazySources":[],"srcset":null,"width":900,"height":1350,"top":13600,"left":0,"className":"reading-content","id":null,"alt":null,"parentSignature":"main-reader","semanticHints":[]}
+  ]
+}

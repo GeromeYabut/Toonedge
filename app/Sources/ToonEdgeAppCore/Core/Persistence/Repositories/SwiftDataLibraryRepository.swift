@@ -12,6 +12,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
     private var searchHistoryStore: [String: StoredSearchHistory] = [:]
     private var recentReadingStore: [UUID: StoredRecentReading] = [:]
     private var cacheEntryStore: [String: StoredCacheEntry] = [:]
+    private var hasNormalizedDuplicateRecordsThisSession = false
 
     public init(
         modelContext: ModelContext,
@@ -34,6 +35,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
 
     public func librarySnapshot() async -> LibrarySnapshot {
         normalizeDuplicateRecordsIfNeeded()
+        reconcileRecentReadingsWithSavedSeriesIfNeeded()
         let allSeries = fetchSeries()
         let series = allSeries.filter { !isDomainPlaceholder(title: $0.title, sourceDomain: $0.sourceDomain) }
         return LibrarySnapshot(
@@ -43,6 +45,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
     }
 
     public func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
+        reconcileRecentReadingsWithSavedSeriesIfNeeded()
         if let series = fetchSeries(id: seriesID) {
             guard !isDomainPlaceholder(title: series.title, sourceDomain: series.sourceDomain) else {
                 return nil
@@ -109,6 +112,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
     }
 
     public func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {
+        markDuplicateNormalizationStale()
         let now = Date()
         let defaultState = input.libraryState ?? defaultLibraryState(for: context)
         let canonicalURL = CanonicalSeriesURLResolver.seriesURL(for: input.canonicalURL)
@@ -158,6 +162,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
     }
 
     public func removeFromLibrary(seriesID: UUID) async throws {
+        markDuplicateNormalizationStale()
         if fetchSeries(id: seriesID) != nil {
             fetchSeries(id: seriesID).map(delete)
             seriesStore.removeValue(forKey: seriesID)
@@ -207,6 +212,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
         for seriesID: UUID,
         indexedAt: Date
     ) async throws {
+        markDuplicateNormalizationStale()
         guard let series = fetchSeries(id: seriesID) else {
             return
         }
@@ -364,6 +370,13 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
     }
 
     public func recordRecentReading(_ input: RecentReadingInput) async throws {
+        markDuplicateNormalizationStale()
+        let canonicalChapterLabel = ChapterNumericLabelExtractor.canonicalLabel(
+            chapterNumber: nil,
+            chapterLabel: input.chapterLabel,
+            title: input.chapterTitle,
+            sourceURL: input.sourceURL
+        )
         if let existing = fetchRecentReading(seriesURLString: input.seriesURL.absoluteString) ?? fetchRecentReading(seriesID: input.seriesID) {
             existing.chapterID = input.chapterID
             existing.seriesTitle = input.seriesTitle
@@ -373,7 +386,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
                 existing.coverImageURLString = coverImageURL.absoluteString
             }
             existing.chapterTitle = input.chapterTitle
-            existing.chapterLabel = input.chapterLabel
+            existing.chapterLabel = canonicalChapterLabel
             existing.sourceURLString = input.sourceURL.absoluteString
             existing.imageURLStrings = encodeURLStrings(input.imageURLs)
             existing.currentImageIndex = input.progress.currentImageIndex
@@ -389,7 +402,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
                 sourceDomain: input.sourceDomain,
                 coverImageURLString: input.coverImageURL?.absoluteString,
                 chapterTitle: input.chapterTitle,
-                chapterLabel: input.chapterLabel,
+                chapterLabel: canonicalChapterLabel,
                 sourceURLString: input.sourceURL.absoluteString,
                 imageURLStrings: encodeURLStrings(input.imageURLs),
                 currentImageIndex: input.progress.currentImageIndex,
@@ -401,6 +414,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
             insert(entry)
         }
 
+        reconcileSavedSeriesProgress(with: input)
         try saveContextIfNeeded()
     }
 
@@ -418,6 +432,94 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
         )
         try saveContextIfNeeded()
         return result
+    }
+
+    private func reconcileSavedSeriesProgress(with input: RecentReadingInput) {
+        let existingChapter = fetchChapter(sourceURLString: input.sourceURL.absoluteString) ?? fetchChapter(id: input.chapterID)
+        guard let series = existingChapter.flatMap({ fetchSeries(id: $0.seriesID) }) ?? savedSeries(matching: input),
+              !isDomainPlaceholder(title: series.title, sourceDomain: series.sourceDomain) else {
+            return
+        }
+        let chapter = existingChapter ?? insertRecentChapter(input, seriesID: series.id)
+
+        upsertProgress(
+            input.progress,
+            chapterID: chapter.id,
+            sourceURLString: chapter.sourceURLString,
+            updatedAt: input.readAt
+        )
+        series.lastOpenedChapterID = chapter.id
+        series.lastReadAt = input.readAt
+        if libraryState(for: series) == .planned {
+            series.libraryStateRaw = LibraryCollectionState.reading.rawValue
+        }
+        series.updatedAt = input.readAt
+    }
+
+    private func reconcileRecentReadingsWithSavedSeriesIfNeeded() {
+        for recent in fetchRecentReadings() {
+            guard let sourceURL = URL(string: recent.sourceURLString),
+                  let seriesURL = URL(string: recent.seriesURLString) else {
+                continue
+            }
+
+            reconcileSavedSeriesProgress(
+                with: RecentReadingInput(
+                    seriesID: recent.seriesID,
+                    chapterID: recent.chapterID,
+                    seriesTitle: recent.seriesTitle,
+                    seriesURL: seriesURL,
+                    sourceDomain: recent.sourceDomain,
+                    coverImageURL: recent.coverImageURLString.flatMap(URL.init(string:)),
+                    chapterTitle: recent.chapterTitle,
+                    chapterLabel: recent.chapterLabel,
+                    sourceURL: sourceURL,
+                    imageURLs: decodedURLStrings(recent.imageURLStrings).compactMap(URL.init(string:)),
+                    progress: ReaderProgress(
+                        currentImageIndex: recent.currentImageIndex,
+                        totalImageCount: recent.totalImageCount
+                    ),
+                    readAt: recent.lastReadAt
+                )
+            )
+        }
+
+        try? saveContextIfNeeded()
+    }
+
+    private func savedSeries(matching input: RecentReadingInput) -> StoredSeries? {
+        if let series = fetchSeries(id: input.seriesID) {
+            return series
+        }
+
+        let canonicalURL = CanonicalSeriesURLResolver.seriesURL(for: input.seriesURL)
+        return fetchSeries(canonicalURLString: canonicalURL.absoluteString)
+    }
+
+    private func insertRecentChapter(_ input: RecentReadingInput, seriesID: UUID) -> StoredChapter {
+        let numericLabel = ChapterNumericLabelExtractor.label(
+            chapterNumber: Double(input.chapterLabel),
+            chapterLabel: input.chapterLabel,
+            title: input.chapterTitle
+        )
+        let chapter = StoredChapter(
+            id: input.chapterID,
+            seriesID: seriesID,
+            title: input.chapterTitle,
+            chapterLabel: numericLabel ?? input.chapterLabel,
+            chapterNumber: numericLabel.flatMap(Double.init),
+            sourceURLString: input.sourceURL.absoluteString,
+            previousChapterURLString: nil,
+            nextChapterURLString: nil,
+            imageURLStrings: encodeURLStrings(input.imageURLs),
+            isDownloaded: false,
+            publishedAt: nil,
+            cachedAt: nil,
+            updatedAt: input.readAt
+        )
+        chapterStore[input.chapterID] = chapter
+        insert(chapter)
+        return chapter
     }
 
     public func removeCacheMetadata(for sourceURL: URL) async throws -> CacheActionResult {
@@ -494,10 +596,16 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
     }
 
     private func upsertChapter(_ input: LibraryChapterInput, seriesID: UUID, updatedAt: Date) {
+        let canonicalChapterLabel = ChapterNumericLabelExtractor.canonicalLabel(
+            chapterNumber: input.chapterNumber,
+            chapterLabel: input.chapterLabel,
+            title: input.title,
+            sourceURL: input.sourceURL
+        )
         if let existing = fetchChapter(sourceURLString: input.sourceURL.absoluteString) ?? fetchChapter(id: input.id) {
             existing.seriesID = seriesID
             existing.title = input.title
-            existing.chapterLabel = input.chapterLabel
+            existing.chapterLabel = canonicalChapterLabel
             existing.chapterNumber = input.chapterNumber
             existing.sourceURLString = input.sourceURL.absoluteString
             existing.previousChapterURLString = input.previousChapterURL?.absoluteString
@@ -510,7 +618,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
                 id: input.id,
                 seriesID: seriesID,
                 title: input.title,
-                chapterLabel: input.chapterLabel,
+                chapterLabel: canonicalChapterLabel,
                 chapterNumber: input.chapterNumber,
                 sourceURLString: input.sourceURL.absoluteString,
                 previousChapterURLString: input.previousChapterURL?.absoluteString,
@@ -528,10 +636,16 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
 
     private func upsertIndexedChapter(_ input: ChapterIndexEntry, seriesID: UUID, indexedAt: Date) {
         let sourceURLString = input.sourceURL.absoluteString
+        let canonicalChapterLabel = ChapterNumericLabelExtractor.canonicalLabel(
+            chapterNumber: input.chapterNumber,
+            chapterLabel: input.chapterLabel,
+            title: input.title,
+            sourceURL: input.sourceURL
+        )
         if let existing = fetchChapter(sourceURLString: sourceURLString) ?? fetchChapter(id: input.id) {
             existing.seriesID = seriesID
             existing.title = input.title
-            existing.chapterLabel = input.chapterLabel
+            existing.chapterLabel = canonicalChapterLabel
             existing.chapterNumber = input.chapterNumber
             existing.sourceURLString = sourceURLString
             existing.publishedAt = input.publishedAt ?? existing.publishedAt
@@ -543,7 +657,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
             id: input.id,
             seriesID: seriesID,
             title: input.title,
-            chapterLabel: input.chapterLabel,
+            chapterLabel: canonicalChapterLabel,
             chapterNumber: input.chapterNumber,
             sourceURLString: sourceURLString,
             previousChapterURLString: nil,
@@ -581,10 +695,16 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
 
     private func upsertCacheEntry(_ input: CacheMetadataInput, updatedAt: Date) {
         let sourceURLString = input.sourceURL.absoluteString
+        let canonicalChapterLabel = input.chapterLabel.map { ChapterNumericLabelExtractor.canonicalLabel(
+            chapterNumber: nil,
+            chapterLabel: $0,
+            title: input.chapterTitle,
+            sourceURL: input.sourceURL
+        ) }
         if let existing = fetchCacheEntry(sourceURLString: sourceURLString) {
             existing.seriesTitle = input.seriesTitle
             existing.chapterTitle = input.chapterTitle
-            existing.chapterLabel = input.chapterLabel
+            existing.chapterLabel = canonicalChapterLabel
             existing.imageCount = input.imageCount
             existing.estimatedStorageBytes = input.estimatedStorageBytes
             existing.retentionStateRaw = input.retentionState.rawValue
@@ -596,7 +716,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
                 sourceURLString: sourceURLString,
                 seriesTitle: input.seriesTitle,
                 chapterTitle: input.chapterTitle,
-                chapterLabel: input.chapterLabel,
+                chapterLabel: canonicalChapterLabel,
                 imageCount: input.imageCount,
                 estimatedStorageBytes: input.estimatedStorageBytes,
                 retentionStateRaw: input.retentionState.rawValue,
@@ -624,6 +744,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
 
     private func seriesSummary(_ series: StoredSeries) -> LibrarySeriesSummary {
         let chapters = fetchChapters(seriesID: series.id)
+        let chapterSummaries = chapters.map(chapterSummary)
         let currentChapter = series.lastOpenedChapterID.flatMap(fetchChapter(id:))
         return LibrarySeriesSummary(
             id: series.id,
@@ -638,8 +759,10 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
             libraryState: libraryState(for: series),
             hasUnreadUpdates: series.hasUnreadUpdates,
             isCompleted: series.isCompleted || libraryState(for: series) == .completed,
-            latestChapterLabel: series.latestKnownChapterLabel ?? chapters.max(by: chapterOrder)?.chapterLabel,
-            currentChapterLabel: currentChapter?.chapterLabel
+            latestChapterLabel: latestChapterLabel(for: series, chapters: chapters),
+            currentChapterLabel: currentChapter.flatMap(summaryChapterLabel),
+            resumeTarget: SeriesPrimaryChapterSelector.primaryChapter(in: chapterSummaries)
+                .map(LibraryResumeTarget.init(chapter:))
         )
     }
 
@@ -685,7 +808,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
                 currentImageIndex: recent.currentImageIndex,
                 totalImageCount: recent.totalImageCount
             ).fractionComplete
-            summary.currentChapterLabel = recent.chapterLabel
+            summary.currentChapterLabel = summaryChapterLabel(for: recent)
             return summary
         }
 
@@ -700,10 +823,27 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
                 totalImageCount: recent.totalImageCount
             ).fractionComplete
             if summary.currentChapterLabel == nil {
-                summary.currentChapterLabel = recent.chapterLabel
+                summary.currentChapterLabel = summaryChapterLabel(for: recent)
             }
             return summary
         }
+
+        let recentChapter = ChapterSummary(
+            id: recent.chapterID,
+            title: recent.chapterTitle,
+            chapterLabel: summaryChapterLabel(for: recent),
+            chapterNumber: Double(summaryChapterLabel(for: recent)),
+            sourceURL: URL(string: recent.sourceURLString) ?? URL(string: "about:blank")!,
+            readState: .inProgress(
+                progressPercent: ReaderProgress(
+                    currentImageIndex: recent.currentImageIndex,
+                    totalImageCount: recent.totalImageCount
+                ).fractionComplete
+            ),
+            isDownloaded: false,
+            publishedAt: nil,
+            lastReadAt: recent.lastReadAt
+        )
 
         return LibrarySeriesSummary(
             id: recent.seriesID,
@@ -721,8 +861,30 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
             libraryState: .reading,
             hasUnreadUpdates: false,
             isCompleted: false,
-            latestChapterLabel: recent.chapterLabel,
-            currentChapterLabel: recent.chapterLabel
+            latestChapterLabel: summaryChapterLabel(for: recent),
+            currentChapterLabel: summaryChapterLabel(for: recent),
+            resumeTarget: LibraryResumeTarget(chapter: recentChapter)
+        )
+    }
+
+    private func latestChapterLabel(for series: StoredSeries, chapters: [StoredChapter]) -> String? {
+        series.latestKnownChapterLabel ?? chapters.max(by: chapterOrder).flatMap(summaryChapterLabel)
+    }
+
+    private func summaryChapterLabel(for chapter: StoredChapter) -> String {
+        ChapterNumericLabelExtractor.label(
+            chapterNumber: chapter.chapterNumber,
+            chapterLabel: chapter.chapterLabel,
+            title: chapter.title
+        ) ?? chapter.chapterLabel
+    }
+
+    private func summaryChapterLabel(for recent: StoredRecentReading) -> String {
+        ChapterNumericLabelExtractor.canonicalLabel(
+            chapterNumber: Double(recent.chapterLabel),
+            chapterLabel: recent.chapterLabel,
+            title: recent.chapterTitle,
+            sourceURL: URL(string: recent.sourceURLString) ?? URL(string: "about:blank")!
         )
     }
 
@@ -972,19 +1134,49 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
     }
 
     private func fetchSeries(id: UUID) -> StoredSeries? {
-        fetchSeries().first { $0.id == id }
+        if usesModelContextIO {
+            var descriptor = FetchDescriptor<StoredSeries>(
+                predicate: #Predicate { $0.id == id }
+            )
+            descriptor.fetchLimit = 1
+            return try? modelContext.fetch(descriptor).first
+        }
+
+        return fetchSeries().first { $0.id == id }
     }
 
     private func fetchSeries(canonicalURLString: String) -> StoredSeries? {
-        fetchSeries().first {
+        if usesModelContextIO {
+            var descriptor = FetchDescriptor<StoredSeries>(
+                predicate: #Predicate { $0.canonicalURLString == canonicalURLString }
+            )
+            descriptor.fetchLimit = 1
+            if let exact = try? modelContext.fetch(descriptor).first {
+                return exact
+            }
+
+            let normalized = normalizedCanonicalURLString(canonicalURLString)
+            if normalized != canonicalURLString {
+                var normalizedDescriptor = FetchDescriptor<StoredSeries>(
+                    predicate: #Predicate { $0.canonicalURLString == normalized }
+                )
+                normalizedDescriptor.fetchLimit = 1
+                if let exactNormalized = try? modelContext.fetch(normalizedDescriptor).first {
+                    return exactNormalized
+                }
+            }
+        }
+
+        return fetchSeries().first {
             normalizedCanonicalURLString($0.canonicalURLString) == normalizedCanonicalURLString(canonicalURLString)
         }
     }
 
     private func fetchChapters(seriesID: UUID) -> [StoredChapter] {
         if usesModelContextIO {
-            return (try? modelContext.fetch(FetchDescriptor<StoredChapter>()))?
-                .filter { $0.seriesID == seriesID }
+            return (try? modelContext.fetch(FetchDescriptor<StoredChapter>(
+                predicate: #Predicate { $0.seriesID == seriesID }
+            )))?
                 .sorted(by: chapterOrder) ?? []
         }
 
@@ -995,7 +1187,11 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
 
     private func fetchChapter(id: UUID) -> StoredChapter? {
         if usesModelContextIO {
-            return (try? modelContext.fetch(FetchDescriptor<StoredChapter>()))?.first { $0.id == id }
+            var descriptor = FetchDescriptor<StoredChapter>(
+                predicate: #Predicate { $0.id == id }
+            )
+            descriptor.fetchLimit = 1
+            return try? modelContext.fetch(descriptor).first
         }
 
         return chapterStore[id]
@@ -1003,9 +1199,11 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
 
     private func fetchChapter(sourceURLString: String) -> StoredChapter? {
         if usesModelContextIO {
-            return (try? modelContext.fetch(FetchDescriptor<StoredChapter>()))?.first {
-                $0.sourceURLString == sourceURLString
-            }
+            var descriptor = FetchDescriptor<StoredChapter>(
+                predicate: #Predicate { $0.sourceURLString == sourceURLString }
+            )
+            descriptor.fetchLimit = 1
+            return try? modelContext.fetch(descriptor).first
         }
 
         return chapterStore.values.first { $0.sourceURLString == sourceURLString }
@@ -1013,16 +1211,26 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
 
     private func fetchProgress(sourceURLString: String) -> StoredProgress? {
         if usesModelContextIO {
-            return (try? modelContext.fetch(FetchDescriptor<StoredProgress>()))?.first {
-                $0.sourceURLString == sourceURLString
-            }
+            var descriptor = FetchDescriptor<StoredProgress>(
+                predicate: #Predicate { $0.sourceURLString == sourceURLString }
+            )
+            descriptor.fetchLimit = 1
+            return try? modelContext.fetch(descriptor).first
         }
 
         return progressStore[sourceURLString]
     }
 
     private func fetchSearchHistory(value: String) -> StoredSearchHistory? {
-        fetchSearchHistory().first { $0.value == value }
+        if usesModelContextIO {
+            var descriptor = FetchDescriptor<StoredSearchHistory>(
+                predicate: #Predicate { $0.value == value }
+            )
+            descriptor.fetchLimit = 1
+            return try? modelContext.fetch(descriptor).first
+        }
+
+        return fetchSearchHistory().first { $0.value == value }
     }
 
     private func fetchSearchHistory() -> [StoredSearchHistory] {
@@ -1038,11 +1246,27 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
     }
 
     private func fetchRecentReading(seriesID: UUID) -> StoredRecentReading? {
-        fetchRecentReadings().first { $0.seriesID == seriesID }
+        if usesModelContextIO {
+            var descriptor = FetchDescriptor<StoredRecentReading>(
+                predicate: #Predicate { $0.seriesID == seriesID }
+            )
+            descriptor.fetchLimit = 1
+            return try? modelContext.fetch(descriptor).first
+        }
+
+        return fetchRecentReadings().first { $0.seriesID == seriesID }
     }
 
     private func fetchRecentReading(seriesURLString: String) -> StoredRecentReading? {
-        fetchRecentReadings().first { $0.seriesURLString == seriesURLString }
+        if usesModelContextIO {
+            var descriptor = FetchDescriptor<StoredRecentReading>(
+                predicate: #Predicate { $0.seriesURLString == seriesURLString }
+            )
+            descriptor.fetchLimit = 1
+            return try? modelContext.fetch(descriptor).first
+        }
+
+        return fetchRecentReadings().first { $0.seriesURLString == seriesURLString }
     }
 
     private func fetchRecentReadings() -> [StoredRecentReading] {
@@ -1058,6 +1282,13 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
     }
 
     private func normalizeDuplicateRecordsIfNeeded() {
+        guard !hasNormalizedDuplicateRecordsThisSession else {
+            return
+        }
+        defer {
+            hasNormalizedDuplicateRecordsThisSession = true
+        }
+
         for duplicates in Dictionary(grouping: fetchSeries(), by: { normalizedCanonicalURLString($0.canonicalURLString) }).values where duplicates.count > 1 {
             let ordered = duplicates.sorted { $0.updatedAt > $1.updatedAt }
             guard let keeper = ordered.first else { continue }
@@ -1093,6 +1324,10 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
         try? saveContextIfNeeded()
     }
 
+    private func markDuplicateNormalizationStale() {
+        hasNormalizedDuplicateRecordsThisSession = false
+    }
+
     private func normalizedCanonicalURLString(_ value: String) -> String {
         guard let url = URL(string: value) else {
             return value
@@ -1121,7 +1356,15 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
     }
 
     private func fetchCacheEntry(sourceURLString: String) -> StoredCacheEntry? {
-        fetchCacheEntries().first { $0.sourceURLString == sourceURLString }
+        if usesModelContextIO {
+            var descriptor = FetchDescriptor<StoredCacheEntry>(
+                predicate: #Predicate { $0.sourceURLString == sourceURLString }
+            )
+            descriptor.fetchLimit = 1
+            return try? modelContext.fetch(descriptor).first
+        }
+
+        return fetchCacheEntries().first { $0.sourceURLString == sourceURLString }
     }
 
     private func cacheRetentionState(for entry: StoredCacheEntry) -> CacheRetentionState {

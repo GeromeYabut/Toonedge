@@ -2,6 +2,12 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@Test func libraryPhaseDoesNotExposeEmptyBeforeInitialLoadCompletes() {
+    #expect(LibraryContentPhase(hasLoadedSnapshot: false, visibleCount: 0) == .loading)
+    #expect(LibraryContentPhase(hasLoadedSnapshot: true, visibleCount: 0) == .empty)
+    #expect(LibraryContentPhase(hasLoadedSnapshot: true, visibleCount: 7) == .content)
+}
+
 @Test func librarySnapshotFiltersSeriesBySegment() {
     let now = Date(timeIntervalSince1970: 1_700_000_000)
     let reading = LibrarySeriesSummary.mock(
@@ -75,52 +81,73 @@ import Testing
     #expect(!localOnly.toolbarRefreshIsAvailable)
 }
 
-@Test func librarySummaryPillExposesRefreshOnlyWhenServiceExists() {
+@Test func libraryCollectionControlsKeepCountRefreshAndViewModesInline() {
+    let controls = LibraryCollectionControlsLayout(
+        visibleSeries: [
+            LibrarySeriesSummary.mock(title: "A"),
+            LibrarySeriesSummary.mock(title: "B"),
+            LibrarySeriesSummary.mock(title: "C"),
+            LibrarySeriesSummary.mock(title: "D")
+        ],
+        hasUpdateRefreshService: true,
+        isRefreshing: false
+    )
+
+    #expect(controls.countText == "4 titles")
+    #expect(controls.refreshButtonIsVisible)
+    #expect(controls.refreshSystemImage == "arrow.clockwise")
+    #expect(LibraryViewMode.allCases == [.comfortable, .compact, .list])
+    #expect(!controls.usesLargeSummaryCard)
+}
+
+@Test func libraryCollectionControlsExposeCountAndRefreshOnlyWhenServiceExists() {
     let series = [
         LibrarySeriesSummary.mock(title: "A"),
         LibrarySeriesSummary.mock(title: "B")
     ]
 
-    let refreshable = LibrarySummaryPillLayout(
-        segment: .reading,
+    let refreshable = LibraryCollectionControlsLayout(
         visibleSeries: series,
         hasUpdateRefreshService: true,
         isRefreshing: false
     )
-    let localOnly = LibrarySummaryPillLayout(
-        segment: .reading,
+    let localOnly = LibraryCollectionControlsLayout(
         visibleSeries: series,
         hasUpdateRefreshService: false,
         isRefreshing: false
     )
+    let singular = LibraryCollectionControlsLayout(
+        visibleSeries: [LibrarySeriesSummary.mock(title: "Only")],
+        hasUpdateRefreshService: true,
+        isRefreshing: false
+    )
 
-    #expect(refreshable.title == "Reading Library")
-    #expect(refreshable.message == "2 saved titles")
+    #expect(refreshable.countText == "2 titles")
+    #expect(singular.countText == "1 title")
     #expect(refreshable.refreshButtonIsVisible)
     #expect(!localOnly.refreshButtonIsVisible)
+    #expect(!refreshable.usesLargeSummaryCard)
 }
 
-@Test func librarySummaryPillUsesUpdateCountAndRefreshIconState() {
+@Test func libraryCollectionControlsUseRefreshIconStateWithoutUpdateSummaryCopy() {
     let series = [
         LibrarySeriesSummary.mock(title: "A", hasUnreadUpdates: true),
         LibrarySeriesSummary.mock(title: "B", hasUnreadUpdates: false),
         LibrarySeriesSummary.mock(title: "C", hasUnreadUpdates: true)
     ]
 
-    let idle = LibrarySummaryPillLayout(
-        segment: .recent,
+    let idle = LibraryCollectionControlsLayout(
         visibleSeries: series,
         hasUpdateRefreshService: true,
         isRefreshing: false
     )
-    let refreshing = LibrarySummaryPillLayout(
-        segment: .recent,
+    let refreshing = LibraryCollectionControlsLayout(
         visibleSeries: series,
         hasUpdateRefreshService: true,
         isRefreshing: true
     )
 
-    #expect(idle.message == "2 with new chapters")
+    #expect(idle.countText == "3 titles")
     #expect(idle.refreshSystemImage == "arrow.clockwise")
     #expect(refreshing.refreshSystemImage == "hourglass")
     #expect(idle.refreshAccessibilityLabel == "Check for new chapters")
@@ -167,6 +194,16 @@ import Testing
     #expect(imageURL.lastPathComponent == "sleepy transparent.png")
 }
 
+@MainActor
+@Test func coverArtworkStartupPolicyUsesCachedDataImmediately() {
+    let url = URL(string: "https://example.com/cover.jpg")!
+    let cache = CoverArtworkMemoryCache()
+    let expectedData = Data([0x01, 0x02, 0x03, 0x04])
+    cache.store(expectedData, for: url)
+
+    #expect(CoverArtworkStartupPolicy.initialData(url: url, cache: cache) == expectedData)
+}
+
 @Test func seriesDetailPrimaryActionUsesNumericChapterLabelsFromNoisySourceText() {
     let detail = SeriesDetailSnapshot.mock(
         chapters: [
@@ -188,6 +225,118 @@ import Testing
     #expect(detail.primaryActionTitle == "Continue Chapter 102")
 }
 
+@Test func seriesDetailPrimaryActionPrefersNextAfterLatestCompletedOverOlderUnfinishedChapter() {
+    let now = Date(timeIntervalSince1970: 1_700_000_000)
+    let detail = SeriesDetailSnapshot.mock(
+        chapters: [
+            ChapterSummary.mock(
+                chapterLabel: "103",
+                chapterNumber: 103,
+                readState: .read,
+                lastReadAt: now.addingTimeInterval(-30)
+            ),
+            ChapterSummary.mock(
+                chapterLabel: "105",
+                chapterNumber: 105,
+                readState: .read,
+                lastReadAt: now
+            ),
+            ChapterSummary.mock(
+                chapterLabel: "104",
+                chapterNumber: 104,
+                readState: .read,
+                lastReadAt: now.addingTimeInterval(-10)
+            ),
+            ChapterSummary.mock(
+                title: "The Extra’s Academy Survival Guide Chapter 102 - Read Online | Asura Scans",
+                chapterLabel: "Scans",
+                chapterNumber: nil,
+                readState: .inProgress(progressPercent: 0.0),
+                lastReadAt: now.addingTimeInterval(-60)
+            ),
+            ChapterSummary.mock(
+                chapterLabel: "106",
+                chapterNumber: 106,
+                readState: .unread
+            )
+        ]
+    )
+
+    #expect(detail.primaryActionTitle == "Start Chapter 106")
+    #expect(detail.primaryChapter?.chapterLabel == "106")
+}
+
+@Test func seriesDetailPrimaryActionContinuesForwardInProgressChapterAfterLatestCompletedChapter() {
+    let now = Date(timeIntervalSince1970: 1_700_000_000)
+    let detail = SeriesDetailSnapshot.mock(
+        chapters: [
+            ChapterSummary.mock(
+                chapterLabel: "103",
+                chapterNumber: 103,
+                readState: .read,
+                lastReadAt: now.addingTimeInterval(-30)
+            ),
+            ChapterSummary.mock(
+                chapterLabel: "105",
+                chapterNumber: 105,
+                readState: .read,
+                lastReadAt: now
+            ),
+            ChapterSummary.mock(
+                chapterLabel: "106",
+                chapterNumber: 106,
+                readState: .inProgress(progressPercent: 0.25),
+                lastReadAt: now.addingTimeInterval(-10)
+            )
+        ]
+    )
+
+    #expect(detail.primaryActionTitle == "Continue Chapter 106")
+    #expect(detail.primaryChapter?.chapterLabel == "106")
+}
+
+@Test func seriesDetailPrimaryActionDoesNotReturnToOlderInProgressAfterLatestKnownChapterIsRead() {
+    let now = Date(timeIntervalSince1970: 1_700_000_000)
+    let detail = SeriesDetailSnapshot.mock(
+        chapters: [
+            ChapterSummary.mock(
+                title: "The Extra’s Academy Survival Guide Chapter 102 - Read Online | Asura Scans",
+                chapterLabel: "Scans",
+                chapterNumber: nil,
+                readState: .inProgress(progressPercent: 0.0),
+                lastReadAt: now.addingTimeInterval(-240)
+            ),
+            ChapterSummary.mock(
+                chapterLabel: "103",
+                chapterNumber: 103,
+                readState: .read,
+                lastReadAt: now.addingTimeInterval(-180)
+            ),
+            ChapterSummary.mock(
+                chapterLabel: "104",
+                chapterNumber: 104,
+                readState: .read,
+                lastReadAt: now.addingTimeInterval(-120)
+            ),
+            ChapterSummary.mock(
+                chapterLabel: "105",
+                chapterNumber: 105,
+                readState: .read,
+                lastReadAt: now.addingTimeInterval(-60)
+            ),
+            ChapterSummary.mock(
+                chapterLabel: "106",
+                chapterNumber: 106,
+                readState: .read,
+                lastReadAt: now
+            )
+        ]
+    )
+
+    #expect(detail.primaryActionTitle == "All Chapters Read")
+    #expect(detail.primaryChapter == nil)
+}
+
 @Test func seriesDetailHeaderLayoutDoesNotExposeReaderOriginCopy() {
     let detail = SeriesDetailSnapshot.mock(
         synopsis: "Saved from Reader Mode.",
@@ -201,19 +350,372 @@ import Testing
     #expect(!layout.metadata.contains("Saved from Reader Mode"))
 }
 
-@Test func seriesDetailRefreshBehaviorAttemptsOnlyWhenServiceExistsAndNotYetTried() {
+@Test func hydratedSeriesDetailLayoutKeepsHeaderFixedAndChaptersScrollable() {
+    let detail = SeriesDetailSnapshot.mock(
+        chapters: [
+            ChapterSummary.mock(chapterLabel: "100", readState: .read),
+            ChapterSummary.mock(chapterLabel: "101", readState: .unread)
+        ]
+    )
+
+    let layout = SeriesDetailPageLayout(detail: detail, seedSummary: nil, hasLoaded: true)
+
+    #expect(layout.stateKind == .hydrated)
+    #expect(layout.keepsHeaderFixed)
+    #expect(layout.scrollsChaptersIndependently)
+    #expect(layout.keepsPrimaryActionVisible)
+}
+
+@Test func seededSeriesDetailLayoutKeepsSeedHeaderVisibleWithoutChapterScroller() {
+    let summary = LibrarySeriesSummary.mock(title: "Past Life Returner")
+
+    let layout = SeriesDetailPageLayout(detail: nil, seedSummary: summary, hasLoaded: false)
+
+    #expect(layout.stateKind == .seeded)
+    #expect(layout.keepsHeaderFixed)
+    #expect(!layout.scrollsChaptersIndependently)
+    #expect(!layout.keepsPrimaryActionVisible)
+}
+
+@Test func nonHydratedSeriesDetailStatesDoNotCreateEmptyChapterScroller() {
+    let loading = SeriesDetailPageLayout(detail: nil, seedSummary: nil, hasLoaded: false)
+    let unavailable = SeriesDetailPageLayout(detail: nil, seedSummary: nil, hasLoaded: true)
+
+    #expect(loading.stateKind == .loading)
+    #expect(!loading.scrollsChaptersIndependently)
+    #expect(unavailable.stateKind == .unavailable)
+    #expect(!unavailable.scrollsChaptersIndependently)
+}
+
+@Test func librarySeriesDetailRouteIdentityUsesSeriesIDAndCarriesOptionalSeed() {
+    let seriesID = UUID(uuidString: "C8D607B4-91EC-4D18-B28B-0626E9A8C748")!
+    let firstSeed = LibrarySeriesSummary.mock(
+        id: seriesID,
+        title: "The Extra's Academy Survival Guide",
+        sourceDomain: "asurascans.com",
+        currentChapterLabel: "101"
+    )
+    let refreshedSeed = LibrarySeriesSummary.mock(
+        id: seriesID,
+        title: "The Extra's Academy Survival Guide | Asura Scans",
+        sourceDomain: "asurascans.com",
+        currentChapterLabel: "102"
+    )
+
+    let firstRoute = LibrarySeriesDetailRoute(seriesID: seriesID, seedSummary: firstSeed)
+    let refreshedRoute = LibrarySeriesDetailRoute(seriesID: seriesID, seedSummary: refreshedSeed)
+    let unseededRoute = LibrarySeriesDetailRoute(seriesID: seriesID, seedSummary: nil)
+
+    #expect(firstRoute == refreshedRoute)
+    #expect(firstRoute == unseededRoute)
+    #expect(firstRoute.seedSummary?.title == "The Extra's Academy Survival Guide")
+}
+
+@Test func seriesDetailBrowserFallbackCarriesLibraryReaderLaunchOrigin() throws {
+    let seriesID = UUID()
+    let chapterURL = try #require(URL(string: "https://asurascans.com/comics/extras/chapter/107"))
+    let chapter = ChapterSummary(
+        title: "The Extra's Academy Survival Guide Chapter 107",
+        chapterLabel: "107",
+        chapterNumber: 107,
+        sourceURL: chapterURL,
+        readState: .unread,
+        isDownloaded: false,
+        publishedAt: nil
+    )
+
+    let route = SeriesDetailChapterOpenRoute(chapter: chapter, seriesID: seriesID)
+
+    #expect(route.browserStartPoint == .url(chapterURL.absoluteString))
+    #expect(route.browserReaderLaunchOrigin == .library(seriesID: seriesID))
+}
+
+@Test func librarySeriesDetailRouteUsesVisibleSeriesAsSeed() {
+    let summary = LibrarySeriesSummary.mock(
+        title: "The Extra's Academy Survival Guide",
+        sourceDomain: "asurascans.com"
+    )
+    let route = LibrarySeriesDetailRoute(summary: summary)
+
+    #expect(route.seriesID == summary.id)
+    #expect(route.seedSummary == summary)
+}
+
+@Test func librarySummaryResumeTargetExposesConcreteStartAction() {
+    let chapter = ChapterSummary.mock(
+        chapterLabel: "101",
+        chapterNumber: 101,
+        readState: .unread,
+        sourceURL: URL(string: "https://example.com/chapter-101")!
+    )
+    let target = LibraryResumeTarget(chapter: chapter)
+    let summary = LibrarySeriesSummary.mock(
+        title: "Moonlit Edge",
+        currentChapterLabel: "100",
+        latestChapterLabel: "200",
+        resumeTarget: target
+    )
+
+    #expect(summary.resumeTarget?.chapter.id == chapter.id)
+    #expect(summary.resumeTarget?.actionTitle == "Start Chapter 101")
+    #expect(summary.resumeTarget?.chapter.sourceURL.absoluteString == "https://example.com/chapter-101")
+}
+
+@Test func librarySummaryResumeTargetExposesConcreteContinueAction() {
+    let chapter = ChapterSummary.mock(
+        chapterLabel: "100",
+        chapterNumber: 100,
+        readState: .inProgress(progressPercent: 0.42),
+        sourceURL: URL(string: "https://example.com/chapter-100")!
+    )
+    let target = LibraryResumeTarget(chapter: chapter)
+
+    #expect(target.actionTitle == "Continue Chapter 100")
+}
+
+@Test func seriesDetailSeedShellShowsLibrarySummaryWithoutContinueAction() {
+    let summary = LibrarySeriesSummary.mock(
+        title: "Past Life Returner",
+        sourceDomain: "vortexscans.org",
+        libraryState: .reading,
+        progressPercent: 0.48,
+        chaptersRead: 101,
+        totalKnownChapters: 200,
+        hasUnreadUpdates: false,
+        currentChapterLabel: "101"
+    )
+
+    let layout = SeriesDetailSeedShellLayout(summary: summary)
+
+    #expect(layout.title == "Past Life Returner")
+    #expect(layout.metadata == "vortexscans.org • 101/200 chapters")
+    #expect(layout.status == "Reading")
+    #expect(!layout.hasUnreadUpdates)
+    #expect(!layout.showsLoadingBanner)
+    #expect(!layout.exposesContinueAction)
+    #expect(layout.primaryChapter == nil)
+    #expect(layout.primaryActionTitle == nil)
+}
+
+@Test func seriesDetailSeedShellPreservesKnownLibraryCoverURL() {
+    let coverURL = URL(string: "https://asurascans.com/covers/extras-academy.jpg")!
+    let summary = LibrarySeriesSummary.mock(
+        title: "The Extra's Academy Survival Guide | Asura Scans",
+        sourceDomain: "asurascans.com",
+        coverImageURL: coverURL,
+        chaptersRead: 4,
+        totalKnownChapters: 122
+    )
+
+    let layout = SeriesDetailSeedShellLayout(summary: summary)
+    let cover = SeriesDetailCoverLayout(coverImageURL: layout.coverImageURL)
+
+    #expect(layout.coverImageURL == coverURL)
+    #expect(cover.coverImageURL == coverURL)
+    #expect(!cover.usesPlaceholder)
+}
+
+@Test func seriesDetailSeedShellExposesContinueWhenSummaryHasConcreteResumeTarget() {
+    let chapter = ChapterSummary.mock(
+        chapterLabel: "101",
+        chapterNumber: 101,
+        readState: .unread,
+        sourceURL: URL(string: "https://example.com/chapter-101")!
+    )
+    let summary = LibrarySeriesSummary.mock(
+        title: "Moonlit Edge",
+        sourceDomain: "example.com",
+        resumeTarget: LibraryResumeTarget(chapter: chapter)
+    )
+
+    let layout = SeriesDetailSeedShellLayout(summary: summary)
+
+    #expect(layout.exposesContinueAction)
+    #expect(layout.primaryChapter == chapter)
+    #expect(layout.primaryActionTitle == "Start Chapter 101")
+}
+
+@Test func seededSeriesDetailUsesHydratedDetailForContinueAction() {
+    let summary = LibrarySeriesSummary.mock(
+        title: "Past Life Returner",
+        sourceDomain: "vortexscans.org",
+        chaptersRead: 101,
+        totalKnownChapters: 200,
+        currentChapterLabel: "101"
+    )
+    let chapter101 = ChapterSummary.mock(chapterLabel: "101", chapterNumber: 101, readState: .read)
+    let chapter102 = ChapterSummary.mock(chapterLabel: "102", chapterNumber: 102, readState: .unread)
+    let detail = SeriesDetailSnapshot.mock(chapters: [chapter101, chapter102])
+
+    let seedLayout = SeriesDetailSeedShellLayout(summary: summary)
+    let hydratedLayout = SeriesDetailHeaderLayout(snapshot: detail)
+
+    #expect(!seedLayout.exposesContinueAction)
+    #expect(hydratedLayout.primaryActionTitle == "Start Chapter 102")
+}
+
+@Test func hydratedSeriesDetailKeepsKnownCoverURLFromStoredDetail() {
+    let coverURL = URL(string: "https://asurascans.com/covers/extras-academy.jpg")!
+    let detail = SeriesDetailSnapshot.mock(
+        title: "The Extra's Academy Survival Guide | Asura Scans",
+        coverImageURL: coverURL,
+        chapters: [
+            ChapterSummary.mock(chapterLabel: "101", readState: .read),
+            ChapterSummary.mock(chapterLabel: "102", readState: .unread)
+        ]
+    )
+
+    let cover = SeriesDetailCoverLayout(coverImageURL: detail.coverImageURL)
+
+    #expect(cover.coverImageURL == coverURL)
+    #expect(!cover.usesPlaceholder)
+}
+
+@Test func seriesDetailRefreshBehaviorStartsOnlyAfterLocalDetailExists() {
+    let detail = SeriesDetailSnapshot.mock(
+        chapters: [
+            ChapterSummary.mock(chapterLabel: "106", readState: .read),
+            ChapterSummary.mock(chapterLabel: "107", readState: .unread)
+        ]
+    )
+
+    #expect(!SeriesDetailRefreshBehavior.shouldAttemptRefresh(
+        detail: nil,
+        hasAttemptedChapterIndexRefresh: false,
+        chapterIndexRefreshService: MockSeriesChapterIndexRefreshService()
+    ))
     #expect(SeriesDetailRefreshBehavior.shouldAttemptRefresh(
+        detail: detail,
         hasAttemptedChapterIndexRefresh: false,
         chapterIndexRefreshService: MockSeriesChapterIndexRefreshService()
     ))
     #expect(!SeriesDetailRefreshBehavior.shouldAttemptRefresh(
+        detail: detail,
         hasAttemptedChapterIndexRefresh: true,
         chapterIndexRefreshService: MockSeriesChapterIndexRefreshService()
     ))
     #expect(!SeriesDetailRefreshBehavior.shouldAttemptRefresh(
+        detail: detail,
         hasAttemptedChapterIndexRefresh: false,
         chapterIndexRefreshService: nil
     ))
+}
+
+@Test func seriesDetailStartupKeepsLocalLoadAndBackgroundRefreshAsSeparatePhases() {
+    let plan = SeriesDetailStartupPlan(localDetailLoaded: false, refreshAttempted: false)
+    #expect(plan.nextPhase == .loadLocalDetail)
+
+    let loadedPlan = SeriesDetailStartupPlan(localDetailLoaded: true, refreshAttempted: false)
+    #expect(loadedPlan.nextPhase == .startBackgroundRefresh)
+
+    let refreshedPlan = SeriesDetailStartupPlan(localDetailLoaded: true, refreshAttempted: true)
+    #expect(refreshedPlan.nextPhase == .idle)
+}
+
+@Test func seriesDetailEntryUsesCachedHydratedDetailBeforeSeedShell() {
+    let detail = SeriesDetailSnapshot.mock(
+        chapters: [
+            ChapterSummary.mock(chapterLabel: "100", readState: .read),
+            ChapterSummary.mock(chapterLabel: "101", readState: .unread)
+        ]
+    )
+    let seed = LibrarySeriesSummary.mock(title: detail.title)
+
+    let layout = SeriesDetailEntryLayout(
+        cachedDetail: detail,
+        seedSummary: seed,
+        hasLoaded: false
+    )
+
+    #expect(layout.visibleState == .hydratedDetail)
+    #expect(layout.exposesContinueAction)
+    #expect(layout.startsBackgroundRefresh)
+}
+
+@Test func seriesDetailEntryIsActionableWhenLocalIndexHasNextChapter() {
+    let chapters = (1...200).map { number in
+        ChapterSummary.mock(
+            chapterLabel: "\(number)",
+            chapterNumber: Double(number),
+            readState: number <= 100 ? .read : .unread
+        )
+    }
+    let detail = SeriesDetailSnapshot.mock(chapters: chapters)
+
+    let layout = SeriesDetailEntryLayout(
+        cachedDetail: detail,
+        seedSummary: nil,
+        hasLoaded: false
+    )
+
+    #expect(detail.primaryActionTitle == "Start Chapter 101")
+    #expect(detail.primaryChapter?.chapterLabel == "101")
+    #expect(layout.visibleState == .hydratedDetail)
+    #expect(layout.exposesContinueAction)
+}
+
+@Test func seriesDetailEntryContinuesForwardInProgressChapterFromLocalIndex() {
+    let chapters = (1...200).map { number in
+        ChapterSummary.mock(
+            chapterLabel: "\(number)",
+            chapterNumber: Double(number),
+            readState: number < 100 ? .read : (number == 100 ? .inProgress(progressPercent: 0.42) : .unread)
+        )
+    }
+    let detail = SeriesDetailSnapshot.mock(chapters: chapters)
+
+    #expect(detail.primaryActionTitle == "Continue Chapter 100")
+    #expect(detail.primaryChapter?.chapterLabel == "100")
+}
+
+@Test func seriesDetailEntryCanShowAllReadWhileEdgeRefreshRunsInBackground() {
+    let chapters = (1...200).map { number in
+        ChapterSummary.mock(
+            chapterLabel: "\(number)",
+            chapterNumber: Double(number),
+            readState: .read
+        )
+    }
+    let detail = SeriesDetailSnapshot.mock(chapters: chapters)
+    let layout = SeriesDetailEntryLayout(
+        cachedDetail: detail,
+        seedSummary: nil,
+        hasLoaded: false
+    )
+
+    #expect(detail.primaryActionTitle == "All Chapters Read")
+    #expect(detail.primaryChapter == nil)
+    #expect(layout.visibleState == .hydratedDetail)
+    #expect(!layout.exposesContinueAction)
+    #expect(layout.startsBackgroundRefresh)
+}
+
+@Test func seriesDetailCachePolicyPublishesHydratedMutationResults() {
+    let detail = SeriesDetailSnapshot.mock(
+        chapters: [
+            ChapterSummary.mock(chapterLabel: "100", readState: .read),
+            ChapterSummary.mock(chapterLabel: "101", readState: .unread)
+        ]
+    )
+
+    let policy = SeriesDetailCachePolicy(detail: detail)
+
+    #expect(policy.cachedDetail == detail)
+    #expect(!policy.clearsCachedDetail)
+}
+
+@Test func seriesDetailCachePolicyClearsRemovedOrUnavailableDetail() {
+    let policy = SeriesDetailCachePolicy(detail: nil)
+
+    #expect(policy.cachedDetail == nil)
+    #expect(policy.clearsCachedDetail)
+}
+
+@Test func libraryDetailPrewarmPolicyDoesNotAutomaticallyPrewarmVisibleRows() {
+    let policy = LibraryDetailPrewarmPolicy()
+
+    #expect(!policy.automaticallyPrewarmsVisibleRows)
+    #expect(policy.prewarmTrigger == .navigationOnly)
 }
 
 @Test func seriesDetailRefreshBehaviorReloadsOnlyWhenRefreshActuallyMutatesLocalData() {
@@ -342,6 +844,17 @@ import Testing
     #expect(allRead.chapterListAnchorID == chapter106.id)
 }
 
+@Test func seriesDetailInitialScrollBehaviorUsesNoDelayAndDisablesAnimation() {
+    let anchorID = UUID()
+    let behavior = SeriesDetailInitialScrollBehavior(anchorID: anchorID)
+    let missing = SeriesDetailInitialScrollBehavior(anchorID: nil)
+
+    #expect(behavior.shouldScroll)
+    #expect(behavior.delayMilliseconds == 0)
+    #expect(behavior.disablesAnimation)
+    #expect(!missing.shouldScroll)
+}
+
 @Test func seriesDetailChapterSectionUsesSingleAllList() {
     let layout = SeriesDetailChapterSectionLayout()
 
@@ -355,6 +868,59 @@ import Testing
     #expect(ChapterReadState.inProgress(progressPercent: 0.4).displayLabel == "40%")
     #expect(ChapterReadState.read.displayLabel == "Read")
     #expect(ChapterSummary.mock(isDownloaded: true).downloadLabel == "Downloaded")
+}
+
+@Test func homeReadingDashboardPrioritizesCurrentReadingAfterSearch() {
+    let layout = HomeDashboardLayout()
+
+    #expect(layout.contentPriority == [.search, .continueReading, .recentlyUpdated, .libraryPreview])
+    #expect(layout.searchPlacement == .compactCommandBar)
+    #expect(layout.refreshPlacement == .inlineStatus)
+    #expect(layout.usesCircularTopAccessoryButtons == false)
+}
+
+@Test func homeSearchEntryUsesRestrainedBrowserCommandBarStyling() {
+    let layout = HomeSearchEntryLayout()
+
+    #expect(layout.placeholder == "Search the web or paste a chapter link")
+    #expect(layout.height == 44)
+    #expect(layout.cornerRadius == 10)
+    #expect(layout.usesCapsuleShape == false)
+    #expect(layout.horizontalPadding == ToonEdgeSpacing.medium)
+}
+
+@Test func homeChromeUsesQuietDashboardControls() {
+    let accessory = HomeTopAccessoryLayout()
+    let status = HomeRefreshStatusLayout(message: "Checked 2, found 1 update.")
+
+    #expect(accessory.size == 40)
+    #expect(accessory.cornerRadius == 10)
+    #expect(accessory.usesCircleShape == false)
+    #expect(status.message == "Checked 2, found 1 update.")
+    #expect(status.cornerRadius == 10)
+    #expect(status.usesBannerContainer == false)
+}
+
+@Test func homeReadingDashboardCardsUseCoverFirstNativeLayouts() {
+    let featured = HomeSeriesCardLayout(style: .featured)
+    let compact = HomeSeriesCardLayout(style: .compact)
+
+    #expect(!featured.usesOuterCardContainer)
+    #expect(!compact.usesOuterCardContainer)
+    #expect(featured.coverWidth > compact.coverWidth)
+    #expect(featured.coverHeight > compact.coverHeight)
+    #expect(featured.progressHeight == 4)
+    #expect(compact.progressHeight == 0)
+    #expect(compact.titleLineLimit == 1)
+}
+
+@Test func homeReadingDashboardHeroHasProminentCurrentReadScale() {
+    let featured = HomeSeriesCardLayout(style: .featured)
+
+    #expect(featured.fixedHeight == 156)
+    #expect(featured.coverWidth == 92)
+    #expect(featured.coverHeight == 132)
+    #expect(featured.cornerRadius == 6)
 }
 
 @Test func homeContinueReadingUsesRecentDistinctSeriesOrderingAndLimit() {
@@ -432,6 +998,15 @@ import Testing
     #expect(layout.metadataLineLimit == 1)
 }
 
+@Test func libraryComfortableCardLayoutReservesFullMetadataStack() {
+    let layout = LibrarySeriesCardLayout.comfortable
+
+    #expect(layout.fixedCardHeight >= layout.minimumRequiredHeight)
+    #expect(layout.badgeRowHeight >= 24)
+    #expect(layout.progressHeight >= 4)
+    #expect(layout.titleLineLimit == 2)
+}
+
 @Test func librarySeriesCardMetadataShowsOnlyCurrentChapterNextToContinue() {
     let inProgress = LibrarySeriesSummary.mock(
         progressPercent: 0.37,
@@ -448,6 +1023,137 @@ import Testing
     #expect(LibrarySeriesCardContent(series: inProgress).metadata == "Continue Ch. 237")
     #expect(LibrarySeriesCardContent(series: completed).metadata == "100/100 chapters")
     #expect(LibrarySeriesCardContent(series: missingCurrentChapter).metadata == "50/100 chapters")
+}
+
+@Test func libraryCardMetadataPrefersResumeTargetOverLatestKnownChapter() {
+    let resumeChapter = ChapterSummary(
+        title: "First Chapter",
+        chapterLabel: "1",
+        chapterNumber: 1,
+        sourceURL: URL(string: "https://example.com/series/chapter-1")!,
+        readState: .inProgress(progressPercent: 0),
+        isDownloaded: false,
+        publishedAt: nil
+    )
+    let summary = LibrarySeriesSummary.mock(
+        title: "The Shepherd Wizard | Asura Scans",
+        currentChapterLabel: nil,
+        latestChapterLabel: "236",
+        resumeTarget: LibraryResumeTarget(chapter: resumeChapter)
+    )
+    let content = LibrarySeriesCardContent(series: summary)
+
+    #expect(content.metadata == "Continue Ch. 1")
+    #expect(content.compactMetadata == "Ch. 1")
+    #expect(content.comfortableBadgeMetadata == "Ch. 1")
+    #expect(content.listMetadata == "Ch. 1")
+}
+
+@Test func libraryCardMetadataDoesNotPresentLatestKnownAsCurrentWhenResumeTargetIsMissing() {
+    let summary = LibrarySeriesSummary.mock(
+        currentChapterLabel: nil,
+        latestChapterLabel: "236",
+        resumeTarget: nil
+    )
+    let content = LibrarySeriesCardContent(series: summary)
+
+    #expect(content.compactMetadata != "Ch. 236")
+    #expect(content.comfortableBadgeMetadata == nil)
+    #expect(content.listMetadata != "Ch. 236")
+}
+
+@Test func libraryCardMetadataKeepsNewUpdateSeparateFromResumeChapter() {
+    let resumeChapter = ChapterSummary(
+        title: "First Chapter",
+        chapterLabel: "1",
+        chapterNumber: 1,
+        sourceURL: URL(string: "https://example.com/chapter-1")!,
+        readState: .unread,
+        isDownloaded: false,
+        publishedAt: nil
+    )
+    let summary = LibrarySeriesSummary.mock(
+        hasUnreadUpdates: true,
+        currentChapterLabel: nil,
+        latestChapterLabel: "236",
+        resumeTarget: LibraryResumeTarget(chapter: resumeChapter)
+    )
+    let content = LibrarySeriesCardContent(series: summary)
+
+    #expect(content.comfortableBadgeMetadata == "Ch. 1")
+    #expect(content.compactMetadata == "Ch. 1")
+}
+
+@Test func libraryCompactCardMetadataPrefersShortChapterLabel() {
+    let latest = LibrarySeriesSummary.mock(
+        currentChapterLabel: "3",
+        latestChapterLabel: "237"
+    )
+    let currentOnly = LibrarySeriesSummary.mock(
+        currentChapterLabel: "3",
+        latestChapterLabel: nil
+    )
+    let noChapter = LibrarySeriesSummary.mock(
+        currentChapterLabel: nil,
+        latestChapterLabel: nil
+    )
+    let noisyCurrentWithLatest = LibrarySeriesSummary.mock(
+        sourceDomain: "asurascans.com",
+        currentChapterLabel: "Scans",
+        latestChapterLabel: "16"
+    )
+
+    #expect(LibrarySeriesCardContent(series: latest).compactMetadata == "Ch. 3")
+    #expect(LibrarySeriesCardContent(series: currentOnly).compactMetadata == "Ch. 3")
+    #expect(LibrarySeriesCardContent(series: noChapter).compactMetadata == "50/100 chapters")
+    #expect(LibrarySeriesCardContent(series: noisyCurrentWithLatest).compactMetadata == "50/100 chapters")
+}
+
+@Test func libraryComfortableCardMetadataShowsSourceWebsite() {
+    let asura = LibrarySeriesSummary.mock(
+        title: "The Regressed Mercenary",
+        sourceDomain: "asurascans.com",
+        canonicalURL: URL(string: "https://asurascans.com/comics/the-regressed-mercenarys-machinations-a80d257e/chapter/16")!,
+        currentChapterLabel: "Scans",
+        latestChapterLabel: "16"
+    )
+
+    #expect(LibrarySeriesCardContent(series: asura).sourceMetadata == "asurascans.com")
+}
+
+@Test func libraryComfortableCardBadgePrefersCurrentChapterOverLatestChapter() {
+    let inProgress = LibrarySeriesSummary.mock(
+        currentChapterLabel: "102",
+        latestChapterLabel: "237"
+    )
+    let planned = LibrarySeriesSummary.mock(
+        currentChapterLabel: nil,
+        latestChapterLabel: "237"
+    )
+    let completed = LibrarySeriesSummary.mock(
+        progressPercent: 1,
+        currentChapterLabel: "102",
+        latestChapterLabel: "237"
+    )
+
+    #expect(LibrarySeriesCardContent(series: inProgress).comfortableBadgeMetadata == "Ch. 102")
+    #expect(LibrarySeriesCardContent(series: planned).comfortableBadgeMetadata == nil)
+    #expect(LibrarySeriesCardContent(series: completed).comfortableBadgeMetadata == "Complete")
+}
+
+@Test func libraryListMetadataPrefersNumericChapterLabelOverNoisyCurrentLabel() {
+    let noisyCurrent = LibrarySeriesSummary.mock(
+        sourceDomain: "asurascans.com",
+        currentChapterLabel: "Scans",
+        latestChapterLabel: "16"
+    )
+    let numericCurrent = LibrarySeriesSummary.mock(
+        currentChapterLabel: "237",
+        latestChapterLabel: "300"
+    )
+
+    #expect(LibrarySeriesCardContent(series: noisyCurrent).listMetadata == "50/100 chapters")
+    #expect(LibrarySeriesCardContent(series: numericCurrent).listMetadata == "Ch. 237")
 }
 
 @Test func libraryViewModePreferencesPersistSelectedDensity() {
@@ -467,6 +1173,28 @@ import Testing
     defaults.removePersistentDomain(forName: suiteName)
 }
 
+@Test func libraryNativeCollectionLayoutsUseDistinctGridDensity() {
+    let comfortableGrid = LibraryGridLayout(mode: .comfortable)
+    let compactGrid = LibraryGridLayout(mode: .compact)
+    let listGrid = LibraryGridLayout(mode: .list)
+
+    #expect(comfortableGrid.columnStyle == .fixedCount(2))
+    #expect(compactGrid.columnStyle == .fixedCount(4))
+    #expect(listGrid.columnStyle == .adaptiveMinimum(320))
+    #expect(compactGrid.itemSpacing < comfortableGrid.itemSpacing)
+    #expect(compactGrid.horizontalContentPadding <= comfortableGrid.horizontalContentPadding)
+}
+
+@Test func libraryGridCardsAvoidOuterGeneratedCardContainer() {
+    #expect(!LibrarySeriesCardLayout.comfortable.usesOuterCardContainer)
+    #expect(!LibrarySeriesCardLayout.compact.usesOuterCardContainer)
+    #expect(LibrarySeriesCardLayout.compact.fixedCardHeight <= 150)
+    #expect(LibrarySeriesCardLayout.compact.coverAspectRatio == 1)
+    #expect(LibrarySeriesCardLayout.compact.titleLineLimit == 1)
+    #expect(LibrarySeriesCardLayout.compact.progressHeight == 0)
+    #expect(LibrarySeriesCardLayout.compact.badgeRowHeight == 0)
+}
+
 @Test func libraryViewModesExposeIncreasingDensityLayouts() {
     #expect(LibraryViewMode.allCases == [.comfortable, .compact, .list])
     #expect(LibraryViewMode.comfortable.title == "Comfortable")
@@ -482,6 +1210,21 @@ import Testing
     #expect(compact.cornerRadius <= comfortable.cornerRadius)
     #expect(list.rowHeight < compact.fixedCardHeight)
     #expect(list.cornerRadius <= compact.cornerRadius)
+}
+
+@Test func libraryChromeUsesRestrainedNativeCollectionStyling() {
+    let filter = LibraryFilterChipLayout(isSelected: true)
+    let inactiveFilter = LibraryFilterChipLayout(isSelected: false)
+    let controls = LibraryCollectionControlsLayout(
+        visibleSeries: [LibrarySeriesSummary.mock()],
+        hasUpdateRefreshService: true,
+        isRefreshing: false
+    )
+
+    #expect(filter.cornerRadius == 8)
+    #expect(inactiveFilter.cornerRadius == 8)
+    #expect(filter.usesCapsuleShape == false)
+    #expect(!controls.usesLargeSummaryCard)
 }
 
 @Test func addToLibraryStatePickerDefaultsByOriginAndAllowsOverride() {
@@ -501,46 +1244,58 @@ private extension LibrarySeriesSummary {
     static func mock(
         id: UUID = UUID(),
         title: String = "Moonlit Edge",
+        sourceDomain: String = "example.com",
         canonicalURL: URL? = nil,
+        coverImageURL: URL? = nil,
         libraryState: LibraryCollectionState = .reading,
         progressPercent: Double = 0.5,
+        chaptersRead: Int? = nil,
+        totalKnownChapters: Int? = nil,
         hasUnreadUpdates: Bool = false,
         lastReadAt: Date? = Date(timeIntervalSince1970: 1_700_000_000),
         currentChapterLabel: String? = "42",
-        latestChapterLabel: String? = "100"
+        latestChapterLabel: String? = "100",
+        resumeTarget: LibraryResumeTarget? = nil
     ) -> LibrarySeriesSummary {
         LibrarySeriesSummary(
             id: id,
             title: title,
-            sourceDomain: "example.com",
+            sourceDomain: sourceDomain,
             canonicalURL: canonicalURL,
-            coverImageURL: nil,
+            coverImageURL: coverImageURL,
             progressPercent: progressPercent,
-            chaptersRead: Int(progressPercent * 100),
-            totalKnownChapters: 100,
+            chaptersRead: chaptersRead ?? Int(progressPercent * 100),
+            totalKnownChapters: totalKnownChapters ?? 100,
             lastReadAt: lastReadAt,
             libraryState: libraryState,
             hasUnreadUpdates: hasUnreadUpdates,
             isCompleted: progressPercent >= 1,
             latestChapterLabel: latestChapterLabel,
-            currentChapterLabel: currentChapterLabel
+            currentChapterLabel: currentChapterLabel,
+            resumeTarget: resumeTarget
         )
     }
 }
 
 private extension SeriesDetailSnapshot {
-    static func mock(synopsis: String = "A compact mock synopsis.", chapters: [ChapterSummary]) -> SeriesDetailSnapshot {
+    static func mock(
+        title: String = "Moonlit Edge",
+        synopsis: String = "A compact mock synopsis.",
+        sourceDomain: String = "example.com",
+        coverImageURL: URL? = nil,
+        chapters: [ChapterSummary]
+    ) -> SeriesDetailSnapshot {
         SeriesDetailSnapshot(
             id: UUID(),
-            title: "Moonlit Edge",
+            title: title,
             status: "Ongoing",
             synopsis: synopsis,
-            sourceDomain: "example.com",
-            coverImageURL: nil,
+            sourceDomain: sourceDomain,
+            coverImageURL: coverImageURL,
             isSaved: true,
             libraryState: .reading,
             progressPercent: 0.35,
-            chaptersRead: 12,
+            chaptersRead: chapters.filter { $0.readState == .read }.count,
             totalKnownChapters: chapters.count,
             hasUnreadUpdates: chapters.contains { $0.readState == .new },
             chapters: chapters

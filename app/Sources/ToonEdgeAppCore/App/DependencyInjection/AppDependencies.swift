@@ -11,9 +11,11 @@ public struct AppDependencies: Sendable {
     public var downloadService: any DownloadProviding
     public var cacheMetadataService: any CacheMetadataManaging
     public var cacheStorageMeasurementService: (any CacheStorageMeasuring)?
+    public var chapterAssetCache: (any ChapterAssetCaching)?
+    public var chapterAssetRetainer: (any ChapterAssetRetaining)?
     public var chapterIndexRefreshService: (any SeriesChapterIndexRefreshing)?
     public var updateRefreshService: (any LibraryUpdateRefreshing)?
-    public var settingsService: any SettingsProviding
+    public var settingsService: any SettingsManaging
     public var browserService: any BrowserCoordinating
     public var readerService: any ReaderSessionProviding
     public var adjacentReaderSessionLoader: (any AdjacentReaderSessionLoading)?
@@ -31,9 +33,11 @@ public struct AppDependencies: Sendable {
         downloadService: any DownloadProviding,
         cacheMetadataService: any CacheMetadataManaging,
         cacheStorageMeasurementService: (any CacheStorageMeasuring)? = nil,
+        chapterAssetCache: (any ChapterAssetCaching)? = nil,
+        chapterAssetRetainer: (any ChapterAssetRetaining)? = nil,
         chapterIndexRefreshService: (any SeriesChapterIndexRefreshing)? = nil,
         updateRefreshService: (any LibraryUpdateRefreshing)? = nil,
-        settingsService: any SettingsProviding,
+        settingsService: any SettingsManaging,
         browserService: any BrowserCoordinating,
         readerService: any ReaderSessionProviding,
         adjacentReaderSessionLoader: (any AdjacentReaderSessionLoading)? = nil,
@@ -50,6 +54,8 @@ public struct AppDependencies: Sendable {
         self.downloadService = downloadService
         self.cacheMetadataService = cacheMetadataService
         self.cacheStorageMeasurementService = cacheStorageMeasurementService
+        self.chapterAssetCache = chapterAssetCache
+        self.chapterAssetRetainer = chapterAssetRetainer
         self.chapterIndexRefreshService = chapterIndexRefreshService
         self.updateRefreshService = updateRefreshService
         self.settingsService = settingsService
@@ -70,6 +76,8 @@ public struct AppDependencies: Sendable {
             downloadService: cacheMetadataService,
             cacheMetadataService: cacheMetadataService,
             cacheStorageMeasurementService: assetCache.map(CacheStorageMeasurementService.init(assetCache:)),
+            chapterAssetCache: assetCache,
+            chapterAssetRetainer: assetCache.map { ChapterAssetRetentionService(assetCache: $0) },
             chapterIndexRefreshService: MockSeriesChapterIndexRefreshService(),
             updateRefreshService: MockLibraryUpdateRefreshService(),
             settingsService: MockSettingsService(),
@@ -111,6 +119,8 @@ public struct AppDependencies: Sendable {
             downloadService: repository,
             cacheMetadataService: repository,
             cacheStorageMeasurementService: assetCache.map(CacheStorageMeasurementService.init(assetCache:)),
+            chapterAssetCache: assetCache,
+            chapterAssetRetainer: assetCache.map { ChapterAssetRetentionService(assetCache: $0) },
             chapterIndexRefreshService: chapterIndexRefreshService,
             updateRefreshService: LibraryUpdateRefreshService(
                 library: repository,
@@ -120,12 +130,13 @@ public struct AppDependencies: Sendable {
                 chapterIndexRefreshService: chapterIndexRefreshService,
                 diagnosticsLogger: diagnosticsLogger
             ),
-            settingsService: MockSettingsService(),
+            settingsService: UserDefaultsSettingsRepository(),
             browserService: MockBrowserService(),
             readerService: MockReaderService(),
             adjacentReaderSessionLoader: AdjacentReaderSessionLoader(
                 detector: ProfileAwareChapterDetector(),
-                pageLoader: HiddenWebViewAdjacentChapterPageLoader()
+                pageLoader: HiddenWebViewAdjacentChapterPageLoader(),
+                htmlLoader: URLSessionAdjacentChapterHTMLLoader()
             ),
             readerProgressRepository: repository,
             chapterDetector: ProfileAwareChapterDetector(),

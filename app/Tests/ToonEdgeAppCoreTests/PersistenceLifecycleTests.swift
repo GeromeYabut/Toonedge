@@ -4,6 +4,31 @@ import Testing
 @testable import ToonEdgeAppCore
 
 @MainActor
+@Test func recentReadingWriteCanonicalizesNoisyChapterIdentity() async throws {
+    let schema = Schema([StoredSeries.self, StoredChapter.self, StoredProgress.self, StoredSearchHistory.self, StoredRecentReading.self, StoredCacheEntry.self])
+    let container = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true))
+    let repository = SwiftDataLibraryRepository(modelContext: container.mainContext, modelContainer: container)
+    let sourceURL = try #require(URL(string: "https://manhuatop.org/manhua/sample/chapter-1/"))
+    let input = RecentReadingInput(
+        seriesID: UUID(),
+        chapterID: UUID(),
+        seriesTitle: "Sample",
+        seriesURL: try #require(URL(string: "https://manhuatop.org/manhua/sample/")),
+        sourceDomain: "manhuatop.org",
+        chapterTitle: "Sample Manhwa - Chapter 1 - Manhwa Manhua Top",
+        chapterLabel: "Top",
+        sourceURL: sourceURL,
+        imageURLs: [],
+        progress: ReaderProgress(currentImageIndex: 0, totalImageCount: 1)
+    )
+
+    try await repository.recordRecentReading(input)
+    let stored = try #require(container.mainContext.fetch(FetchDescriptor<StoredRecentReading>()).first)
+
+    #expect(stored.chapterLabel == "1")
+}
+
+@MainActor
 @Test func swiftDataRepositoryAddsSeriesAndBuildsLibrarySnapshots() async throws {
     let repository = try makeRepository()
     let seriesID = UUID(uuidString: "5D2E0A55-B6DB-4667-9142-FD866E378B04")!
@@ -218,6 +243,134 @@ import Testing
 }
 
 @MainActor
+@Test func librarySnapshotSummaryCarriesConcreteResumeTargetFromIndexedChapters() async throws {
+    let repository = try makeRepository()
+    let seriesID = UUID()
+    let chapter100ID = UUID()
+    let chapter101ID = UUID()
+
+    try await repository.addToLibrary(
+        LibrarySeriesInput(
+            id: seriesID,
+            title: "Moonlit Edge",
+            canonicalURL: URL(string: "https://example.com/series/moonlit-edge")!,
+            sourceDomain: "example.com",
+            coverImageURL: nil,
+            status: "Reading",
+            synopsis: "Local chapter index.",
+            latestKnownChapterLabel: "200",
+            libraryState: .reading,
+            chapters: [
+                LibraryChapterInput(
+                    id: chapter100ID,
+                    title: "Moonlit Edge Chapter 100",
+                    chapterLabel: "100",
+                    chapterNumber: 100,
+                    sourceURL: URL(string: "https://example.com/chapter-100")!,
+                    imageURLs: [],
+                    publishedAt: nil
+                ),
+                LibraryChapterInput(
+                    id: chapter101ID,
+                    title: "Moonlit Edge Chapter 101",
+                    chapterLabel: "101",
+                    chapterNumber: 101,
+                    sourceURL: URL(string: "https://example.com/chapter-101")!,
+                    imageURLs: [],
+                    publishedAt: nil
+                )
+            ]
+        ),
+        context: .reader
+    )
+    try await repository.recordReadingProgress(
+        ReaderProgress(currentImageIndex: 10, totalImageCount: 10),
+        forChapterID: chapter100ID,
+        at: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+
+    let summary = try #require(await repository.librarySnapshot().series.first { $0.id == seriesID })
+
+    #expect(summary.resumeTarget?.chapter.id == chapter101ID)
+    #expect(summary.resumeTarget?.actionTitle == "Start Chapter 101")
+    #expect(summary.resumeTarget?.chapter.sourceURL.absoluteString == "https://example.com/chapter-101")
+}
+
+@MainActor
+@Test func librarySummaryResumeTargetStartsAtFirstReadableChapterWhenLatestKnownIsHigher() async throws {
+    let repository = try makeRepository()
+    let seriesID = UUID()
+    let chapter1ID = UUID()
+    let chapter1URL = try #require(URL(string: "https://asurascans.com/series/shepherd/chapter/1"))
+    let chapter236URL = try #require(URL(string: "https://asurascans.com/series/shepherd/chapter/236"))
+
+    try await repository.addToLibrary(
+        LibrarySeriesInput(
+            id: seriesID,
+            title: "The Shepherd Wizard | Asura Scans",
+            canonicalURL: try #require(URL(string: "https://asurascans.com/series/shepherd")),
+            sourceDomain: "asurascans.com",
+            coverImageURL: nil,
+            status: "Reading",
+            synopsis: "Saved from indexed chapter list.",
+            latestKnownChapterLabel: "236",
+            libraryState: .reading,
+            chapters: [
+                .mock(
+                    id: chapter1ID,
+                    title: "First Chapter",
+                    chapterLabel: "1",
+                    sourceURL: chapter1URL
+                )
+            ]
+        ),
+        context: .seriesDetail
+    )
+    try await repository.recordAvailableChapters(
+        [
+            ChapterIndexEntry(
+                title: "Chapter 236",
+                chapterLabel: "236",
+                chapterNumber: 236,
+                sourceURL: chapter236URL
+            )
+        ],
+        for: seriesID,
+        indexedAt: Date(timeIntervalSince1970: 1_700_000_100)
+    )
+
+    let summary = try #require(await repository.librarySnapshot().series.first { $0.id == seriesID })
+    let detail = try #require(await repository.seriesDetail(for: seriesID))
+
+    #expect(summary.latestChapterLabel == "236")
+    #expect(summary.resumeTarget?.chapter.id == detail.primaryChapter?.id)
+    #expect(summary.resumeTarget?.chapter.id == chapter1ID)
+    #expect(summary.resumeTarget?.chapter.chapterLabel == "1")
+    #expect(detail.primaryActionTitle == "Start Chapter 1")
+}
+
+@MainActor
+@Test func librarySnapshotSummaryDoesNotInventResumeTargetWithoutSourceURL() async throws {
+    let summary = LibrarySeriesSummary(
+        title: "Label Only",
+        sourceDomain: "example.com",
+        coverImageURL: nil,
+        progressPercent: 0.5,
+        chaptersRead: 100,
+        totalKnownChapters: 200,
+        lastReadAt: Date(timeIntervalSince1970: 1_700_000_000),
+        libraryState: .reading,
+        hasUnreadUpdates: false,
+        isCompleted: false,
+        latestChapterLabel: "200",
+        currentChapterLabel: "100",
+        resumeTarget: nil
+    )
+
+    #expect(summary.resumeTarget == nil)
+}
+
+@MainActor
 @Test func swiftDataRepositoryDoesNotEraseReaderPayloadWhenIndexRefreshSeesExistingChapter() async throws {
     let repository = try makeRepository()
     let seriesID = UUID(uuidString: "AE80DD47-9D18-47EB-9DA7-0232898C5100")!
@@ -404,6 +557,254 @@ import Testing
     #expect(session.previousChapter?.sourceURL == URL(string: "https://manhuaus.com/manga/past-life-returner/chapter-154/")!)
     #expect(session.nextChapter?.sourceURL == URL(string: "https://manhuaus.com/manga/past-life-returner/chapter-156/")!)
     #expect(session.nextChapter?.sourceURL != chapter169URL)
+}
+
+@MainActor
+@Test func swiftDataRepositoryReconcilesRecentReadingWithSavedChapterContinueTarget() async throws {
+    let repository = try makeRepository()
+    let seriesID = UUID()
+    let chapter1ID = UUID()
+    let chapter169ID = UUID()
+    let seriesURL = URL(string: "https://vortexscans.org/series/past-life-returner/")!
+    let chapter169URL = URL(string: "https://vortexscans.org/series/past-life-returner/chapter-169")!
+    let input = LibrarySeriesInput.mock(
+        id: seriesID,
+        title: "Past Life Returner",
+        canonicalURL: seriesURL,
+        chapters: [
+            .mock(
+                id: chapter1ID,
+                title: "Past Life Returner Chapter 1",
+                chapterLabel: "1",
+                sourceURL: URL(string: "https://vortexscans.org/series/past-life-returner/chapter-1")!,
+                imageURLs: [URL(string: "https://img.example.com/past-life-1.jpg")!]
+            ),
+            .mock(
+                id: chapter169ID,
+                title: "Past Life Returner Chapter 169",
+                chapterLabel: "169",
+                sourceURL: chapter169URL,
+                imageURLs: [URL(string: "https://img.example.com/past-life-169.jpg")!]
+            )
+        ]
+    )
+
+    try await repository.addToLibrary(input, context: .reader)
+    try await repository.recordReadingProgress(
+        ReaderProgress(currentImageIndex: 0, totalImageCount: 4),
+        forChapterID: chapter1ID,
+        at: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+    try await repository.recordRecentReading(
+        .mockRecent(
+            seriesID: seriesID,
+            chapterID: chapter169ID,
+            seriesTitle: "Past Life Returner",
+            seriesURL: seriesURL,
+            chapterLabel: "169",
+            sourceURL: chapter169URL,
+            readAt: Date(timeIntervalSince1970: 1_700_001_000)
+        )
+    )
+
+    let target = try #require(await repository.continueReadingTarget(for: seriesID))
+    let session = try #require(await repository.readerSession(forChapterID: target.chapterID))
+
+    #expect(target.chapterID == chapter169ID)
+    #expect(target.sourceURL == chapter169URL)
+    #expect(session.chapterTitle == "Past Life Returner Chapter 169")
+    #expect(session.nextChapter?.sourceURL == URL(string: "https://vortexscans.org/series/past-life-returner/chapter-170")!)
+}
+
+@MainActor
+@Test func librarySummaryResumeTargetMatchesSeriesDetailPrimaryChapterWithoutDetailSnapshotConstruction() async throws {
+    let repository = try makeRepository()
+    let seriesID = UUID()
+    let chapter100ID = UUID()
+    let chapter101ID = UUID()
+
+    try await repository.addToLibrary(
+        LibrarySeriesInput.mock(
+            id: seriesID,
+            title: "Fast Summary",
+            chapters: [
+                .mock(id: chapter100ID, chapterLabel: "100"),
+                .mock(id: chapter101ID, chapterLabel: "101")
+            ]
+        ),
+        context: .reader
+    )
+    try await repository.recordReadingProgress(
+        ReaderProgress(currentImageIndex: 1, totalImageCount: 1),
+        forChapterID: chapter100ID,
+        at: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+
+    let summary = try #require(await repository.librarySnapshot().series.first { $0.id == seriesID })
+    let detail = try #require(await repository.seriesDetail(for: seriesID))
+
+    #expect(summary.resumeTarget?.chapter.id == detail.primaryChapter?.id)
+    #expect(summary.resumeTarget?.actionTitle == detail.primaryActionTitle)
+}
+
+@MainActor
+@Test func swiftDataRepositoryTargetedLookupsPreserveSeriesDetailAndProgress() async throws {
+    let repository = try makeRepository()
+    let seriesID = UUID()
+    let chapter101ID = UUID()
+    let chapter102ID = UUID()
+    let chapter101URL = URL(string: "https://example.com/moonlit/chapter-101")!
+    let chapter102URL = URL(string: "https://example.com/moonlit/chapter-102")!
+
+    try await repository.addToLibrary(
+        LibrarySeriesInput.mock(
+            id: seriesID,
+            title: "Moonlit Edge",
+            canonicalURL: URL(string: "https://example.com/moonlit")!,
+            chapters: [
+                .mock(
+                    id: chapter101ID,
+                    chapterLabel: "101",
+                    sourceURL: chapter101URL,
+                    imageURLs: []
+                ),
+                .mock(
+                    id: chapter102ID,
+                    chapterLabel: "102",
+                    sourceURL: chapter102URL,
+                    imageURLs: []
+                )
+            ]
+        ),
+        context: .reader
+    )
+    try await repository.recordReadingProgress(
+        ReaderProgress(currentImageIndex: 2, totalImageCount: 5),
+        forChapterID: chapter102ID,
+        at: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+
+    let detail = try #require(await repository.seriesDetail(for: seriesID))
+    let summary = try #require(await repository.librarySnapshot().series.first { $0.id == seriesID })
+
+    #expect(detail.chapters.map(\.id).contains(chapter101ID))
+    #expect(detail.chapters.map(\.id).contains(chapter102ID))
+    #expect(detail.primaryChapter?.id == chapter102ID)
+    #expect(summary.currentChapterLabel == "102")
+}
+
+@MainActor
+@Test func swiftDataRepositoryAddsRecentAdjacentChapterToSavedSeriesDetail() async throws {
+    let repository = try makeRepository()
+    let seriesID = UUID()
+    let chapter102ID = UUID()
+    let chapter103ID = UUID()
+    let seriesURL = URL(string: "https://asurascans.com/comics/the-extras-academy-survival-guide-a80d257e")!
+    let chapter102URL = URL(string: "https://asurascans.com/comics/the-extras-academy-survival-guide-a80d257e/chapter/102")!
+    let chapter103URL = URL(string: "https://asurascans.com/comics/the-extras-academy-survival-guide-a80d257e/chapter/103")!
+
+    try await repository.addToLibrary(
+        LibrarySeriesInput.mock(
+            id: seriesID,
+            title: "The Extra’s Academy Survival Guide | Asura Scans",
+            canonicalURL: seriesURL,
+            chapters: [
+                .mock(
+                    id: chapter102ID,
+                    title: "The Extra’s Academy Survival Guide Chapter 102 - Read Online | Asura Scans",
+                    chapterLabel: "Scans",
+                    sourceURL: chapter102URL,
+                    imageURLs: [URL(string: "https://img.example.com/extras-102.jpg")!]
+                )
+            ]
+        ),
+        context: .reader
+    )
+    try await repository.recordReadingProgress(
+        ReaderProgress(currentImageIndex: 1, totalImageCount: 1),
+        forChapterID: chapter102ID,
+        at: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+    try await repository.recordRecentReading(
+        RecentReadingInput(
+            seriesID: seriesID,
+            chapterID: chapter103ID,
+            seriesTitle: "The Extra’s Academy Survival Guide | Asura Scans",
+            seriesURL: seriesURL,
+            sourceDomain: "asurascans.com",
+            chapterTitle: "The Extra’s Academy Survival Guide Chapter 103 - Read Online | Asura Scans",
+            chapterLabel: "Scans",
+            sourceURL: chapter103URL,
+            imageURLs: [URL(string: "https://img.example.com/extras-103.jpg")!],
+            progress: ReaderProgress(currentImageIndex: 0, totalImageCount: 8),
+            readAt: Date(timeIntervalSince1970: 1_700_001_000)
+        )
+    )
+
+    let detail = try #require(await repository.seriesDetail(for: seriesID))
+    let session = try #require(await repository.readerSession(forChapterID: chapter103ID))
+
+    #expect(detail.primaryActionTitle == "Continue Chapter 103")
+    #expect(detail.chapters.contains { $0.id == chapter103ID })
+    #expect(detail.totalKnownChapters == 2)
+    #expect(session.sourceURL == chapter103URL)
+    #expect(session.previousChapter?.sourceURL == chapter102URL)
+}
+
+@MainActor
+@Test func swiftDataRepositoryRepairsExistingRecentAdjacentChapterWhenSeriesDetailLoads() async throws {
+    let repository = try makeRepository()
+    let seriesID = UUID()
+    let chapter102ID = UUID()
+    let chapter103ID = UUID()
+    let seriesURL = URL(string: "https://asurascans.com/comics/the-extras-academy-survival-guide-a80d257e")!
+    let chapter102URL = URL(string: "https://asurascans.com/comics/the-extras-academy-survival-guide-a80d257e/chapter/102")!
+    let chapter103URL = URL(string: "https://asurascans.com/comics/the-extras-academy-survival-guide-a80d257e/chapter/103")!
+
+    try await repository.recordRecentReading(
+        RecentReadingInput(
+            seriesID: seriesID,
+            chapterID: chapter103ID,
+            seriesTitle: "The Extra’s Academy Survival Guide | Asura Scans",
+            seriesURL: seriesURL,
+            sourceDomain: "asurascans.com",
+            chapterTitle: "The Extra’s Academy Survival Guide Chapter 103 - Read Online | Asura Scans",
+            chapterLabel: "Scans",
+            sourceURL: chapter103URL,
+            imageURLs: [URL(string: "https://img.example.com/extras-103.jpg")!],
+            progress: ReaderProgress(currentImageIndex: 0, totalImageCount: 8),
+            readAt: Date(timeIntervalSince1970: 1_700_001_000)
+        )
+    )
+    try await repository.addToLibrary(
+        LibrarySeriesInput.mock(
+            id: seriesID,
+            title: "The Extra’s Academy Survival Guide | Asura Scans",
+            canonicalURL: seriesURL,
+            chapters: [
+                .mock(
+                    id: chapter102ID,
+                    title: "The Extra’s Academy Survival Guide Chapter 102 - Read Online | Asura Scans",
+                    chapterLabel: "Scans",
+                    sourceURL: chapter102URL,
+                    imageURLs: [URL(string: "https://img.example.com/extras-102.jpg")!]
+                )
+            ]
+        ),
+        context: .reader
+    )
+    try await repository.recordReadingProgress(
+        ReaderProgress(currentImageIndex: 1, totalImageCount: 1),
+        forChapterID: chapter102ID,
+        at: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+
+    let detail = try #require(await repository.seriesDetail(for: seriesID))
+    let session = try #require(await repository.readerSession(forChapterID: chapter103ID))
+
+    #expect(detail.primaryActionTitle == "Continue Chapter 103")
+    #expect(detail.totalKnownChapters == 2)
+    #expect(session.sourceURL == chapter103URL)
 }
 
 @MainActor
@@ -858,8 +1259,50 @@ import Testing
     #expect(summary.id == savedID)
     #expect(summary.coverImageURL == coverURL)
     #expect(summary.lastReadAt == readAt)
-    #expect(summary.currentChapterLabel == "Scans")
+    #expect(summary.currentChapterLabel == "102")
     #expect(summary.progressPercent == ReaderProgress(currentImageIndex: 2, totalImageCount: 10).fractionComplete)
+}
+
+@MainActor
+@Test func librarySnapshotDerivesCurrentChapterLabelFromNoisyStoredChapterTitle() async throws {
+    let repository = try makeRepository()
+    let seriesID = UUID(uuidString: "2B87B372-55E1-4C0E-8E09-454A94259534")!
+    let chapterID = UUID(uuidString: "2B87B372-55E1-4C0E-8E09-454A94259535")!
+    let chapterURL = try #require(URL(string: "https://asurascans.com/comics/the-extras-academy-survival-guide-46f09241/chapter/102"))
+
+    try await repository.addToLibrary(
+        LibrarySeriesInput(
+            id: seriesID,
+            title: "The Extra’s Academy Survival Guide | Asura Scans",
+            canonicalURL: try #require(URL(string: "https://asurascans.com/comics/the-extras-academy-survival-guide-46f09241")),
+            sourceDomain: "asurascans.com",
+            coverImageURL: nil,
+            status: "Reading",
+            synopsis: "Saved from Reader Mode.",
+            latestKnownChapterLabel: "237",
+            libraryState: .reading,
+            chapters: [
+                .mock(
+                    id: chapterID,
+                    title: "The Extra’s Academy Survival Guide Chapter 102 - Read Online | Asura Scans",
+                    chapterLabel: "Scans",
+                    sourceURL: chapterURL,
+                    imageURLs: [try #require(URL(string: "https://img.example.com/extras-102.jpg"))]
+                )
+            ]
+        ),
+        context: .reader
+    )
+
+    await repository.save(ReaderProgress(currentImageIndex: 2, totalImageCount: 10), for: chapterURL)
+
+    let summary = try #require(await repository.librarySnapshot().series(for: .reading).first)
+    let detail = try #require(await repository.seriesDetail(for: seriesID))
+
+    #expect(summary.latestChapterLabel == "237")
+    #expect(summary.currentChapterLabel == "102")
+    #expect(LibrarySeriesCardContent(series: summary).comfortableBadgeMetadata == "Ch. 102")
+    #expect(detail.primaryActionTitle == "Continue Chapter 102")
 }
 
 @MainActor
@@ -933,6 +1376,39 @@ import Testing
 
     #expect(snapshot.series.count == 1)
     #expect(detail.chapters.map(\.chapterLabel) == ["1"])
+}
+
+@MainActor
+@Test func repeatedLibrarySnapshotsPreserveDeduplicatedVisibleResults() async throws {
+    let repository = try makeRepository()
+    let canonicalURL = URL(string: "https://example.com/repeated-snapshot")!
+    let chapterURL = URL(string: "https://example.com/repeated-snapshot/chapter-1")!
+
+    try await repository.addToLibrary(
+        .mock(
+            id: UUID(),
+            title: "Repeated Snapshot",
+            canonicalURL: canonicalURL,
+            chapters: [.mock(id: UUID(), chapterLabel: "1", sourceURL: chapterURL)]
+        ),
+        context: .reader
+    )
+    try await repository.addToLibrary(
+        .mock(
+            id: UUID(),
+            title: "Repeated Snapshot",
+            canonicalURL: canonicalURL,
+            chapters: [.mock(id: UUID(), chapterLabel: "1", sourceURL: chapterURL)]
+        ),
+        context: .reader
+    )
+
+    let first = await repository.librarySnapshot()
+    let second = await repository.librarySnapshot()
+
+    #expect(first.series.map(\.canonicalURL) == second.series.map(\.canonicalURL))
+    #expect(second.series.count == 1)
+    #expect(second.series.first?.title == "Repeated Snapshot")
 }
 
 @MainActor

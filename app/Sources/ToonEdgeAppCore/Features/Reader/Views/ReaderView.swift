@@ -17,6 +17,7 @@ public struct ReaderView: View {
     private let viewOriginalPageAction: (() -> Void)?
     private let backAction: (() -> Void)?
     private let navigateAdjacentChapterAction: ((MockChapter) -> Void)?
+    private let chapterAssetCache: (any ChapterAssetCaching)?
 
     public init(
         session: MockReaderSession,
@@ -24,23 +25,32 @@ public struct ReaderView: View {
         adjacentLoader: (any AdjacentReaderSessionLoading)? = nil,
         progressRepository: any ReaderProgressStoring,
         cacheMetadataManager: (any CacheMetadataManaging)? = nil,
+        chapterAssetCache: (any ChapterAssetCaching)? = nil,
+        chapterAssetRetainer: (any ChapterAssetRetaining)? = nil,
         recentReadingRecorder: (any RecentReadingRecording)? = nil,
         seriesMetadataService: (any SeriesMetadataFetching)? = nil,
         libraryLifecycleService: (any LibraryLifecycleManaging)? = nil,
+        settingsManager: (any SettingsManaging)? = nil,
         dismissAction: (() -> Void)? = nil,
         viewOriginalPageAction: (() -> Void)? = nil,
         backAction: (() -> Void)? = nil,
         navigateAdjacentChapterAction: ((MockChapter) -> Void)? = nil,
         router: Binding<AppRouter>
     ) {
+        var preparedSession = session
+        if let settingsManager {
+            preparedSession.settings = settingsManager.currentSettings()
+        }
         self._viewModel = StateObject(
             wrappedValue: ReaderViewModel(
-                session: session,
+                session: preparedSession,
                 progressRepository: progressRepository,
                 cacheMetadataManager: cacheMetadataManager,
+                chapterAssetRetainer: chapterAssetRetainer,
                 recentReadingRecorder: recentReadingRecorder,
                 libraryLifecycleService: libraryLifecycleService,
-                seriesMetadataService: seriesMetadataService
+                seriesMetadataService: seriesMetadataService,
+                settingsManager: settingsManager
             )
         )
         self.readerService = readerService
@@ -50,6 +60,7 @@ public struct ReaderView: View {
         self.viewOriginalPageAction = viewOriginalPageAction
         self.backAction = backAction
         self.navigateAdjacentChapterAction = navigateAdjacentChapterAction
+        self.chapterAssetCache = chapterAssetCache
         self._router = router
     }
 
@@ -138,6 +149,9 @@ public struct ReaderView: View {
                                 displayMode: viewModel.settings.displayMode,
                                 availableWidth: geometry.size.width,
                                 metadata: viewModel.session.pageMetadata[safe: index],
+                                sourceURL: viewModel.session.sourceURL,
+                                assetCache: chapterAssetCache,
+                                requestContext: viewModel.session.imageRequestContext,
                                 onImageLoaded: {
                                     Task {
                                         await viewModel.markImageLoaded(index: index)
@@ -422,6 +436,8 @@ private struct ReaderImagePanel: View {
     let displayMode: ReaderDisplayMode
     let availableWidth: CGFloat
     let metadata: ReaderPageMetadata?
+    let sourceURL: URL
+    let assetCache: (any ChapterAssetCaching)?
     let onImageLoaded: () -> Void
     @StateObject private var loader: ReaderPageImageLoader
 
@@ -431,6 +447,9 @@ private struct ReaderImagePanel: View {
         displayMode: ReaderDisplayMode,
         availableWidth: CGFloat,
         metadata: ReaderPageMetadata?,
+        sourceURL: URL,
+        assetCache: (any ChapterAssetCaching)?,
+        requestContext: ReaderImageRequestContext?,
         onImageLoaded: @escaping () -> Void
     ) {
         self.imageURL = imageURL
@@ -438,8 +457,15 @@ private struct ReaderImagePanel: View {
         self.displayMode = displayMode
         self.availableWidth = availableWidth
         self.metadata = metadata
+        self.sourceURL = sourceURL
+        self.assetCache = assetCache
         self.onImageLoaded = onImageLoaded
-        self._loader = StateObject(wrappedValue: ReaderPageImageLoader(imageURL: imageURL))
+        self._loader = StateObject(wrappedValue: ReaderPageImageLoader(
+            imageURL: imageURL,
+            sourceURL: sourceURL,
+            assetCache: assetCache,
+            requestContext: requestContext
+        ))
     }
 
     var body: some View {
@@ -484,6 +510,11 @@ private struct ReaderImagePanel: View {
                 VStack(spacing: ToonEdgeSpacing.small) {
                     Image(systemName: "photo")
                         .foregroundStyle(ToonEdgeColor.textSecondary)
+                    Text("Page \(index + 1) unavailable. Connect to the internet and retry.")
+                        .font(ToonEdgeTypography.caption)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                        .accessibilityIdentifier("reader.page.failed.\(index + 1)")
                     Button("Retry") {
                         Task {
                             await loader.retry()

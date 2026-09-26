@@ -2,11 +2,674 @@
 
 This document tracks confirmed product defects, their evidence, current status, and intended resolution.
 
+## DEF-046 — Settings Reader Fit icon exposes a misleading accessibility label
+
+**Status:** Implemented (verified 2026-09-25)  
+**Severity:** Low  
+**Reported:** 2026-09-22  
+**Area:** Settings, Shared UI, accessibility semantics
+
+### User-visible problem
+
+The Settings accessibility tree exposes the diagonal-arrow icon in the Reader Fit row as `Enter Full Screen`. The row displays a Reader Fit preference and is not a full-screen action, so VoiceOver can announce misleading information.
+
+### Reproduction
+
+1. Launch ToonEdge on iPhone 16e with iOS 18.6.
+2. Open Settings.
+3. Inspect accessibility elements in visual order.
+
+### Expected behavior
+
+Decorative icons are hidden from accessibility, or each settings row is combined into one element with a correct label and value such as `Reader Fit, Fit Width`.
+
+### Actual behavior
+
+The symbol is separately exposed as `Enter Full Screen`.
+
+### Evidence and related coverage
+
+- Hands-on review: `qa_reports/2026-09-22-holistic-ux-quality-review.md`, QA-12.
+- Full spoken VoiceOver traversal remains to be completed; this defect is confirmed from the simulator accessibility tree.
+
+### Acceptance criteria
+
+- The decorative symbol is not separately focusable or mislabeled.
+- The row exposes an accurate label/value pair.
+- Accessibility tests verify Settings row semantics and focus order.
+
+## DEF-045 — Library briefly presents a false empty state while local data loads
+
+**Status:** Implemented (verified 2026-09-25)  
+**Severity:** Low  
+**Reported:** 2026-09-22  
+**Area:** Library, local-first loading state
+
+### User-visible problem
+
+Opening Library on a populated installation briefly shows a zero-title/empty presentation before the stored titles appear. The transition makes existing local data look lost and weakens confidence in local-first persistence.
+
+### Reproduction
+
+1. Use an installation with several stored Library titles.
+2. Cold launch ToonEdge and immediately open Library.
+3. Observe the state before the local snapshot finishes loading.
+
+### Expected behavior
+
+A loading or skeleton state remains visible until the initial local snapshot completes. The genuine empty state appears only after a completed load returns no titles.
+
+### Actual behavior
+
+The empty presentation appears briefly, then is replaced by seven stored titles.
+
+### Evidence and related coverage
+
+- Hands-on review: `qa_reports/2026-09-22-holistic-ux-quality-review.md`, QA-11.
+- No screenshot was captured because the state was transient.
+
+### Acceptance criteria
+
+- Library distinguishes `loading`, `loaded empty`, and `loaded content`.
+- A populated delayed fixture never displays the empty state before completion.
+- Existing Library filtering and local-first rendering remain responsive.
+
+## DEF-044 — Home search loses its meaning at large accessibility text sizes
+
+**Status:** Implemented (verified 2026-09-25)  
+**Severity:** Low  
+**Reported:** 2026-09-22  
+**Area:** Home, search entry, Dynamic Type
+
+### User-visible problem
+
+On iPhone 16e after increasing preferred text size five steps, the primary Home field truncates to `Search th…`. Because search is ToonEdge's dominant action, the remaining copy does not explain that users can search the web or paste a chapter URL.
+
+### Expected behavior
+
+The primary search affordance retains meaningful copy at accessibility text sizes by reflowing, using a shorter approved label, or adapting the layout without hiding the action's purpose.
+
+### Actual behavior
+
+The field remains on one line and truncates most of its label.
+
+### Evidence
+
+- `qa_evidence/2026-09-22/iphone-16e-home-large-text.png`
+- Hands-on review: QA-10.
+
+### Acceptance criteria
+
+- The search action remains understandable at the largest supported Dynamic Type sizes on a small iPhone.
+- Settings and refresh controls remain visible and tappable.
+- A small-device large-text UI test captures the Home state.
+
+## DEF-043 — Settings is a non-functional scaffold instead of the documented MVP surface
+
+**Status:** Implemented (verified 2026-09-25)  
+**Severity:** Medium  
+**Reported:** 2026-09-22  
+**Area:** Settings, reader preferences, storage, updates, About
+
+### User-visible problem
+
+Settings contains a scaffold banner and two static reader values. The documented Settings areas for editable reader preferences, storage management, update checks, and app information are unavailable.
+
+### Expected behavior
+
+Settings provides the MVP controls and destinations defined in the UX requirements, using the existing service boundaries for preferences, cache/storage, and update checks.
+
+### Actual behavior
+
+Reader Canvas and Reader Fit are display-only, and storage, update, About, and support controls are absent.
+
+### Evidence
+
+- `qa_evidence/2026-09-22/iphone-16e-settings-large-text.png`
+- Hands-on review: QA-09.
+
+### Acceptance criteria
+
+- Reader Canvas and Reader Fit are editable and persist across relaunch.
+- Storage management reports current cache usage and links to actionable management.
+- Manual update checking exposes loading, success, no-update, and failure feedback.
+- About/support information required by the UX specification is present.
+- Settings remains usable at accessibility text sizes.
+
+## DEF-042 — Home Continue fallback loses Home reader-back context
+
+**Status:** Implemented (verified 2026-09-25)  
+**Severity:** Medium  
+**Reported:** 2026-09-22  
+**Area:** Home resume, Browser fallback, Reader launch origin, routing
+
+### User-visible problem
+
+When Home Continue must open a chapter in Browser because no stored Reader payload exists, Browser detection can open Reader but Reader Back returns to the series webpage instead of Home.
+
+### Reproduction
+
+1. Save a series and chapter with a valid source URL but no stored Reader image payload.
+2. Cold relaunch ToonEdge.
+3. Tap the Home Continue action.
+4. Allow Browser detection to open Reader.
+5. Tap Reader Back.
+
+### Expected behavior
+
+The Home launch origin survives the Browser fallback and Reader Back returns to Home. `View Original Page` must still reveal the chapter Browser explicitly.
+
+### Actual behavior
+
+Reader Back returns to the source series page in Browser.
+
+### Evidence and relationship
+
+- Hands-on review: QA-08.
+- `qa_evidence/2026-09-22/manhuatop-original-page.png`
+- DEF-034 fixed the analogous Library fallback path; this defect covers Home fallback.
+
+### Acceptance criteria
+
+- Home Continue through Browser fallback applies `.home` launch origin to the promoted Reader session.
+- Reader Back returns Home; View Original Page reveals the exact chapter page.
+- Pending origin is cleared on failure, dismissal, and unrelated navigation.
+- Direct Browser-origin Reader behavior remains unchanged.
+
+## DEF-041 — Chapter label normalization can produce `Chapter Top` or `Chapter Chapter`
+
+**Status:** Implemented (verified 2026-09-25)  
+**Severity:** Medium  
+**Reported:** 2026-09-22  
+**Area:** Detection metadata, persistence, Home, Library, Series Detail
+
+### User-visible problem
+
+The same ManhuaTop chapter is shown as `Continue Chapter 1` in the Series Detail primary action but as `Chapter Top` in the active chapter row. Existing Home history also displayed `Continue Chapter Chapter`.
+
+### Reproduction
+
+1. Open and read `https://manhuatop.org/manhua/i-became-the-youngest-disciple-of-the-mount-hua-sect/chapter-1/`.
+2. Save the series and open Series Detail.
+3. Compare the primary action, active row subtitle, Home, and Library labels.
+
+### Expected behavior
+
+One canonical numeric/display chapter label is derived and reused across Reader, Home, Library, Series Detail, resume, and update projections.
+
+### Actual behavior
+
+Brand/title tokens at the end of noisy page titles can be persisted or displayed as the chapter label.
+
+### Evidence and relationship
+
+- `qa_evidence/2026-09-22/manhuatop-chapter-label-top.png`
+- Hands-on review: QA-07.
+- Related to DEF-033, which covers resume-target versus latest-known semantics; this defect covers token extraction and normalization.
+
+### Acceptance criteria
+
+- The sample noisy title normalizes to `Chapter 1` on every surface.
+- Values such as `Top`, `Chapter`, site names, and branding suffixes are rejected as chapter identities.
+- Persistence and cold-relaunch regression tests prove the canonical value is retained.
+
+## DEF-040 — A bare HTTP scheme opens an indefinite blank Browser
+
+**Status:** Implemented (verified 2026-09-25)  
+**Severity:** Medium  
+**Reported:** 2026-09-22  
+**Area:** Search classification, URL validation, Browser error state
+
+### User-visible problem
+
+Submitting `https://` from Home opens a blank white Browser with no error, corrective action, or recovery message.
+
+### Expected behavior
+
+Hostless and otherwise malformed web URLs are rejected before Browser presentation, or produce an explicit recoverable validation state. Whitespace-only input remains inert.
+
+### Actual behavior
+
+The HTTP prefix is sufficient for URL classification even though no host exists, and Browser remains blank indefinitely.
+
+### Evidence
+
+- `qa_evidence/2026-09-22/malformed-url-blank-browser.png`
+- Hands-on review: QA-06.
+
+### Acceptance criteria
+
+- `https://`, `http://`, missing-host URLs, and whitespace-padded variants do not present a blank Browser.
+- Valid HTTP(S), domain-only, localhost, IPv4, and search-query behavior remains covered.
+- The user receives concise inline guidance for invalid input.
+
+## DEF-039 — Populated Downloads content overflows without scrolling
+
+**Status:** Implemented (verified 2026-09-25)  
+**Severity:** High  
+**Reported:** 2026-09-22  
+**Area:** Downloads, cache management, accessibility
+
+### User-visible problem
+
+With many cached chapters, Downloads entries extend beyond the viewport and behind the tab bar. Later entries and delete actions cannot be reached.
+
+### Expected behavior
+
+The summary and all cache entries are reachable in a scrolling layout. Destructive actions have at least 44×44-point hit targets and identify their chapter to accessibility users.
+
+### Actual behavior
+
+The entries are rendered in a non-scrolling vertical stack. The trash button uses a 40×40 frame and every action is labeled only `Remove cached chapter`.
+
+### Evidence
+
+- Hands-on review on a populated iPhone 16 Pro: QA-05.
+- Code inspection confirmed `DownloadsView` uses `VStack` for the full content and a 40×40 trash frame.
+
+### Acceptance criteria
+
+- A fixture with at least 20 entries can scroll to and operate the final row.
+- Content does not extend behind the tab bar.
+- Delete buttons meet the minimum target size and announce series/chapter identity.
+- Summary, success, and retryable failure feedback remain reachable.
+
+## DEF-038 — Large text removes primary tabs from the Settings screen
+
+**Status:** Implemented (verified 2026-09-25)  
+**Severity:** High  
+**Reported:** 2026-09-22  
+**Area:** App shell, Settings, Dynamic Type, primary navigation
+
+### User-visible problem
+
+At the largest tested text size on iPhone 16e, Settings shows only Home and Settings in the tab bar. Library and Downloads disappear, blocking primary navigation for large-text users.
+
+### Reproduction
+
+1. Launch ToonEdge on iPhone 16e, iOS 18.6.
+2. Open Settings.
+3. Increase preferred text size five steps with Simulator Features.
+
+### Expected behavior
+
+All four primary tabs remain visible and operable at supported accessibility text sizes.
+
+### Actual behavior
+
+Library and Downloads disappear on Settings, while Home at the same text size still displays all four tabs.
+
+### Evidence
+
+- `qa_evidence/2026-09-22/iphone-16e-settings-large-text.png`
+- `qa_evidence/2026-09-22/iphone-16e-home-large-text.png`
+- Hands-on review: QA-04.
+
+### Acceptance criteria
+
+- Home, Library, Downloads, and Settings remain reachable on every tab at accessibility text sizes.
+- iPhone 16e and a large iPhone layout pass screenshot and hit-testing checks.
+- No tab content overlays or displaces the tab bar.
+
+## DEF-037 — MangaBuddy/Comizy auto-opens Reader before image viability is proven
+
+**Status:** Implemented (verified 2026-09-25)  
+**Severity:** High  
+**Reported:** 2026-09-22  
+**Area:** Detection viability, redirects, Reader image loading, retry
+
+### User-visible problem
+
+A MangaBuddy chapter redirects to Comizy, auto-opens Reader, and immediately shows a failed first page. Retry does not recover, so the app promotes a high-confidence session that is not actually readable.
+
+### Reproduction
+
+1. Open `https://mangabuddy.com/kono-manga-no-heroine-wa-morisaki-amane-desu/chapter-1` in ToonEdge.
+2. Allow redirect to `comizy.io` and Reader auto-open.
+3. Tap Retry on the failed page.
+
+### Expected behavior
+
+Reader opens only when the extracted image session is viable in the native loader. If the CDN needs WebView cookies, referrer, or headers that cannot be reproduced, ToonEdge stays in Browser with a clear fallback.
+
+### Actual behavior
+
+Reader opens with page 1 failed, and Retry fails again. View Original Page returns to the correct Comizy chapter.
+
+### Evidence
+
+- Hands-on review: QA-03 and the MangaBuddy/Comizy compatibility row.
+- No standalone failure screenshot was captured.
+
+### Acceptance criteria
+
+- A captured Comizy redirect/session fixture preserves canonical metadata and ordered images.
+- Native image requests carry required session context or the detector refuses Reader promotion.
+- Retry either recovers a transient failure or gives a clear Browser fallback without losing the exact URL.
+
+## DEF-036 — Vortex chapter detection differs between in-site and direct navigation
+
+**Status:** Open — implementation and sanitized fixture coverage pass; live in-site route recheck pending  
+**Severity:** High  
+**Reported:** 2026-09-22  
+**Area:** Browser navigation observation, WebKit route changes, detection scheduling
+
+### User-visible problem
+
+Tapping chapter 169 from the Vortex series page leaves the chapter in Browser, while pasting the identical chapter URL auto-opens Reader. The result depends on navigation path rather than the loaded document.
+
+### Reproduction
+
+1. Open `https://vortexscans.org/series/past-life-returner`.
+2. Tap chapter 169 and wait for the chapter page to settle.
+3. Repeat by directly opening `https://vortexscans.org/series/past-life-returner/chapter-169`.
+
+### Expected behavior
+
+Every committed main-frame URL/content transition schedules one conservative detection pass. The same settled chapter produces the same confidence and Reader result.
+
+### Actual behavior
+
+In-site navigation stays in Browser; direct navigation opens Reader.
+
+### Evidence and relationship
+
+- Hands-on review: QA-02.
+- Related to DEF-003 browser-to-reader handoff, but specifically concerns route/navigation observation.
+
+### Acceptance criteria
+
+- A WebKit integration test reproduces a client-side or same-WebView route transition from series to chapter.
+- Detection runs once after the new chapter content is ready and auto-opens the same viable Reader session as direct load.
+- Repeated callbacks do not cause duplicate detection or presentation.
+
+## DEF-035 — Protected WEBTOON episodes incorrectly receive a Clean Mode prompt
+
+**Status:** Implemented (verified 2026-09-25)  
+**Severity:** High  
+**Reported:** 2026-09-22  
+**Area:** Site policy, detection, protected-reader guardrails
+
+### User-visible problem
+
+The documented browser-only WEBTOON negative control displays `Read in Clean Mode`. Offering extraction on a protected reader violates the PRD launch-site policy and creates product-trust and App Store risk.
+
+### Reproduction
+
+1. Open `https://www.webtoons.com/en/fantasy/tower-of-god/list?title_no=95`.
+2. Open Season 1 Episode 0 at `https://www.webtoons.com/en/fantasy/tower-of-god/season-1-ep-0/viewer?episode_no=1&title_no=95`.
+3. Wait for ToonEdge detection.
+
+### Expected behavior
+
+WEBTOON remains in Browser with no Reader auto-open or Clean Mode CTA. Protected GlobalComix pages follow the same browser-only policy.
+
+### Actual behavior
+
+The episode displays `Read in Clean Mode` above its content.
+
+### Evidence and root-cause assessment
+
+- `qa_evidence/2026-09-22/webtoon-protected-reader-cta.png`
+- Hands-on review: QA-01.
+- `SiteProfileRegistry.default` currently registers `webtoons.com` and `globalcomix.com` as `enabledPublic`, conflicting with PRD Tier 3.
+
+### Acceptance criteria
+
+- WEBTOON and protected GlobalComix profiles are browser-only.
+- Browser-only profiles never auto-open Reader or display the medium-confidence CTA.
+- Registry and Browser presentation tests enforce the policy for domains and subdomains.
+- View Original Page and normal Browser navigation remain available.
+
+## DEF-034 — Library Detail Continue fallback loses Library back context after Browser detection
+
+**Status:** Implemented  
+**Severity:** Medium  
+**Reported:** 2026-07-16  
+**Area:** Library Series Detail, Browser fallback, Reader launch origin, back navigation
+
+### User-visible problem
+
+When a reader opens a toon from Library, taps `Continue Chapter 107` on Series Detail, and the app needs to load the chapter webpage before Reader extraction completes, the resulting Reader back button returns first to the intermediate webpage Browser. The user then has to close Browser separately to get back to the Library/Series Detail context they started from.
+
+This differs from Home Continue Reading when a stored Reader session is available: Home can present Reader directly, and Reader back returns to Home.
+
+### Expected behavior
+
+- Reader back should return to the page/context that launched the read action.
+- Library Series Detail -> Continue -> Reader should return to that Series Detail, even if the app internally used Browser to load and detect the chapter first.
+- Home Continue Reading should continue to return to Home.
+- Browser-origin reading should continue to return to Browser or the original page context.
+- `View Original Page` should still expose the Browser explicitly when the user asks for it.
+
+### Root-cause assessment
+
+Direct Library Detail launches already work correctly when a stored native Reader session exists: `SeriesDetailView.open(_:)` sets `launchOrigin = .library(seriesID:)`, and `AppRouter.navigateBackFromReader()` routes back to the Library detail.
+
+The broken path is the fallback path for chapters without a stored native Reader payload. `SeriesDetailView.open(_:)` calls `router.presentBrowser(.url(chapter.sourceURL.absoluteString))`. Browser detection then creates a Browser-owned Reader session whose launch origin remains `.browser`, so Reader back follows Browser-origin behavior instead of Library-origin behavior.
+
+### Recommended fix
+
+Preserve the caller's intended Reader launch origin across Browser fallback.
+
+Suggested implementation:
+
+1. Add a scoped Browser launch context, such as a pending `ReaderLaunchOrigin` on the router or a contextual Browser start wrapper.
+2. When Library Series Detail falls back to Browser for a chapter URL, pass `.library(seriesID:)` as the intended Reader launch origin.
+3. When Browser detection promotes a pending Reader session, apply the pending launch origin to that session before presenting Reader.
+4. Clear the pending origin when Browser is dismissed, when Reader is presented, or when navigation changes away from the original fallback request.
+
+### No-hang requirements
+
+- Do not block Series Detail while waiting for Browser detection.
+- Do not leave the app in a hidden or unclosable loading state if Browser detection fails, returns low confidence, or is interrupted.
+- Browser fallback must remain visible and dismissible while the chapter page loads.
+- If an in-between state is needed, use a lightweight, cancellable overlay such as `Preparing Reader...` over the Browser, with the Browser close/back controls still available.
+- If detection does not produce a viable Reader session, keep the user in Browser and preserve normal Browser controls rather than showing an indefinite spinner.
+- Any pending Library-origin routing context must be cleared on Browser dismissal so later unrelated Browser reads do not incorrectly return to Library.
+
+### Acceptance criteria
+
+- Given Library Series Detail launches a chapter through Browser fallback and Browser detects a high-confidence Reader session, Reader back returns to the originating Library Series Detail.
+- Given the same flow, `View Original Page` opens or reveals the chapter webpage Browser.
+- Given Browser is opened normally from Search or an external URL, detected Reader back remains Browser-origin behavior.
+- Given Home Continue Reading opens a direct stored Reader session, Reader back still returns to Home.
+- Given fallback detection fails or remains low-confidence, the Browser remains usable and dismissible with no indefinite loading state.
+- Regression coverage verifies the pending launch context is applied only to the fallback Reader session and is cleared afterward.
+
+## DEF-033 — Library chapter label can show latest known chapter instead of the actual next reading target
+
+**Status:** Implemented  
+**Severity:** High  
+**Reported:** 2026-07-16  
+**Area:** Library summary metadata, resume target projection, Series Detail consistency
+
+### User-visible problem
+
+The Library grid can display a high chapter label such as `Ch. 236` / `Ch. 237` for a toon while Series Detail shows the user is actually at the beginning, with `Continue Chapter 1` and `0/33 chapters`. This makes the Library card look like it is reporting the reader's current position incorrectly.
+
+### Expected behavior
+
+- Library chapter metadata should align with the same local resume target used by Series Detail.
+- If the user has not read the series and the primary action is `Continue Chapter 1` or `Start Chapter 1`, the Library card should not present the latest known chapter as though it were the current reading position.
+- Latest-known/update information may still be shown, but it must be visually and semantically distinct from the current/resume chapter.
+- Compact, comfortable, and list modes should use consistent chapter semantics.
+
+### Suspected cause
+
+Library card metadata may still be falling back to `latestChapterLabel` in some view modes or badge paths when a `resumeTarget` or `currentChapterLabel` is absent. For newly saved or newly indexed series, latest-known chapter and next-reading chapter can diverge sharply.
+
+### Acceptance criteria
+
+- Given a saved series with indexed chapters through a high latest chapter but no reading progress, Library displays the resume/primary chapter semantics, not the latest-known chapter as current progress.
+- Given Series Detail primary action is `Continue Chapter 1`, Library metadata for that same series does not show `Ch. 236` / `Ch. 237` as the reader's current chapter.
+- If latest-known chapter is shown in Library, it is labeled as an update/latest indicator rather than the current/resume chapter.
+- Existing `New` update signaling remains available.
+- No persistence schema, chapter parsing, update-check, Reader, Browser, or save-to-library grouping changes.
+
+## DEF-032 — Library comfortable grid chapter badge overlaps the next row cover
+
+**Status:** Implemented  
+**Severity:** Medium  
+**Reported:** 2026-07-16  
+**Area:** Library UI, comfortable grid layout, card vertical rhythm
+
+### User-visible problem
+
+In the Library comfortable view, the chapter metadata pill from the top row can visually underlay or overlap the cover artwork in the row below. The screenshot shows the `New` / chapter pill area sitting behind the next comic cover, making the grid feel broken and reducing tap/readability confidence.
+
+### Expected behavior
+
+- Each Library grid item should reserve enough vertical space for cover, title, source domain, progress, and chapter badge/pill metadata.
+- Metadata from one item should never render under or behind another item.
+- Row spacing should remain stable across mixed title lengths, `New` badges, chapter pills, and progress states.
+- Comfortable mode should preserve the cover-first layout without clipping or visual stacking artifacts.
+
+### Suspected cause
+
+The comfortable grid item height or row spacing is likely not accounting for the tallest metadata stack. A lower row cover can begin before the previous row's chapter badge/pill area has fully cleared, especially when a title wraps to two lines and the card also shows source, progress, and badges.
+
+### Acceptance criteria
+
+- Comfortable grid cells do not overlap vertically on iPhone widths.
+- `New` and chapter pills remain visually attached to their own series item.
+- Two-line titles and mixed badge states do not change row spacing in a way that causes overlap.
+- Compact and list modes remain unaffected.
+- No persistence, Reader, Browser, parsing, update-check, or save-to-library behavior changes.
+
+## DEF-031 — Library tab, segment switching, and first toon tap are slow with local sample data
+
+**Status:** Implemented  
+**Severity:** High  
+**Reported:** 2026-07-13  
+**Area:** Library performance, Home-to-Library routing, SwiftData repository queries, Series Detail prewarming
+
+### User-visible problem
+
+With existing simulator sample data, opening Library from Home, switching Library segments such as `Recent` to `Reading`, and then tapping a toon can take noticeably long. The app appears to delay at exactly the moments that should feel native: tab selection, filter selection, and opening a locally known saved series.
+
+### Expected behavior
+
+- Switching from Home to Library should show the Library shell and current local collection promptly.
+- Switching Library filters should be presentation-only over an already loaded snapshot and should not trigger heavy per-cell detail loading.
+- Tapping a visible toon should not be delayed by unrelated prewarm work from other visible cells.
+- Local sample data with many indexed chapters should not make summary surfaces do detail-level work for every series.
+
+### Root-cause assessment
+
+The recent Story 11.45 implementation improved Series Detail first-entry actionability, but it introduced or amplified expensive work in Library surfaces:
+
+1. `LibraryView` starts `seriesDetail(for:)` prewarm tasks for every visible row through a `.task(id: series.id)` attached to each `NavigationLink`. Opening Library and changing segments can therefore launch many detail loads at once.
+2. `SwiftDataLibraryRepository.librarySnapshot()` maps every saved series through `seriesSummary(_:)`. That summary path now builds chapter summaries and a temporary `SeriesDetailSnapshot` to compute `resumeTarget`, so the summary path performs detail-level work.
+3. `fetchChapters(seriesID:)` fetches all `StoredChapter` rows from SwiftData and filters in memory. With many indexed chapters, every summary/detail call scales with total chapter count.
+4. `readState(for:)` calls `fetchProgress(sourceURLString:)`, which fetches all `StoredProgress` rows and filters in memory. Summary generation can call this repeatedly per chapter through `chaptersRead`, `progressPercent`, and `chapterSummary`.
+5. `normalizeDuplicateRecordsIfNeeded()` runs during `librarySnapshot()` and groups all chapters, adding more synchronous work to Home and Library snapshots.
+6. `HomeView.reloadSnapshot()` calls `homeSnapshot()`, which itself calls `librarySnapshot()`. Moving from Home to Library can stack Home snapshot work, Library snapshot work, and visible-row prewarming on the main actor.
+
+### Proposed fix
+
+1. Stop visible-row detail prewarming from running automatically for every realized Library cell.
+2. Keep seeded Continue action support, but compute `LibrarySeriesSummary.resumeTarget` through a lightweight repository projection instead of constructing full `SeriesDetailSnapshot`s for every series.
+3. Add SwiftData predicate fetches for common lookup paths: series by ID, chapters by series ID, chapter by ID/source URL, progress by source URL, and recent readings.
+4. Avoid running duplicate normalization on every `librarySnapshot()` call; move it to mutation paths or guard it with a once-per-repository-session flag.
+5. Keep Library segment switching as an in-memory filter over the current snapshot.
+6. Preserve Story 11.45 user-facing behavior: concrete local resume targets still make Series Detail seed actions available immediately when safe.
+
+### Acceptance criteria
+
+- Library segment switching does not start per-visible-cell `seriesDetail(for:)` prewarm tasks.
+- `librarySnapshot()` no longer constructs full `SeriesDetailSnapshot`s for every saved series.
+- SwiftData repository fetches use predicates for targeted series, chapter, progress, and recent-reading lookups instead of fetching entire tables and filtering in memory.
+- Duplicate normalization is not performed on every Home/Library snapshot render.
+- Home and Library snapshots still expose the same visible titles, filters, cover metadata, progress, current chapter labels, latest labels, unread flags, and concrete resume targets.
+- Series Detail seed action remains available when a safe local resume target exists.
+- Existing Reader detection, Browser behavior, chapter parsing, update checks, save-to-library grouping, Library layout, and persistence schema remain unchanged.
+
+## DEF-030 — Series Detail first entry delays cover, saved position, and Continue action
+
+**Status:** Implemented  
+**Severity:** Medium  
+**Reported:** 2026-07-13  
+**Area:** Library navigation, Series Detail startup, cover artwork cache, chapter-list positioning
+
+### User-visible problem
+
+When opening a saved series from Library, Series Detail can still feel delayed even after the seeded-shell and non-blocking refresh work. The cover image may flash in after the screen appears, the saved chapter position can appear after a visible jump, and the `Continue Reading` action may remain unavailable until the local `SeriesDetailSnapshot` hydration completes.
+
+### Expected behavior
+
+- Opening a locally known Library series should make the primary read action available with negligible delay when the local data already contains a concrete chapter URL.
+- Cover artwork that is already in the shared in-memory artwork cache should render synchronously on the first frame instead of briefly showing the placeholder.
+- The chapter list should appear near the saved/next reading target without a visible delayed jump.
+- Opportunistic online refresh should remain background-only and should not block the first actionable render.
+
+### Root-cause assessment
+
+Series Detail currently receives a visual seed from `LibrarySeriesSummary`, but that seed intentionally does not expose a concrete Continue target. The actionable `TEButton` is only rendered from hydrated `SeriesDetailSnapshot`, so a first entry can remain non-clickable until `libraryService.seriesDetail(for:)` completes.
+
+Cover artwork is also loaded through `CachedCoverArtwork` using `.task(id: url)`. Even when the image bytes are already available in `CoverArtworkMemoryCache`, the view starts with `imageData == nil`, renders the placeholder, and then updates after the async task checks memory.
+
+The saved chapter position jump is caused by Series Detail waiting 100 milliseconds before calling `ScrollViewReader.scrollTo(...)`. This makes the chapter list render at its default position first and then visibly move to the target row.
+
+### Proposed fix
+
+1. Add a lightweight local resume target to Library-origin route data only when the repository can supply a concrete stored/indexed `ChapterSummary` with a safe source URL.
+2. Let the seeded Series Detail header render an enabled primary action from that concrete local target while the full detail snapshot hydrates.
+3. Keep hydrated `SeriesDetailSnapshot` as the source of truth after it loads, and do not infer source URLs from latest labels or summary-only metadata.
+4. Prime visible Library rows into the existing in-memory detail cache as a performance optimization, without preloading the full Library.
+5. Initialize cover artwork state from `CoverArtworkMemoryCache` synchronously when possible.
+6. Replace the delayed chapter-list scroll with an immediate no-animation initial positioning pass.
+
+### Acceptance criteria
+
+- A Library-origin route with a concrete local resume target renders an enabled Series Detail primary action before full detail hydration completes.
+- A seed without a concrete source URL remains visual-only and does not expose a fake Continue action.
+- Hydration still replaces seed state with the full Series Detail snapshot and updates the parent in-memory cache.
+- Cached cover data can be used for the first rendered frame.
+- Series Detail no longer intentionally waits 100 milliseconds before anchoring the chapter list.
+- Existing Reader detection, Browser behavior, chapter parsing, update checks, save-to-library grouping, Library filters, and persistence schema remain unchanged.
+
+## DEF-029 — Series Detail seeded shell can show placeholder cover despite visible Library artwork
+
+**Status:** Implemented  
+**Severity:** Medium  
+**Reported:** 2026-07-10  
+**Area:** Library navigation, Series Detail seeded shell, cover artwork propagation
+
+### User-visible problem
+
+When opening a series from Library, the immediate Series Detail shell can display the generated `TE` placeholder cover even though the Library grid/list item the user tapped was showing real cover artwork. This makes the transition feel broken and less native, especially when the rest of the page already has the correct title and source metadata.
+
+### Expected behavior
+
+- Tapping a Library item with visible cover artwork should show that same artwork in the Series Detail seeded shell.
+- Hydrated Series Detail should keep or improve the cover image, not flash from real artwork to a placeholder.
+- If no real cover URL is known anywhere locally, the existing missing-cover fallback remains acceptable.
+- The fix should preserve the existing persistence schema unless investigation proves the stored cover URL is simply not being propagated through current models.
+
+### Initial root-cause hypothesis
+
+The Library visual card can have artwork while the `LibrarySeriesSummary.coverImageURL` passed through `LibrarySeriesDetailRoute` is `nil`, or the seeded shell only receives the URL-backed summary and not the same artwork source used by the Library tile. The defect should first identify whether the artwork comes from persisted series cover metadata, recent-reading metadata, cached image state, or a view-level fallback.
+
+### Proposed fix
+
+1. Add regression coverage proving `SeriesDetailSeedShellLayout` preserves a non-nil `LibrarySeriesSummary.coverImageURL`.
+2. Add repository-level coverage for the saved/recent summary path that currently loses cover URLs, if investigation confirms the summary is missing the URL.
+3. Propagate the existing locally known cover URL into `LibrarySeriesSummary` and the seeded shell without adding new network work before first render.
+4. Verify the hydrated `SeriesDetailSnapshot` receives the same cover URL when the stored series has it.
+
+### Acceptance criteria
+
+- A Library-origin Series Detail seed with a known cover URL renders with that URL available to the seeded shell.
+- Saved-series summaries retain cover URL metadata after library refreshes and recent-reading reconciliation.
+- Hydrated Series Detail does not regress from a known cover URL to a placeholder.
+- The fix does not change Reader detection, Browser behavior, chapter parsing, update checks, save-to-library grouping, or Library layout.
+
 ## DEF-028 — Series Detail can show all known local chapters read while the next source chapter exists
 
-**Status:** Implemented
-**Severity:** Medium
-**Reported:** 2026-07-09
+**Status:** Implemented  
+**Severity:** Medium  
+**Reported:** 2026-07-09  
 **Area:** Series Detail primary action, update refresh, chapter availability indexing
 
 ### User-visible problem
@@ -24,6 +687,153 @@ After chapter 106 is fully read, Series Detail can show `All Chapters Read` even
 - Added lightweight available-chapter indexing from source series pages.
 - Manual Library refresh and opportunistic Series Detail loading update the local chapter index.
 - Series Detail primary action now uses indexed chapter rows as openable reading targets without requiring cached reader image payloads.
+
+## DEF-027 — Series Detail and compact Library can diverge after the latest known local chapter is read
+
+**Status:** Implemented  
+**Severity:** Medium  
+**Reported:** 2026-07-09  
+**Area:** Series Detail primary action, Library compact metadata
+
+### User-visible problem
+
+After fully reading `The Extra's Academy Survival Guide` chapter 106, Series Detail still showed `Continue Chapter 102` even though chapter 102 was stale older progress. In compact Library, the same series showed `Ch. 237`, which came from latest-known/update metadata rather than the current reading target.
+
+### Expected behavior
+
+- Series Detail should not reopen an older unfinished chapter after a newer completed chapter has become the latest local progress.
+- If there is a forward in-progress, new, or unread chapter after the latest completed chapter, the primary action should choose that forward target.
+- If there is no known forward target after the latest completed chapter, the primary action should show `All Chapters Read` instead of falling back to stale older progress.
+- Compact Library tiles should prefer the current/resume chapter label before latest-known chapter metadata.
+
+### Root-cause assessment
+
+`SeriesDetailSnapshot.primaryChapter` could still fall back to `mostRecentInProgressChapter` after all known forward chapters had been read. That made an older in-progress row, such as chapter 102, eligible after chapter 106 was complete. Separately, `LibrarySeriesCardContent.compactMetadata` preferred `latestChapterLabel`, so update metadata such as `237` could appear on compact tiles even when the saved progress target was a different chapter.
+
+### Resolution
+
+- Series Detail now limits in-progress fallback to cases with no completed numeric progress, while forward selection still prefers forward in-progress chapters, then new chapters, then the next unread chapter.
+- Numeric chapter ordering now uses the same label extractor used for UI labels before falling back to `chapterNumber`.
+- Compact Library metadata now prefers a numeric current chapter label before latest-known metadata.
+- Added regression coverage for a read 103-106 sequence with stale chapter 102 progress and for compact metadata preferring current `Ch. 3` over latest-known `Ch. 237`.
+
+## DEF-026 — Series Detail can resume an older unfinished chapter instead of continuing after latest completed progress
+
+**Status:** Implemented  
+**Severity:** Medium  
+**Reported:** 2026-07-09  
+**Area:** Series Detail primary action, Library progress ordering
+
+### User-visible problem
+
+When later chapters are already read but an older chapter remains unfinished, Series Detail can choose the older unfinished chapter as the primary action. In the reported case, chapters 103, 104, and 105 were read, but chapter 102 remained at 0%, and the primary action still showed `Continue Chapter 102`.
+
+### Expected behavior
+
+- If there is a readable chapter after the latest completed chapter, the primary action should choose that chapter.
+- If there is no forward unread/new/in-progress chapter after the latest completed chapter, Series Detail should not fall back to stale older progress.
+
+### Root-cause assessment
+
+`SeriesDetailSnapshot.primaryChapter` prioritized any in-progress chapter before considering completed chapter order. That made stale or accidentally-started older chapters outrank the natural forward reading path.
+
+### Resolution
+
+- Series Detail primary action now first finds the latest completed chapter number and chooses the lowest readable chapter after it.
+- Forward selection keeps in-progress chapter priority when that chapter is after the latest completed chapter.
+- Added regression coverage proving read 103/104/105 with unfinished 102 starts 106.
+
+## DEF-025 — Series Detail can show all chapters read after adjacent navigation discovers the next chapter
+
+**Status:** Implemented  
+**Severity:** Medium  
+**Reported:** 2026-07-08  
+**Area:** Library progress reconciliation, Series Detail primary action, adjacent Reader navigation
+
+### User-visible problem
+
+After reading `The Extra's Academy Survival Guide` chapter 102 and navigating to chapter 103 in Reader, Series Detail could still show `All Chapters Read` with `1/1 chapters`. The expected behavior is for Series Detail to continue chapter 103.
+
+### Evidence
+
+- Reported with AsuraScans saved series where chapter 102 was the only saved Library chapter.
+- The Reader could move to chapter 103 and record recent-reading state, but the saved series' chapter list still contained only chapter 102.
+- Because chapter 102 was read and chapter 103 was not part of the saved series detail, the primary action had no readable chapter and displayed `All Chapters Read`.
+
+### Root-cause assessment
+
+Recent-reading state and saved Library chapter state diverged when adjacent Reader navigation reached a chapter that was not already stored in the saved series. Series Detail builds from saved Library chapters, so it did not know about the newly read adjacent chapter. Additionally, when multiple chapters were in progress, the primary chapter selector preferred the first stored in-progress chapter rather than the most recently active one.
+
+### Resolution
+
+- Recent-reading reconciliation now adds a newly discovered chapter to an already saved series when the recent chapter matches that saved series by source URL/chapter ID/canonical series URL.
+- The inserted chapter uses the Reader session's title, source URL, image URLs, and numeric chapter label extracted from noisy source text.
+- Library snapshot and Series Detail loading also reconcile existing recent-reading rows so simulator data created before this fix is repaired without requiring the user to reread the chapter.
+- Series Detail primary action now prefers the most recently active in-progress chapter before falling back to unread/new chapters.
+- Added regression coverage for saved chapter 102 followed by adjacent recent chapter 103, expecting `Continue Chapter 103` and a stored native Reader session for chapter 103.
+
+## DEF-024 — Vortex adjacent Reader navigation can fail on accessible next chapter
+
+**Status:** Implemented  
+**Severity:** High  
+**Reported:** 2026-07-08  
+**Area:** Reader adjacent chapter navigation, hidden WebView loading, VortexScans static reader extraction, Library progress reconciliation
+
+### User-visible problem
+
+From `Past Life Returner` chapter 169 on VortexScans, tapping Reader `Next` can show `Could not open next chapter in Reader.` even though chapter 170 is accessible at the expected adjacent URL.
+
+### Evidence
+
+- Reported with current chapter URL: `https://vortexscans.org/series/past-life-returner/chapter-169`
+- Live verification on 2026-07-08 confirmed both chapter 169 and chapter 170 return HTTP 200.
+- Chapter 170's static HTML includes ordered `data-reader-page-image` images and explicit chapter navigation links.
+- Simulator data inspection after the first fix showed `Past Life Returner` recent-reading state could point at chapter 169 while the saved Library series still pointed its `lastOpenedChapterID` at chapter 1.
+
+### Root-cause assessment
+
+Reader adjacent navigation depended on the hidden WebView page-analysis path. If hidden loading timed out, failed, or produced a non-viable low-confidence analysis, ToonEdge surfaced the generic adjacent failure without trying a second path. VortexScans exposes enough reader data in static HTML to safely reconstruct the same detection analysis when the hidden WebView path is unreliable.
+
+A second contributing issue was stale saved-series progress metadata. Reader sessions opened from saved Library state use the saved series' last-opened chapter to derive numeric adjacent URLs. Recent-reading writes could update the visible Home/Library resume label without reconciling the saved series' `lastOpenedChapterID`, leaving the Reader able to display recent progress while deriving adjacent controls from an older saved chapter.
+
+### Resolution
+
+- Added a static HTML fallback loader for adjacent chapter navigation.
+- The fallback extracts reader-tagged image URLs, dimensions, title, and previous/next chapter links from static HTML.
+- The resulting analysis still runs through the normal detector and must pass the existing high-confidence, nonblank, non-stock image gates before replacing the Reader session.
+- Production adjacent navigation now wires the hidden WebView loader with the static HTML fallback.
+- Added regression coverage for Vortex-shaped chapter 170 HTML when hidden loading fails and when hidden analysis is non-viable.
+- Recent-reading writes now reconcile matching saved Library chapters by source URL or chapter ID, updating saved progress and `lastOpenedChapterID` so resume sessions and adjacent URL derivation use the same chapter.
+- Added regression coverage for a saved sparse chapter list where recent reading moves from chapter 1 to chapter 169 and the next Reader control derives chapter 170.
+
+## DEF-023 — Library comfortable card chapter pill can show latest instead of resume chapter
+
+**Status:** Implemented  
+**Severity:** Medium  
+**Reported:** 2026-07-08  
+**Area:** Library visual metadata, comfortable grid cards, Series Detail consistency
+
+### User-visible problem
+
+In the Library comfortable grid, a saved reading item can show a chapter pill for the latest known chapter even when Series Detail continues a different in-progress chapter. The reported screenshot showed `The Extra's Academy Survival Guide` with a Library card pill of `Ch. 237`, while the Series Detail primary action for the same item showed `Continue Chapter 102`.
+
+### Expected behavior
+
+- Comfortable Library grid cards should show the user's current/resume chapter when it is available.
+- Latest known chapter should only be used as a fallback when no current chapter is available.
+- Completed items should continue to show a completion badge.
+- The fix should remain display-only and must not change persistence, chapter parsing, update checks, or save-to-library grouping behavior.
+
+### Root-cause assessment
+
+The comfortable grid card chip read `latestChapterLabel` directly from `LibrarySeriesSummary`. Series Detail already uses the active/current chapter selection path, so the two screens could display different chapter numbers for the same saved series.
+
+### Resolution
+
+- Added a `LibrarySeriesCardContent.comfortableBadgeMetadata` display contract.
+- Comfortable card badges now prefer numeric `currentChapterLabel`, fall back to numeric `latestChapterLabel`, and show `Complete` for completed series.
+- Updated the comfortable grid chip rendering to use the shared card-content metadata instead of reading `latestChapterLabel` directly.
+- Added regression coverage proving an in-progress item with current chapter `102` and latest chapter `237` badges as `Ch. 102`.
 
 ## DEF-022 — Reader adjacent navigation masks transient rate-limit/challenge failures
 

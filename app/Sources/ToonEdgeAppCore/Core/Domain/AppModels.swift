@@ -116,7 +116,29 @@ public struct SearchInput: Equatable, Sendable {
     }
 }
 
+public enum SearchInputValidation: Equatable, Sendable {
+    case empty
+    case valid(SearchInput)
+    case invalidURL
+}
+
 public enum SearchInputClassifier {
+    public static func validate(_ rawValue: String) -> SearchInputValidation {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .empty }
+
+        let lowercased = trimmed.lowercased()
+        if lowercased.hasPrefix("http://") || lowercased.hasPrefix("https://") {
+            guard let components = URLComponents(string: trimmed),
+                  let host = components.host,
+                  !host.isEmpty,
+                  !host.contains(where: \.isWhitespace) else {
+                return .invalidURL
+            }
+        }
+        return .valid(classify(trimmed))
+    }
+
     public static func classify(_ rawValue: String) -> SearchInput {
         let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
         let lowercased = trimmed.lowercased()
@@ -413,6 +435,22 @@ public struct AddToLibraryStatePickerModel: Equatable, Sendable {
     }
 }
 
+public struct LibraryResumeTarget: Equatable, Sendable {
+    public var chapter: ChapterSummary
+
+    public init(chapter: ChapterSummary) {
+        self.chapter = chapter
+    }
+
+    public var actionTitle: String {
+        let label = ChapterNumericLabelExtractor.label(for: chapter) ?? chapter.chapterLabel
+        if case .inProgress = chapter.readState {
+            return "Continue Chapter \(label)"
+        }
+        return "Start Chapter \(label)"
+    }
+}
+
 public struct LibrarySeriesSummary: Identifiable, Equatable, Sendable {
     public let id: UUID
     public var title: String
@@ -428,6 +466,7 @@ public struct LibrarySeriesSummary: Identifiable, Equatable, Sendable {
     public var isCompleted: Bool
     public var latestChapterLabel: String?
     public var currentChapterLabel: String?
+    public var resumeTarget: LibraryResumeTarget?
 
     public init(
         id: UUID = UUID(),
@@ -443,7 +482,8 @@ public struct LibrarySeriesSummary: Identifiable, Equatable, Sendable {
         hasUnreadUpdates: Bool,
         isCompleted: Bool,
         latestChapterLabel: String?,
-        currentChapterLabel: String?
+        currentChapterLabel: String?,
+        resumeTarget: LibraryResumeTarget? = nil
     ) {
         self.id = id
         self.title = title
@@ -459,6 +499,7 @@ public struct LibrarySeriesSummary: Identifiable, Equatable, Sendable {
         self.isCompleted = isCompleted
         self.latestChapterLabel = latestChapterLabel
         self.currentChapterLabel = currentChapterLabel
+        self.resumeTarget = resumeTarget
     }
 
     public var chapterSummaryText: String {
@@ -642,6 +683,139 @@ public struct ChapterSummary: Identifiable, Equatable, Sendable {
     }
 }
 
+enum SeriesPrimaryChapterSelector {
+    static func primaryChapter(in chapters: [ChapterSummary]) -> ChapterSummary? {
+        if let nextAfterLatestCompleted = nextAfterLatestCompleted(in: chapters) {
+            return nextAfterLatestCompleted
+        }
+
+        if latestCompletedChapterNumber(in: chapters) != nil {
+            return nil
+        }
+
+        return mostRecentInProgressChapter(in: chapters)
+            ?? firstReadableChapter(in: chapters)
+    }
+
+    static func actionTitle(for primaryChapter: ChapterSummary?) -> String {
+        guard let primaryChapter else {
+            return "All Chapters Read"
+        }
+
+        let label = ChapterNumericLabelExtractor.label(for: primaryChapter) ?? primaryChapter.chapterLabel
+        if case .inProgress = primaryChapter.readState {
+            return "Continue Chapter \(label)"
+        }
+
+        return "Start Chapter \(label)"
+    }
+
+    private static func nextAfterLatestCompleted(in chapters: [ChapterSummary]) -> ChapterSummary? {
+        guard let latestCompletedNumber = latestCompletedChapterNumber(in: chapters) else {
+            return nil
+        }
+
+        let candidates = chapters
+            .filter { $0.readState.isReadableNext }
+            .filter {
+                guard let number = numericChapterValue(for: $0) else {
+                    return false
+                }
+                return number > latestCompletedNumber
+            }
+
+        if let inProgress = mostRecentInProgressChapter(in: candidates) {
+            return inProgress
+        }
+
+        let newChapters = candidates.filter {
+            if case .new = $0.readState {
+                return true
+            }
+            return false
+        }
+        if let newestNewChapter = newChapters
+            .sorted(by: newestNumericChapterFirst)
+            .first {
+            return newestNewChapter
+        }
+
+        return candidates
+            .sorted {
+                (numericChapterValue(for: $0) ?? .greatestFiniteMagnitude)
+                    < (numericChapterValue(for: $1) ?? .greatestFiniteMagnitude)
+            }
+            .first
+    }
+
+    private static func latestCompletedChapterNumber(in chapters: [ChapterSummary]) -> Double? {
+        chapters
+            .compactMap { chapter -> Double? in
+                guard case .read = chapter.readState else {
+                    return nil
+                }
+                return numericChapterValue(for: chapter)
+            }
+            .max()
+    }
+
+    private static func mostRecentInProgressChapter(in candidates: [ChapterSummary]) -> ChapterSummary? {
+        candidates
+            .filter { chapter in
+                if case .inProgress = chapter.readState {
+                    return true
+                }
+                return false
+            }
+            .sorted { lhs, rhs in
+                switch (lhs.lastReadAt, rhs.lastReadAt) {
+                case let (lhsDate?, rhsDate?):
+                    return lhsDate > rhsDate
+                case (_?, nil):
+                    return true
+                case (nil, _?):
+                    return false
+                case (nil, nil):
+                    return (numericChapterValue(for: lhs) ?? -1) > (numericChapterValue(for: rhs) ?? -1)
+                }
+            }
+            .first
+    }
+
+    private static func firstReadableChapter(in chapters: [ChapterSummary]) -> ChapterSummary? {
+        chapters
+            .filter { $0.readState.isReadableNext }
+            .sorted(by: oldestNumericChapterFirst)
+            .first
+    }
+
+    private static func newestNumericChapterFirst(_ lhs: ChapterSummary, _ rhs: ChapterSummary) -> Bool {
+        let lhsNumber = numericChapterValue(for: lhs) ?? .leastNonzeroMagnitude
+        let rhsNumber = numericChapterValue(for: rhs) ?? .leastNonzeroMagnitude
+
+        if lhsNumber == rhsNumber {
+            return lhs.title > rhs.title
+        }
+
+        return lhsNumber > rhsNumber
+    }
+
+    private static func oldestNumericChapterFirst(_ lhs: ChapterSummary, _ rhs: ChapterSummary) -> Bool {
+        let lhsNumber = numericChapterValue(for: lhs) ?? .greatestFiniteMagnitude
+        let rhsNumber = numericChapterValue(for: rhs) ?? .greatestFiniteMagnitude
+
+        if lhsNumber == rhsNumber {
+            return lhs.title < rhs.title
+        }
+
+        return lhsNumber < rhsNumber
+    }
+
+    private static func numericChapterValue(for chapter: ChapterSummary) -> Double? {
+        ChapterNumericLabelExtractor.label(for: chapter).flatMap(Double.init) ?? chapter.chapterNumber
+    }
+}
+
 public struct SeriesDetailSnapshot: Identifiable, Equatable, Sendable {
     public let id: UUID
     public var title: String
@@ -688,25 +862,11 @@ public struct SeriesDetailSnapshot: Identifiable, Equatable, Sendable {
     }
 
     public var primaryChapter: ChapterSummary? {
-        chapters.first { chapter in
-            if case .inProgress = chapter.readState {
-                return true
-            }
-            return false
-        } ?? sortedChaptersNewestFirst.first { $0.readState.isReadableNext }
+        SeriesPrimaryChapterSelector.primaryChapter(in: chapters)
     }
 
     public var primaryActionTitle: String {
-        guard let primaryChapter else {
-            return "All Chapters Read"
-        }
-
-        let label = ChapterNumericLabelExtractor.label(for: primaryChapter) ?? primaryChapter.chapterLabel
-        if case .inProgress = primaryChapter.readState {
-            return "Continue Chapter \(label)"
-        }
-
-        return "Start Chapter \(label)"
+        SeriesPrimaryChapterSelector.actionTitle(for: primaryChapter)
     }
 
     public var chapterListAnchorID: UUID? {
@@ -758,19 +918,6 @@ public struct SeriesDetailSnapshot: Identifiable, Equatable, Sendable {
             )
         case .all:
             generatedAllChapterList()
-        }
-    }
-
-    private var sortedChaptersNewestFirst: [ChapterSummary] {
-        chapters.sorted { lhs, rhs in
-            let lhsNumber = lhs.chapterNumber ?? .leastNonzeroMagnitude
-            let rhsNumber = rhs.chapterNumber ?? .leastNonzeroMagnitude
-
-            if lhsNumber == rhsNumber {
-                return lhs.title > rhs.title
-            }
-
-            return lhsNumber > rhsNumber
         }
     }
 
@@ -895,7 +1042,35 @@ public enum ChapterNumericLabelExtractor {
             return String(chapterNumber)
         }
 
-        return firstNumericToken(in: title)
+        return chapterNumberInText(title) ?? firstNumericToken(in: title)
+    }
+
+    public static func displayLabel(title: String, sourceURL: URL? = nil) -> String {
+        if let number = chapterNumberInText(title)
+            ?? sourceURL.flatMap({ chapterNumberInText($0.path) }) {
+            return "Chapter \(number)"
+        }
+        return title
+    }
+
+    public static func canonicalLabel(
+        chapterNumber: Double?,
+        chapterLabel: String,
+        title: String,
+        sourceURL: URL
+    ) -> String {
+        label(chapterNumber: chapterNumber, chapterLabel: chapterLabel, title: title)
+            ?? chapterNumberInText(sourceURL.path)
+            ?? title
+    }
+
+    private static func chapterNumberInText(_ value: String) -> String? {
+        let pattern = #"(?i)\b(?:chapter|chap|ch)\s*[-#.:/]*\s*([0-9]+(?:\.[0-9]+)?)\b"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(value.startIndex..<value.endIndex, in: value)
+        guard let match = regex.firstMatch(in: value, range: range),
+              let tokenRange = Range(match.range(at: 1), in: value) else { return nil }
+        return String(value[tokenRange])
     }
 
     static func firstNumericToken(in value: String) -> String? {
@@ -1617,6 +1792,7 @@ public struct MockReaderSession: Identifiable, Equatable, Sendable {
     public var nextChapter: MockChapter?
     public var launchOrigin: ReaderLaunchOrigin
     public var settings: ReaderSettings
+    public var imageRequestContext: ReaderImageRequestContext?
 
     public init(
         id: UUID = UUID(),
@@ -1634,7 +1810,8 @@ public struct MockReaderSession: Identifiable, Equatable, Sendable {
         previousChapter: MockChapter? = nil,
         nextChapter: MockChapter? = nil,
         launchOrigin: ReaderLaunchOrigin = .direct,
-        settings: ReaderSettings = .default
+        settings: ReaderSettings = .default,
+        imageRequestContext: ReaderImageRequestContext? = nil
     ) {
         self.id = id
         self.seriesID = seriesID
@@ -1653,6 +1830,7 @@ public struct MockReaderSession: Identifiable, Equatable, Sendable {
         self.nextChapter = nextChapter
         self.launchOrigin = launchOrigin
         self.settings = settings
+        self.imageRequestContext = imageRequestContext
     }
 
     public static let sample = MockReaderSession(

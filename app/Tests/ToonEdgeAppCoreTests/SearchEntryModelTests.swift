@@ -17,6 +17,25 @@ import Testing
     #expect(input.browserStartPoint == .url("https://example.com/series/chapter-12"))
 }
 
+@Test func searchValidationRejectsHostlessHTTPURLs() {
+    for value in ["https://", "http://", " http:// \n", "https://?chapter=1"] {
+        #expect(SearchInputClassifier.validate(value) == .invalidURL)
+    }
+}
+
+@Test func searchValidationKeepsEmptyInputInert() {
+    #expect(SearchInputClassifier.validate("  \n") == .empty)
+}
+
+@Test func searchValidationKeepsSupportedDestinations() {
+    for value in ["https://example.com/chapter", "example.com/chapter", "localhost:8080/chapter", "192.168.1.20/chapter", "chapter 12", "ftp://example.com"] {
+        guard case .valid = SearchInputClassifier.validate(value) else {
+            Issue.record("Unexpected invalid input: \(value)")
+            continue
+        }
+    }
+}
+
 @Test func searchInputClassifierAddsSchemeForLikelyDomains() {
     let input = SearchInputClassifier.classify("example.com/chapter-12")
 
@@ -143,8 +162,8 @@ import Testing
     let webtoons = suggestions.first { $0.value == "webtoons.com" }
     let asura = suggestions.first { $0.value == "asuracomic.net" }
 
-    #expect(webtoons?.sourceSupportTier == .enabledPublic)
-    #expect(webtoons?.subtitle == "Supported reader source")
+    #expect(webtoons?.sourceSupportTier == nil)
+    #expect(webtoons?.subtitle == "Open site")
     #expect(asura?.sourceSupportTier == nil)
     #expect(asura?.subtitle == "Open site")
 }

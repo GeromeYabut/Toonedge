@@ -21,6 +21,15 @@ public struct FileBackedChapterAssetCache: ChapterAssetCaching {
         chapterDirectory(for: sourceURL).appendingPathComponent(assetFilename(for: assetURL))
     }
 
+    public func store(_ data: Data, for assetURL: URL, sourceURL: URL) throws {
+        let destination = intendedAssetURL(for: assetURL, sourceURL: sourceURL)
+        try FileManager.default.createDirectory(
+            at: destination.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try data.write(to: destination, options: .atomic)
+    }
+
     public static func stableIdentifier(for value: String) -> String {
         var hash: UInt64 = 5_381
         for byte in value.utf8 {

@@ -1,0 +1,2743 @@
+diff --git a/app/Sources/ToonEdgeAppCore/Features/Library/Views/LibraryView.swift b/app/Sources/ToonEdgeAppCore/Features/Library/Views/LibraryView.swift
+index dec5e3a..741e7d2 100644
+--- a/app/Sources/ToonEdgeAppCore/Features/Library/Views/LibraryView.swift
++++ b/app/Sources/ToonEdgeAppCore/Features/Library/Views/LibraryView.swift
+@@ -8,74 +8,87 @@ import AppKit
+ 
+ public struct LibraryView: View {
+     private let dependencies: AppDependencies
+     @Binding private var router: AppRouter
+     @State private var snapshot = LibrarySnapshot(series: [])
+     @State private var selectedSegment: LibrarySegment = .recent
+     @State private var selectedViewMode: LibraryViewMode
+     @State private var hasLoadedSnapshot = false
+     @State private var isRefreshingUpdates = false
+     @State private var refreshFeedback: LibraryRefreshFeedback?
+-    @State private var navigationPath: [UUID] = []
++    @State private var navigationPath: [LibrarySeriesDetailRoute] = []
++    @State private var seriesDetailCache: [UUID: SeriesDetailSnapshot] = [:]
+     private let libraryViewPreferences: LibraryViewPreferences
+ 
+     public init(dependencies: AppDependencies, router: Binding<AppRouter>) {
+         self.dependencies = dependencies
+         self._router = router
+         let preferences = LibraryViewPreferences()
+         self.libraryViewPreferences = preferences
+         self._selectedViewMode = State(initialValue: preferences.selectedViewMode)
+     }
+ 
+     public var body: some View {
+         NavigationStack(path: $navigationPath) {
+             ScrollView {
+                 VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
+                     LibraryFilterRow(selection: $selectedSegment)
+-                    summaryPill
+-                    LibraryViewModeControl(selection: $selectedViewMode)
++                    collectionControls
+                     content
+                 }
+                 .padding(ToonEdgeSpacing.large)
+             }
+             .overlay(alignment: .bottomTrailing) {
+                 floatingRefreshFeedback
+             }
+             .animation(.easeInOut(duration: 0.2), value: refreshFeedback)
+             .navigationTitle("Library")
+             .task {
+                 await reloadSnapshot()
+                 if let segment = router.consumePendingLibrarySegment() {
+                     selectedSegment = segment
+                 }
+                 if let seriesID = router.consumePendingLibrarySeriesID() {
+-                    navigationPath = [seriesID]
++                    navigationPath = [LibrarySeriesDetailRoute(seriesID: seriesID)]
+                 }
+             }
+             .onChange(of: router.pendingLibrarySegment) { _, pendingSegment in
+                 guard let pendingSegment else { return }
+                 selectedSegment = pendingSegment
+                 _ = router.consumePendingLibrarySegment()
+             }
+             .onChange(of: router.pendingLibrarySeriesID) { _, pendingSeriesID in
+                 guard let pendingSeriesID else { return }
+-                navigationPath = [pendingSeriesID]
++                navigationPath = [LibrarySeriesDetailRoute(seriesID: pendingSeriesID)]
+                 _ = router.consumePendingLibrarySeriesID()
+             }
+             .refreshable {
+                 await refreshUpdates()
+             }
+             .onChange(of: selectedViewMode) { _, mode in
+                 libraryViewPreferences.selectedViewMode = mode
+             }
+-            .navigationDestination(for: UUID.self) { seriesID in
+-                SeriesDetailView(seriesID: seriesID, dependencies: dependencies, router: $router)
++            .navigationDestination(for: LibrarySeriesDetailRoute.self) { route in
++                SeriesDetailView(
++                    seriesID: route.seriesID,
++                    seedSummary: route.seedSummary,
++                    cachedDetail: seriesDetailCache[route.seriesID],
++                    dependencies: dependencies,
++                    router: $router,
++                    onDetailHydrated: { hydratedDetail in
++                        if let hydratedDetail {
++                            seriesDetailCache[route.seriesID] = hydratedDetail
++                        } else {
++                            seriesDetailCache.removeValue(forKey: route.seriesID)
++                        }
++                    }
++                )
+             }
+             .toonEdgeScreen()
+         }
+     }
+ 
+     @ViewBuilder
+     private var floatingRefreshFeedback: some View {
+         if let refreshFeedback {
+             LibraryRefreshFeedbackView(layout: refreshFeedback.layout) {
+                 dismissRefreshFeedback()
+@@ -83,30 +96,29 @@ public struct LibraryView: View {
+             .padding(.horizontal, ToonEdgeSpacing.large)
+             .padding(.bottom, ToonEdgeSpacing.large)
+             .transition(.asymmetric(
+                 insertion: .move(edge: .bottom).combined(with: .opacity),
+                 removal: .opacity
+             ))
+             .zIndex(1)
+         }
+     }
+ 
+-    private var summaryPill: some View {
++    private var collectionControls: some View {
+         let visible = snapshot.series(for: selectedSegment)
+-        let layout = LibrarySummaryPillLayout(
+-            segment: selectedSegment,
++        let layout = LibraryCollectionControlsLayout(
+             visibleSeries: visible,
+             hasUpdateRefreshService: dependencies.updateRefreshService != nil,
+             isRefreshing: isRefreshingUpdates
+         )
+ 
+-        return LibrarySummaryPill(layout: layout) {
++        return LibraryCollectionControls(layout: layout, selection: $selectedViewMode) {
+             Task {
+                 await refreshUpdates()
+             }
+         }
+     }
+ 
+     private func reloadSnapshot() async {
+         snapshot = await dependencies.libraryService.librarySnapshot()
+         hasLoadedSnapshot = true
+     }
+@@ -136,52 +148,43 @@ public struct LibraryView: View {
+     }
+ 
+     @ViewBuilder
+     private var content: some View {
+         let visible = snapshot.series(for: selectedSegment)
+         let emptyLayout = LibraryEmptyStateLayout(hasLoadedSnapshot: hasLoadedSnapshot, visibleSeries: visible)
+ 
+         if emptyLayout.isVisible {
+             LibraryEmptyStateView(layout: emptyLayout)
+         } else {
++            let gridLayout = LibraryGridLayout(mode: selectedViewMode)
++
+             LazyVGrid(
+-                columns: [GridItem(.adaptive(minimum: gridMinimumWidth), spacing: ToonEdgeSpacing.medium)],
+-                spacing: ToonEdgeSpacing.medium
++                columns: gridLayout.columns,
++                spacing: gridLayout.itemSpacing
+             ) {
+                 ForEach(visible) { series in
+-                    NavigationLink(value: series.id) {
++                    NavigationLink(value: LibrarySeriesDetailRoute(summary: series)) {
+                         switch selectedViewMode {
+                         case .comfortable:
+                             SeriesCard(series: series, layout: .comfortable)
+                         case .compact:
+-                            SeriesCard(series: series, layout: .compact)
++                            SeriesCompactTile(series: series, layout: .compact)
+                         case .list:
+                             SeriesListRow(series: series)
+                         }
+                     }
+                     .buttonStyle(.plain)
+                 }
+             }
+         }
+     }
+ 
+-    private var gridMinimumWidth: CGFloat {
+-        switch selectedViewMode {
+-        case .comfortable:
+-            return 150
+-        case .compact:
+-            return 118
+-        case .list:
+-            return 320
+-        }
+-    }
+-
+     private func showRefreshFeedback(message: String) {
+         let feedback = LibraryRefreshFeedback(message: message)
+         refreshFeedback = feedback
+ 
+         Task { [feedbackID = feedback.id] in
+             try? await Task.sleep(for: .seconds(LibraryRefreshFeedbackLayout.autoDismissDelay))
+             if refreshFeedback?.id == feedbackID {
+                 refreshFeedback = nil
+             }
+         }
+@@ -197,42 +200,90 @@ struct LibraryHeaderLayout: Equatable, Sendable {
+     var contentTitle: String?
+     var toolbarRefreshIsAvailable: Bool
+ 
+     init(hasUpdateRefreshService: Bool) {
+         self.navigationTitle = "Library"
+         self.contentTitle = nil
+         self.toolbarRefreshIsAvailable = false
+     }
+ }
+ 
+-struct LibrarySummaryPillLayout: Equatable, Sendable {
+-    var title: String
+-    var message: String
++struct LibrarySeriesDetailRoute: Hashable, Sendable {
++    var seriesID: UUID
++    var seedSummary: LibrarySeriesSummary?
++
++    init(seriesID: UUID, seedSummary: LibrarySeriesSummary? = nil) {
++        self.seriesID = seriesID
++        self.seedSummary = seedSummary
++    }
++
++    init(summary: LibrarySeriesSummary) {
++        self.seriesID = summary.id
++        self.seedSummary = summary
++    }
++
++    static func == (lhs: LibrarySeriesDetailRoute, rhs: LibrarySeriesDetailRoute) -> Bool {
++        lhs.seriesID == rhs.seriesID
++    }
++
++    func hash(into hasher: inout Hasher) {
++        hasher.combine(seriesID)
++    }
++}
++
++struct LibraryCollectionControlsLayout: Equatable, Sendable {
+     var refreshButtonIsVisible: Bool
+     var refreshSystemImage: String
+     var refreshAccessibilityLabel: String
++    var countText: String
++    var usesLargeSummaryCard: Bool
+ 
+     init(
+-        segment: LibrarySegment,
+         visibleSeries: [LibrarySeriesSummary],
+         hasUpdateRefreshService: Bool,
+         isRefreshing: Bool
+     ) {
+-        let updateCount = visibleSeries.filter(\.hasUnreadUpdates).count
+-
+-        self.title = "\(segment.title) Library"
+-        self.message = updateCount > 0
+-            ? "\(updateCount) with new chapters"
+-            : "\(visibleSeries.count) saved \(visibleSeries.count == 1 ? "title" : "titles")"
+         self.refreshButtonIsVisible = hasUpdateRefreshService
+         self.refreshSystemImage = isRefreshing ? "hourglass" : "arrow.clockwise"
+         self.refreshAccessibilityLabel = "Check for new chapters"
++        self.countText = "\(visibleSeries.count) \(visibleSeries.count == 1 ? "title" : "titles")"
++        self.usesLargeSummaryCard = false
++    }
++}
++
++struct SeriesDetailSeedShellLayout: Equatable, Sendable {
++    var title: String
++    var metadata: String
++    var coverImageURL: URL?
++    var status: String
++    var hasUnreadUpdates: Bool
++    var showsLoadingBanner: Bool
++    var exposesContinueAction: Bool
++
++    init(summary: LibrarySeriesSummary) {
++        self.title = summary.title
++        self.metadata = "\(summary.sourceDomain) • \(summary.chapterSummaryText)"
++        self.coverImageURL = summary.coverImageURL
++        self.status = summary.libraryState.title
++        self.hasUnreadUpdates = summary.hasUnreadUpdates
++        self.showsLoadingBanner = false
++        self.exposesContinueAction = false
++    }
++}
++
++struct SeriesDetailCoverLayout: Equatable, Sendable {
++    var coverImageURL: URL?
++    var usesPlaceholder: Bool
++
++    init(coverImageURL: URL?) {
++        self.coverImageURL = coverImageURL
++        self.usesPlaceholder = coverImageURL == nil
+     }
+ }
+ 
+ struct LibraryRefreshFeedbackLayout: Equatable, Sendable {
+     static let autoDismissDelay = 5
+ 
+     var title: String
+     var message: String
+     var presentationStyle: LibraryRefreshFeedbackPresentationStyle
+     var overlayAlignment: LibraryRefreshFeedbackOverlayAlignment
+@@ -276,37 +327,96 @@ enum LibraryRefreshFeedbackAccentColorRole: Equatable, Sendable {
+ struct LibraryContentLayout: Equatable, Sendable {
+     var refreshFeedbackIsOverlay: Bool
+     var contentStartsWithSegmentedControl: Bool
+ 
+     init(refreshFeedback: LibraryRefreshFeedbackLayout?) {
+         self.refreshFeedbackIsOverlay = refreshFeedback?.presentationStyle == .floatingOverlay
+         self.contentStartsWithSegmentedControl = true
+     }
+ }
+ 
++struct LibraryGridLayout: Equatable, Sendable {
++    var columnStyle: LibraryGridColumnStyle
++    var itemSpacing: CGFloat
++    var horizontalContentPadding: CGFloat
++
++    init(mode: LibraryViewMode) {
++        switch mode {
++        case .comfortable:
++            self.columnStyle = .fixedCount(2)
++            self.itemSpacing = ToonEdgeSpacing.large
++            self.horizontalContentPadding = ToonEdgeSpacing.large
++        case .compact:
++            self.columnStyle = .fixedCount(4)
++            self.itemSpacing = ToonEdgeSpacing.small
++            self.horizontalContentPadding = ToonEdgeSpacing.medium
++        case .list:
++            self.columnStyle = .adaptiveMinimum(320)
++            self.itemSpacing = ToonEdgeSpacing.small
++            self.horizontalContentPadding = ToonEdgeSpacing.large
++        }
++    }
++
++    var columns: [GridItem] {
++        switch columnStyle {
++        case .fixedCount(let count):
++            return Array(
++                repeating: GridItem(.flexible(), spacing: itemSpacing, alignment: .top),
++                count: count
++            )
++        case .adaptiveMinimum(let minimum):
++            return [GridItem(.adaptive(minimum: minimum), spacing: itemSpacing, alignment: .top)]
++        }
++    }
++}
++
++enum LibraryGridColumnStyle: Equatable, Sendable {
++    case fixedCount(Int)
++    case adaptiveMinimum(CGFloat)
++}
++
++struct LibraryFilterChipLayout: Equatable, Sendable {
++    var cornerRadius: CGFloat
++    var usesCapsuleShape: Bool
++    var backgroundOpacity: Double
++
++    init(isSelected: Bool) {
++        self.cornerRadius = 8
++        self.usesCapsuleShape = false
++        self.backgroundOpacity = isSelected ? 1 : 0.72
++    }
++}
++
+ private struct LibraryFilterRow: View {
+     @Binding var selection: LibrarySegment
+ 
+     var body: some View {
+         ScrollView(.horizontal, showsIndicators: false) {
+             HStack(spacing: ToonEdgeSpacing.small) {
+                 ForEach(LibrarySegment.allCases) { segment in
+                     Button {
+                         selection = segment
+                     } label: {
++                        let layout = LibraryFilterChipLayout(isSelected: selection == segment)
++
+                         Text(segment.title)
+                             .font(ToonEdgeTypography.caption)
+                             .padding(.horizontal, ToonEdgeSpacing.medium)
+                             .padding(.vertical, ToonEdgeSpacing.small)
+-                            .background(selection == segment ? ToonEdgeColor.accentSoft : ToonEdgeColor.panel)
+-                            .clipShape(Capsule())
+-                            .overlay(Capsule().stroke(selection == segment ? ToonEdgeColor.accent.opacity(0.45) : ToonEdgeColor.border))
++                            .background(
++                                selection == segment ? ToonEdgeColor.accentSoft : ToonEdgeColor.panel.opacity(layout.backgroundOpacity),
++                                in: RoundedRectangle(cornerRadius: layout.cornerRadius)
++                            )
++                            .overlay(
++                                RoundedRectangle(cornerRadius: layout.cornerRadius)
++                                    .stroke(selection == segment ? ToonEdgeColor.accent.opacity(0.45) : ToonEdgeColor.border.opacity(0.5))
++                            )
+                     }
+                     .buttonStyle(.plain)
+                 }
+             }
+             .padding(.vertical, ToonEdgeSpacing.xsmall)
+         }
+     }
+ }
+ 
+ private struct LibraryViewModeControl: View {
+@@ -322,21 +432,21 @@ private struct LibraryViewModeControl: View {
+                         .frame(width: 34, height: 30)
+                         .background(selection == mode ? ToonEdgeColor.panel : Color.clear)
+                         .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+                 }
+                 .buttonStyle(.plain)
+                 .foregroundStyle(selection == mode ? ToonEdgeColor.textPrimary : ToonEdgeColor.textSecondary)
+                 .accessibilityLabel("\(mode.title) library view")
+             }
+         }
+         .padding(ToonEdgeSpacing.xsmall)
+-        .background(ToonEdgeColor.elevated, in: Capsule())
++        .background(ToonEdgeColor.elevated.opacity(0.72), in: RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+         .frame(maxWidth: .infinity, alignment: .trailing)
+     }
+ }
+ 
+ struct LibraryEmptyStateLayout: Equatable, Sendable {
+     var isVisible: Bool
+     var message: String
+     var imageName: String
+     var imageURL: URL?
+ 
+@@ -367,54 +477,47 @@ enum ToonEdgeAppCoreResources {
+ 
+ private struct LibraryRefreshFeedback: Equatable {
+     let id = UUID()
+     let layout: LibraryRefreshFeedbackLayout
+ 
+     init(message: String) {
+         self.layout = LibraryRefreshFeedbackLayout(message: message)
+     }
+ }
+ 
+-private struct LibrarySummaryPill: View {
+-    let layout: LibrarySummaryPillLayout
++private struct LibraryCollectionControls: View {
++    let layout: LibraryCollectionControlsLayout
++    @Binding var selection: LibraryViewMode
+     let refresh: () -> Void
+ 
+     var body: some View {
+-        HStack(spacing: ToonEdgeSpacing.medium) {
+-            Image(systemName: "books.vertical")
+-                .foregroundStyle(ToonEdgeColor.accent)
++        HStack(spacing: ToonEdgeSpacing.small) {
++            Text(layout.countText)
++                .font(ToonEdgeTypography.caption.weight(.semibold))
++                .foregroundStyle(ToonEdgeColor.textSecondary)
++                .lineLimit(1)
+ 
+-            VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+-                Text(layout.title)
+-                    .font(ToonEdgeTypography.sectionTitle)
+-                Text(layout.message)
+-                    .font(ToonEdgeTypography.caption)
+-                    .foregroundStyle(ToonEdgeColor.textSecondary)
+-            }
++            Spacer(minLength: ToonEdgeSpacing.small)
+ 
+-            Spacer(minLength: ToonEdgeSpacing.medium)
++            LibraryViewModeControl(selection: $selection)
+ 
+             if layout.refreshButtonIsVisible {
+                 Button(action: refresh) {
+                     Image(systemName: layout.refreshSystemImage)
+                         .frame(width: 36, height: 36)
+                         .contentTransition(.symbolEffect(.replace))
+                 }
+                 .buttonStyle(.plain)
+                 .disabled(layout.refreshSystemImage == "hourglass")
+                 .accessibilityLabel(layout.refreshAccessibilityLabel)
+             }
+         }
+-        .padding(.horizontal, ToonEdgeSpacing.large)
+-        .padding(.vertical, ToonEdgeSpacing.medium)
+-        .background(ToonEdgeColor.panel, in: Capsule())
+-        .overlay(Capsule().stroke(ToonEdgeColor.border))
+     }
+ }
+ 
+ private struct LibraryRefreshFeedbackView: View {
+     let layout: LibraryRefreshFeedbackLayout
+     let dismiss: () -> Void
+ 
+     var body: some View {
+         HStack(alignment: .center, spacing: ToonEdgeSpacing.small) {
+             Image(systemName: "arrow.clockwise")
+@@ -512,64 +615,52 @@ private struct LibraryMascotImage: View {
+ }
+ 
+ private struct SeriesCard: View {
+     let series: LibrarySeriesSummary
+     let layout: LibrarySeriesCardLayout
+     private var content: LibrarySeriesCardContent {
+         LibrarySeriesCardContent(series: series)
+     }
+ 
+     var body: some View {
+-        TECard {
+-            VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+-                coverSlot
+-
+-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+-                    HStack(alignment: .top, spacing: ToonEdgeSpacing.small) {
+-                        Text(series.title)
+-                            .font(ToonEdgeTypography.body.weight(.semibold))
+-                            .lineLimit(layout.titleLineLimit)
+-                            .multilineTextAlignment(.leading)
+-                            .frame(height: layout.titleHeight, alignment: .topLeading)
+-
+-                        Spacer(minLength: 0)
+-                    }
++        VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
++            coverSlot
+ 
+-                    Text(content.metadata)
+-                        .font(ToonEdgeTypography.caption)
+-                        .foregroundStyle(ToonEdgeColor.textSecondary)
+-                        .lineLimit(layout.metadataLineLimit)
+-                        .frame(height: layout.metadataHeight, alignment: .leading)
+-                }
++            Text(series.title)
++                .font(ToonEdgeTypography.body.weight(.semibold))
++                .lineLimit(layout.titleLineLimit)
++                .multilineTextAlignment(.leading)
++                .frame(height: layout.titleHeight, alignment: .topLeading)
+ 
+-                Spacer(minLength: 0)
++            Text(content.sourceMetadata)
++                .font(ToonEdgeTypography.caption)
++                .foregroundStyle(ToonEdgeColor.textSecondary)
++                .lineLimit(layout.metadataLineLimit)
++                .frame(height: layout.metadataHeight, alignment: .leading)
+ 
+-                ProgressView(value: series.progressPercent)
+-                    .tint(progressTint)
+-                    .frame(height: layout.progressHeight)
++            ProgressView(value: series.progressPercent)
++                .tint(progressTint)
++                .frame(height: layout.progressHeight)
+ 
+-                HStack(spacing: ToonEdgeSpacing.xsmall) {
+-                    if series.hasUnreadUpdates {
+-                        TEChip("New", isActive: true)
+-                    }
++            HStack(spacing: ToonEdgeSpacing.xsmall) {
++                if series.hasUnreadUpdates {
++                    TEChip("New", isActive: true)
++                }
+ 
+-                    if series.isCompleted {
+-                        TEChip("Complete")
+-                    } else if let latestChapterLabel = series.latestChapterLabel {
+-                        TEChip("Ch. \(latestChapterLabel)")
+-                    }
++                if let comfortableBadgeMetadata = content.comfortableBadgeMetadata {
++                    TEChip(comfortableBadgeMetadata)
+                 }
+-                .frame(height: layout.badgeRowHeight, alignment: .leading)
+             }
+-            .frame(maxHeight: .infinity, alignment: .top)
++            .frame(height: layout.badgeRowHeight, alignment: .leading)
+         }
+-        .frame(height: layout.fixedCardHeight)
++        .frame(height: layout.fixedCardHeight, alignment: .top)
++        .contentShape(Rectangle())
+     }
+ 
+     @ViewBuilder
+     private var coverSlot: some View {
+         if layout.coverSlotUsesFullCardWidth {
+             decoratedCover
+                 .frame(width: layout.coverImageWidth, height: layout.coverHeight)
+                 .frame(maxWidth: .infinity, minHeight: layout.coverSlotHeight, maxHeight: layout.coverSlotHeight, alignment: layout.coverImageAlignment.swiftUIAlignment)
+         } else {
+             decoratedCover
+@@ -588,40 +679,77 @@ private struct SeriesCard: View {
+             RoundedRectangle(cornerRadius: layout.cornerRadius)
+                 .stroke(ToonEdgeColor.border.opacity(0.65))
+         )
+     }
+ 
+     private var progressTint: Color {
+         series.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.accent
+     }
+ }
+ 
++private struct SeriesCompactTile: View {
++    let series: LibrarySeriesSummary
++    let layout: LibrarySeriesCardLayout
++    private var content: LibrarySeriesCardContent {
++        LibrarySeriesCardContent(series: series)
++    }
++
++    var body: some View {
++        VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
++            CachedCoverArtwork(url: series.coverImageURL) {
++                MissingCoverView(title: series.title)
++            }
++            .aspectRatio(1, contentMode: .fill)
++            .frame(maxWidth: .infinity)
++            .frame(height: layout.coverHeight)
++            .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
++            .overlay(
++                RoundedRectangle(cornerRadius: layout.cornerRadius)
++                    .stroke(ToonEdgeColor.border.opacity(0.45))
++            )
++
++            Text(series.title)
++                .font(ToonEdgeTypography.caption.weight(.semibold))
++                .lineLimit(1)
++                .frame(height: layout.titleHeight, alignment: .topLeading)
++
++            Text(content.compactMetadata)
++                .font(ToonEdgeTypography.caption)
++                .foregroundStyle(series.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.textSecondary)
++                .lineLimit(1)
++                .frame(height: layout.metadataHeight, alignment: .leading)
++        }
++        .frame(height: layout.fixedCardHeight, alignment: .top)
++        .contentShape(Rectangle())
++    }
++}
++
+ private struct SeriesListRow: View {
+     let series: LibrarySeriesSummary
+     private let layout = LibrarySeriesListRowLayout.default
+     private var content: LibrarySeriesCardContent {
+         LibrarySeriesCardContent(series: series)
+     }
+ 
+     var body: some View {
+         HStack(spacing: ToonEdgeSpacing.medium) {
+             CachedCoverArtwork(url: series.coverImageURL) {
+                 MissingCoverView(title: series.title)
+             }
+             .frame(width: layout.coverWidth, height: layout.coverHeight)
+             .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
+ 
+             VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+                 Text(series.title)
+                     .font(ToonEdgeTypography.body.weight(.semibold))
+                     .lineLimit(1)
+-                Text(content.metadata)
++                Text(content.listMetadata)
+                     .font(ToonEdgeTypography.caption)
+                     .foregroundStyle(ToonEdgeColor.textSecondary)
+                     .lineLimit(1)
+                 ProgressView(value: series.progressPercent)
+                     .tint(series.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.accent)
+                     .frame(height: 4)
+             }
+ 
+             Spacer(minLength: ToonEdgeSpacing.small)
+ 
+@@ -633,78 +761,146 @@ private struct SeriesListRow: View {
+         }
+         .padding(.vertical, ToonEdgeSpacing.small)
+         .padding(.horizontal, ToonEdgeSpacing.small)
+         .frame(height: layout.rowHeight)
+         .background(ToonEdgeColor.elevated.opacity(0.65), in: RoundedRectangle(cornerRadius: layout.cornerRadius))
+     }
+ }
+ 
+ struct LibrarySeriesCardContent: Equatable, Sendable {
+     var metadata: String
++    var compactMetadata: String
++    var sourceMetadata: String
++    var listMetadata: String
++    var comfortableBadgeMetadata: String?
+ 
+     init(series: LibrarySeriesSummary) {
+         if let currentChapterLabel = series.currentChapterLabel, !series.isCompleted {
+             self.metadata = "Continue Ch. \(currentChapterLabel)"
+         } else {
+             self.metadata = series.chapterSummaryText
+         }
++
++        if let currentChapterLabel = series.currentChapterLabel,
++           !series.isCompleted,
++           let chapterBadge = Self.chapterBadgeLabel(from: currentChapterLabel) {
++            self.compactMetadata = chapterBadge
++        } else if let latestChapterLabel = series.latestChapterLabel,
++                  let chapterBadge = Self.chapterBadgeLabel(from: latestChapterLabel) {
++            self.compactMetadata = chapterBadge
++        } else if let latestChapterLabel = series.latestChapterLabel {
++            self.compactMetadata = "Ch. \(latestChapterLabel)"
++        } else {
++            self.compactMetadata = series.chapterSummaryText
++        }
++
++        let sourceDomain = Self.normalizedDomain(series.sourceDomain)
++        if !sourceDomain.isEmpty {
++            self.sourceMetadata = sourceDomain
++        } else if let canonicalURL = series.canonicalURL {
++            let canonicalHost = Self.normalizedDomain(canonicalURL.host ?? "")
++            self.sourceMetadata = canonicalHost.isEmpty ? series.chapterSummaryText : canonicalHost
++        } else {
++            self.sourceMetadata = series.chapterSummaryText
++        }
++
++        if series.isCompleted {
++            self.comfortableBadgeMetadata = "Complete"
++        } else if let currentChapterLabel = series.currentChapterLabel,
++                  let chapterBadge = Self.chapterBadgeLabel(from: currentChapterLabel) {
++            self.comfortableBadgeMetadata = chapterBadge
++        } else if let latestChapterLabel = series.latestChapterLabel,
++                  let chapterBadge = Self.chapterBadgeLabel(from: latestChapterLabel) {
++            self.comfortableBadgeMetadata = chapterBadge
++        } else {
++            self.comfortableBadgeMetadata = nil
++        }
++
++        if let currentChapterLabel = series.currentChapterLabel, Self.isNumericChapterLabel(currentChapterLabel) {
++            self.listMetadata = "Ch. \(currentChapterLabel.trimmingCharacters(in: .whitespacesAndNewlines))"
++        } else if let latestChapterLabel = series.latestChapterLabel, Self.isNumericChapterLabel(latestChapterLabel) {
++            self.listMetadata = "Ch. \(latestChapterLabel.trimmingCharacters(in: .whitespacesAndNewlines))"
++        } else {
++            self.listMetadata = metadata
++        }
++    }
++
++    private static func normalizedDomain(_ domain: String) -> String {
++        domain.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
++    }
++
++    private static func chapterBadgeLabel(from label: String) -> String? {
++        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
++        guard isNumericChapterLabel(trimmed) else { return nil }
++        return "Ch. \(trimmed)"
++    }
++
++    private static func isNumericChapterLabel(_ label: String) -> Bool {
++        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
++        guard !trimmed.isEmpty else { return false }
++        let decimalParts = trimmed.split(separator: ".", omittingEmptySubsequences: false)
++        guard decimalParts.count == 1 || decimalParts.count == 2 else { return false }
++        return decimalParts.allSatisfy { part in !part.isEmpty && part.allSatisfy { character in character.isNumber } }
+     }
+ }
+ 
+ struct LibrarySeriesCardLayout: Equatable, Sendable {
+     var fixedCardHeight: CGFloat
+     var coverAspectRatio: CGFloat
+     var coverHeight: CGFloat
+     var coverSlotHeight: CGFloat
+     var coverImageAlignment: LibrarySeriesCardCoverAlignment
+     var coverSlotUsesFullCardWidth: Bool
+     var coverAppliesFrameBeforeDecoration: Bool
+     var titleLineLimit: Int
+     var titleHeight: CGFloat
+     var metadataLineLimit: Int
+     var metadataHeight: CGFloat
+     var progressHeight: CGFloat
+     var badgeRowHeight: CGFloat
+     var cornerRadius: CGFloat
++    var usesOuterCardContainer: Bool
+ 
+     static let comfortable = LibrarySeriesCardLayout(
+-        fixedCardHeight: 350,
++        fixedCardHeight: 286,
+         coverAspectRatio: 0.72,
+-        coverHeight: 180,
+-        coverSlotHeight: 180,
++        coverHeight: 190,
++        coverSlotHeight: 190,
+         coverImageAlignment: .center,
+         coverSlotUsesFullCardWidth: true,
+         coverAppliesFrameBeforeDecoration: true,
+         titleLineLimit: 2,
+-        titleHeight: 48,
++        titleHeight: 46,
+         metadataLineLimit: 1,
+         metadataHeight: 18,
+-        progressHeight: 8,
+-        badgeRowHeight: 32,
+-        cornerRadius: 6
++        progressHeight: 4,
++        badgeRowHeight: 24,
++        cornerRadius: 4,
++        usesOuterCardContainer: false
+     )
+ 
+     static let compact = LibrarySeriesCardLayout(
+-        fixedCardHeight: 272,
+-        coverAspectRatio: 0.72,
+-        coverHeight: 128,
+-        coverSlotHeight: 128,
++        fixedCardHeight: 142,
++        coverAspectRatio: 1,
++        coverHeight: 76,
++        coverSlotHeight: 76,
+         coverImageAlignment: .center,
+         coverSlotUsesFullCardWidth: true,
+         coverAppliesFrameBeforeDecoration: true,
+-        titleLineLimit: 2,
+-        titleHeight: 42,
++        titleLineLimit: 1,
++        titleHeight: 22,
+         metadataLineLimit: 1,
+         metadataHeight: 16,
+-        progressHeight: 6,
+-        badgeRowHeight: 28,
+-        cornerRadius: 5
++        progressHeight: 0,
++        badgeRowHeight: 0,
++        cornerRadius: 4,
++        usesOuterCardContainer: false
+     )
+ 
+     static let `default` = comfortable
+ 
+     func cardHeight(for series: LibrarySeriesSummary) -> CGFloat {
+         fixedCardHeight
+     }
+ 
+     var coverImageWidth: CGFloat {
+         coverHeight * coverAspectRatio
+@@ -714,21 +910,21 @@ struct LibrarySeriesCardLayout: Equatable, Sendable {
+ struct LibrarySeriesListRowLayout: Equatable, Sendable {
+     var rowHeight: CGFloat
+     var coverWidth: CGFloat
+     var coverHeight: CGFloat
+     var cornerRadius: CGFloat
+ 
+     static let `default` = LibrarySeriesListRowLayout(
+         rowHeight: 82,
+         coverWidth: 46,
+         coverHeight: 64,
+-        cornerRadius: 5
++        cornerRadius: 4
+     )
+ }
+ 
+ enum LibrarySeriesCardCoverAlignment: Equatable, Sendable {
+     case center
+ 
+     var swiftUIAlignment: Alignment {
+         switch self {
+         case .center:
+             return .center
+@@ -765,81 +961,133 @@ private struct MissingCoverView: View {
+             .prefix(2)
+             .compactMap(\.first)
+             .map(String.init)
+             .joined()
+             .uppercased()
+     }
+ }
+ 
+ private struct SeriesDetailView: View {
+     let seriesID: UUID
++    let seedSummary: LibrarySeriesSummary?
+     let dependencies: AppDependencies
++    let onDetailHydrated: @MainActor (SeriesDetailSnapshot?) -> Void
+     @Binding var router: AppRouter
+     @State private var detail: SeriesDetailSnapshot?
+     @State private var hasLoaded = false
+     @State private var hasAttemptedChapterIndexRefresh = false
+     @State private var cacheFeedback: CacheActionFeedback?
+     @State private var pendingSaveDetail: SeriesDetailSnapshot?
+     @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
+ 
++    init(
++        seriesID: UUID,
++        seedSummary: LibrarySeriesSummary? = nil,
++        cachedDetail: SeriesDetailSnapshot? = nil,
++        dependencies: AppDependencies,
++        router: Binding<AppRouter>,
++        onDetailHydrated: @escaping @MainActor (SeriesDetailSnapshot?) -> Void = { _ in }
++    ) {
++        self.seriesID = seriesID
++        self.seedSummary = seedSummary
++        self.dependencies = dependencies
++        self._router = router
++        self.onDetailHydrated = onDetailHydrated
++        self._detail = State(initialValue: cachedDetail)
++    }
++
+     var body: some View {
+-        ScrollViewReader { proxy in
+-            ScrollView {
+-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
+-                    if let detail {
+-                        header(detail)
+-                        cacheStatus
+-                        chapterToolbar(detail)
+-                        chapterList(detail)
+-                    } else if hasLoaded {
+-                        TEBanner(
+-                            title: "Series unavailable",
+-                            message: "This saved title could not be loaded from the mock repository.",
+-                            systemImage: "exclamationmark.triangle"
+-                        )
+-                    } else {
+-                        TEBanner(title: "Loading series", message: "Preparing chapter state.", systemImage: "hourglass")
+-                    }
++        content
++            .navigationTitle("")
++            .task {
++                await reloadDetail()
++            }
++            .task(id: detail?.id) {
++                guard detail != nil else { return }
++                await refreshChapterIndexIfAvailable()
++            }
++            .onChange(of: router.presentedReader) { oldValue, newValue in
++                guard oldValue != nil, newValue == nil else { return }
++                Task {
++                    await reloadDetail()
+                 }
++            }
++            .sheet(item: $pendingSaveDetail) { detail in
++                AddToLibraryStatePickerView(
++                    title: detail.title,
++                    selectedState: $saveState,
++                    context: .seriesDetail,
++                    confirm: { state in
++                        confirmSave(detail, state: state)
++                    },
++                    cancel: {
++                        pendingSaveDetail = nil
++                    }
++                )
++            }
++            .toonEdgeScreen()
++    }
++
++    @ViewBuilder
++    private var content: some View {
++        if let detail {
++            hydratedContent(detail)
++        } else if let seedSummary {
++            ScrollView {
++                seedShell(seedSummary)
++                    .padding(ToonEdgeSpacing.large)
++            }
++        } else if hasLoaded {
++            ScrollView {
++                TEBanner(
++                    title: "Series unavailable",
++                    message: "This saved title could not be loaded from the mock repository.",
++                    systemImage: "exclamationmark.triangle"
++                )
+                 .padding(ToonEdgeSpacing.large)
+             }
+-            .task(id: detail?.chapterListAnchorID) {
+-                guard let anchorID = detail?.chapterListAnchorID else { return }
+-                try? await Task.sleep(for: .milliseconds(100))
+-                proxy.scrollTo(anchorID, anchor: .center)
++        } else {
++            ScrollView {
++                TEBanner(title: "Loading series", message: "Preparing chapter state.", systemImage: "hourglass")
++                    .padding(ToonEdgeSpacing.large)
+             }
+         }
+-        .navigationTitle("")
+-        .task {
+-            await reloadDetail()
+-            await refreshChapterIndexIfAvailable()
+-        }
+-        .onChange(of: router.presentedReader) { oldValue, newValue in
+-            guard oldValue != nil, newValue == nil else { return }
+-            Task {
+-                await reloadDetail()
++    }
++
++    private func hydratedContent(_ detail: SeriesDetailSnapshot) -> some View {
++        VStack(alignment: .leading, spacing: 0) {
++            VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
++                header(detail)
++                cacheStatus
+             }
+-        }
+-        .sheet(item: $pendingSaveDetail) { detail in
+-            AddToLibraryStatePickerView(
+-                title: detail.title,
+-                selectedState: $saveState,
+-                context: .seriesDetail,
+-                confirm: { state in
+-                    confirmSave(detail, state: state)
+-                },
+-                cancel: {
+-                    pendingSaveDetail = nil
++            .padding(ToonEdgeSpacing.large)
++            .background(ToonEdgeColor.background)
++
++            Divider()
++                .overlay(ToonEdgeColor.border)
++
++            ScrollViewReader { proxy in
++                ScrollView {
++                    VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
++                        chapterToolbar(detail)
++                        chapterList(detail)
++                    }
++                    .padding(ToonEdgeSpacing.large)
++                    .padding(.bottom, ToonEdgeSpacing.large)
+                 }
+-            )
++                .task(id: detail.chapterListAnchorID) {
++                    guard let anchorID = detail.chapterListAnchorID else { return }
++                    try? await Task.sleep(for: .milliseconds(100))
++                    proxy.scrollTo(anchorID, anchor: .center)
++                }
++            }
+         }
+-        .toonEdgeScreen()
+     }
+ 
+     private func header(_ detail: SeriesDetailSnapshot) -> some View {
+         let layout = SeriesDetailHeaderLayout(snapshot: detail)
+         return VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
+             HStack(alignment: .top, spacing: ToonEdgeSpacing.medium) {
+                 cover(for: detail)
+                     .frame(width: 96, height: 132)
+ 
+                 VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+@@ -858,20 +1106,49 @@ private struct SeriesDetailView: View {
+                 }
+             }
+ 
+             TEButton(layout.primaryActionTitle, systemImage: "play.fill") {
+                 open(detail.primaryChapter)
+             }
+             .disabled(detail.primaryChapter == nil)
+         }
+     }
+ 
++    private func seedShell(_ summary: LibrarySeriesSummary) -> some View {
++        let layout = SeriesDetailSeedShellLayout(summary: summary)
++        return VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
++            HStack(alignment: .top, spacing: ToonEdgeSpacing.medium) {
++                CachedCoverArtwork(url: layout.coverImageURL) {
++                    MissingCoverView(title: layout.title)
++                }
++                .frame(width: 96, height: 132)
++                .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
++                .overlay(RoundedRectangle(cornerRadius: ToonEdgeRadius.small).stroke(ToonEdgeColor.border))
++
++                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
++                    HStack(spacing: ToonEdgeSpacing.small) {
++                        TEChip(layout.status, isActive: layout.hasUnreadUpdates)
++                        TEChip("Saved")
++                    }
++
++                    Text(layout.title)
++                        .font(ToonEdgeTypography.title)
++                        .fixedSize(horizontal: false, vertical: true)
++
++                    Text(layout.metadata)
++                        .font(ToonEdgeTypography.caption)
++                        .foregroundStyle(ToonEdgeColor.textSecondary)
++                }
++            }
++        }
++    }
++
+     @ViewBuilder
+     private var cacheStatus: some View {
+         if let cacheFeedback {
+             TEBanner(
+                 title: cacheFeedback.isFailure ? "Cache action failed" : "Cache updated",
+                 message: cacheFeedback.message,
+                 systemImage: cacheFeedback.isFailure ? "exclamationmark.triangle" : "checkmark.circle"
+             )
+         }
+     }
+@@ -943,26 +1220,33 @@ private struct SeriesDetailView: View {
+ 
+     private func cover(for detail: SeriesDetailSnapshot) -> some View {
+         CachedCoverArtwork(url: detail.coverImageURL) {
+             MissingCoverView(title: detail.title)
+         }
+         .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+         .overlay(RoundedRectangle(cornerRadius: ToonEdgeRadius.small).stroke(ToonEdgeColor.border))
+     }
+ 
+     private func reloadDetail() async {
+-        detail = await dependencies.libraryService.seriesDetail(for: seriesID)
++        let loadedDetail = await dependencies.libraryService.seriesDetail(for: seriesID)
+         hasLoaded = true
++        publishDetail(loadedDetail)
++    }
++
++    private func publishDetail(_ updatedDetail: SeriesDetailSnapshot?) {
++        detail = updatedDetail
++        onDetailHydrated(SeriesDetailCachePolicy(detail: updatedDetail).cachedDetail)
+     }
+ 
+     private func refreshChapterIndexIfAvailable() async {
+         guard SeriesDetailRefreshBehavior.shouldAttemptRefresh(
++            detail: detail,
+             hasAttemptedChapterIndexRefresh: hasAttemptedChapterIndexRefresh,
+             chapterIndexRefreshService: dependencies.chapterIndexRefreshService
+         ) else {
+             return
+         }
+ 
+         hasAttemptedChapterIndexRefresh = true
+         let outcome = await dependencies.chapterIndexRefreshService?.refreshChapterIndex(for: seriesID)
+         if SeriesDetailRefreshBehavior.shouldReloadDetail(after: outcome) {
+             await reloadDetail()
+@@ -982,59 +1266,59 @@ private struct SeriesDetailView: View {
+             router.presentBrowser(.url(chapter.sourceURL.absoluteString))
+         }
+     }
+ 
+     private func toggleLibraryMembership(_ detail: SeriesDetailSnapshot) {
+         guard let lifecycleService = dependencies.libraryLifecycleService else { return }
+ 
+         Task {
+             if detail.isSaved {
+                 try? await lifecycleService.removeFromLibrary(seriesID: detail.id)
+-                self.detail = nil
++                publishDetail(nil)
+             } else {
+                 saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
+                 pendingSaveDetail = detail
+             }
+         }
+     }
+ 
+     private func confirmSave(_ detail: SeriesDetailSnapshot, state: LibraryCollectionState) {
+         guard let lifecycleService = dependencies.libraryLifecycleService else { return }
+         pendingSaveDetail = nil
+         var input = detail.libraryInput
+         input.libraryState = state
+ 
+         Task {
+             try? await lifecycleService.addToLibrary(input, context: .seriesDetail)
+-            self.detail = await dependencies.libraryService.seriesDetail(for: detail.id)
++            publishDetail(await dependencies.libraryService.seriesDetail(for: detail.id))
+         }
+     }
+ 
+     private func updateLibraryState(_ state: LibraryCollectionState) {
+         guard let lifecycleService = dependencies.libraryLifecycleService else { return }
+ 
+         Task {
+             try? await lifecycleService.updateLibraryState(state, for: seriesID)
+-            detail = await dependencies.libraryService.seriesDetail(for: seriesID)
++            publishDetail(await dependencies.libraryService.seriesDetail(for: seriesID))
+         }
+     }
+ 
+     private func retain(_ chapter: ChapterSummary) {
+         Task {
+             do {
+                 let result = try await dependencies.cacheMetadataService.updateCacheRetention(
+                     for: chapter.sourceURL,
+                     retentionState: .retained,
+                     cachedAt: Date()
+                 )
+                 cacheFeedback = .success(result)
+-                detail = await dependencies.libraryService.seriesDetail(for: seriesID)
++                publishDetail(await dependencies.libraryService.seriesDetail(for: seriesID))
+             } catch {
+                 cacheFeedback = .failure("Could not retain this chapter offline.")
+             }
+         }
+     }
+ }
+ 
+ struct SeriesDetailHeaderLayout: Equatable, Sendable {
+     var title: String
+     var metadata: String
+@@ -1042,43 +1326,152 @@ struct SeriesDetailHeaderLayout: Equatable, Sendable {
+     var primaryActionTitle: String
+ 
+     init(snapshot: SeriesDetailSnapshot) {
+         self.title = snapshot.title
+         self.metadata = "\(snapshot.sourceDomain) • \(snapshot.chaptersRead)/\(snapshot.totalKnownChapters ?? snapshot.chapters.count) chapters"
+         self.synopsisText = nil
+         self.primaryActionTitle = snapshot.primaryActionTitle
+     }
+ }
+ 
++struct SeriesDetailPageLayout: Equatable, Sendable {
++    enum StateKind: Equatable, Sendable {
++        case hydrated
++        case seeded
++        case loading
++        case unavailable
++    }
++
++    var stateKind: StateKind
++    var keepsHeaderFixed: Bool
++    var scrollsChaptersIndependently: Bool
++    var keepsPrimaryActionVisible: Bool
++
++    init(detail: SeriesDetailSnapshot?, seedSummary: LibrarySeriesSummary?, hasLoaded: Bool) {
++        if let detail {
++            self.stateKind = .hydrated
++            self.keepsHeaderFixed = true
++            self.scrollsChaptersIndependently = true
++            self.keepsPrimaryActionVisible = detail.primaryChapter != nil
++        } else if seedSummary != nil {
++            self.stateKind = .seeded
++            self.keepsHeaderFixed = true
++            self.scrollsChaptersIndependently = false
++            self.keepsPrimaryActionVisible = false
++        } else if hasLoaded {
++            self.stateKind = .unavailable
++            self.keepsHeaderFixed = false
++            self.scrollsChaptersIndependently = false
++            self.keepsPrimaryActionVisible = false
++        } else {
++            self.stateKind = .loading
++            self.keepsHeaderFixed = false
++            self.scrollsChaptersIndependently = false
++            self.keepsPrimaryActionVisible = false
++        }
++    }
++}
++
+ struct SeriesDetailChapterSectionLayout: Equatable, Sendable {
+     var showsSegmentedControl: Bool
+     var defaultMode: SeriesDetailChapterListMode
+ 
+     init() {
+         self.showsSegmentedControl = false
+         self.defaultMode = .all
+     }
+ }
+ 
+ struct SeriesDetailRefreshBehavior {
+     static func shouldAttemptRefresh(
++        detail: SeriesDetailSnapshot?,
+         hasAttemptedChapterIndexRefresh: Bool,
+         chapterIndexRefreshService: (any SeriesChapterIndexRefreshing)?
+     ) -> Bool {
+-        !hasAttemptedChapterIndexRefresh && chapterIndexRefreshService != nil
++        detail != nil && !hasAttemptedChapterIndexRefresh && chapterIndexRefreshService != nil
+     }
+ 
+     static func shouldReloadDetail(after outcome: ChapterIndexRefreshOutcome?) -> Bool {
+         outcome?.didRefresh == true
+     }
+ }
+ 
++struct SeriesDetailStartupPlan: Equatable, Sendable {
++    enum Phase: Equatable, Sendable {
++        case loadLocalDetail
++        case startBackgroundRefresh
++        case idle
++    }
++
++    var localDetailLoaded: Bool
++    var refreshAttempted: Bool
++
++    var nextPhase: Phase {
++        if !localDetailLoaded {
++            return .loadLocalDetail
++        }
++
++        if !refreshAttempted {
++            return .startBackgroundRefresh
++        }
++
++        return .idle
++    }
++}
++
++struct SeriesDetailEntryLayout: Equatable, Sendable {
++    enum VisibleState: Equatable, Sendable {
++        case hydratedDetail
++        case seededShell
++        case loading
++        case unavailable
++    }
++
++    var visibleState: VisibleState
++    var exposesContinueAction: Bool
++    var startsBackgroundRefresh: Bool
++
++    init(
++        cachedDetail: SeriesDetailSnapshot?,
++        seedSummary: LibrarySeriesSummary?,
++        hasLoaded: Bool
++    ) {
++        if let cachedDetail {
++            self.visibleState = .hydratedDetail
++            self.exposesContinueAction = cachedDetail.primaryChapter != nil
++            self.startsBackgroundRefresh = true
++        } else if seedSummary != nil {
++            self.visibleState = .seededShell
++            self.exposesContinueAction = false
++            self.startsBackgroundRefresh = false
++        } else if hasLoaded {
++            self.visibleState = .unavailable
++            self.exposesContinueAction = false
++            self.startsBackgroundRefresh = false
++        } else {
++            self.visibleState = .loading
++            self.exposesContinueAction = false
++            self.startsBackgroundRefresh = false
++        }
++    }
++}
++
++struct SeriesDetailCachePolicy: Equatable, Sendable {
++    var cachedDetail: SeriesDetailSnapshot?
++    var clearsCachedDetail: Bool
++
++    init(detail: SeriesDetailSnapshot?) {
++        self.cachedDetail = detail
++        self.clearsCachedDetail = detail == nil
++    }
++}
++
+ private extension SeriesDetailSnapshot {
+     var libraryInput: LibrarySeriesInput {
+         LibrarySeriesInput(
+             id: id,
+             title: title,
+             canonicalURL: canonicalURL,
+             sourceDomain: sourceDomain,
+             coverImageURL: coverImageURL,
+             status: status,
+             synopsis: synopsis,
+diff --git a/app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift b/app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift
+index e1d3862..c80558b 100644
+--- a/app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift
++++ b/app/Tests/ToonEdgeAppCoreTests/LibraryExperienceTests.swift
+@@ -68,66 +68,87 @@ import Testing
+ @Test func libraryHeaderLayoutUsesNavigationTitleWithoutToolbarRefresh() {
+     let refreshable = LibraryHeaderLayout(hasUpdateRefreshService: true)
+     let localOnly = LibraryHeaderLayout(hasUpdateRefreshService: false)
+ 
+     #expect(refreshable.navigationTitle == "Library")
+     #expect(refreshable.contentTitle == nil)
+     #expect(!refreshable.toolbarRefreshIsAvailable)
+     #expect(!localOnly.toolbarRefreshIsAvailable)
+ }
+ 
+-@Test func librarySummaryPillExposesRefreshOnlyWhenServiceExists() {
++@Test func libraryCollectionControlsKeepCountRefreshAndViewModesInline() {
++    let controls = LibraryCollectionControlsLayout(
++        visibleSeries: [
++            LibrarySeriesSummary.mock(title: "A"),
++            LibrarySeriesSummary.mock(title: "B"),
++            LibrarySeriesSummary.mock(title: "C"),
++            LibrarySeriesSummary.mock(title: "D")
++        ],
++        hasUpdateRefreshService: true,
++        isRefreshing: false
++    )
++
++    #expect(controls.countText == "4 titles")
++    #expect(controls.refreshButtonIsVisible)
++    #expect(controls.refreshSystemImage == "arrow.clockwise")
++    #expect(LibraryViewMode.allCases == [.comfortable, .compact, .list])
++    #expect(!controls.usesLargeSummaryCard)
++}
++
++@Test func libraryCollectionControlsExposeCountAndRefreshOnlyWhenServiceExists() {
+     let series = [
+         LibrarySeriesSummary.mock(title: "A"),
+         LibrarySeriesSummary.mock(title: "B")
+     ]
+ 
+-    let refreshable = LibrarySummaryPillLayout(
+-        segment: .reading,
++    let refreshable = LibraryCollectionControlsLayout(
+         visibleSeries: series,
+         hasUpdateRefreshService: true,
+         isRefreshing: false
+     )
+-    let localOnly = LibrarySummaryPillLayout(
+-        segment: .reading,
++    let localOnly = LibraryCollectionControlsLayout(
+         visibleSeries: series,
+         hasUpdateRefreshService: false,
+         isRefreshing: false
+     )
++    let singular = LibraryCollectionControlsLayout(
++        visibleSeries: [LibrarySeriesSummary.mock(title: "Only")],
++        hasUpdateRefreshService: true,
++        isRefreshing: false
++    )
+ 
+-    #expect(refreshable.title == "Reading Library")
+-    #expect(refreshable.message == "2 saved titles")
++    #expect(refreshable.countText == "2 titles")
++    #expect(singular.countText == "1 title")
+     #expect(refreshable.refreshButtonIsVisible)
+     #expect(!localOnly.refreshButtonIsVisible)
++    #expect(!refreshable.usesLargeSummaryCard)
+ }
+ 
+-@Test func librarySummaryPillUsesUpdateCountAndRefreshIconState() {
++@Test func libraryCollectionControlsUseRefreshIconStateWithoutUpdateSummaryCopy() {
+     let series = [
+         LibrarySeriesSummary.mock(title: "A", hasUnreadUpdates: true),
+         LibrarySeriesSummary.mock(title: "B", hasUnreadUpdates: false),
+         LibrarySeriesSummary.mock(title: "C", hasUnreadUpdates: true)
+     ]
+ 
+-    let idle = LibrarySummaryPillLayout(
+-        segment: .recent,
++    let idle = LibraryCollectionControlsLayout(
+         visibleSeries: series,
+         hasUpdateRefreshService: true,
+         isRefreshing: false
+     )
+-    let refreshing = LibrarySummaryPillLayout(
+-        segment: .recent,
++    let refreshing = LibraryCollectionControlsLayout(
+         visibleSeries: series,
+         hasUpdateRefreshService: true,
+         isRefreshing: true
+     )
+ 
+-    #expect(idle.message == "2 with new chapters")
++    #expect(idle.countText == "3 titles")
+     #expect(idle.refreshSystemImage == "arrow.clockwise")
+     #expect(refreshing.refreshSystemImage == "hourglass")
+     #expect(idle.refreshAccessibilityLabel == "Check for new chapters")
+ }
+ 
+ @Test func libraryRefreshFeedbackLayoutIsDismissibleAndAutoExpires() {
+     let layout = LibraryRefreshFeedbackLayout(message: "2 checked, 1 update")
+ 
+     #expect(layout.title == "Updated")
+     #expect(layout.message == "2 checked, 1 update")
+@@ -181,48 +202,433 @@ import Testing
+                 chapterLabel: "Chapter Scans",
+                 chapterNumber: 103,
+                 readState: .unread
+             )
+         ]
+     )
+ 
+     #expect(detail.primaryActionTitle == "Continue Chapter 102")
+ }
+ 
++@Test func seriesDetailPrimaryActionPrefersNextAfterLatestCompletedOverOlderUnfinishedChapter() {
++    let now = Date(timeIntervalSince1970: 1_700_000_000)
++    let detail = SeriesDetailSnapshot.mock(
++        chapters: [
++            ChapterSummary.mock(
++                chapterLabel: "103",
++                chapterNumber: 103,
++                readState: .read,
++                lastReadAt: now.addingTimeInterval(-30)
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "105",
++                chapterNumber: 105,
++                readState: .read,
++                lastReadAt: now
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "104",
++                chapterNumber: 104,
++                readState: .read,
++                lastReadAt: now.addingTimeInterval(-10)
++            ),
++            ChapterSummary.mock(
++                title: "The Extra’s Academy Survival Guide Chapter 102 - Read Online | Asura Scans",
++                chapterLabel: "Scans",
++                chapterNumber: nil,
++                readState: .inProgress(progressPercent: 0.0),
++                lastReadAt: now.addingTimeInterval(-60)
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "106",
++                chapterNumber: 106,
++                readState: .unread
++            )
++        ]
++    )
++
++    #expect(detail.primaryActionTitle == "Start Chapter 106")
++    #expect(detail.primaryChapter?.chapterLabel == "106")
++}
++
++@Test func seriesDetailPrimaryActionContinuesForwardInProgressChapterAfterLatestCompletedChapter() {
++    let now = Date(timeIntervalSince1970: 1_700_000_000)
++    let detail = SeriesDetailSnapshot.mock(
++        chapters: [
++            ChapterSummary.mock(
++                chapterLabel: "103",
++                chapterNumber: 103,
++                readState: .read,
++                lastReadAt: now.addingTimeInterval(-30)
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "105",
++                chapterNumber: 105,
++                readState: .read,
++                lastReadAt: now
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "106",
++                chapterNumber: 106,
++                readState: .inProgress(progressPercent: 0.25),
++                lastReadAt: now.addingTimeInterval(-10)
++            )
++        ]
++    )
++
++    #expect(detail.primaryActionTitle == "Continue Chapter 106")
++    #expect(detail.primaryChapter?.chapterLabel == "106")
++}
++
++@Test func seriesDetailPrimaryActionDoesNotReturnToOlderInProgressAfterLatestKnownChapterIsRead() {
++    let now = Date(timeIntervalSince1970: 1_700_000_000)
++    let detail = SeriesDetailSnapshot.mock(
++        chapters: [
++            ChapterSummary.mock(
++                title: "The Extra’s Academy Survival Guide Chapter 102 - Read Online | Asura Scans",
++                chapterLabel: "Scans",
++                chapterNumber: nil,
++                readState: .inProgress(progressPercent: 0.0),
++                lastReadAt: now.addingTimeInterval(-240)
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "103",
++                chapterNumber: 103,
++                readState: .read,
++                lastReadAt: now.addingTimeInterval(-180)
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "104",
++                chapterNumber: 104,
++                readState: .read,
++                lastReadAt: now.addingTimeInterval(-120)
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "105",
++                chapterNumber: 105,
++                readState: .read,
++                lastReadAt: now.addingTimeInterval(-60)
++            ),
++            ChapterSummary.mock(
++                chapterLabel: "106",
++                chapterNumber: 106,
++                readState: .read,
++                lastReadAt: now
++            )
++        ]
++    )
++
++    #expect(detail.primaryActionTitle == "All Chapters Read")
++    #expect(detail.primaryChapter == nil)
++}
++
+ @Test func seriesDetailHeaderLayoutDoesNotExposeReaderOriginCopy() {
+     let detail = SeriesDetailSnapshot.mock(
+         synopsis: "Saved from Reader Mode.",
+         chapters: [ChapterSummary.mock(chapterLabel: "102")]
+     )
+ 
+     let layout = SeriesDetailHeaderLayout(snapshot: detail)
+ 
+     #expect(layout.title == "Moonlit Edge")
+     #expect(layout.synopsisText == nil)
+     #expect(!layout.metadata.contains("Saved from Reader Mode"))
+ }
+ 
+-@Test func seriesDetailRefreshBehaviorAttemptsOnlyWhenServiceExistsAndNotYetTried() {
++@Test func hydratedSeriesDetailLayoutKeepsHeaderFixedAndChaptersScrollable() {
++    let detail = SeriesDetailSnapshot.mock(
++        chapters: [
++            ChapterSummary.mock(chapterLabel: "100", readState: .read),
++            ChapterSummary.mock(chapterLabel: "101", readState: .unread)
++        ]
++    )
++
++    let layout = SeriesDetailPageLayout(detail: detail, seedSummary: nil, hasLoaded: true)
++
++    #expect(layout.stateKind == .hydrated)
++    #expect(layout.keepsHeaderFixed)
++    #expect(layout.scrollsChaptersIndependently)
++    #expect(layout.keepsPrimaryActionVisible)
++}
++
++@Test func seededSeriesDetailLayoutKeepsSeedHeaderVisibleWithoutChapterScroller() {
++    let summary = LibrarySeriesSummary.mock(title: "Past Life Returner")
++
++    let layout = SeriesDetailPageLayout(detail: nil, seedSummary: summary, hasLoaded: false)
++
++    #expect(layout.stateKind == .seeded)
++    #expect(layout.keepsHeaderFixed)
++    #expect(!layout.scrollsChaptersIndependently)
++    #expect(!layout.keepsPrimaryActionVisible)
++}
++
++@Test func nonHydratedSeriesDetailStatesDoNotCreateEmptyChapterScroller() {
++    let loading = SeriesDetailPageLayout(detail: nil, seedSummary: nil, hasLoaded: false)
++    let unavailable = SeriesDetailPageLayout(detail: nil, seedSummary: nil, hasLoaded: true)
++
++    #expect(loading.stateKind == .loading)
++    #expect(!loading.scrollsChaptersIndependently)
++    #expect(unavailable.stateKind == .unavailable)
++    #expect(!unavailable.scrollsChaptersIndependently)
++}
++
++@Test func librarySeriesDetailRouteIdentityUsesSeriesIDAndCarriesOptionalSeed() {
++    let seriesID = UUID(uuidString: "C8D607B4-91EC-4D18-B28B-0626E9A8C748")!
++    let firstSeed = LibrarySeriesSummary.mock(
++        id: seriesID,
++        title: "The Extra's Academy Survival Guide",
++        sourceDomain: "asurascans.com",
++        currentChapterLabel: "101"
++    )
++    let refreshedSeed = LibrarySeriesSummary.mock(
++        id: seriesID,
++        title: "The Extra's Academy Survival Guide | Asura Scans",
++        sourceDomain: "asurascans.com",
++        currentChapterLabel: "102"
++    )
++
++    let firstRoute = LibrarySeriesDetailRoute(seriesID: seriesID, seedSummary: firstSeed)
++    let refreshedRoute = LibrarySeriesDetailRoute(seriesID: seriesID, seedSummary: refreshedSeed)
++    let unseededRoute = LibrarySeriesDetailRoute(seriesID: seriesID, seedSummary: nil)
++
++    #expect(firstRoute == refreshedRoute)
++    #expect(firstRoute == unseededRoute)
++    #expect(firstRoute.seedSummary?.title == "The Extra's Academy Survival Guide")
++}
++
++@Test func librarySeriesDetailRouteUsesVisibleSeriesAsSeed() {
++    let summary = LibrarySeriesSummary.mock(
++        title: "The Extra's Academy Survival Guide",
++        sourceDomain: "asurascans.com"
++    )
++    let route = LibrarySeriesDetailRoute(summary: summary)
++
++    #expect(route.seriesID == summary.id)
++    #expect(route.seedSummary == summary)
++}
++
++@Test func seriesDetailSeedShellShowsLibrarySummaryWithoutContinueAction() {
++    let summary = LibrarySeriesSummary.mock(
++        title: "Past Life Returner",
++        sourceDomain: "vortexscans.org",
++        libraryState: .reading,
++        progressPercent: 0.48,
++        chaptersRead: 101,
++        totalKnownChapters: 200,
++        hasUnreadUpdates: false,
++        currentChapterLabel: "101"
++    )
++
++    let layout = SeriesDetailSeedShellLayout(summary: summary)
++
++    #expect(layout.title == "Past Life Returner")
++    #expect(layout.metadata == "vortexscans.org • 101/200 chapters")
++    #expect(layout.status == "Reading")
++    #expect(!layout.hasUnreadUpdates)
++    #expect(!layout.showsLoadingBanner)
++    #expect(!layout.exposesContinueAction)
++}
++
++@Test func seriesDetailSeedShellPreservesKnownLibraryCoverURL() {
++    let coverURL = URL(string: "https://asurascans.com/covers/extras-academy.jpg")!
++    let summary = LibrarySeriesSummary.mock(
++        title: "The Extra's Academy Survival Guide | Asura Scans",
++        sourceDomain: "asurascans.com",
++        coverImageURL: coverURL,
++        chaptersRead: 4,
++        totalKnownChapters: 122
++    )
++
++    let layout = SeriesDetailSeedShellLayout(summary: summary)
++    let cover = SeriesDetailCoverLayout(coverImageURL: layout.coverImageURL)
++
++    #expect(layout.coverImageURL == coverURL)
++    #expect(cover.coverImageURL == coverURL)
++    #expect(!cover.usesPlaceholder)
++}
++
++@Test func seededSeriesDetailUsesHydratedDetailForContinueAction() {
++    let summary = LibrarySeriesSummary.mock(
++        title: "Past Life Returner",
++        sourceDomain: "vortexscans.org",
++        chaptersRead: 101,
++        totalKnownChapters: 200,
++        currentChapterLabel: "101"
++    )
++    let chapter101 = ChapterSummary.mock(chapterLabel: "101", chapterNumber: 101, readState: .read)
++    let chapter102 = ChapterSummary.mock(chapterLabel: "102", chapterNumber: 102, readState: .unread)
++    let detail = SeriesDetailSnapshot.mock(chapters: [chapter101, chapter102])
++
++    let seedLayout = SeriesDetailSeedShellLayout(summary: summary)
++    let hydratedLayout = SeriesDetailHeaderLayout(snapshot: detail)
++
++    #expect(!seedLayout.exposesContinueAction)
++    #expect(hydratedLayout.primaryActionTitle == "Start Chapter 102")
++}
++
++@Test func hydratedSeriesDetailKeepsKnownCoverURLFromStoredDetail() {
++    let coverURL = URL(string: "https://asurascans.com/covers/extras-academy.jpg")!
++    let detail = SeriesDetailSnapshot.mock(
++        title: "The Extra's Academy Survival Guide | Asura Scans",
++        coverImageURL: coverURL,
++        chapters: [
++            ChapterSummary.mock(chapterLabel: "101", readState: .read),
++            ChapterSummary.mock(chapterLabel: "102", readState: .unread)
++        ]
++    )
++
++    let cover = SeriesDetailCoverLayout(coverImageURL: detail.coverImageURL)
++
++    #expect(cover.coverImageURL == coverURL)
++    #expect(!cover.usesPlaceholder)
++}
++
++@Test func seriesDetailRefreshBehaviorStartsOnlyAfterLocalDetailExists() {
++    let detail = SeriesDetailSnapshot.mock(
++        chapters: [
++            ChapterSummary.mock(chapterLabel: "106", readState: .read),
++            ChapterSummary.mock(chapterLabel: "107", readState: .unread)
++        ]
++    )
++
++    #expect(!SeriesDetailRefreshBehavior.shouldAttemptRefresh(
++        detail: nil,
++        hasAttemptedChapterIndexRefresh: false,
++        chapterIndexRefreshService: MockSeriesChapterIndexRefreshService()
++    ))
+     #expect(SeriesDetailRefreshBehavior.shouldAttemptRefresh(
++        detail: detail,
+         hasAttemptedChapterIndexRefresh: false,
+         chapterIndexRefreshService: MockSeriesChapterIndexRefreshService()
+     ))
+     #expect(!SeriesDetailRefreshBehavior.shouldAttemptRefresh(
++        detail: detail,
+         hasAttemptedChapterIndexRefresh: true,
+         chapterIndexRefreshService: MockSeriesChapterIndexRefreshService()
+     ))
+     #expect(!SeriesDetailRefreshBehavior.shouldAttemptRefresh(
++        detail: detail,
+         hasAttemptedChapterIndexRefresh: false,
+         chapterIndexRefreshService: nil
+     ))
+ }
+ 
++@Test func seriesDetailStartupKeepsLocalLoadAndBackgroundRefreshAsSeparatePhases() {
++    let plan = SeriesDetailStartupPlan(localDetailLoaded: false, refreshAttempted: false)
++    #expect(plan.nextPhase == .loadLocalDetail)
++
++    let loadedPlan = SeriesDetailStartupPlan(localDetailLoaded: true, refreshAttempted: false)
++    #expect(loadedPlan.nextPhase == .startBackgroundRefresh)
++
++    let refreshedPlan = SeriesDetailStartupPlan(localDetailLoaded: true, refreshAttempted: true)
++    #expect(refreshedPlan.nextPhase == .idle)
++}
++
++@Test func seriesDetailEntryUsesCachedHydratedDetailBeforeSeedShell() {
++    let detail = SeriesDetailSnapshot.mock(
++        chapters: [
++            ChapterSummary.mock(chapterLabel: "100", readState: .read),
++            ChapterSummary.mock(chapterLabel: "101", readState: .unread)
++        ]
++    )
++    let seed = LibrarySeriesSummary.mock(title: detail.title)
++
++    let layout = SeriesDetailEntryLayout(
++        cachedDetail: detail,
++        seedSummary: seed,
++        hasLoaded: false
++    )
++
++    #expect(layout.visibleState == .hydratedDetail)
++    #expect(layout.exposesContinueAction)
++    #expect(layout.startsBackgroundRefresh)
++}
++
++@Test func seriesDetailEntryIsActionableWhenLocalIndexHasNextChapter() {
++    let chapters = (1...200).map { number in
++        ChapterSummary.mock(
++            chapterLabel: "\(number)",
++            chapterNumber: Double(number),
++            readState: number <= 100 ? .read : .unread
++        )
++    }
++    let detail = SeriesDetailSnapshot.mock(chapters: chapters)
++
++    let layout = SeriesDetailEntryLayout(
++        cachedDetail: detail,
++        seedSummary: nil,
++        hasLoaded: false
++    )
++
++    #expect(detail.primaryActionTitle == "Start Chapter 101")
++    #expect(detail.primaryChapter?.chapterLabel == "101")
++    #expect(layout.visibleState == .hydratedDetail)
++    #expect(layout.exposesContinueAction)
++}
++
++@Test func seriesDetailEntryContinuesForwardInProgressChapterFromLocalIndex() {
++    let chapters = (1...200).map { number in
++        ChapterSummary.mock(
++            chapterLabel: "\(number)",
++            chapterNumber: Double(number),
++            readState: number < 100 ? .read : (number == 100 ? .inProgress(progressPercent: 0.42) : .unread)
++        )
++    }
++    let detail = SeriesDetailSnapshot.mock(chapters: chapters)
++
++    #expect(detail.primaryActionTitle == "Continue Chapter 100")
++    #expect(detail.primaryChapter?.chapterLabel == "100")
++}
++
++@Test func seriesDetailEntryCanShowAllReadWhileEdgeRefreshRunsInBackground() {
++    let chapters = (1...200).map { number in
++        ChapterSummary.mock(
++            chapterLabel: "\(number)",
++            chapterNumber: Double(number),
++            readState: .read
++        )
++    }
++    let detail = SeriesDetailSnapshot.mock(chapters: chapters)
++    let layout = SeriesDetailEntryLayout(
++        cachedDetail: detail,
++        seedSummary: nil,
++        hasLoaded: false
++    )
++
++    #expect(detail.primaryActionTitle == "All Chapters Read")
++    #expect(detail.primaryChapter == nil)
++    #expect(layout.visibleState == .hydratedDetail)
++    #expect(!layout.exposesContinueAction)
++    #expect(layout.startsBackgroundRefresh)
++}
++
++@Test func seriesDetailCachePolicyPublishesHydratedMutationResults() {
++    let detail = SeriesDetailSnapshot.mock(
++        chapters: [
++            ChapterSummary.mock(chapterLabel: "100", readState: .read),
++            ChapterSummary.mock(chapterLabel: "101", readState: .unread)
++        ]
++    )
++
++    let policy = SeriesDetailCachePolicy(detail: detail)
++
++    #expect(policy.cachedDetail == detail)
++    #expect(!policy.clearsCachedDetail)
++}
++
++@Test func seriesDetailCachePolicyClearsRemovedOrUnavailableDetail() {
++    let policy = SeriesDetailCachePolicy(detail: nil)
++
++    #expect(policy.cachedDetail == nil)
++    #expect(policy.clearsCachedDetail)
++}
++
+ @Test func seriesDetailRefreshBehaviorReloadsOnlyWhenRefreshActuallyMutatesLocalData() {
+     #expect(SeriesDetailRefreshBehavior.shouldReloadDetail(
+         after: ChapterIndexRefreshOutcome(
+             seriesID: UUID(),
+             indexedChapterCount: 12,
+             latestChapterLabel: "12",
+             hasUnreadUpdates: true,
+             didRefresh: true
+         )
+     ))
+@@ -350,20 +756,73 @@ import Testing
+ }
+ 
+ @Test func chapterRowStateExposesDistinctLabels() {
+     #expect(ChapterReadState.new.displayLabel == "New")
+     #expect(ChapterReadState.unread.displayLabel == "Unread")
+     #expect(ChapterReadState.inProgress(progressPercent: 0.4).displayLabel == "40%")
+     #expect(ChapterReadState.read.displayLabel == "Read")
+     #expect(ChapterSummary.mock(isDownloaded: true).downloadLabel == "Downloaded")
+ }
+ 
++@Test func homeReadingDashboardPrioritizesCurrentReadingAfterSearch() {
++    let layout = HomeDashboardLayout()
++
++    #expect(layout.contentPriority == [.search, .continueReading, .recentlyUpdated, .libraryPreview])
++    #expect(layout.searchPlacement == .compactCommandBar)
++    #expect(layout.refreshPlacement == .inlineStatus)
++    #expect(layout.usesCircularTopAccessoryButtons == false)
++}
++
++@Test func homeSearchEntryUsesRestrainedBrowserCommandBarStyling() {
++    let layout = HomeSearchEntryLayout()
++
++    #expect(layout.placeholder == "Search the web or paste a chapter link")
++    #expect(layout.height == 44)
++    #expect(layout.cornerRadius == 10)
++    #expect(layout.usesCapsuleShape == false)
++    #expect(layout.horizontalPadding == ToonEdgeSpacing.medium)
++}
++
++@Test func homeChromeUsesQuietDashboardControls() {
++    let accessory = HomeTopAccessoryLayout()
++    let status = HomeRefreshStatusLayout(message: "Checked 2, found 1 update.")
++
++    #expect(accessory.size == 40)
++    #expect(accessory.cornerRadius == 10)
++    #expect(accessory.usesCircleShape == false)
++    #expect(status.message == "Checked 2, found 1 update.")
++    #expect(status.cornerRadius == 10)
++    #expect(status.usesBannerContainer == false)
++}
++
++@Test func homeReadingDashboardCardsUseCoverFirstNativeLayouts() {
++    let featured = HomeSeriesCardLayout(style: .featured)
++    let compact = HomeSeriesCardLayout(style: .compact)
++
++    #expect(!featured.usesOuterCardContainer)
++    #expect(!compact.usesOuterCardContainer)
++    #expect(featured.coverWidth > compact.coverWidth)
++    #expect(featured.coverHeight > compact.coverHeight)
++    #expect(featured.progressHeight == 4)
++    #expect(compact.progressHeight == 0)
++    #expect(compact.titleLineLimit == 1)
++}
++
++@Test func homeReadingDashboardHeroHasProminentCurrentReadScale() {
++    let featured = HomeSeriesCardLayout(style: .featured)
++
++    #expect(featured.fixedHeight == 156)
++    #expect(featured.coverWidth == 92)
++    #expect(featured.coverHeight == 132)
++    #expect(featured.cornerRadius == 6)
++}
++
+ @Test func homeContinueReadingUsesRecentDistinctSeriesOrderingAndLimit() {
+     let now = Date(timeIntervalSince1970: 1_700_000_000)
+     let duplicateOlder = LibrarySeriesSummary.mock(
+         id: UUID(uuidString: "4B81C535-7563-4184-9975-09409E5B9876")!,
+         title: "A Recent",
+         canonicalURL: URL(string: "https://example.com/a")!,
+         lastReadAt: now.addingTimeInterval(-90),
+         currentChapterLabel: "4"
+     )
+     let duplicateNewer = LibrarySeriesSummary.mock(
+@@ -443,111 +902,230 @@ import Testing
+     )
+     let missingCurrentChapter = LibrarySeriesSummary.mock(
+         currentChapterLabel: nil
+     )
+ 
+     #expect(LibrarySeriesCardContent(series: inProgress).metadata == "Continue Ch. 237")
+     #expect(LibrarySeriesCardContent(series: completed).metadata == "100/100 chapters")
+     #expect(LibrarySeriesCardContent(series: missingCurrentChapter).metadata == "50/100 chapters")
+ }
+ 
++@Test func libraryCompactCardMetadataPrefersShortChapterLabel() {
++    let latest = LibrarySeriesSummary.mock(
++        currentChapterLabel: "3",
++        latestChapterLabel: "237"
++    )
++    let currentOnly = LibrarySeriesSummary.mock(
++        currentChapterLabel: "3",
++        latestChapterLabel: nil
++    )
++    let noChapter = LibrarySeriesSummary.mock(
++        currentChapterLabel: nil,
++        latestChapterLabel: nil
++    )
++    let noisyCurrentWithLatest = LibrarySeriesSummary.mock(
++        sourceDomain: "asurascans.com",
++        currentChapterLabel: "Scans",
++        latestChapterLabel: "16"
++    )
++
++    #expect(LibrarySeriesCardContent(series: latest).compactMetadata == "Ch. 3")
++    #expect(LibrarySeriesCardContent(series: currentOnly).compactMetadata == "Ch. 3")
++    #expect(LibrarySeriesCardContent(series: noChapter).compactMetadata == "50/100 chapters")
++    #expect(LibrarySeriesCardContent(series: noisyCurrentWithLatest).compactMetadata == "Ch. 16")
++}
++
++@Test func libraryComfortableCardMetadataShowsSourceWebsite() {
++    let asura = LibrarySeriesSummary.mock(
++        title: "The Regressed Mercenary",
++        sourceDomain: "asurascans.com",
++        canonicalURL: URL(string: "https://asurascans.com/comics/the-regressed-mercenarys-machinations-a80d257e/chapter/16")!,
++        currentChapterLabel: "Scans",
++        latestChapterLabel: "16"
++    )
++
++    #expect(LibrarySeriesCardContent(series: asura).sourceMetadata == "asurascans.com")
++}
++
++@Test func libraryComfortableCardBadgePrefersCurrentChapterOverLatestChapter() {
++    let inProgress = LibrarySeriesSummary.mock(
++        currentChapterLabel: "102",
++        latestChapterLabel: "237"
++    )
++    let planned = LibrarySeriesSummary.mock(
++        currentChapterLabel: nil,
++        latestChapterLabel: "237"
++    )
++    let completed = LibrarySeriesSummary.mock(
++        progressPercent: 1,
++        currentChapterLabel: "102",
++        latestChapterLabel: "237"
++    )
++
++    #expect(LibrarySeriesCardContent(series: inProgress).comfortableBadgeMetadata == "Ch. 102")
++    #expect(LibrarySeriesCardContent(series: planned).comfortableBadgeMetadata == "Ch. 237")
++    #expect(LibrarySeriesCardContent(series: completed).comfortableBadgeMetadata == "Complete")
++}
++
++@Test func libraryListMetadataPrefersNumericChapterLabelOverNoisyCurrentLabel() {
++    let noisyCurrent = LibrarySeriesSummary.mock(
++        sourceDomain: "asurascans.com",
++        currentChapterLabel: "Scans",
++        latestChapterLabel: "16"
++    )
++    let numericCurrent = LibrarySeriesSummary.mock(
++        currentChapterLabel: "237",
++        latestChapterLabel: "300"
++    )
++
++    #expect(LibrarySeriesCardContent(series: noisyCurrent).listMetadata == "Ch. 16")
++    #expect(LibrarySeriesCardContent(series: numericCurrent).listMetadata == "Ch. 237")
++}
++
+ @Test func libraryViewModePreferencesPersistSelectedDensity() {
+     let suiteName = "ToonEdgeLibraryViewMode-\(UUID().uuidString)"
+     let defaults = UserDefaults(suiteName: suiteName)!
+     defaults.removePersistentDomain(forName: suiteName)
+     let preferences = LibraryViewPreferences(userDefaults: defaults)
+ 
+     #expect(preferences.selectedViewMode == .comfortable)
+ 
+     preferences.selectedViewMode = .list
+     #expect(LibraryViewPreferences(userDefaults: defaults).selectedViewMode == .list)
+ 
+     preferences.selectedViewMode = .compact
+     #expect(LibraryViewPreferences(userDefaults: defaults).selectedViewMode == .compact)
+ 
+     defaults.removePersistentDomain(forName: suiteName)
+ }
+ 
++@Test func libraryNativeCollectionLayoutsUseDistinctGridDensity() {
++    let comfortableGrid = LibraryGridLayout(mode: .comfortable)
++    let compactGrid = LibraryGridLayout(mode: .compact)
++    let listGrid = LibraryGridLayout(mode: .list)
++
++    #expect(comfortableGrid.columnStyle == .fixedCount(2))
++    #expect(compactGrid.columnStyle == .fixedCount(4))
++    #expect(listGrid.columnStyle == .adaptiveMinimum(320))
++    #expect(compactGrid.itemSpacing < comfortableGrid.itemSpacing)
++    #expect(compactGrid.horizontalContentPadding <= comfortableGrid.horizontalContentPadding)
++}
++
++@Test func libraryGridCardsAvoidOuterGeneratedCardContainer() {
++    #expect(!LibrarySeriesCardLayout.comfortable.usesOuterCardContainer)
++    #expect(!LibrarySeriesCardLayout.compact.usesOuterCardContainer)
++    #expect(LibrarySeriesCardLayout.compact.fixedCardHeight <= 150)
++    #expect(LibrarySeriesCardLayout.compact.coverAspectRatio == 1)
++    #expect(LibrarySeriesCardLayout.compact.titleLineLimit == 1)
++    #expect(LibrarySeriesCardLayout.compact.progressHeight == 0)
++    #expect(LibrarySeriesCardLayout.compact.badgeRowHeight == 0)
++}
++
+ @Test func libraryViewModesExposeIncreasingDensityLayouts() {
+     #expect(LibraryViewMode.allCases == [.comfortable, .compact, .list])
+     #expect(LibraryViewMode.comfortable.title == "Comfortable")
+     #expect(LibraryViewMode.compact.title == "Compact")
+     #expect(LibraryViewMode.list.title == "List")
+ 
+     let comfortable = LibrarySeriesCardLayout.comfortable
+     let compact = LibrarySeriesCardLayout.compact
+     let list = LibrarySeriesListRowLayout.default
+ 
+     #expect(compact.fixedCardHeight < comfortable.fixedCardHeight)
+     #expect(compact.coverHeight < comfortable.coverHeight)
+     #expect(compact.cornerRadius <= comfortable.cornerRadius)
+     #expect(list.rowHeight < compact.fixedCardHeight)
+     #expect(list.cornerRadius <= compact.cornerRadius)
+ }
+ 
++@Test func libraryChromeUsesRestrainedNativeCollectionStyling() {
++    let filter = LibraryFilterChipLayout(isSelected: true)
++    let inactiveFilter = LibraryFilterChipLayout(isSelected: false)
++    let controls = LibraryCollectionControlsLayout(
++        visibleSeries: [LibrarySeriesSummary.mock()],
++        hasUpdateRefreshService: true,
++        isRefreshing: false
++    )
++
++    #expect(filter.cornerRadius == 8)
++    #expect(inactiveFilter.cornerRadius == 8)
++    #expect(filter.usesCapsuleShape == false)
++    #expect(!controls.usesLargeSummaryCard)
++}
++
+ @Test func addToLibraryStatePickerDefaultsByOriginAndAllowsOverride() {
+     #expect(AddToLibraryStatePickerModel.defaultState(for: .reader) == .reading)
+     #expect(AddToLibraryStatePickerModel.defaultState(for: .browser) == .planned)
+     #expect(AddToLibraryStatePickerModel.defaultState(for: .seriesDetail) == .planned)
+     #expect(AddToLibraryStatePickerModel.availableStates == [.reading, .planned, .dropped, .completed])
+ 
+     var model = AddToLibraryStatePickerModel(title: "Moonlit Edge", context: .reader)
+     #expect(model.selectedState == .reading)
+ 
+     model.select(.dropped)
+     #expect(model.selectedState == .dropped)
+ }
+ 
+ private extension LibrarySeriesSummary {
+     static func mock(
+         id: UUID = UUID(),
+         title: String = "Moonlit Edge",
++        sourceDomain: String = "example.com",
+         canonicalURL: URL? = nil,
++        coverImageURL: URL? = nil,
+         libraryState: LibraryCollectionState = .reading,
+         progressPercent: Double = 0.5,
++        chaptersRead: Int? = nil,
++        totalKnownChapters: Int? = nil,
+         hasUnreadUpdates: Bool = false,
+         lastReadAt: Date? = Date(timeIntervalSince1970: 1_700_000_000),
+         currentChapterLabel: String? = "42",
+         latestChapterLabel: String? = "100"
+     ) -> LibrarySeriesSummary {
+         LibrarySeriesSummary(
+             id: id,
+             title: title,
+-            sourceDomain: "example.com",
++            sourceDomain: sourceDomain,
+             canonicalURL: canonicalURL,
+-            coverImageURL: nil,
++            coverImageURL: coverImageURL,
+             progressPercent: progressPercent,
+-            chaptersRead: Int(progressPercent * 100),
+-            totalKnownChapters: 100,
++            chaptersRead: chaptersRead ?? Int(progressPercent * 100),
++            totalKnownChapters: totalKnownChapters ?? 100,
+             lastReadAt: lastReadAt,
+             libraryState: libraryState,
+             hasUnreadUpdates: hasUnreadUpdates,
+             isCompleted: progressPercent >= 1,
+             latestChapterLabel: latestChapterLabel,
+             currentChapterLabel: currentChapterLabel
+         )
+     }
+ }
+ 
+ private extension SeriesDetailSnapshot {
+-    static func mock(synopsis: String = "A compact mock synopsis.", chapters: [ChapterSummary]) -> SeriesDetailSnapshot {
++    static func mock(
++        title: String = "Moonlit Edge",
++        synopsis: String = "A compact mock synopsis.",
++        sourceDomain: String = "example.com",
++        coverImageURL: URL? = nil,
++        chapters: [ChapterSummary]
++    ) -> SeriesDetailSnapshot {
+         SeriesDetailSnapshot(
+             id: UUID(),
+-            title: "Moonlit Edge",
++            title: title,
+             status: "Ongoing",
+             synopsis: synopsis,
+-            sourceDomain: "example.com",
+-            coverImageURL: nil,
++            sourceDomain: sourceDomain,
++            coverImageURL: coverImageURL,
+             isSaved: true,
+             libraryState: .reading,
+             progressPercent: 0.35,
+-            chaptersRead: 12,
++            chaptersRead: chapters.filter { $0.readState == .read }.count,
+             totalKnownChapters: chapters.count,
+             hasUnreadUpdates: chapters.contains { $0.readState == .new },
+             chapters: chapters
+         )
+     }
+ }
+ 
+ private extension ChapterSummary {
+     static func mock(
+         title: String? = nil,
+diff --git a/docs/defects.md b/docs/defects.md
+index 4599dd2..2b26dd6 100644
+--- a/docs/defects.md
++++ b/docs/defects.md
+@@ -1,37 +1,220 @@
+ # Defects
+ 
+ This document tracks confirmed product defects, their evidence, current status, and intended resolution.
+ 
++## DEF-029 — Series Detail seeded shell can show placeholder cover despite visible Library artwork
++
++**Status:** Implemented  
++**Severity:** Medium  
++**Reported:** 2026-07-10  
++**Area:** Library navigation, Series Detail seeded shell, cover artwork propagation
++
++### User-visible problem
++
++When opening a series from Library, the immediate Series Detail shell can display the generated `TE` placeholder cover even though the Library grid/list item the user tapped was showing real cover artwork. This makes the transition feel broken and less native, especially when the rest of the page already has the correct title and source metadata.
++
++### Expected behavior
++
++- Tapping a Library item with visible cover artwork should show that same artwork in the Series Detail seeded shell.
++- Hydrated Series Detail should keep or improve the cover image, not flash from real artwork to a placeholder.
++- If no real cover URL is known anywhere locally, the existing missing-cover fallback remains acceptable.
++- The fix should preserve the existing persistence schema unless investigation proves the stored cover URL is simply not being propagated through current models.
++
++### Initial root-cause hypothesis
++
++The Library visual card can have artwork while the `LibrarySeriesSummary.coverImageURL` passed through `LibrarySeriesDetailRoute` is `nil`, or the seeded shell only receives the URL-backed summary and not the same artwork source used by the Library tile. The defect should first identify whether the artwork comes from persisted series cover metadata, recent-reading metadata, cached image state, or a view-level fallback.
++
++### Proposed fix
++
++1. Add regression coverage proving `SeriesDetailSeedShellLayout` preserves a non-nil `LibrarySeriesSummary.coverImageURL`.
++2. Add repository-level coverage for the saved/recent summary path that currently loses cover URLs, if investigation confirms the summary is missing the URL.
++3. Propagate the existing locally known cover URL into `LibrarySeriesSummary` and the seeded shell without adding new network work before first render.
++4. Verify the hydrated `SeriesDetailSnapshot` receives the same cover URL when the stored series has it.
++
++### Acceptance criteria
++
++- A Library-origin Series Detail seed with a known cover URL renders with that URL available to the seeded shell.
++- Saved-series summaries retain cover URL metadata after library refreshes and recent-reading reconciliation.
++- Hydrated Series Detail does not regress from a known cover URL to a placeholder.
++- The fix does not change Reader detection, Browser behavior, chapter parsing, update checks, save-to-library grouping, or Library layout.
++
+ ## DEF-028 — Series Detail can show all known local chapters read while the next source chapter exists
+ 
+-**Status:** Implemented
+-**Severity:** Medium
+-**Reported:** 2026-07-09
++**Status:** Implemented  
++**Severity:** Medium  
++**Reported:** 2026-07-09  
+ **Area:** Series Detail primary action, update refresh, chapter availability indexing
+ 
+ ### User-visible problem
+ 
+ After chapter 106 is fully read, Series Detail can show `All Chapters Read` even though chapter 107 is available on the source site. The app may have a latest-known label from update metadata, but no stored chapter URL for chapter 107.
+ 
+ ### Expected behavior
+ 
+ - Refresh and Series Detail opening should index available chapter links when possible.
+ - If chapter 107 is indexed and chapter 106 is read, Series Detail should offer `Start Chapter 107`.
+ - If every indexed available chapter is read, Series Detail can show `All Chapters Read`.
+ 
+ ### Resolution
+ 
+ - Added lightweight available-chapter indexing from source series pages.
+ - Manual Library refresh and opportunistic Series Detail loading update the local chapter index.
+ - Series Detail primary action now uses indexed chapter rows as openable reading targets without requiring cached reader image payloads.
+ 
++## DEF-027 — Series Detail and compact Library can diverge after the latest known local chapter is read
++
++**Status:** Implemented  
++**Severity:** Medium  
++**Reported:** 2026-07-09  
++**Area:** Series Detail primary action, Library compact metadata
++
++### User-visible problem
++
++After fully reading `The Extra's Academy Survival Guide` chapter 106, Series Detail still showed `Continue Chapter 102` even though chapter 102 was stale older progress. In compact Library, the same series showed `Ch. 237`, which came from latest-known/update metadata rather than the current reading target.
++
++### Expected behavior
++
++- Series Detail should not reopen an older unfinished chapter after a newer completed chapter has become the latest local progress.
++- If there is a forward in-progress, new, or unread chapter after the latest completed chapter, the primary action should choose that forward target.
++- If there is no known forward target after the latest completed chapter, the primary action should show `All Chapters Read` instead of falling back to stale older progress.
++- Compact Library tiles should prefer the current/resume chapter label before latest-known chapter metadata.
++
++### Root-cause assessment
++
++`SeriesDetailSnapshot.primaryChapter` could still fall back to `mostRecentInProgressChapter` after all known forward chapters had been read. That made an older in-progress row, such as chapter 102, eligible after chapter 106 was complete. Separately, `LibrarySeriesCardContent.compactMetadata` preferred `latestChapterLabel`, so update metadata such as `237` could appear on compact tiles even when the saved progress target was a different chapter.
++
++### Resolution
++
++- Series Detail now limits in-progress fallback to cases with no completed numeric progress, while forward selection still prefers forward in-progress chapters, then new chapters, then the next unread chapter.
++- Numeric chapter ordering now uses the same label extractor used for UI labels before falling back to `chapterNumber`.
++- Compact Library metadata now prefers a numeric current chapter label before latest-known metadata.
++- Added regression coverage for a read 103-106 sequence with stale chapter 102 progress and for compact metadata preferring current `Ch. 3` over latest-known `Ch. 237`.
++
++## DEF-026 — Series Detail can resume an older unfinished chapter instead of continuing after latest completed progress
++
++**Status:** Implemented  
++**Severity:** Medium  
++**Reported:** 2026-07-09  
++**Area:** Series Detail primary action, Library progress ordering
++
++### User-visible problem
++
++When later chapters are already read but an older chapter remains unfinished, Series Detail can choose the older unfinished chapter as the primary action. In the reported case, chapters 103, 104, and 105 were read, but chapter 102 remained at 0%, and the primary action still showed `Continue Chapter 102`.
++
++### Expected behavior
++
++- If there is a readable chapter after the latest completed chapter, the primary action should choose that chapter.
++- If there is no forward unread/new/in-progress chapter after the latest completed chapter, Series Detail should not fall back to stale older progress.
++
++### Root-cause assessment
++
++`SeriesDetailSnapshot.primaryChapter` prioritized any in-progress chapter before considering completed chapter order. That made stale or accidentally-started older chapters outrank the natural forward reading path.
++
++### Resolution
++
++- Series Detail primary action now first finds the latest completed chapter number and chooses the lowest readable chapter after it.
++- Forward selection keeps in-progress chapter priority when that chapter is after the latest completed chapter.
++- Added regression coverage proving read 103/104/105 with unfinished 102 starts 106.
++
++## DEF-025 — Series Detail can show all chapters read after adjacent navigation discovers the next chapter
++
++**Status:** Implemented  
++**Severity:** Medium  
++**Reported:** 2026-07-08  
++**Area:** Library progress reconciliation, Series Detail primary action, adjacent Reader navigation
++
++### User-visible problem
++
++After reading `The Extra's Academy Survival Guide` chapter 102 and navigating to chapter 103 in Reader, Series Detail could still show `All Chapters Read` with `1/1 chapters`. The expected behavior is for Series Detail to continue chapter 103.
++
++### Evidence
++
++- Reported with AsuraScans saved series where chapter 102 was the only saved Library chapter.
++- The Reader could move to chapter 103 and record recent-reading state, but the saved series' chapter list still contained only chapter 102.
++- Because chapter 102 was read and chapter 103 was not part of the saved series detail, the primary action had no readable chapter and displayed `All Chapters Read`.
++
++### Root-cause assessment
++
++Recent-reading state and saved Library chapter state diverged when adjacent Reader navigation reached a chapter that was not already stored in the saved series. Series Detail builds from saved Library chapters, so it did not know about the newly read adjacent chapter. Additionally, when multiple chapters were in progress, the primary chapter selector preferred the first stored in-progress chapter rather than the most recently active one.
++
++### Resolution
++
++- Recent-reading reconciliation now adds a newly discovered chapter to an already saved series when the recent chapter matches that saved series by source URL/chapter ID/canonical series URL.
++- The inserted chapter uses the Reader session's title, source URL, image URLs, and numeric chapter label extracted from noisy source text.
++- Library snapshot and Series Detail loading also reconcile existing recent-reading rows so simulator data created before this fix is repaired without requiring the user to reread the chapter.
++- Series Detail primary action now prefers the most recently active in-progress chapter before falling back to unread/new chapters.
++- Added regression coverage for saved chapter 102 followed by adjacent recent chapter 103, expecting `Continue Chapter 103` and a stored native Reader session for chapter 103.
++
++## DEF-024 — Vortex adjacent Reader navigation can fail on accessible next chapter
++
++**Status:** Implemented  
++**Severity:** High  
++**Reported:** 2026-07-08  
++**Area:** Reader adjacent chapter navigation, hidden WebView loading, VortexScans static reader extraction, Library progress reconciliation
++
++### User-visible problem
++
++From `Past Life Returner` chapter 169 on VortexScans, tapping Reader `Next` can show `Could not open next chapter in Reader.` even though chapter 170 is accessible at the expected adjacent URL.
++
++### Evidence
++
++- Reported with current chapter URL: `https://vortexscans.org/series/past-life-returner/chapter-169`
++- Live verification on 2026-07-08 confirmed both chapter 169 and chapter 170 return HTTP 200.
++- Chapter 170's static HTML includes ordered `data-reader-page-image` images and explicit chapter navigation links.
++- Simulator data inspection after the first fix showed `Past Life Returner` recent-reading state could point at chapter 169 while the saved Library series still pointed its `lastOpenedChapterID` at chapter 1.
++
++### Root-cause assessment
++
++Reader adjacent navigation depended on the hidden WebView page-analysis path. If hidden loading timed out, failed, or produced a non-viable low-confidence analysis, ToonEdge surfaced the generic adjacent failure without trying a second path. VortexScans exposes enough reader data in static HTML to safely reconstruct the same detection analysis when the hidden WebView path is unreliable.
++
++A second contributing issue was stale saved-series progress metadata. Reader sessions opened from saved Library state use the saved series' last-opened chapter to derive numeric adjacent URLs. Recent-reading writes could update the visible Home/Library resume label without reconciling the saved series' `lastOpenedChapterID`, leaving the Reader able to display recent progress while deriving adjacent controls from an older saved chapter.
++
++### Resolution
++
++- Added a static HTML fallback loader for adjacent chapter navigation.
++- The fallback extracts reader-tagged image URLs, dimensions, title, and previous/next chapter links from static HTML.
++- The resulting analysis still runs through the normal detector and must pass the existing high-confidence, nonblank, non-stock image gates before replacing the Reader session.
++- Production adjacent navigation now wires the hidden WebView loader with the static HTML fallback.
++- Added regression coverage for Vortex-shaped chapter 170 HTML when hidden loading fails and when hidden analysis is non-viable.
++- Recent-reading writes now reconcile matching saved Library chapters by source URL or chapter ID, updating saved progress and `lastOpenedChapterID` so resume sessions and adjacent URL derivation use the same chapter.
++- Added regression coverage for a saved sparse chapter list where recent reading moves from chapter 1 to chapter 169 and the next Reader control derives chapter 170.
++
++## DEF-023 — Library comfortable card chapter pill can show latest instead of resume chapter
++
++**Status:** Implemented  
++**Severity:** Medium  
++**Reported:** 2026-07-08  
++**Area:** Library visual metadata, comfortable grid cards, Series Detail consistency
++
++### User-visible problem
++
++In the Library comfortable grid, a saved reading item can show a chapter pill for the latest known chapter even when Series Detail continues a different in-progress chapter. The reported screenshot showed `The Extra's Academy Survival Guide` with a Library card pill of `Ch. 237`, while the Series Detail primary action for the same item showed `Continue Chapter 102`.
++
++### Expected behavior
++
++- Comfortable Library grid cards should show the user's current/resume chapter when it is available.
++- Latest known chapter should only be used as a fallback when no current chapter is available.
++- Completed items should continue to show a completion badge.
++- The fix should remain display-only and must not change persistence, chapter parsing, update checks, or save-to-library grouping behavior.
++
++### Root-cause assessment
++
++The comfortable grid card chip read `latestChapterLabel` directly from `LibrarySeriesSummary`. Series Detail already uses the active/current chapter selection path, so the two screens could display different chapter numbers for the same saved series.
++
++### Resolution
++
++- Added a `LibrarySeriesCardContent.comfortableBadgeMetadata` display contract.
++- Comfortable card badges now prefer numeric `currentChapterLabel`, fall back to numeric `latestChapterLabel`, and show `Complete` for completed series.
++- Updated the comfortable grid chip rendering to use the shared card-content metadata instead of reading `latestChapterLabel` directly.
++- Added regression coverage proving an in-progress item with current chapter `102` and latest chapter `237` badges as `Ch. 102`.
++
+ ## DEF-022 — Reader adjacent navigation masks transient rate-limit/challenge failures
+ 
+ **Status:** Open  
+ **Severity:** High  
+ **Reported:** 2026-06-05  
+ **Area:** Reader adjacent chapter navigation, hidden WebView loading, site challenge/rate-limit handling, failure UX
+ 
+ ### User-visible problem
+ 
+ When reading The Extra's Academy Survival Guide chapter 102 and tapping Previous or Next, the Reader can load for an extended period and then fail with a generic message such as "Could not open previous chapter in Reader." or "Could not open next chapter in Reader."
+diff --git a/docs/toonedge_epics_and_stories.md b/docs/toonedge_epics_and_stories.md
+index dfaa4c3..891fca4 100644
+--- a/docs/toonedge_epics_and_stories.md
++++ b/docs/toonedge_epics_and_stories.md
+@@ -1018,20 +1018,166 @@ Library should scale beyond a small visual gallery. The current card grid is use
+ - Browser-origin and Series Detail saves default to `Planned`.
+ - Changing the selected save state before confirming persists that chosen state.
+ - Existing saved-state mutation from Series Detail continues to work for already saved titles.
+ - Regression coverage verifies view-mode persistence, state filtering, `Dropped` support, default save states by origin, explicit save-state override, and unchanged navigation to Series Detail.
+ 
+ **MVP boundaries**
+ - Do not add cloud sync, tags, custom shelves, recommendations, public catalogs, or social features.
+ - Do not add bulk edit, drag-and-drop reordering, or custom user-defined groups in this story.
+ - Do not change Reader detection, chapter parsing, or update-check behavior except where save-state defaults are passed through existing Library interfaces.
+ 
++### Story 11.36 — Native collection Library visual refinement
++**Status:** implemented
++
++**User story**
++
++As a reader with dozens of saved manhwas, I want the Library to feel like a dense native collection instead of a set of large generated-looking cards, so I can scan more titles quickly while the artwork remains the primary visual anchor.
++
++**Intent**
++
++The previous scalable Library story added grouping and multiple view modes, but the first implementation still uses the same rounded card container for comfortable and compact modes. This keeps the Library visually soft and generic, and it makes compact mode feel too close to comfortable mode. This story refines the existing modes into a cover-first native collection pattern: comfortable remains a 2-column poster grid, compact becomes a true 4-column square-thumbnail grid, and list remains the highest-density row layout.
++
++**Recommended UX direction**
++- Remove the grey outlined card container from grid items.
++- Let cover artwork be the main visual object, with title and chapter metadata below the artwork.
++- Keep `Comfortable` as a 2-column poster grid for browsing.
++- Redefine `Compact` as a 4-column grid with square-ish thumbnails, one-line titles, and a small chapter label.
++- Keep `List` as the dense management view for fastest scanning.
++- Reduce repeated capsule/pill styling on Library filters, summary, and view-mode controls.
++- Keep purple as an active/accent color only, not the dominant treatment for every Library surface.
++
++**Acceptance criteria**
++- Comfortable mode uses a 2-column cover-first grid on iPhone-sized widths.
++- Comfortable grid items no longer use the shared grey `TECard` outline/background as the outer item container.
++- Comfortable grid items show cover art, title, current resume metadata, progress where space allows, and latest chapter/update status where space allows.
++- Compact mode uses 4 columns on iPhone-sized widths.
++- Compact mode uses square or near-square cover art, one-line title text, and a compact chapter label such as `Ch. 237`.
++- Compact mode omits large progress bars and chip rows so it materially differs from comfortable mode.
++- List mode remains available and remains the highest-density view for management.
++- View mode tests verify compact mode has a 4-column layout target and substantially smaller item height than comfortable mode.
++- Styling tests verify grid item layouts do not require an outer card container.
++- Library group filters remain available for `Recent`, `Reading`, `Planned`, `Dropped`, and `Completed`.
++- Existing Library navigation remains unchanged: selecting any visible title opens Series Detail.
++- Existing save-to-library grouping behavior remains unchanged.
++
++**MVP boundaries**
++- Do not add custom shelves, tags, bulk editing, or sort menus in this story.
++- Do not change persistence schema, Reader detection, chapter parsing, or update-check behavior.
++- Do not redesign Home, Reader, Browser, or Series Detail beyond any shared primitive impact explicitly needed by the Library.
++
++### Story 11.37 — Reading dashboard Home visual refinement
++**Status:** implemented
++
++**User story**
++
++As a returning reader, I want Home to feel like a focused reading dashboard instead of a generic generated card feed, so I can immediately resume reading while search remains available when I want to start somewhere new.
++
++**Intent**
++
++The current Home screen satisfies the basic search, continue-reading, recently updated, and library preview requirements, but its visual language relies heavily on pill/circle controls, repeated `TECard` containers, and generic banners. After the Library native collection refinement, Home should adopt the same restrained native direction while preserving Home's product role: search remains available near the top, but Continue Reading becomes the primary dashboard object for returning users.
++
++**Recommended UX direction**
++- Keep the universal search/URL entry near the top, but style it as a compact command bar rather than a large capsule hero.
++- Make Continue Reading the main dashboard section immediately after search.
++- Show the most recent continue-reading item as a cover-first current-read hero with title, chapter/resume metadata, and a subtle progress indicator.
++- Show additional continue-reading items, recently updated titles, and library preview entries as compact cover-first shelves or dense native rows.
++- Remove the outer grey `TECard` treatment from Home reading cards where practical.
++- Replace circular accessory buttons with restrained rounded-rectangle icon controls.
++- Move refresh feedback into a quiet inline status treatment instead of a large generic banner.
++- Keep purple as an accent for actions and active states, not the dominant surface treatment.
++
++**Acceptance criteria**
++- Home preserves the required content hierarchy: search, Continue Reading, Recently Updated, All Library.
++- Home reads as a reading dashboard: Continue Reading is the most prominent content section after the search command bar.
++- The search entry uses copy similar to `Search the web or paste a chapter link`.
++- Search remains tappable and still opens the existing search overlay.
++- Continue Reading still opens the last-read chapter using existing routing.
++- Continue Reading uses a cover-first hero treatment for the first available item.
++- Additional reading/update/library previews use compact cover-first treatments rather than repeated large generated-looking cards.
++- Home reading cards do not require the shared grey `TECard` outline/background as their outer item container.
++- Refresh remains available through pull-to-refresh and any existing explicit refresh affordance, but feedback uses restrained inline status styling.
++- Settings remains reachable from Home.
++- Empty state remains available and still points users toward starting a search/web reading session.
++- No persistence schema, Reader detection, Browser behavior, chapter parsing, update checks, or save-to-library grouping behavior changes are introduced.
++
++**MVP boundaries**
++- Do not add recommendations, public catalogs, social/community features, or custom Home widgets.
++- Do not change search classification, browser launch semantics, Reader launch semantics, update-check comparison, or library persistence.
++- Do not redesign Library, Reader, Browser, Series Detail, Downloads, or Settings in this story.
++
++### Story 11.38 — Library metadata label refinement
++**Status:** implemented
++
++**User story**
++
++As a reader scanning saved titles in Library, I want each Library mode to show the most useful metadata for that layout, so I can quickly identify where a title came from in grid mode and where I left off in list mode.
++
++**Intent**
++
++Story 11.36 made Library feel more like a native collection, but the same resume metadata string is still used in places where it is not useful. In comfortable grid mode, `Continue Ch. Scans` can look noisy and misleading when a parser captured a non-chapter token from source page text. In list mode, the source context is less important than the chapter number because list is the highest-density management/resume view.
++
++**Recommended UX direction**
++- Comfortable grid metadata should show the source website/domain, such as `asurascans.com`, instead of `Continue Ch. Scans`.
++- List mode metadata should show a chapter label, such as `Ch. 16`, when a chapter number is available.
++- List mode should not display noisy non-chapter labels like `Scans` as a chapter value.
++- Compact mode should keep its existing compact chapter label behavior from Story 11.36.
++- Prefer existing stored `sourceDomain`, `currentChapterLabel`, and `latestChapterLabel` data; do not change persistence or parser behavior in this story.
++
++**Acceptance criteria**
++- Comfortable Library cards display the source website/domain as the subtitle under the title.
++- Given a saved title from `https://asurascans.com/comics/the-regressed-mercenarys-machinations-a80d257e/chapter/16`, the comfortable grid subtitle reads `asurascans.com`.
++- List rows display a chapter number label such as `Ch. 16` when a numeric current or latest chapter label is available.
++- List rows do not display `Continue Ch. Scans` when a non-chapter label like `Scans` is present and a numeric chapter label is available elsewhere on the summary.
++- Compact grid behavior remains unchanged: compact cards still prefer short labels like `Ch. 16`.
++- Existing Library filters, view modes, navigation to Series Detail, save-to-library grouping, update checks, Reader detection, Browser behavior, and persistence schema remain unchanged.
++
++**MVP boundaries**
++- Do not change chapter parsing, source-domain extraction, persistence schema, update-check comparison, Reader detection, Browser behavior, or save-to-library grouping.
++- Do not add new metadata fields to persistent models.
++- Do not redesign Library layout beyond the metadata text shown in existing cells.
++
++### Story 11.39 — Library summary card demotion
++**Status:** implemented
++
++**User story**
++
++As a reader browsing my saved Library, I want the collection controls to stay useful without taking over the top of the screen, so more cover artwork is visible and the Library feels like a native collection instead of a dashboard of cards.
++
++**Intent**
++
++Story 11.36 shifted Library toward a cover-first native collection, and Story 11.38 made cell metadata more useful by mode. The large `Recent Library` summary card now repeats context already shown by the selected filter and page title, while pushing cover art lower on the screen. The useful parts of that card are the saved-title count and manual refresh affordance; those should remain available in a quieter inline treatment near the view-mode controls.
++
++**Recommended UX direction**
++- Remove the large rounded `Recent Library` / group summary card from the Library content flow.
++- Replace it with a compact inline collection status row that shows the current visible title count, such as `4 titles`.
++- Keep refresh available when `LibraryUpdateRefreshService` exists, but render it as a small icon button in the inline controls area rather than inside a large card.
++- Keep the view-mode segmented control close to the collection it controls.
++- Prefer a single horizontal controls row between filters and the collection grid/list: count on the leading side, view-mode control and refresh on the trailing side.
++- Keep pull-to-refresh behavior and existing refresh feedback behavior unchanged.
++
++**Acceptance criteria**
++- The Library screen no longer displays a large summary card labeled `Recent Library`, `Reading Library`, `Planned Library`, `Dropped Library`, or `Completed Library`.
++- The visible saved-title count remains available in a compact inline treatment.
++- The inline count reflects the active filter and visible series count, including singular/plural copy such as `1 title` and `4 titles`.
++- Manual update refresh remains available when the update refresh service exists.
++- Manual update refresh is hidden when the update refresh service is unavailable.
++- The view-mode control remains available for `Comfortable`, `Compact`, and `List`.
++- Pull-to-refresh remains available and refresh feedback remains dismissible/auto-expiring.
++- Existing Library filters remain available for `Recent`, `Reading`, `Planned`, `Dropped`, and `Completed`.
++- Selecting a Library item still opens Series Detail.
++- Existing save-to-library grouping, persistence schema, Reader detection, Browser behavior, chapter parsing, and update checks remain unchanged.
++
++**MVP boundaries**
++- Do not add sorting, bulk edit, custom shelves, or new metadata fields in this story.
++- Do not change Library grouping semantics, update-check comparison, persistence schema, Reader detection, Browser behavior, chapter parsing, or save-to-library behavior.
++- Do not redesign Library cells beyond spacing changes required by removing the large summary card.
++
+ ### Story 11.40 — Local available-chapter index and Series Detail reading target
+ **Status:** implemented
+ 
+ **User story**
+ 
+ As a reader who keeps saved series in my Library, I want ToonEdge to know which chapters are available locally after refresh or when I open a Series Detail page, so the detail screen can offer the next available chapter instead of saying `All Chapters Read` too early.
+ 
+ **Intent**
+ 
+ Current Series Detail behavior can only choose from chapters already stored as saved/reader/progress rows. A series may have `latestKnownChapterLabel` from update metadata, but without a stored chapter URL for the next chapter, the app cannot safely make `Start Chapter 107` clickable. This creates a confusing state: the app may know a high-level latest label such as `237`, while Series Detail only knows concrete local chapter rows such as `102-106`.
+@@ -1067,20 +1213,174 @@ This story introduces a lightweight local available-chapter index. Refresh actio
+ 
+ **MVP boundaries**
+ - Do not add a public catalog, recommendations, source browsing, or hosted content features.
+ - Do not add cloud sync or cross-device reading state.
+ - Do not download chapter images during index refresh.
+ - Do not require multi-page chapter stitching.
+ - Do not aggressively infer chapter URLs when the source index does not provide a link; URL inference may remain a guarded fallback only where existing adjacent navigation logic already treats it as safe.
+ - Do not block Series Detail rendering on network refresh; use existing local data first and update when refresh completes.
+ - Do not remove existing update-check safeguards for unsupported, rate-limited, or challenge pages.
+ 
++### Story 11.41 — Series Detail non-blocking local first render
++**Status:** implemented
++
++**User story**
++
++As a reader opening a saved series that ToonEdge already knows about, I want Series Detail to show my local series data immediately, so I can continue reading without waiting for opportunistic update checks.
++
++**Intent**
++
++Story 11.40 added opportunistic available-chapter indexing when Series Detail opens. That refresh is valuable, but it must feel like a background improvement rather than a blocking navigation step. If the app already has local title, cover, progress, and chapter rows, Series Detail should render those first and let the user tap Continue while the chapter index refresh runs in the background.
++
++The `Loading series` banner should remain reserved for the brief local repository lookup or for truly unknown series data. Network refresh, source-page parsing, and update-state reconciliation should not keep the user on a loading-only screen.
++
++**Recommended UX direction**
++- Render existing local `SeriesDetailSnapshot` as the first priority.
++- Start the opportunistic chapter-index refresh only after a local detail snapshot exists.
++- Keep the Continue button active from the local snapshot while the refresh is in flight.
++- If refresh finds new indexed chapters, update Series Detail in place after refresh completes.
++- If refresh fails, leave the already-rendered local detail visible and do not replace it with an error or loading state.
++- Avoid adding visible “refreshing” copy unless a later story proves users need it; the refresh should be quiet.
++
++**Acceptance criteria**
++- Opening Series Detail for a locally known series shows the local detail view before any chapter-index refresh result is required.
++- Series Detail does not await opportunistic network refresh in the same startup task that performs the initial local detail load.
++- The opportunistic refresh begins only after local detail has loaded at least once.
++- The header Continue action remains available from local data while refresh is in flight.
++- If refresh mutates the local chapter index, Series Detail reloads and reflects the new reading target.
++- If refresh returns `nil`, fails, or reports `didRefresh == false`, the existing local detail remains visible.
++- Unknown or missing series can still show the existing unavailable/loading states.
++- Existing Reader detection, Browser behavior, Library filters, save-to-library grouping, chapter parsing, update comparison, and persistence schema remain unchanged.
++
++**MVP boundaries**
++- Do not add a new visible refresh spinner, progress bar, toast, or status copy to Series Detail.
++- Do not preload all Series Detail snapshots from the Library grid.
++- Do not change chapter-index fetching, parsing, persistence, or update-check comparison logic.
++- Do not change the Library grid/list layout.
++- Do not change Reader launch behavior beyond preserving the existing Continue action availability.
++
++### Story 11.42 — Series Detail seeded shell from Library selection
++**Status:** implemented
++
++**User story**
++
++As a reader tapping a known series in my Library, I want Series Detail to show the title, cover, and local progress context immediately, so navigation feels instant instead of showing a loading screen.
++
++**Intent**
++
++Story 11.41 separated the initial local detail load from opportunistic network refresh, but Series Detail can still briefly show `Loading series` because navigation currently passes only a `seriesID`. The Library cell already has useful local context: title, cover, source domain, visible progress, current/latest labels, and unread state. Series Detail should use that tapped-row summary as an immediate visual seed while the full `SeriesDetailSnapshot` hydrates from the repository.
++
++This story removes the loading-only experience for normal Library-origin navigation. The seeded shell is a visual bridge, not a replacement for hydrated detail. Accurate Continue behavior must still come from the full local detail snapshot, because only detail hydration has concrete chapter rows and safe source URLs.
++
++**Recommended UX direction**
++- When a Library card/list row is tapped, pass a route value that includes the selected `LibrarySeriesSummary`.
++- Series Detail should render a lightweight seeded header immediately from that summary: cover, title, source/progress metadata, saved/reading state, and update indicator.
++- Do not show the `Loading series` banner for Library-origin routes that include a seed summary.
++- Hydrate the full `SeriesDetailSnapshot` in the background as today.
++- Show the real Continue action only after hydrated detail exists, so chapter targets remain accurate.
++- After hydration, replace the seeded shell with the full Series Detail header, chapter toolbar, and chapter list.
++- Opportunistic chapter-index refresh remains a later background phase after local detail hydration.
++- Router-driven deep links that only have a `seriesID` can continue to use the existing loading/unavailable states.
++
++**Acceptance criteria**
++- Tapping a visible Library item passes a route that includes the selected `LibrarySeriesSummary`.
++- Series Detail accepts an optional seed summary.
++- Given a seed summary and no hydrated detail yet, Series Detail renders a seeded shell instead of the `Loading series` banner.
++- The seeded shell displays the series title, cover fallback/cover URL, source domain, and local progress count when available.
++- The seeded shell does not expose an enabled Continue action until hydrated local detail provides a concrete `primaryChapter`.
++- Given local detail has chapters 101 and 102 with 101 read and 102 unread, hydration shows `Start Chapter 102` without waiting for online refresh.
++- Given local detail is fully read but online chapter 201 is available only after refresh, the page can first hydrate to `All Chapters Read`, then update to `Start Chapter 201` after background indexing completes.
++- Router-driven navigation with only a `seriesID` still shows the current loading/unavailable flow.
++- Existing Reader detection, Browser behavior, Library filters, save-to-library grouping, chapter parsing, update comparison, and persistence schema remain unchanged.
++
++**MVP boundaries**
++- Do not make `LibrarySeriesSummary` the source of truth for Continue.
++- Do not infer new chapter URLs from summary labels.
++- Do not preload full Series Detail snapshots for every Library row.
++- Do not change persistence schema, chapter-index fetching/parsing, update-check comparison, Reader detection, Browser behavior, or Library collection layout.
++- Do not add new network requests before first render.
++
++### Story 11.43 — Series Detail local-ready instant entry
++**Status:** implemented
++
++**User story**
++
++As a reader opening a saved series that ToonEdge already knows locally, I want Series Detail to become fully actionable immediately when my next chapter can be determined from local data, so I can start reading without waiting for a background refresh.
++
++**Intent**
++
++Story 11.42 removed the loading-only transition by rendering a seeded shell from the tapped Library row. That shell is useful visually, but it intentionally does not expose Continue because it does not own concrete chapter targets. When ToonEdge already has a hydrated detail snapshot in the current session, or has enough local indexed chapter data to compute the next readable chapter, the page should skip the seed-only state and render the full Series Detail experience immediately.
++
++This story makes instant entry depend on local readiness, not latest-online certainty. If local state says the reader has completed chapter 100 and the local available-chapter index already knows chapters through 200, the app can safely show `Start Chapter 101` without waiting for a source refresh. A background refresh is only relevant to improve edge cases such as `200/200` where chapter 201 may have appeared online.
++
++**Recommended UX direction**
++- Prefer a locally cached hydrated `SeriesDetailSnapshot` over the seed-only shell when re-entering a series during the same app session.
++- Use local repository detail immediately when it contains a concrete primary chapter, such as `Start Chapter 101` for local state `100/200`.
++- Keep Continue available while opportunistic refresh runs in the background.
++- If local data says all indexed chapters are read, the page may show `All Chapters Read` immediately while refresh checks for a newly available chapter.
++- If refresh finds a new chapter, update the already-visible page in place.
++- If no hydrated detail is available yet, keep the Story 11.42 seeded shell behavior as the visual fallback.
++
++**Acceptance criteria**
++- Given a cached hydrated detail snapshot, Series Detail renders the full detail page immediately on re-entry instead of the seed-only shell or loading banner.
++- Given local indexed chapters `1...200` and the latest completed chapter is `100`, Series Detail renders immediately with `Start Chapter 101` and does not wait for online refresh.
++- Given local indexed chapters `1...200` and chapter `100` is in progress, Series Detail renders immediately with `Continue Chapter 100`.
++- Given local indexed chapters `1...200` and every chapter is read, Series Detail can render `All Chapters Read` immediately while background refresh checks for chapter `201`.
++- The opportunistic chapter-index refresh still runs in the background after local detail exists and updates the page in place when it changes the index.
++- Session caching is in-memory only and does not introduce a persistence schema change.
++- Router-driven navigation with only a `seriesID` can still use the existing loading/unavailable state until local detail resolves.
++- Existing Reader detection, Browser behavior, chapter parsing, update checks, save-to-library grouping, Library filters, and Library layouts remain unchanged.
++
++**MVP boundaries**
++- Do not preload full Series Detail snapshots for every Library item.
++- Do not block on network refresh when local data can produce a safe primary chapter.
++- Do not infer new chapter URLs from labels or summary metadata.
++- Do not change the available-chapter indexing schema introduced by Story 11.40.
++- Do not add visible refresh banners, spinners, or status copy to Series Detail.
++
++### Story 11.44 — Series Detail fixed header with independently scrolling chapters
++**Status:** implemented
++
++**User story**
++
++As a reader managing chapters from Series Detail, I want the series title, cover, state chips, progress metadata, and Continue action to remain visible while I browse the chapter list, so the page keeps its context and primary action available.
++
++**Intent**
++
++Series Detail currently scrolls as one long page. On series with many indexed chapters, the title/header and Continue action can disappear while the user browses the chapter list. Since Story 11.40 moved Series Detail toward a single `All` chapter section, the header can act as a persistent context area while the chapter list scrolls independently below it.
++
++This is a layout refinement only. It should not change chapter selection, Reader launch behavior, background refresh timing, update-state logic, or persistence. The fixed region should feel native and compact, not like a floating marketing card.
++
++**Recommended UX direction**
++- Keep the navigation bar at the top as-is.
++- Render the cover/title/chips/source metadata and primary Continue action in a fixed header area.
++- Put the `Chapters` toolbar and all chapter rows in an independently scrolling region below the header.
++- Preserve automatic initial positioning near `chapterListAnchorID` inside the chapter scroller.
++- Ensure rows do not render underneath the bottom tab bar or fixed header.
++- Keep the layout usable on iPhone widths with long titles and dynamic text.
++
++**Acceptance criteria**
++- The Series Detail title/header region remains visible while the chapter list scrolls.
++- The primary Continue action remains visible and tappable while browsing chapters.
++- The chapter list scrolls independently and can still anchor near the next reading target or latest read chapter.
++- Empty chapter states still appear in the chapter-scroll region.
++- Cache feedback and save-state controls remain available without overlapping the fixed header or chapter rows.
++- The fixed-header layout works with seeded-shell, hydrated-detail, unavailable, and loading states.
++- Existing Reader detection, Browser behavior, chapter parsing, update checks, save-to-library grouping, Library filters, and persistence remain unchanged.
++
++**MVP boundaries**
++- Do not redesign Library, Home, Browser, Reader, Downloads, or Settings.
++- Do not add new chapter filtering or sorting modes.
++- Do not change the `Recent` / `All` single-section decision from Story 11.40.
++- Do not add decorative hero imagery, gradients, or marketing-style copy.
++- Do not change chapter row semantics or context menu behavior.
++
+ ---
+ 
+ ## Post-MVP Epic — Multi-Page Chapter Stitching
+ 
+ ### Goal
+ Support chapters split across multiple source pages.
+ 
+ ### Story candidates
+ - detect paginated chapters
+ - sequential next-page fetch

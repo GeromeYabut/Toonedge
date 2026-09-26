@@ -1,0 +1,697 @@
+Building for debugging...
+[0/15] /private/tmp/toonedge-review-1138/tests/arm64-apple-macosx/debug/ToonEdgePackageTests.derived/runner.swift
+[1/15] Copying manhwatop_browser_only.json
+[2/15] Copying mangapill_hydrated_dom.json
+[3/15] Copying mangakatana_hydrated_dom.json
+[4/15] Copying mangahere_paginated_single_page.json
+[5/15] Copying mangafire_browser_session.json
+[6/15] Copying asura_embedded_html.json
+[7/15] Copying sleepy transparet.png
+[8/15] Copying sleepy transparent.png
+[9/15] Write sources
+[12/15] Write swift-version--58304C5D6DBC2206.txt
+[14/37] Emitting module ToonEdgeAppCore
+[15/57] Compiling ToonEdgeAppCore PageAnalysisScript.swift
+[16/57] Compiling ToonEdgeAppCore DetectionModels.swift
+[17/57] Compiling ToonEdgeAppCore GenericChapterDetector.swift
+[18/57] Compiling ToonEdgeAppCore DetectionDiagnosticsLogger.swift
+[19/57] Compiling ToonEdgeAppCore ProfileAwareChapterDetector.swift
+[20/57] Compiling ToonEdgeAppCore SiteProfileRegistry.swift
+[21/57] Compiling ToonEdgeAppCore DownloadsView.swift
+[22/57] Compiling ToonEdgeAppCore HomeView.swift
+[23/57] Compiling ToonEdgeAppCore LibraryView.swift
+[24/57] Compiling ToonEdgeAppCore AdjacentReaderSessionLoader.swift
+[25/57] Compiling ToonEdgeAppCore ReaderPageImageLoader.swift
+[26/57] Compiling ToonEdgeAppCore ReaderSettingsView.swift
+[27/57] Compiling ToonEdgeAppCore ReaderViewModel.swift
+[28/57] Compiling ToonEdgeAppCore ReaderPlaceholderView.swift
+[29/57] Compiling ToonEdgeAppCore ReaderView.swift
+[30/57] Compiling ToonEdgeAppCore SearchOverlayView.swift
+[31/57] Compiling ToonEdgeAppCore SettingsView.swift
+[32/57] Compiling ToonEdgeAppCore ToonEdgePrimitives.swift
+[33/57] Compiling ToonEdgeAppCore ToonEdgeDesignSystem.swift
+[34/57] Compiling ToonEdgeAppCore resource_bundle_accessor.swift
+[35/57] Compiling ToonEdgeAppCore AppShellView.swift
+[36/57] Compiling ToonEdgeAppCore AppDependencies.swift
+[37/57] Compiling ToonEdgeAppCore AppRouter.swift
+[38/57] Compiling ToonEdgeAppCore ToonEdgeApp.swift
+[39/57] Compiling ToonEdgeAppCore AppModels.swift
+[40/57] Compiling ToonEdgeAppCore ToonEdgePersistentModels.swift
+[41/57] Compiling ToonEdgeAppCore SwiftDataLibraryRepository.swift
+[42/57] Compiling ToonEdgeAppCore CacheStorageMeasurementService.swift
+[43/57] Compiling ToonEdgeAppCore FileBackedChapterAssetCache.swift
+[44/57] Compiling ToonEdgeAppCore HTMLChapterIndexFetcher.swift
+[45/57] Compiling ToonEdgeAppCore HTMLLatestChapterFetcher.swift
+[46/57] Compiling ToonEdgeAppCore HTMLSeriesMetadataFetcher.swift
+[47/57] Compiling ToonEdgeAppCore LibraryUpdateRefreshService.swift
+[48/57] Compiling ToonEdgeAppCore SeriesChapterIndexRefreshService.swift
+[49/57] Compiling ToonEdgeAppCore UpdateCacheDiagnosticsLogger.swift
+[50/57] Compiling ToonEdgeAppCore UserDefaultsReaderProgressRepository.swift
+[51/57] Compiling ToonEdgeAppCore MockServices.swift
+[52/57] Compiling ToonEdgeAppCore AppServiceProtocols.swift
+[53/57] Compiling ToonEdgeAppCore BrowserViewModel.swift
+[54/57] Compiling ToonEdgeAppCore BrowserView.swift
+[55/57] Compiling ToonEdgeAppCore BrowserWebView.swift
+[56/65] Emitting module ToonEdgeAppCoreTests
+[57/72] Compiling ToonEdgeAppCoreTests AdjacentReaderSessionLoaderTests.swift
+[58/72] Compiling ToonEdgeAppCoreTests AppDependenciesTests.swift
+[59/72] Compiling ToonEdgeAppCoreTests AppRouterTests.swift
+[60/72] Compiling ToonEdgeAppCoreTests BrowserExperienceTests.swift
+[61/72] Compiling ToonEdgeAppCoreTests CacheMetadataTests.swift
+[62/72] Compiling ToonEdgeAppCoreTests CacheStorageTests.swift
+[63/72] Compiling ToonEdgeAppCoreTests DesignSystemTests.swift
+[64/72] Compiling ToonEdgeAppCoreTests DetectionEngineTests.swift
+[65/72] Compiling ToonEdgeAppCoreTests LibraryExperienceTests.swift
+[66/72] Compiling ToonEdgeAppCoreTests PersistenceLifecycleTests.swift
+[67/72] Compiling ToonEdgeAppCoreTests ReaderExperienceTests.swift
+[68/72] Compiling ToonEdgeAppCoreTests SearchEntryModelTests.swift
+[69/72] Compiling ToonEdgeAppCoreTests UpdateCheckTests.swift
+[70/72] Compiling ToonEdgeAppCoreTests resource_bundle_accessor.swift
+[71/74] Compiling ToonEdgePackageTests runner.swift
+[72/74] Emitting module ToonEdgePackageTests
+[72/74] Write Objects.LinkFileList
+[73/74] Linking ToonEdgePackageTests
+Build complete! (39.18s)
+Test Suite 'All tests' started at 2026-09-22 11:40:53.321.
+Test Suite 'All tests' passed at 2026-09-22 11:40:53.322.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+◇ Test run started.
+↳ Testing Library Version: 124.4
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Test librarySeriesCardLayoutKeepsFixedHeightForMixedContent() started.
+◇ Test downloadsViewModelRemoveActionRefreshesSummaryAfterSuccess() started.
+◇ Test seriesDetailSeedShellShowsLibrarySummaryWithoutContinueAction() started.
+◇ Test readerViewModelRecordsRecentReadingWhenProgressIsSaved() started.
+◇ Test browserOwnedReaderBackFromLibraryOriginReturnsToSeriesDetail() started.
+◇ Test libraryEmptyStateUsesCenteredNothingSavedModel() started.
+◇ Test adjacentLoaderStaticHTMLFallbackWorksWithProductionProfileAwareDetector() started.
+◇ Test librarySegmentsExposeRecentAndAllCollectionGroups() started.
+◇ Test canonicalSeriesURLResolverHandlesAsuraComicChapterURLs() started.
+◇ Test updateComparisonDetectsNewerDecimalChapter() started.
+◇ Test swiftDataRepositoryDerivesAdjacentReaderControlsFromSavedChapterListWhenLinksAreMissing() started.
+◇ Test librarySnapshotFiltersSeriesBySegment() started.
+◇ Test manhuaUSBrowserSessionFollowUpPromotesOnlyReaderImages() started.
+◇ Test savedLibrarySeriesDoesNotDuplicateMatchingRecentReadingEntry() started.
+◇ Test openingHomeRootDismissesReaderBrowserAndPendingLibraryDestinations() started.
+◇ Test librarySummaryResumeTargetMatchesSeriesDetailPrimaryChapterWithoutDetailSnapshotConstruction() started.
+◇ Test downloadSummaryStorageDescriptionIsStableAndHumanReadable() started.
+◇ Test swiftDataRepositoryReconcilesRecentReadingWithSavedChapterContinueTarget() started.
+◇ Test updateComparisonDetectsNewerNumericChapter() started.
+◇ Test librarySummaryResumeTargetStartsAtFirstReadableChapterWhenLatestKnownIsHigher() started.
+◇ Test siteProfilesExposeSelectorHintExtractionStrategy() started.
+◇ Test pageAnalysisScriptCollectsLazySrcsetAttributes() started.
+◇ Test seriesDetailSeedShellExposesContinueWhenSummaryHasConcreteResumeTarget() started.
+◇ Test readerViewModelSavesWithSelectedLibraryState() started.
+◇ Test libraryContentLayoutKeepsRefreshFeedbackOutOfFlow() started.
+◇ Test searchInputClassifierAddsSchemeForLikelyDomains() started.
+◇ Test userDefaultsReaderProgressRepositoryPersistsProgressAcrossInstances() started.
+◇ Test browserShowsCTAForMediumConfidenceAndManualOverridePresentsReader() started.
+◇ Test coverArtworkMemoryCacheRetainsLoadedArtworkAcrossCardRecreation() started.
+◇ Test presentingBrowserCanCarryReaderLaunchOrigin() started.
+◇ Test seriesDetailPrimaryActionUsesNumericChapterLabelsFromNoisySourceText() started.
+◇ Test libraryDetailPrewarmPolicyDoesNotAutomaticallyPrewarmVisibleRows() started.
+◇ Test seededSeriesDetailLayoutKeepsSeedHeaderVisibleWithoutChapterScroller() started.
+◇ Test libraryComfortableCardLayoutReservesFullMetadataStack() started.
+◇ Test seriesDetailEntryCanShowAllReadWhileEdgeRefreshRunsInBackground() started.
+◇ Test swiftDataRepositoryBuildsStoredReaderSessionWhenChapterPayloadExists() started.
+◇ Test persistentDependenciesExposeUpdateRefreshService() started.
+◇ Test mockReaderProgressRepositoryPersistsProgressBySourceURL() started.
+◇ Test homeChromeUsesQuietDashboardControls() started.
+◇ Test openingLibraryDetailSelectsLibraryAndStoresDestination() started.
+◇ Test readerDefaultsToSeamlessPageFlow() started.
+◇ Test readerVisiblePlaceholderDoesNotAdvanceProgressUntilImageLoads() started.
+◇ Test browserLeavesLowConfidencePageInBrowser() started.
+◇ Test clearingBrowserReaderLaunchOriginKeepsBrowserVisible() started.
+◇ Test detectorNormalizesLazyLoadedImageSources() started.
+◇ Test nonHydratedSeriesDetailStatesDoNotCreateEmptyChapterScroller() started.
+◇ Test secondHydratedDOMSiteReusesExistingTemplate() started.
+◇ Test chapterListRecentReturnsMostRecentReadingActivity() started.
+◇ Test swiftDataRepositoryUpdatesSeriesStateWhenSavingKnownAdjacentChapterProgressByURL() started.
+◇ Test swiftDataRepositoryDoesNotEraseReaderPayloadWhenIndexRefreshSeesExistingChapter() started.
+◇ Test browserReaderPresentationKeepsBrowserOriginWithoutOverride() started.
+◇ Test viewOriginalPageAfterAdjacentReplacementUsesCurrentChapterURL() started.
+◇ Test latestChapterParserReturnsNilWithoutChapterLikeLinks() started.
+◇ Test addToLibraryStatePickerDefaultsByOriginAndAllowsOverride() started.
+◇ Test adjacentLoaderFallsBackToStaticHTMLForVortexReaderPageWhenHiddenLoadFails() started.
+◇ Test dismissingBrowserOwnedReaderKeepsBrowserPresented() started.
+◇ Test readerPageImageLoaderRetriesTransientFailureBeforeLoading() started.
+◇ Test openingLibraryRecentSelectsLibraryRootRecentSegment() started.
+◇ Test hydratedDOMProfileUsesSiteProfileDetectionPath() started.
+◇ Test embeddedHTMLProfileUsesSiteProfileDetectionPath() started.
+◇ Test readerViewModelReflectsSuccessfulSaveState() started.
+◇ Test swiftDataRepositoryAddsSeriesAndBuildsLibrarySnapshots() started.
+◇ Test openingLibraryRootDismissesReaderWithoutSelectingSeriesDetail() started.
+◇ Test htmlSeriesMetadataParserExtractsOpenGraphCover() started.
+◇ Test htmlSeriesMetadataParserExtractsAsuraStyleSeriesCoverImage() started.
+◇ Test defaultSiteProfileRegistryIncludesInitialSupportTiers() started.
+◇ Test recentReadingMergesDifferentSessionIDsByCanonicalSeriesURL() started.
+◇ Test readerViewModelExposesConciseCurrentChapterDisplayLabel() started.
+◇ Test searchSuggestionsFollowUXPriorityOrder() started.
+◇ Test swiftDataRepositoryDerivesNumericAdjacentReaderControlsForSparseChapterLists() started.
+◇ Test homeReadingDashboardHeroHasProminentCurrentReadScale() started.
+◇ Test manhwaTopProfileRejectsBlankPlaceholderImages() started.
+◇ Test swiftDataRepositoryRepairsExistingRecentAdjacentChapterWhenSeriesDetailLoads() started.
+◇ Test latestChapterParserDoesNotRequireKnownSourceDomain() started.
+◇ Test persistentCacheActionsReturnTypedResults() started.
+◇ Test browserDetectionRetryPolicyAllowsOnlyOneFollowUpPerURL() started.
+◇ Test libraryUpdateRefreshChecksAllSavedSeries() started.
+◇ Test fileBackedCacheMapsSourceURLToDeterministicChapterDirectory() started.
+◇ Test swiftDataRepositoryStoresRecentSearchHistoryInPriorityOrder() started.
+◇ Test swiftDataRepositoryAssignsReadingStateWhenAddingFromReader() started.
+◇ Test persistentDependenciesExposeAdjacentReaderSessionLoader() started.
+◇ Test mockReaderServiceBuildsSessionWithoutExtraction() started.
+◇ Test seriesDetailCachePolicyPublishesHydratedMutationResults() started.
+◇ Test mockDependenciesExposeUpdateRefreshService() started.
+◇ Test historyBackedSuggestionsPrioritizePersistedRecentSearchesOverStaticHistory() started.
+◇ Test updatingCacheRetentionMarksChapterRetainedAndCountsOfflineEntry() started.
+◇ Test libraryCompactCardMetadataPrefersShortChapterLabel() started.
+◇ Test queryStartPointBuildsSearchResultsRequest() started.
+◇ Test pageAnalysisScriptCollectsChallengeSignals() started.
+◇ Test adjacentLoaderRejectsHighConfidenceStockImageSession() started.
+◇ Test searchOverlayCanBePresentedAndDismissed() started.
+◇ Test swiftDataRepositorySkipsStoredReaderSessionWhenChapterPayloadIsMissing() started.
+◇ Test librarySeriesDetailRouteUsesVisibleSeriesAsSeed() started.
+◇ Test swiftDataRepositoryTargetedLookupsPreserveSeriesDetailAndProgress() started.
+◇ Test libraryUpdateRefreshLogsCheckedUpdatedAndFailedCounts() started.
+◇ Test chapterIndexRefreshServiceKeepsUnreadUpdateWhenLatestIndexedChapterIsStillUnread() started.
+◇ Test readerViewModelDoesNotOverwriteSavedProgressBeforeRestoreCompletes() started.
+◇ Test addingSameCanonicalSeriesWithSameChapterURLDoesNotDuplicateSeriesOrChapter() started.
+◇ Test browserSessionFollowUpWithoutViableCandidatesStaysLowConfidence() started.
+◇ Test persistentDependenciesUseCacheBackedDownloadSummary() started.
+◇ Test fileBackedCacheSanitizesInvalidURLCharacters() started.
+◇ Test mockDependenciesExposeStableFeatureData() started.
+◇ Test readerViewModelUpdatesCurrentChapterDisplayLabelAfterSessionReplacement() started.
+◇ Test readerRetainFailurePublishesNonBlockingFailureFeedback() started.
+◇ Test detectorClassifiesSparseButUsableChapterAsMediumConfidence() started.
+◇ Test htmlSeriesMetadataFetcherRequestsCanonicalSeriesURL() started.
+◇ Test pageAnalysisScriptCollectsReaderSemanticHints() started.
+◇ Test directURLStartPointBuildsInitialBrowserRequest() started.
+◇ Test readerViewModelRestoresSavedProgressWhenSessionOpens() started.
+◇ Test downloadsViewModelRemoveFailureProducesRetryableFeedback() started.
+◇ Test libraryCardMetadataKeepsNewUpdateSeparateFromResumeChapter() started.
+◇ Test readerBackFromLibraryFallbackDetectedReaderReturnsToSeriesDetail() started.
+◇ Test chapterRowStateExposesDistinctLabels() started.
+◇ Test adjacentNavigationRejectsBlankHiddenLoadedReaderSession() started.
+◇ Test openingLibraryRootDismissesBrowserOwnedReaderSoLibraryIsVisible() started.
+◇ Test seededSeriesDetailUsesHydratedDetailForContinueAction() started.
+◇ Test readerViewModelTogglesChromeVisibility() started.
+◇ Test swiftDataRepositoryPrefersStoredNumericAdjacentChapterWhenPayloadExists() started.
+◇ Test libraryNativeCollectionLayoutsUseDistinctGridDensity() started.
+◇ Test cacheRemoveFailureDiagnosticUsesSanitizedSourceIdentity() started.
+◇ Test mockBrowserServiceRecordsRequestedStartPoint() started.
+◇ Test siteProfileRegistryMatchesDomainsAndSubdomains() started.
+◇ Test updateComparisonTreatsChangedNonNumericLabelAsUnknownChange() started.
+◇ Test updateComparisonDetectsFetchedLabelWhenStoredLabelIsMissing() started.
+◇ Test dismissingReaderToSeriesOpensCanonicalSeriesURL() started.
+◇ Test metadataWithMissingBackingFileIsSurfacedAsMissing() started.
+◇ Test adjacentLoaderRejectsHighConfidenceBlankSession() started.
+◇ Test libraryViewModePreferencesPersistSelectedDensity() started.
+◇ Test detectedSessionLibraryInputUsesCanonicalSeriesURLAndNumericChapterLabel() started.
+◇ Test storageMeasurementPrefersMeasuredBytesWhenFilesExist() started.
+◇ Test seriesDetailCachePolicyClearsRemovedOrUnavailableDetail() started.
+◇ Test librarySnapshotSummaryCarriesConcreteResumeTargetFromIndexedChapters() started.
+◇ Test htmlLatestChapterFetcherRequestsSeriesCanonicalURL() started.
+◇ Test dismissingBrowserClearsReaderLaunchOriginOverride() started.
+◇ Test libraryCardMetadataDoesNotPresentLatestKnownAsCurrentWhenResumeTargetIsMissing() started.
+◇ Test fileBackedCacheCanInitializeInTemporaryDirectory() started.
+◇ Test browserDoesNotPresentEmptyReaderSession() started.
+◇ Test chapterIndexRefreshServiceRecordsIndexAndUpdateState() started.
+◇ Test unseenAdjacentNavigationPreservesHomeBackContext() started.
+◇ Test libraryUpdateRefreshPersistsUpdateResults() started.
+◇ Test swiftDataRepositoryPersistsLibraryStateTransitions() started.
+◇ Test librarySnapshotSummaryDoesNotInventResumeTargetWithoutSourceURL() started.
+◇ Test seriesDetailHeaderLayoutDoesNotExposeReaderOriginCopy() started.
+◇ Test storageMeasurementFallsBackToEstimatedBytesWhenFilesAreMissing() started.
+◇ Test libraryComfortableCardBadgePrefersCurrentChapterOverLatestChapter() started.
+◇ Test latestChapterParserExtractsDecimalChapterLabels() started.
+◇ Test searchOverlayFirstOpenLayoutKeepsInputInContentHeader() started.
+◇ Test readerViewModelRecordsRecentCacheMetadataWhenProgressIsSaved() started.
+◇ Test updateCheckerRequestsLatestChapterMetadataFromFetcher() started.
+◇ Test hydratedSeriesDetailKeepsKnownCoverURLFromStoredDetail() started.
+◇ Test adjacentLoaderRejectsLowConfidenceDetectionResult() started.
+◇ Test browserSessionProfileSuppressesUnsafeGenericConversion() started.
+◇ Test swiftDataRepositoryStoresUnsavedRecentReadingWithoutAddingToLibrary() started.
+◇ Test detectedReaderSessionPreservesPageDimensions() started.
+◇ Test approvedNonPromotedProfilesAreNotSearchSuggestionSources() started.
+◇ Test readerBackFromBrowserOpensCanonicalSeriesURL() started.
+◇ Test coverArtworkStartupPolicyUsesCachedDataImmediately() started.
+◇ Test removingCachedFilesUpdatesMeasuredSummary() started.
+◇ Test homeSnapshotReportsEmptyWhenAllSectionsAreEmpty() started.
+◇ Test profileAwareDetectorUsesProfileSelectorHintsBeforeGenericFallback() started.
+◇ Test relatedAsuraDomainsReuseEmbeddedHTMLTemplate() started.
+◇ Test chapterListAllGeneratesNumericRangeAndIncludesZeroOnlyWhenKnown() started.
+◇ Test seriesDetailChapterListAnchorPrefersPrimaryChapterThenLatestReadChapter() started.
+◇ Test librarySeriesDetailRouteIdentityUsesSeriesIDAndCarriesOptionalSeed() started.
+◇ Test homeContinueReadingNavigationDoesNotFallbackToMockExampleDomain() started.
+◇ Test readerPlaceholderHeightUsesDetectedAspectRatioWhenAvailable() started.
+◇ Test mockReaderServiceLoadsLinkedPreviousAndNextChapters() started.
+◇ Test persistentDependenciesExposeChapterIndexRefreshService() started.
+◇ Test readerViewModelSavesProgressWhenVisibleImageChanges() started.
+◇ Test persistentDependenciesUseSingleLifecycleRepositoryForLibraryAndProgress() started.
+◇ Test homeContinueReadingViewAllAvailabilityTracksRecentEntries() started.
+◇ Test libraryChromeUsesRestrainedNativeCollectionStyling() started.
+◇ Test readerChromeLayoutMovesSecondaryActionsToFloatingRail() started.
+◇ Test recordingRecentCacheMetadataIncrementsDownloadSummaryCount() started.
+◇ Test adjacentNavigationHiddenLoadSuccessPreservesLaunchContext() started.
+◇ Test viewingOriginalPageOpensSourceURLWhenNoBrowserIsPresent() started.
+◇ Test libraryViewModesExposeIncreasingDensityLayouts() started.
+◇ Test browserReaderLaunchOriginOverrideDoesNotApplyToDifferentURL() started.
+◇ Test retainedCacheMetadataIsRepresentedSeparatelyFromRecentCache() started.
+◇ Test commonSiteSuggestionsLabelEnabledPublicProfilesOnly() started.
+◇ Test seriesDetailEntryUsesCachedHydratedDetailBeforeSeedShell() started.
+◇ Test hydratedSeriesDetailLayoutKeepsHeaderFixedAndChaptersScrollable() started.
+◇ Test manhwaTopProfileCanPromoteViableChapterIntoReader() started.
+◇ Test searchInputClassifierTreatsHttpLinksAsURLs() started.
+◇ Test libraryUpdateRefreshFallsBackWhenChapterIndexRefreshDoesNotRefresh() started.
+◇ Test browserOwnsDetectedReaderPresentationWithoutChangingAppShellReader() started.
+◇ Test persistentDependenciesExposeLifecycleAndSearchHistoryServices() started.
+◇ Test mockCacheActionsReturnTypedResultsConsistently() started.
+◇ Test browserReaderLaunchOriginOverrideIsConsumedAfterVisibleReaderPresentation() started.
+◇ Test searchInputClassifierTreatsIPv4AddressAsURL() started.
+◇ Test readerProgressClampsToAvailableImageRange() started.
+◇ Test adjacentNavigationDoesNotPromoteMockStockImageFallbackForAppOriginSession() started.
+◇ Test searchInputClassifierAvoidsDottedPhraseFalsePositive() started.
+◇ Test storageMeasurementIgnoresFilesOutsideCacheNamespace() started.
+◇ Test seriesDetailChapterSectionUsesSingleAllList() started.
+◇ Test seriesDetailPrimaryActionStartsFirstUnreadWhenNoProgressExists() started.
+◇ Test librarySummaryResumeTargetExposesConcreteContinueAction() started.
+◇ Test searchInputClassifierTreatsSpacedTextAsSearchQuery() started.
+◇ Test browserReaderPresentationAppliesLibraryLaunchOriginOverrideForInitialURL() started.
+◇ Test swiftDataRepositoryPersistsReaderProgressBySourceURL() started.
+◇ Test htmlSeriesMetadataParserPrefersStructuredPortraitCoverOverSocialPreviewImage() started.
+◇ Test libraryListMetadataPrefersNumericChapterLabelOverNoisyCurrentLabel() started.
+◇ Test pageAnalysisScriptCollectsAdjacentChapterLinks() started.
+◇ Test libraryGridCardsAvoidOuterGeneratedCardContainer() started.
+◇ Test seriesDetailRefreshBehaviorReloadsOnlyWhenRefreshActuallyMutatesLocalData() started.
+◇ Test removingCacheMetadataRemovesItFromDownloadSummary() started.
+◇ Test detectedReaderSessionPreservesAdjacentChapterLinks() started.
+◇ Test seriesDetailStartupKeepsLocalLoadAndBackgroundRefreshAsSeparatePhases() started.
+◇ Test seriesDetailInitialScrollBehaviorUsesNoDelayAndDisablesAnimation() started.
+◇ Test readerSettingsMutationsUpdateSessionPreferences() started.
+◇ Test seriesDetailSeedShellPreservesKnownLibraryCoverURL() started.
+◇ Test homeContinueReadingUsesRecentDistinctSeriesOrderingAndLimit() started.
+◇ Test largeCacheSummaryAggregatesCountsAndStorageInOnePass() started.
+◇ Test homeSearchEntryUsesRestrainedBrowserCommandBarStyling() started.
+◇ Test adjacentLoaderPromotesOnlyHighConfidenceViableSession() started.
+◇ Test adjacentNavigationUsesStoredPayloadBeforeHiddenLoad() started.
+◇ Test swiftDataRepositoryMergesSeriesSavedWithChapterIndexCanonicalURL() started.
+◇ Test homeReadingDashboardCardsUseCoverFirstNativeLayouts() started.
+◇ Test seriesDetailEntryContinuesForwardInProgressChapterFromLocalIndex() started.
+◇ Test readerBackFromLibraryReturnsToSeriesDetail() started.
+◇ Test homeSnapshotCarriesCoverArtworkForContinueReadingCards() started.
+◇ Test searchInputClassifierTreatsUnsupportedSchemesAsSearchQueries() started.
+◇ Test detectedSessionLibraryInputUsesExplicitSaveState() started.
+◇ Test swiftDataRepositoryUsesIndexedNextChapterAsSeriesDetailPrimaryAction() started.
+◇ Test detectedReaderSessionInfersAdjacentChapterLinksFromNumericURLWhenLinksAreMissing() started.
+◇ Test libraryCollectionControlsUseRefreshIconStateWithoutUpdateSummaryCopy() started.
+◇ Test updateComparisonDoesNotCreateFalseUpdateWhenFetchedLabelIsMissing() started.
+◇ Test readerPlaceholderHeightFallsBackWhenMetadataIsUnavailable() started.
+◇ Test libraryRefreshFeedbackLayoutIsDismissibleAndAutoExpires() started.
+◇ Test challengePagesDoNotRecommendBrowserSessionRetry() started.
+◇ Test detectorClassifiesLongVerticalChapterAsHighConfidence() started.
+◇ Test readerViewModelUsesAdjacentLoaderForUnstoredAppOriginNextChapter() started.
+◇ Test htmlLatestChapterFetcherReturnsNilForInvalidHTTPResponse() started.
+◇ Test readerViewModelRefreshesExistingPreviewImageWithPreferredSeriesCoverMetadata() started.
+◇ Test detectorClassifiesReaderTaggedImagesBeforeDimensionsLoad() started.
+◇ Test browserSessionFollowUpCanPromoteAfterHydration() started.
+◇ Test seriesDetailBrowserFallbackCarriesLibraryReaderLaunchOrigin() started.
+◇ Test seriesDetailPrimaryActionDoesNotReturnToOlderInProgressAfterLatestKnownChapterIsRead() started.
+◇ Test chapterListAllDisablesGeneratedRowsWithoutSafeSourceURL() started.
+◇ Test htmlLatestChapterFetcherReturnsNilOnNetworkFailure() started.
+◇ Test readerProgressUpdatesThrottleCacheMetadataWritesButKeepFinalProgress() started.
+◇ Test viewOriginalPageKeepsExistingBrowserStateWhenReaderWasOpenedAboveBrowser() started.
+◇ Test libraryUpdateRefreshUsesChapterIndexRefreshWhenAvailable() started.
+◇ Test swiftDataRepositorySavesProgressAndRestoresContinueReadingTarget() started.
+◇ Test seriesDetailPrimaryActionContinuesForwardInProgressChapterAfterLatestCompletedChapter() started.
+◇ Test browserViewModelTracksNavigationState() started.
+◇ Test browserReaderPresentationStateTracksPendingAndVisibleReader() started.
+◇ Test updateCheckerKeepsSameFetchedChapterWithoutUnreadUpdates() started.
+◇ Test detectorKeepsThumbnailGridAtLowConfidence() started.
+◇ Test detectorKeepsChallengePagesOutOfReaderEvenWhenImagesLookUsable() started.
+◇ Test browserReaderLaunchOriginOverrideDoesNotPromoteLowConfidenceDetection() started.
+◇ Test searchSuggestionsIncludeExplicitSearchActionWhileTyping() started.
+◇ Test chapterIndexParserExtractsOrderedChapterLinks() started.
+◇ Test genericDetectorExcludesLargeAdImagesOutsideReaderFlow() started.
+◇ Test presentingBrowserStoresStartPoint() started.
+◇ Test toonEdgeNavigationChromeUsesReadableDarkModeTitleColors() started.
+◇ Test librarySnapshotSuppressesDomainPlaceholderWhenRealSeriesExists() started.
+◇ Test swiftDataRepositoryAddsRecentAdjacentChapterToSavedSeriesDetail() started.
+◇ Test searchInputClassifierNormalizesProtocolRelativeLinks() started.
+◇ Test browserPopupPolicyBlocksThirdPartyTargetWindowPopups() started.
+◇ Test libraryCardMetadataPrefersResumeTargetOverLatestKnownChapter() started.
+◇ Test browserReaderPresentationLogsPendingAndVisibleTransitions() started.
+◇ Test htmlLatestChapterFetcherLogsParserPathWithoutFullURL() started.
+◇ Test defaultSiteProfileRegistryIncludesRepresentativeCompatibilityClasses() started.
+◇ Test searchInputClassifierTreatsLocalhostWithPortAsURL() started.
+◇ Test sleepyLibraryEmptyStateMascotImageIsBundled() started.
+◇ Test libraryCollectionControlsKeepCountRefreshAndViewModesInline() started.
+◇ Test updateCheckerMapsNewerFetchedChapterToUnreadUpdates() started.
+◇ Test readerViewModelStartsWithChromeHiddenAndComputesInitialProgress() started.
+◇ Test seriesDetailPrimaryActionPrefersNextAfterLatestCompletedOverOlderUnfinishedChapter() started.
+◇ Test adjacentNavigationFailureLeavesCurrentChapterIntact() started.
+◇ Test swiftDataRepositoryOnlyBuildsDirectReaderSessionForStoredChapterPayloads() started.
+◇ Test readerRetainActionPublishesCacheFeedback() started.
+◇ Test fileBackedCacheMissingFileReturnsCacheMiss() started.
+◇ Test updateComparisonTreatsInvalidChangedLabelsConservatively() started.
+◇ Test browserViewModelCanLoadExplicitURLIntoExistingBrowser() started.
+◇ Test htmlLatestChapterFetcherReturnsNilForNonHTTPURL() started.
+◇ Test seriesDetailEntryIsActionableWhenLocalIndexHasNextChapter() started.
+◇ Test profileAwareDetectorLogsStructuredDiagnostics() started.
+◇ Test readerViewModelEnrichesRecentReadingWithSeriesCoverMetadata() started.
+◇ Test seriesDetailPrimaryActionContinuesInProgressChapter() started.
+◇ Test browserPageSanitizerScriptSuppressesCommonAdAndPopupSurfaces() started.
+◇ Test librarySnapshotDerivesCurrentChapterLabelFromNoisyStoredChapterTitle() started.
+◇ Test detectionDiagnosticsExposeConfidenceAndParserPath() started.
+◇ Test swiftDataRepositoryDoesNotJumpToSparseStoredChapterWhenNumericAdjacentURLIsUnsafe() started.
+◇ Test librarySeriesCardMetadataShowsOnlyCurrentChapterNextToContinue() started.
+◇ Test viewOriginalPageKeepsExistingBrowserWhenReaderIsAboveBrowser() started.
+◇ Test homeReadingDashboardPrioritizesCurrentReadingAfterSearch() started.
+◇ Test chapterIndexParserDeduplicatesSameChapterURL() started.
+◇ Test paginatedSinglePageProfileReportsUnsupportedPaginatedDiagnostics() started.
+◇ Test searchInputClassifierTrimsInputBeforeRouting() started.
+◇ Test swiftDataRepositoryPersistsUpdateCheckResultForHomeAndRecentLibrary() started.
+◇ Test adjacentLoaderExtractsStaticHTMLNavigationWhenLabelsContainIconEntities() started.
+◇ Test recentReadingDoesNotEraseExistingCoverWhenInputCoverIsNil() started.
+◇ Test libraryComfortableCardMetadataShowsSourceWebsite() started.
+◇ Test browserAutoOpensReaderOnlyForHighConfidence() started.
+◇ Test readerBackFromHomeContinueReadingReturnsHome() started.
+◇ Test latestChapterParserExtractsHighestNumericChapterLink() started.
+◇ Test adjacentLoaderFallsBackToStaticHTMLWhenHiddenAnalysisIsNotViable() started.
+◇ Test updateComparisonDoesNotMarkSameLatestLabelAsUpdate() started.
+◇ Test libraryUpdateRefreshDoesNotClearExistingUpdateStateWhenFetchFails() started.
+◇ Test manhwaTopChallengePageSuppressesReaderConversion() started.
+◇ Test seriesDetailRefreshBehaviorStartsOnlyAfterLocalDetailExists() started.
+◇ Test librarySummaryResumeTargetExposesConcreteStartAction() started.
+◇ Test librarySnapshotMergesRealTitleRecentReadingWithSavedSeriesBySourceIdentity() started.
+◇ Test libraryHeaderLayoutUsesNavigationTitleWithoutToolbarRefresh() started.
+◇ Test libraryCollectionControlsExposeCountAndRefreshOnlyWhenServiceExists() started.
+◇ Test repeatedLibrarySnapshotsPreserveDeduplicatedVisibleResults() started.
+✔ Test seriesDetailSeedShellShowsLibrarySummaryWithoutContinueAction() passed after 0.009 seconds.
+✔ Test canonicalSeriesURLResolverHandlesAsuraComicChapterURLs() passed after 0.009 seconds.
+✔ Test browserOwnedReaderBackFromLibraryOriginReturnsToSeriesDetail() passed after 0.009 seconds.
+✔ Test librarySegmentsExposeRecentAndAllCollectionGroups() passed after 0.010 seconds.
+✔ Test librarySnapshotFiltersSeriesBySegment() passed after 0.011 seconds.
+✔ Test openingHomeRootDismissesReaderBrowserAndPendingLibraryDestinations() passed after 0.012 seconds.
+✔ Test librarySeriesCardLayoutKeepsFixedHeightForMixedContent() passed after 0.014 seconds.
+✔ Test siteProfilesExposeSelectorHintExtractionStrategy() passed after 0.014 seconds.
+✔ Test pageAnalysisScriptCollectsLazySrcsetAttributes() passed after 0.014 seconds.
+✔ Test presentingBrowserCanCarryReaderLaunchOrigin() passed after 0.014 seconds.
+✔ Test libraryContentLayoutKeepsRefreshFeedbackOutOfFlow() passed after 0.014 seconds.
+✔ Test libraryDetailPrewarmPolicyDoesNotAutomaticallyPrewarmVisibleRows() passed after 0.014 seconds.
+✔ Test libraryComfortableCardLayoutReservesFullMetadataStack() passed after 0.014 seconds.
+✔ Test seededSeriesDetailLayoutKeepsSeedHeaderVisibleWithoutChapterScroller() passed after 0.014 seconds.
+✔ Test mockReaderProgressRepositoryPersistsProgressBySourceURL() passed after 0.014 seconds.
+✔ Test homeChromeUsesQuietDashboardControls() passed after 0.014 seconds.
+✔ Test openingLibraryDetailSelectsLibraryAndStoresDestination() passed after 0.015 seconds.
+✔ Test clearingBrowserReaderLaunchOriginKeepsBrowserVisible() passed after 0.015 seconds.
+✔ Test detectorNormalizesLazyLoadedImageSources() passed after 0.015 seconds.
+✔ Test nonHydratedSeriesDetailStatesDoNotCreateEmptyChapterScroller() passed after 0.015 seconds.
+✔ Test seriesDetailSeedShellExposesContinueWhenSummaryHasConcreteResumeTarget() passed after 0.015 seconds.
+✔ Test seriesDetailPrimaryActionUsesNumericChapterLabelsFromNoisySourceText() passed after 0.015 seconds.
+✔ Test chapterListRecentReturnsMostRecentReadingActivity() passed after 0.015 seconds.
+✔ Test libraryEmptyStateUsesCenteredNothingSavedModel() passed after 0.016 seconds.
+✔ Test viewOriginalPageAfterAdjacentReplacementUsesCurrentChapterURL() passed after 0.016 seconds.
+✔ Test addToLibraryStatePickerDefaultsByOriginAndAllowsOverride() passed after 0.016 seconds.
+✔ Test latestChapterParserReturnsNilWithoutChapterLikeLinks() passed after 0.016 seconds.
+✔ Test userDefaultsReaderProgressRepositoryPersistsProgressAcrossInstances() passed after 0.016 seconds.
+✔ Test openingLibraryRecentSelectsLibraryRootRecentSegment() passed after 0.019 seconds.
+✔ Test openingLibraryRootDismissesReaderWithoutSelectingSeriesDetail() passed after 0.019 seconds.
+✔ Test htmlSeriesMetadataParserExtractsOpenGraphCover() passed after 0.019 seconds.
+✔ Test htmlSeriesMetadataParserExtractsAsuraStyleSeriesCoverImage() passed after 0.019 seconds.
+✔ Test manhwaTopProfileRejectsBlankPlaceholderImages() passed after 0.019 seconds.
+✔ Test latestChapterParserDoesNotRequireKnownSourceDomain() passed after 0.019 seconds.
+✔ Test homeReadingDashboardHeroHasProminentCurrentReadScale() passed after 0.019 seconds.
+✔ Test libraryUpdateRefreshChecksAllSavedSeries() passed after 0.019 seconds.
+✔ Test browserDetectionRetryPolicyAllowsOnlyOneFollowUpPerURL() passed after 0.019 seconds.
+✔ Test fileBackedCacheMapsSourceURLToDeterministicChapterDirectory() passed after 0.019 seconds.
+✔ Test mockReaderServiceBuildsSessionWithoutExtraction() passed after 0.018 seconds.
+✔ Test mockDependenciesExposeUpdateRefreshService() passed after 0.018 seconds.
+✔ Test historyBackedSuggestionsPrioritizePersistedRecentSearchesOverStaticHistory() passed after 0.018 seconds.
+✔ Test queryStartPointBuildsSearchResultsRequest() passed after 0.018 seconds.
+✔ Test defaultSiteProfileRegistryIncludesInitialSupportTiers() passed after 0.019 seconds.
+✔ Test pageAnalysisScriptCollectsChallengeSignals() passed after 0.018 seconds.
+✔ Test libraryCompactCardMetadataPrefersShortChapterLabel() passed after 0.018 seconds.
+✔ Test searchOverlayCanBePresentedAndDismissed() passed after 0.018 seconds.
+✔ Test librarySeriesDetailRouteUsesVisibleSeriesAsSeed() passed after 0.018 seconds.
+✔ Test chapterIndexRefreshServiceKeepsUnreadUpdateWhenLatestIndexedChapterIsStillUnread() passed after 0.018 seconds.
+✔ Test browserSessionFollowUpWithoutViableCandidatesStaysLowConfidence() passed after 0.018 seconds.
+✔ Test embeddedHTMLProfileUsesSiteProfileDetectionPath() passed after 0.019 seconds.
+✔ Test htmlSeriesMetadataFetcherRequestsCanonicalSeriesURL() passed after 0.017 seconds.
+✔ Test fileBackedCacheSanitizesInvalidURLCharacters() passed after 0.018 seconds.
+✔ Test libraryUpdateRefreshLogsCheckedUpdatedAndFailedCounts() passed after 0.018 seconds.
+✔ Test directURLStartPointBuildsInitialBrowserRequest() passed after 0.017 seconds.
+✔ Test pageAnalysisScriptCollectsReaderSemanticHints() passed after 0.017 seconds.
+✔ Test libraryCardMetadataKeepsNewUpdateSeparateFromResumeChapter() passed after 0.017 seconds.
+✔ Test mockDependenciesExposeStableFeatureData() passed after 0.018 seconds.
+✔ Test readerBackFromLibraryFallbackDetectedReaderReturnsToSeriesDetail() passed after 0.017 seconds.
+✔ Test openingLibraryRootDismissesBrowserOwnedReaderSoLibraryIsVisible() passed after 0.017 seconds.
+✔ Test chapterRowStateExposesDistinctLabels() passed after 0.017 seconds.
+✔ Test seriesDetailCachePolicyPublishesHydratedMutationResults() passed after 0.019 seconds.
+✔ Test cacheRemoveFailureDiagnosticUsesSanitizedSourceIdentity() passed after 0.017 seconds.
+✔ Test seededSeriesDetailUsesHydratedDetailForContinueAction() passed after 0.017 seconds.
+✔ Test libraryNativeCollectionLayoutsUseDistinctGridDensity() passed after 0.017 seconds.
+✔ Test seriesDetailEntryCanShowAllReadWhileEdgeRefreshRunsInBackground() passed after 0.019 seconds.
+✔ Test mockBrowserServiceRecordsRequestedStartPoint() passed after 0.017 seconds.
+✔ Test siteProfileRegistryMatchesDomainsAndSubdomains() passed after 0.017 seconds.
+✔ Test detectorClassifiesSparseButUsableChapterAsMediumConfidence() passed after 0.017 seconds.
+✔ Test updateComparisonTreatsChangedNonNumericLabelAsUnknownChange() passed after 0.017 seconds.
+✔ Test dismissingReaderToSeriesOpensCanonicalSeriesURL() passed after 0.017 seconds.
+✔ Test updateComparisonDetectsFetchedLabelWhenStoredLabelIsMissing() passed after 0.017 seconds.
+✔ Test manhuaUSBrowserSessionFollowUpPromotesOnlyReaderImages() passed after 0.020 seconds.
+✔ Test secondHydratedDOMSiteReusesExistingTemplate() passed after 0.019 seconds.
+✔ Test dismissingBrowserClearsReaderLaunchOriginOverride() passed after 0.017 seconds.
+✔ Test hydratedDOMProfileUsesSiteProfileDetectionPath() passed after 0.019 seconds.
+✔ Test searchInputClassifierAddsSchemeForLikelyDomains() passed after 0.020 seconds.
+✔ Test seriesDetailCachePolicyClearsRemovedOrUnavailableDetail() passed after 0.017 seconds.
+✔ Test libraryCardMetadataDoesNotPresentLatestKnownAsCurrentWhenResumeTargetIsMissing() passed after 0.017 seconds.
+✔ Test htmlLatestChapterFetcherRequestsSeriesCanonicalURL() passed after 0.017 seconds.
+✔ Test searchSuggestionsFollowUXPriorityOrder() passed after 0.019 seconds.
+✔ Test updateComparisonDetectsNewerNumericChapter() passed after 0.020 seconds.
+✔ Test updateComparisonDetectsNewerDecimalChapter() passed after 0.020 seconds.
+✔ Test seriesDetailHeaderLayoutDoesNotExposeReaderOriginCopy() passed after 0.017 seconds.
+✔ Test libraryUpdateRefreshPersistsUpdateResults() passed after 0.017 seconds.
+✔ Test libraryComfortableCardBadgePrefersCurrentChapterOverLatestChapter() passed after 0.017 seconds.
+✔ Test updateCheckerRequestsLatestChapterMetadataFromFetcher() passed after 0.017 seconds.
+✔ Test chapterIndexRefreshServiceRecordsIndexAndUpdateState() passed after 0.017 seconds.
+✔ Test searchOverlayFirstOpenLayoutKeepsInputInContentHeader() passed after 0.017 seconds.
+✔ Test hydratedSeriesDetailKeepsKnownCoverURLFromStoredDetail() passed after 0.017 seconds.
+✔ Test homeSnapshotReportsEmptyWhenAllSectionsAreEmpty() passed after 0.017 seconds.
+✔ Test readerBackFromBrowserOpensCanonicalSeriesURL() passed after 0.017 seconds.
+✔ Test latestChapterParserExtractsDecimalChapterLabels() passed after 0.017 seconds.
+✔ Test browserSessionProfileSuppressesUnsafeGenericConversion() passed after 0.017 seconds.
+✔ Test approvedNonPromotedProfilesAreNotSearchSuggestionSources() passed after 0.017 seconds.
+✔ Test relatedAsuraDomainsReuseEmbeddedHTMLTemplate() passed after 0.016 seconds.
+✔ Test detectedSessionLibraryInputUsesCanonicalSeriesURLAndNumericChapterLabel() passed after 0.017 seconds.
+✔ Test seriesDetailChapterListAnchorPrefersPrimaryChapterThenLatestReadChapter() passed after 0.016 seconds.
+✔ Test librarySeriesDetailRouteIdentityUsesSeriesIDAndCarriesOptionalSeed() passed after 0.016 seconds.
+✔ Test readerPlaceholderHeightUsesDetectedAspectRatioWhenAvailable() passed after 0.016 seconds.
+✔ Test homeContinueReadingViewAllAvailabilityTracksRecentEntries() passed after 0.016 seconds.
+✔ Test mockReaderServiceLoadsLinkedPreviousAndNextChapters() passed after 0.016 seconds.
+✔ Test libraryChromeUsesRestrainedNativeCollectionStyling() passed after 0.016 seconds.
+✔ Test homeContinueReadingNavigationDoesNotFallbackToMockExampleDomain() passed after 0.016 seconds.
+✔ Test viewingOriginalPageOpensSourceURLWhenNoBrowserIsPresent() passed after 0.016 seconds.
+✔ Test storageMeasurementFallsBackToEstimatedBytesWhenFilesAreMissing() passed after 0.017 seconds.
+✔ Test libraryViewModesExposeIncreasingDensityLayouts() passed after 0.016 seconds.
+✔ Test readerChromeLayoutMovesSecondaryActionsToFloatingRail() passed after 0.016 seconds.
+✔ Test fileBackedCacheCanInitializeInTemporaryDirectory() passed after 0.017 seconds.
+✔ Test seriesDetailEntryUsesCachedHydratedDetailBeforeSeedShell() passed after 0.016 seconds.
+✔ Test storageMeasurementPrefersMeasuredBytesWhenFilesExist() passed after 0.017 seconds.
+✔ Test libraryUpdateRefreshFallsBackWhenChapterIndexRefreshDoesNotRefresh() passed after 0.016 seconds.
+✔ Test profileAwareDetectorUsesProfileSelectorHintsBeforeGenericFallback() passed after 0.017 seconds.
+✔ Test mockCacheActionsReturnTypedResultsConsistently() passed after 0.016 seconds.
+✔ Test seriesDetailPrimaryActionStartsFirstUnreadWhenNoProgressExists() passed after 0.015 seconds.
+✔ Test removingCachedFilesUpdatesMeasuredSummary() passed after 0.017 seconds.
+✔ Test seriesDetailChapterSectionUsesSingleAllList() passed after 0.015 seconds.
+✔ Test librarySummaryResumeTargetExposesConcreteContinueAction() passed after 0.015 seconds.
+✔ Test storageMeasurementIgnoresFilesOutsideCacheNamespace() passed after 0.015 seconds.
+✔ Test hydratedSeriesDetailLayoutKeepsHeaderFixedAndChaptersScrollable() passed after 0.016 seconds.
+✔ Test metadataWithMissingBackingFileIsSurfacedAsMissing() passed after 0.017 seconds.
+✔ Test chapterListAllGeneratesNumericRangeAndIncludesZeroOnlyWhenKnown() passed after 0.017 seconds.
+✔ Test libraryListMetadataPrefersNumericChapterLabelOverNoisyCurrentLabel() passed after 0.015 seconds.
+✔ Test manhwaTopProfileCanPromoteViableChapterIntoReader() passed after 0.016 seconds.
+✔ Test pageAnalysisScriptCollectsAdjacentChapterLinks() passed after 0.015 seconds.
+✔ Test commonSiteSuggestionsLabelEnabledPublicProfilesOnly() passed after 0.016 seconds.
+✔ Test seriesDetailStartupKeepsLocalLoadAndBackgroundRefreshAsSeparatePhases() passed after 0.015 seconds.
+✔ Test seriesDetailRefreshBehaviorReloadsOnlyWhenRefreshActuallyMutatesLocalData() passed after 0.015 seconds.
+✔ Test searchInputClassifierTreatsSpacedTextAsSearchQuery() passed after 0.016 seconds.
+✔ Test libraryGridCardsAvoidOuterGeneratedCardContainer() passed after 0.015 seconds.
+✔ Test searchInputClassifierTreatsHttpLinksAsURLs() passed after 0.016 seconds.
+✔ Test seriesDetailSeedShellPreservesKnownLibraryCoverURL() passed after 0.015 seconds.
+✔ Test homeSearchEntryUsesRestrainedBrowserCommandBarStyling() passed after 0.015 seconds.
+✔ Test readerBackFromLibraryReturnsToSeriesDetail() passed after 0.015 seconds.
+✔ Test homeContinueReadingUsesRecentDistinctSeriesOrderingAndLimit() passed after 0.015 seconds.
+✔ Test homeReadingDashboardCardsUseCoverFirstNativeLayouts() passed after 0.015 seconds.
+✔ Test seriesDetailInitialScrollBehaviorUsesNoDelayAndDisablesAnimation() passed after 0.015 seconds.
+✔ Test libraryCollectionControlsUseRefreshIconStateWithoutUpdateSummaryCopy() passed after 0.015 seconds.
+✔ Test libraryRefreshFeedbackLayoutIsDismissibleAndAutoExpires() passed after 0.015 seconds.
+✔ Test updateComparisonDoesNotCreateFalseUpdateWhenFetchedLabelIsMissing() passed after 0.015 seconds.
+✔ Test searchInputClassifierTreatsIPv4AddressAsURL() passed after 0.016 seconds.
+✔ Test readerPlaceholderHeightFallsBackWhenMetadataIsUnavailable() passed after 0.015 seconds.
+✔ Test detectedSessionLibraryInputUsesExplicitSaveState() passed after 0.015 seconds.
+✔ Test htmlLatestChapterFetcherReturnsNilForInvalidHTTPResponse() passed after 0.015 seconds.
+✔ Test challengePagesDoNotRecommendBrowserSessionRetry() passed after 0.015 seconds.
+✔ Test detectedReaderSessionPreservesAdjacentChapterLinks() passed after 0.015 seconds.
+✔ Test searchInputClassifierTreatsUnsupportedSchemesAsSearchQueries() passed after 0.015 seconds.
+✔ Test seriesDetailBrowserFallbackCarriesLibraryReaderLaunchOrigin() passed after 0.015 seconds.
+✔ Test seriesDetailPrimaryActionDoesNotReturnToOlderInProgressAfterLatestKnownChapterIsRead() passed after 0.015 seconds.
+✔ Test htmlLatestChapterFetcherReturnsNilOnNetworkFailure() passed after 0.015 seconds.
+✔ Test viewOriginalPageKeepsExistingBrowserStateWhenReaderWasOpenedAboveBrowser() passed after 0.015 seconds.
+✔ Test htmlSeriesMetadataParserPrefersStructuredPortraitCoverOverSocialPreviewImage() passed after 0.016 seconds.
+✔ Test chapterListAllDisablesGeneratedRowsWithoutSafeSourceURL() passed after 0.015 seconds.
+✔ Test searchSuggestionsIncludeExplicitSearchActionWhileTyping() passed after 0.014 seconds.
+✔ Test updateCheckerKeepsSameFetchedChapterWithoutUnreadUpdates() passed after 0.015 seconds.
+✔ Test seriesDetailPrimaryActionContinuesForwardInProgressChapterAfterLatestCompletedChapter() passed after 0.015 seconds.
+✔ Test presentingBrowserStoresStartPoint() passed after 0.014 seconds.
+✔ Test searchInputClassifierAvoidsDottedPhraseFalsePositive() passed after 0.016 seconds.
+✔ Test toonEdgeNavigationChromeUsesReadableDarkModeTitleColors() passed after 0.014 seconds.
+✔ Test detectorKeepsThumbnailGridAtLowConfidence() passed after 0.015 seconds.
+✔ Test detectorKeepsChallengePagesOutOfReaderEvenWhenImagesLookUsable() passed after 0.014 seconds.
+✔ Test chapterIndexParserExtractsOrderedChapterLinks() passed after 0.014 seconds.
+✔ Test libraryCardMetadataPrefersResumeTargetOverLatestKnownChapter() passed after 0.014 seconds.
+✔ Test genericDetectorExcludesLargeAdImagesOutsideReaderFlow() passed after 0.014 seconds.
+✔ Test defaultSiteProfileRegistryIncludesRepresentativeCompatibilityClasses() passed after 0.014 seconds.
+✔ Test searchInputClassifierTreatsLocalhostWithPortAsURL() passed after 0.014 seconds.
+✔ Test libraryCollectionControlsKeepCountRefreshAndViewModesInline() passed after 0.014 seconds.
+✔ Test browserPopupPolicyBlocksThirdPartyTargetWindowPopups() passed after 0.014 seconds.
+✔ Test libraryViewModePreferencesPersistSelectedDensity() passed after 0.017 seconds.
+✔ Test detectedReaderSessionInfersAdjacentChapterLinksFromNumericURLWhenLinksAreMissing() passed after 0.015 seconds.
+✔ Test updateCheckerMapsNewerFetchedChapterToUnreadUpdates() passed after 0.014 seconds.
+✔ Test sleepyLibraryEmptyStateMascotImageIsBundled() passed after 0.014 seconds.
+✔ Test htmlLatestChapterFetcherLogsParserPathWithoutFullURL() passed after 0.014 seconds.
+✔ Test htmlLatestChapterFetcherReturnsNilForNonHTTPURL() passed after 0.014 seconds.
+✔ Test searchInputClassifierNormalizesProtocolRelativeLinks() passed after 0.014 seconds.
+✔ Test libraryUpdateRefreshUsesChapterIndexRefreshWhenAvailable() passed after 0.015 seconds.
+✔ Test detectorClassifiesLongVerticalChapterAsHighConfidence() passed after 0.015 seconds.
+✔ Test detectedReaderSessionPreservesPageDimensions() passed after 0.017 seconds.
+✔ Test browserPageSanitizerScriptSuppressesCommonAdAndPopupSurfaces() passed after 0.014 seconds.
+✔ Test seriesDetailPrimaryActionContinuesInProgressChapter() passed after 0.014 seconds.
+✔ Test librarySeriesCardMetadataShowsOnlyCurrentChapterNextToContinue() passed after 0.014 seconds.
+✔ Test homeReadingDashboardPrioritizesCurrentReadingAfterSearch() passed after 0.014 seconds.
+✔ Test fileBackedCacheMissingFileReturnsCacheMiss() passed after 0.014 seconds.
+✔ Test viewOriginalPageKeepsExistingBrowserWhenReaderIsAboveBrowser() passed after 0.014 seconds.
+✔ Test paginatedSinglePageProfileReportsUnsupportedPaginatedDiagnostics() passed after 0.014 seconds.
+✔ Test libraryComfortableCardMetadataShowsSourceWebsite() passed after 0.014 seconds.
+✔ Test chapterIndexParserDeduplicatesSameChapterURL() passed after 0.014 seconds.
+✔ Test updateComparisonTreatsInvalidChangedLabelsConservatively() passed after 0.014 seconds.
+✔ Test browserSessionFollowUpCanPromoteAfterHydration() passed after 0.015 seconds.
+✔ Test readerBackFromHomeContinueReadingReturnsHome() passed after 0.014 seconds.
+✔ Test libraryUpdateRefreshDoesNotClearExistingUpdateStateWhenFetchFails() passed after 0.014 seconds.
+✔ Test searchInputClassifierTrimsInputBeforeRouting() passed after 0.014 seconds.
+✔ Test updateComparisonDoesNotMarkSameLatestLabelAsUpdate() passed after 0.014 seconds.
+✔ Test seriesDetailRefreshBehaviorStartsOnlyAfterLocalDetailExists() passed after 0.014 seconds.
+✔ Test librarySummaryResumeTargetExposesConcreteStartAction() passed after 0.014 seconds.
+✔ Test seriesDetailPrimaryActionPrefersNextAfterLatestCompletedOverOlderUnfinishedChapter() passed after 0.014 seconds.
+✔ Test libraryCollectionControlsExposeCountAndRefreshOnlyWhenServiceExists() passed after 0.014 seconds.
+✔ Test libraryHeaderLayoutUsesNavigationTitleWithoutToolbarRefresh() passed after 0.014 seconds.
+✔ Test latestChapterParserExtractsHighestNumericChapterLink() passed after 0.014 seconds.
+✔ Test manhwaTopChallengePageSuppressesReaderConversion() passed after 0.014 seconds.
+✔ Test profileAwareDetectorLogsStructuredDiagnostics() passed after 0.015 seconds.
+✔ Test detectorClassifiesReaderTaggedImagesBeforeDimensionsLoad() passed after 0.015 seconds.
+✔ Test swiftDataRepositoryDerivesAdjacentReaderControlsFromSavedChapterListWhenLinksAreMissing() passed after 0.021 seconds.
+✔ Test detectionDiagnosticsExposeConfidenceAndParserPath() passed after 0.015 seconds.
+✔ Test savedLibrarySeriesDoesNotDuplicateMatchingRecentReadingEntry() passed after 0.021 seconds.
+✔ Test seriesDetailEntryContinuesForwardInProgressChapterFromLocalIndex() passed after 0.016 seconds.
+✔ Test librarySummaryResumeTargetMatchesSeriesDetailPrimaryChapterWithoutDetailSnapshotConstruction() passed after 0.023 seconds.
+✔ Test downloadSummaryStorageDescriptionIsStableAndHumanReadable() passed after 0.025 seconds.
+✔ Test swiftDataRepositoryReconcilesRecentReadingWithSavedChapterContinueTarget() passed after 0.027 seconds.
+✔ Test seriesDetailEntryIsActionableWhenLocalIndexHasNextChapter() passed after 0.021 seconds.
+✔ Test librarySummaryResumeTargetStartsAtFirstReadableChapterWhenLatestKnownIsHigher() passed after 0.028 seconds.
+✔ Test browserShowsCTAForMediumConfidenceAndManualOverridePresentsReader() passed after 0.029 seconds.
+✔ Test coverArtworkMemoryCacheRetainsLoadedArtworkAcrossCardRecreation() passed after 0.029 seconds.
+✔ Test swiftDataRepositoryBuildsStoredReaderSessionWhenChapterPayloadExists() passed after 0.030 seconds.
+✔ Test persistentDependenciesExposeUpdateRefreshService() passed after 0.033 seconds.
+✔ Test readerDefaultsToSeamlessPageFlow() passed after 0.033 seconds.
+✔ Test browserLeavesLowConfidencePageInBrowser() passed after 0.033 seconds.
+✔ Test swiftDataRepositoryUpdatesSeriesStateWhenSavingKnownAdjacentChapterProgressByURL() passed after 0.035 seconds.
+✔ Test browserReaderPresentationKeepsBrowserOriginWithoutOverride() passed after 0.035 seconds.
+✔ Test swiftDataRepositoryDoesNotEraseReaderPayloadWhenIndexRefreshSeesExistingChapter() passed after 0.037 seconds.
+✔ Test dismissingBrowserOwnedReaderKeepsBrowserPresented() passed after 0.037 seconds.
+✔ Test swiftDataRepositoryAddsSeriesAndBuildsLibrarySnapshots() passed after 0.039 seconds.
+✔ Test recentReadingMergesDifferentSessionIDsByCanonicalSeriesURL() passed after 0.041 seconds.
+✔ Test readerViewModelExposesConciseCurrentChapterDisplayLabel() passed after 0.041 seconds.
+✔ Test swiftDataRepositoryDerivesNumericAdjacentReaderControlsForSparseChapterLists() passed after 0.043 seconds.
+✔ Test swiftDataRepositoryRepairsExistingRecentAdjacentChapterWhenSeriesDetailLoads() passed after 0.044 seconds.
+✔ Test persistentCacheActionsReturnTypedResults() passed after 0.046 seconds.
+✔ Test swiftDataRepositoryStoresRecentSearchHistoryInPriorityOrder() passed after 0.047 seconds.
+✔ Test persistentDependenciesExposeAdjacentReaderSessionLoader() passed after 0.049 seconds.
+✔ Test swiftDataRepositoryAssignsReadingStateWhenAddingFromReader() passed after 0.052 seconds.
+✔ Test updatingCacheRetentionMarksChapterRetainedAndCountsOfflineEntry() passed after 0.054 seconds.
+✔ Test swiftDataRepositorySkipsStoredReaderSessionWhenChapterPayloadIsMissing() passed after 0.055 seconds.
+✔ Test swiftDataRepositoryTargetedLookupsPreserveSeriesDetailAndProgress() passed after 0.057 seconds.
+✔ Test addingSameCanonicalSeriesWithSameChapterURLDoesNotDuplicateSeriesOrChapter() passed after 0.058 seconds.
+✔ Test persistentDependenciesUseCacheBackedDownloadSummary() passed after 0.060 seconds.
+✔ Test adjacentLoaderStaticHTMLFallbackWorksWithProductionProfileAwareDetector() passed after 0.063 seconds.
+✔ Test readerViewModelUpdatesCurrentChapterDisplayLabelAfterSessionReplacement() passed after 0.061 seconds.
+✔ Test readerViewModelTogglesChromeVisibility() passed after 0.060 seconds.
+✔ Test swiftDataRepositoryPrefersStoredNumericAdjacentChapterWhenPayloadExists() passed after 0.062 seconds.
+✔ Test librarySnapshotSummaryCarriesConcreteResumeTargetFromIndexedChapters() passed after 0.064 seconds.
+✔ Test browserDoesNotPresentEmptyReaderSession() passed after 0.064 seconds.
+✔ Test swiftDataRepositoryPersistsLibraryStateTransitions() passed after 0.066 seconds.
+✔ Test librarySnapshotSummaryDoesNotInventResumeTargetWithoutSourceURL() passed after 0.066 seconds.
+✔ Test swiftDataRepositoryStoresUnsavedRecentReadingWithoutAddingToLibrary() passed after 0.067 seconds.
+✔ Test coverArtworkStartupPolicyUsesCachedDataImmediately() passed after 0.067 seconds.
+✔ Test persistentDependenciesExposeChapterIndexRefreshService() passed after 0.069 seconds.
+✔ Test persistentDependenciesUseSingleLifecycleRepositoryForLibraryAndProgress() passed after 0.070 seconds.
+✔ Test recordingRecentCacheMetadataIncrementsDownloadSummaryCount() passed after 0.071 seconds.
+✔ Test browserReaderLaunchOriginOverrideDoesNotApplyToDifferentURL() passed after 0.071 seconds.
+✔ Test retainedCacheMetadataIsRepresentedSeparatelyFromRecentCache() passed after 0.072 seconds.
+✔ Test browserOwnsDetectedReaderPresentationWithoutChangingAppShellReader() passed after 0.072 seconds.
+✔ Test persistentDependenciesExposeLifecycleAndSearchHistoryServices() passed after 0.073 seconds.
+✔ Test browserReaderLaunchOriginOverrideIsConsumedAfterVisibleReaderPresentation() passed after 0.073 seconds.
+✔ Test readerProgressClampsToAvailableImageRange() passed after 0.073 seconds.
+✔ Test adjacentNavigationDoesNotPromoteMockStockImageFallbackForAppOriginSession() passed after 0.073 seconds.
+✔ Test browserReaderPresentationAppliesLibraryLaunchOriginOverrideForInitialURL() passed after 0.073 seconds.
+✔ Test swiftDataRepositoryPersistsReaderProgressBySourceURL() passed after 0.074 seconds.
+✔ Test removingCacheMetadataRemovesItFromDownloadSummary() passed after 0.075 seconds.
+✔ Test readerSettingsMutationsUpdateSessionPreferences() passed after 0.075 seconds.
+✔ Test largeCacheSummaryAggregatesCountsAndStorageInOnePass() passed after 0.742 seconds.
+✔ Test swiftDataRepositoryMergesSeriesSavedWithChapterIndexCanonicalURL() passed after 0.744 seconds.
+✔ Test homeSnapshotCarriesCoverArtworkForContinueReadingCards() passed after 0.746 seconds.
+✔ Test swiftDataRepositoryUsesIndexedNextChapterAsSeriesDetailPrimaryAction() passed after 0.747 seconds.
+✔ Test swiftDataRepositorySavesProgressAndRestoresContinueReadingTarget() passed after 0.748 seconds.
+✔ Test browserViewModelTracksNavigationState() passed after 0.748 seconds.
+✔ Test browserReaderPresentationStateTracksPendingAndVisibleReader() passed after 0.748 seconds.
+✔ Test browserReaderLaunchOriginOverrideDoesNotPromoteLowConfidenceDetection() passed after 0.748 seconds.
+✔ Test librarySnapshotSuppressesDomainPlaceholderWhenRealSeriesExists() passed after 0.749 seconds.
+✔ Test swiftDataRepositoryAddsRecentAdjacentChapterToSavedSeriesDetail() passed after 0.751 seconds.
+✔ Test readerViewModelStartsWithChromeHiddenAndComputesInitialProgress() passed after 0.751 seconds.
+✔ Test browserReaderPresentationLogsPendingAndVisibleTransitions() passed after 0.751 seconds.
+✔ Test swiftDataRepositoryOnlyBuildsDirectReaderSessionForStoredChapterPayloads() passed after 0.752 seconds.
+✔ Test browserViewModelCanLoadExplicitURLIntoExistingBrowser() passed after 0.752 seconds.
+✔ Test librarySnapshotDerivesCurrentChapterLabelFromNoisyStoredChapterTitle() passed after 0.753 seconds.
+✔ Test swiftDataRepositoryDoesNotJumpToSparseStoredChapterWhenNumericAdjacentURLIsUnsafe() passed after 0.755 seconds.
+✔ Test swiftDataRepositoryPersistsUpdateCheckResultForHomeAndRecentLibrary() passed after 0.756 seconds.
+✔ Test recentReadingDoesNotEraseExistingCoverWhenInputCoverIsNil() passed after 0.757 seconds.
+✔ Test browserAutoOpensReaderOnlyForHighConfidence() passed after 0.757 seconds.
+✔ Test repeatedLibrarySnapshotsPreserveDeduplicatedVisibleResults() passed after 0.759 seconds.
+✔ Test librarySnapshotMergesRealTitleRecentReadingWithSavedSeriesBySourceIdentity() passed after 0.760 seconds.
+✔ Test adjacentLoaderFallsBackToStaticHTMLForVortexReaderPageWhenHiddenLoadFails() passed after 0.768 seconds.
+✔ Test readerRetainFailurePublishesNonBlockingFailureFeedback() passed after 0.767 seconds.
+✔ Test downloadsViewModelRemoveFailureProducesRetryableFeedback() passed after 0.766 seconds.
+✔ Test adjacentNavigationRejectsBlankHiddenLoadedReaderSession() passed after 0.766 seconds.
+✔ Test unseenAdjacentNavigationPreservesHomeBackContext() passed after 0.765 seconds.
+✔ Test adjacentLoaderPromotesOnlyHighConfidenceViableSession() passed after 0.763 seconds.
+✔ Test adjacentNavigationFailureLeavesCurrentChapterIntact() passed after 0.762 seconds.
+✔ Test readerRetainActionPublishesCacheFeedback() passed after 0.762 seconds.
+✔ Test adjacentLoaderExtractsStaticHTMLNavigationWhenLabelsContainIconEntities() passed after 0.763 seconds.
+✔ Test adjacentLoaderFallsBackToStaticHTMLWhenHiddenAnalysisIsNotViable() passed after 0.764 seconds.
+✔ Test readerViewModelSavesWithSelectedLibraryState() passed after 0.770 seconds.
+✔ Test readerViewModelReflectsSuccessfulSaveState() passed after 0.770 seconds.
+✔ Test adjacentLoaderRejectsHighConfidenceStockImageSession() passed after 0.769 seconds.
+✔ Test readerViewModelDoesNotOverwriteSavedProgressBeforeRestoreCompletes() passed after 0.769 seconds.
+✔ Test adjacentLoaderRejectsHighConfidenceBlankSession() passed after 0.768 seconds.
+✔ Test adjacentLoaderRejectsLowConfidenceDetectionResult() passed after 0.767 seconds.
+✔ Test adjacentNavigationUsesStoredPayloadBeforeHiddenLoad() passed after 0.766 seconds.
+✔ Test readerViewModelUsesAdjacentLoaderForUnstoredAppOriginNextChapter() passed after 0.765 seconds.
+✔ Test readerViewModelSavesProgressWhenVisibleImageChanges() passed after 0.767 seconds.
+✔ Test readerViewModelRestoresSavedProgressWhenSessionOpens() passed after 0.768 seconds.
+✔ Test adjacentNavigationHiddenLoadSuccessPreservesLaunchContext() passed after 0.767 seconds.
+✔ Test readerViewModelRecordsRecentReadingWhenProgressIsSaved() passed after 0.771 seconds.
+✔ Test readerVisiblePlaceholderDoesNotAdvanceProgressUntilImageLoads() passed after 0.770 seconds.
+✔ Test readerViewModelRecordsRecentCacheMetadataWhenProgressIsSaved() passed after 0.767 seconds.
+✔ Test readerPageImageLoaderRetriesTransientFailureBeforeLoading() passed after 0.770 seconds.
+✔ Test readerViewModelEnrichesRecentReadingWithSeriesCoverMetadata() passed after 0.765 seconds.
+✔ Test readerViewModelRefreshesExistingPreviewImageWithPreferredSeriesCoverMetadata() passed after 0.765 seconds.
+✔ Test downloadsViewModelRemoveActionRefreshesSummaryAfterSuccess() passed after 0.771 seconds.
+✔ Test readerProgressUpdatesThrottleCacheMetadataWritesButKeepFinalProgress() passed after 0.765 seconds.
+✔ Test run with 308 tests passed after 0.771 seconds.

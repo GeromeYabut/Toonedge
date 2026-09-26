@@ -146,15 +146,13 @@ public struct SiteProfileRegistry: Sendable {
         profiles: [
             SiteProfile(
                 domain: "webtoons.com",
-                supportTier: .enabledPublic,
-                template: .embeddedHTML,
-                imageSelectorHints: ["viewer", "episode", "comic", "reader"]
+                supportTier: .browserOnly,
+                template: .browserOnly
             ),
             SiteProfile(
                 domain: "globalcomix.com",
-                supportTier: .enabledPublic,
-                template: .embeddedHTML,
-                imageSelectorHints: ["reader", "page", "comic"]
+                supportTier: .browserOnly,
+                template: .browserOnly
             ),
             SiteProfile(
                 domain: "asuracomic.net",

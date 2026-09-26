@@ -13,9 +13,11 @@ public final class ReaderViewModel: ObservableObject {
     @Published public private(set) var adjacentLoadState: AdjacentChapterLoadState
     private let progressRepository: (any ReaderProgressStoring)?
     private let cacheMetadataManager: (any CacheMetadataManaging)?
+    private let chapterAssetRetainer: (any ChapterAssetRetaining)?
     private let recentReadingRecorder: (any RecentReadingRecording)?
     private let libraryLifecycleService: (any LibraryLifecycleManaging)?
     private let seriesMetadataService: (any SeriesMetadataFetching)?
+    private let settingsManager: (any SettingsManaging)?
     private var hasCompletedInitialRestore: Bool
     private var hasRecordedRecentCacheMetadataForSession: Bool
     private var loadedImageIndices: Set<Int>
@@ -26,9 +28,11 @@ public final class ReaderViewModel: ObservableObject {
         session: MockReaderSession,
         progressRepository: (any ReaderProgressStoring)? = nil,
         cacheMetadataManager: (any CacheMetadataManaging)? = nil,
+        chapterAssetRetainer: (any ChapterAssetRetaining)? = nil,
         recentReadingRecorder: (any RecentReadingRecording)? = nil,
         libraryLifecycleService: (any LibraryLifecycleManaging)? = nil,
-        seriesMetadataService: (any SeriesMetadataFetching)? = nil
+        seriesMetadataService: (any SeriesMetadataFetching)? = nil,
+        settingsManager: (any SettingsManaging)? = nil
     ) {
         self.session = session
         self.isChromeVisible = false
@@ -41,9 +45,11 @@ public final class ReaderViewModel: ObservableObject {
         self.adjacentLoadState = .idle
         self.progressRepository = progressRepository
         self.cacheMetadataManager = cacheMetadataManager
+        self.chapterAssetRetainer = chapterAssetRetainer
         self.recentReadingRecorder = recentReadingRecorder
         self.libraryLifecycleService = libraryLifecycleService
         self.seriesMetadataService = seriesMetadataService
+        self.settingsManager = settingsManager
         self.hasCompletedInitialRestore = progressRepository == nil
         self.hasRecordedRecentCacheMetadataForSession = false
         self.loadedImageIndices = []
@@ -64,7 +70,19 @@ public final class ReaderViewModel: ObservableObject {
     }
 
     public var currentChapterDisplayLabel: String {
-        conciseChapterLabel(from: session.chapterTitle)
+        ChapterNumericLabelExtractor.displayLabel(title: session.chapterTitle, sourceURL: session.sourceURL)
+    }
+
+    public var canonicalChapterLabel: String {
+        ChapterNumericLabelExtractor.label(
+            chapterNumber: nil,
+            chapterLabel: "",
+            title: session.chapterTitle
+        ) ?? ChapterNumericLabelExtractor.label(
+            chapterNumber: nil,
+            chapterLabel: "",
+            title: session.sourceURL.path
+        ) ?? session.chapterTitle
     }
 
     public var currentChapterAccessibilityLabel: String {
@@ -180,7 +198,7 @@ public final class ReaderViewModel: ObservableObject {
                     sourceDomain: session.sourceDomain,
                     coverImageURL: session.coverImageURL,
                     chapterTitle: session.chapterTitle,
-                    chapterLabel: chapterLabel(from: session.chapterTitle),
+                    chapterLabel: canonicalChapterLabel,
                     sourceURL: session.sourceURL,
                     imageURLs: session.imageURLs,
                     progress: progress
@@ -192,7 +210,7 @@ public final class ReaderViewModel: ObservableObject {
                         sourceURL: session.sourceURL,
                         seriesTitle: session.seriesTitle,
                         chapterTitle: session.chapterTitle,
-                        chapterLabel: chapterLabel(from: session.chapterTitle),
+                        chapterLabel: canonicalChapterLabel,
                         imageCount: session.imageURLs.count,
                         estimatedStorageBytes: 0,
                         retentionState: .recent
@@ -223,14 +241,15 @@ public final class ReaderViewModel: ObservableObject {
 
     public func retainCurrentChapter() async {
         do {
+            let retainedBytes = try await chapterAssetRetainer?.retainAssets(for: session) ?? 0
             guard let result = try await cacheMetadataManager?.recordCacheMetadata(
                 CacheMetadataInput(
                     sourceURL: session.sourceURL,
                     seriesTitle: session.seriesTitle,
                     chapterTitle: session.chapterTitle,
-                    chapterLabel: chapterLabel(from: session.chapterTitle),
+                    chapterLabel: canonicalChapterLabel,
                     imageCount: session.imageURLs.count,
-                    estimatedStorageBytes: 0,
+                    estimatedStorageBytes: retainedBytes,
                     retentionState: .retained
                 )
             ) else {
@@ -296,54 +315,31 @@ public final class ReaderViewModel: ObservableObject {
     public func setDisplayMode(_ displayMode: ReaderDisplayMode) {
         settings.displayMode = displayMode
         session.settings = settings
+        persistSettings()
     }
 
     public func setPageSpacingEnabled(_ isEnabled: Bool) {
         settings.isPageSpacingEnabled = isEnabled
         session.settings = settings
+        persistSettings()
     }
 
     public func setBrightnessAid(_ value: Double) {
         settings.brightnessAid = min(0.75, max(0, value))
         session.settings = settings
+        persistSettings()
     }
 
     public func setCanvas(_ canvas: ReaderCanvas) {
         settings.readerCanvas = canvas
         session.settings = settings
+        persistSettings()
     }
 
-    private func chapterLabel(from title: String) -> String {
-        title
-            .split(separator: " ")
-            .last
-            .map(String.init) ?? title
-    }
-
-    private func conciseChapterLabel(from title: String) -> String {
-        let tokens = title
-            .replacingOccurrences(of: "-", with: " ")
-            .split(whereSeparator: \.isWhitespace)
-            .map(String.init)
-
-        for index in tokens.indices {
-            guard tokens[index].localizedCaseInsensitiveCompare("chapter") == .orderedSame else {
-                continue
-            }
-
-            let nextIndex = tokens.index(after: index)
-            guard tokens.indices.contains(nextIndex) else {
-                return "Chapter"
-            }
-
-            let rawLabel = tokens[nextIndex].trimmingCharacters(in: .punctuationCharacters)
-            guard !rawLabel.isEmpty else {
-                return "Chapter"
-            }
-            return "Chapter \(rawLabel)"
-        }
-
-        return title
+    private func persistSettings() {
+        guard let settingsManager else { return }
+        let settings = settings
+        Task { await settingsManager.updateSettings(settings) }
     }
 
     private func preparedAdjacentSession(

@@ -210,6 +210,7 @@ public struct TEListRow: View {
             Image(systemName: systemImage)
                 .frame(width: 28, height: 28)
                 .foregroundStyle(ToonEdgeColor.accent)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
                 Text(title)
                     .font(ToonEdgeTypography.body.weight(.semibold))
@@ -220,6 +221,9 @@ public struct TEListRow: View {
             Spacer()
         }
         .padding(.vertical, ToonEdgeSpacing.small)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(subtitle)
     }
 }
 
@@ -272,12 +276,26 @@ public final class CoverArtworkMemoryCache {
     }
 }
 
+@MainActor
+public struct CoverArtworkStartupPolicy: Equatable, Sendable {
+    public init() {}
+
+    public static func initialData(url: URL?, cache: CoverArtworkMemoryCache) -> Data? {
+        guard let url else {
+            return nil
+        }
+
+        return cache.data(for: url)
+    }
+}
+
 public struct CachedCoverArtwork<Placeholder: View>: View {
     private let url: URL?
     private let cache: CoverArtworkMemoryCache
     private let placeholder: Placeholder
     @State private var imageData: Data?
 
+    @MainActor
     public init(
         url: URL?,
         cache: CoverArtworkMemoryCache = .shared,
@@ -286,6 +304,7 @@ public struct CachedCoverArtwork<Placeholder: View>: View {
         self.url = url
         self.cache = cache
         self.placeholder = placeholder()
+        self._imageData = State(initialValue: CoverArtworkStartupPolicy.initialData(url: url, cache: cache))
     }
 
     public var body: some View {

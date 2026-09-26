@@ -92,6 +92,18 @@ public struct BrowserDetectionRetryPolicy {
     }
 }
 
+public struct BrowserDetectionNavigationPolicy {
+    private var lastScheduledURL: URL?
+
+    public init() {}
+
+    public mutating func shouldSchedule(url: URL?, isLoading: Bool) -> Bool {
+        guard let url, !isLoading, lastScheduledURL != url else { return false }
+        lastScheduledURL = url
+        return true
+    }
+}
+
 public struct BrowserPopupPolicy: Sendable {
     public init() {}
 
@@ -177,7 +189,9 @@ public extension BrowserWebView {
         private let detector: any ChapterPageDetecting
         private var hasLoadedInitialRequest = false
         private var handledCommandID: UUID?
-        private var lastAutoDetectionURL: URL?
+        private var urlObservation: NSKeyValueObservation?
+        private var navigationPolicy = BrowserDetectionNavigationPolicy()
+        private var lastObservedURL: URL?
         private var retryPolicy = BrowserDetectionRetryPolicy()
         private let popupPolicy = BrowserPopupPolicy()
 
@@ -188,6 +202,22 @@ public extension BrowserWebView {
 
         func attach(_ webView: WKWebView) {
             self.webView = webView
+            urlObservation = webView.observe(\.url, options: [.new]) { [weak self] webView, _ in
+                Task { @MainActor [weak self, weak webView] in
+                    guard let self, let webView else { return }
+                    self.observedURLDidChange(on: webView)
+                }
+            }
+        }
+
+        @MainActor
+        private func observedURLDidChange(on webView: WKWebView) {
+            if lastObservedURL != webView.url {
+                lastObservedURL = webView.url
+                retryPolicy = BrowserDetectionRetryPolicy()
+            }
+            updateState(from: webView, isLoading: webView.isLoading)
+            scheduleDetection(for: webView)
         }
 
         @MainActor
@@ -281,14 +311,13 @@ public extension BrowserWebView {
 
         @MainActor
         private func scheduleDetection(for webView: WKWebView) {
-            guard let url = webView.url, lastAutoDetectionURL != url else {
+            guard navigationPolicy.shouldSchedule(url: webView.url, isLoading: webView.isLoading),
+                  let url = webView.url else {
                 return
             }
 
-            lastAutoDetectionURL = url
-
             Task { @MainActor [weak webView, viewModel, detector] in
-                try? await Task.sleep(nanoseconds: 450_000_000)
+                try? await Task.sleep(nanoseconds: 750_000_000)
                 guard let webView, webView.url == url else {
                     return
                 }
@@ -305,7 +334,7 @@ public extension BrowserWebView {
                         return
                     }
 
-                    viewModel.handleDetectionResult(result)
+                    await self.deliverDetectionResult(result, in: webView)
                     if self.retryPolicy.shouldScheduleFollowUp(
                         for: page.pageURL,
                         recommendation: result.retryRecommendation
@@ -338,7 +367,7 @@ public extension BrowserWebView {
 
         @MainActor
         private func scheduleFollowUpDetection(for webView: WKWebView, url: URL) {
-            Task { @MainActor [weak webView, viewModel, detector] in
+            Task { @MainActor [weak webView, detector] in
                 try? await Task.sleep(nanoseconds: 900_000_000)
                 guard let webView, webView.url == url else {
                     return
@@ -355,14 +384,44 @@ public extension BrowserWebView {
                         return
                     }
 
-                    if let detector = detector as? ProfileAwareChapterDetector {
-                        viewModel.handleDetectionResult(detector.detectBrowserSessionFollowUp(page: page))
-                    } else {
-                        viewModel.handleDetectionResult(detector.detect(page: page))
-                    }
+                    let result = (detector as? ProfileAwareChapterDetector)?
+                        .detectBrowserSessionFollowUp(page: page) ?? detector.detect(page: page)
+                    await self.deliverDetectionResult(result, in: webView)
                 } catch {
                     return
                 }
+            }
+        }
+
+        @MainActor
+        private func deliverDetectionResult(_ result: DetectionResult, in webView: WKWebView) async {
+            guard webView.url == result.pageURL else { return }
+            guard result.confidence != .low, var session = result.readerSession else {
+                viewModel.handleDetectionResult(result)
+                return
+            }
+
+            let cookies = await webView.configuration.websiteDataStore.httpCookieStore.allCookies()
+            let imageHost = session.imageURLs.first?.host()?.lowercased() ?? ""
+            let matchingCookies = cookies.filter { cookie in
+                let domain = cookie.domain.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
+                return !domain.isEmpty && (imageHost == domain || imageHost.hasSuffix(".\(domain)"))
+            }
+            let cookieHeader = HTTPCookie.requestHeaderFields(with: matchingCookies)["Cookie"]
+            session.imageRequestContext = ReaderImageRequestContext(
+                referer: session.sourceURL,
+                cookieHeader: cookieHeader,
+                userAgent: webView.customUserAgent ?? BrowserUserAgent.mobileSafari
+            )
+
+            let viable = await ReaderSessionImagePreflight().isViable(session)
+            guard webView.url == result.pageURL else { return }
+            if viable {
+                var prepared = result
+                prepared.readerSession = session
+                viewModel.handleDetectionResult(prepared)
+            } else {
+                viewModel.handleUnreadableDetectionResult(result)
             }
         }
     }

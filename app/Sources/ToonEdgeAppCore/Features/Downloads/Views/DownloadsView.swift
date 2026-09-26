@@ -1,5 +1,19 @@
 import SwiftUI
 
+public struct DownloadsContentLayout: Equatable, Sendable {
+    public let entryCount: Int
+    public let usesScrollableContent = true
+    public let minimumActionSize: CGFloat = 44
+
+    public init(entryCount: Int) {
+        self.entryCount = entryCount
+    }
+
+    public func removalLabel(chapterTitle: String, seriesTitle: String) -> String {
+        "Remove \(seriesTitle), \(chapterTitle) from cache"
+    }
+}
+
 @MainActor
 public final class DownloadsViewModel: ObservableObject {
     @Published public private(set) var summary: DownloadSummary
@@ -53,7 +67,8 @@ public struct DownloadsView: View {
 
     public var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
                 TEBanner(
                     title: "Local reading cache",
                     message: "Recent and retained chapter metadata stored on this device.",
@@ -85,7 +100,7 @@ public struct DownloadsView: View {
                 }
 
                 if !viewModel.entries.isEmpty {
-                    VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                    LazyVStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
                         Text("Cached chapters")
                             .font(ToonEdgeTypography.sectionTitle)
 
@@ -104,19 +119,24 @@ public struct DownloadsView: View {
                                         }
                                     } label: {
                                         Image(systemName: "trash")
-                                            .frame(width: 40, height: 40)
+                                            .frame(width: 44, height: 44)
                                     }
                                     .buttonStyle(.plain)
-                                    .accessibilityLabel("Remove cached chapter")
+                                    .accessibilityLabel(DownloadsContentLayout(entryCount: viewModel.entries.count).removalLabel(
+                                        chapterTitle: entry.chapterTitle,
+                                        seriesTitle: entry.seriesTitle
+                                    ))
+                                    .accessibilityHint("Removes local cached data for this chapter")
                                 }
                             }
                         }
                     }
                 }
 
-                Spacer()
+                }
+                .padding(ToonEdgeSpacing.large)
+                .padding(.bottom, ToonEdgeSpacing.xlarge)
             }
-            .padding(ToonEdgeSpacing.large)
             .navigationTitle("Downloads")
             .task {
                 await viewModel.load()

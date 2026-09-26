@@ -20,12 +20,14 @@ public struct ToonEdgeApp: App {
 
 public struct ToonEdgeRootView: View {
     private let dependencies: AppDependencies
+    private let initialRouter: AppRouter
 
-    public init(dependencies: AppDependencies = .mock()) {
+    public init(dependencies: AppDependencies = .mock(), initialRouter: AppRouter = AppRouter()) {
         self.dependencies = dependencies
+        self.initialRouter = initialRouter
     }
 
     public var body: some View {
-        AppShellView(dependencies: dependencies)
+        AppShellView(dependencies: dependencies, initialRouter: initialRouter)
     }
 }

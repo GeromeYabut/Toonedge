@@ -3,6 +3,14 @@ import SwiftData
 import Testing
 @testable import ToonEdgeAppCore
 
+@Test func populatedDownloadsUseScrollableContentAndAccessibleActions() {
+    let layout = DownloadsContentLayout(entryCount: 20)
+
+    #expect(layout.usesScrollableContent)
+    #expect(layout.minimumActionSize >= 44)
+    #expect(layout.removalLabel(chapterTitle: "Chapter 20", seriesTitle: "Sample") == "Remove Sample, Chapter 20 from cache")
+}
+
 @MainActor
 @Test func recordingRecentCacheMetadataIncrementsDownloadSummaryCount() async throws {
     let repository = try makeRepository()

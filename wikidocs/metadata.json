@@ -1,0 +1,19 @@
+{
+    "generation_info": {
+        "timestamp": "2026-05-27T20:28:02.327008",
+        "main_model": "gpt-5.4",
+        "generator_version": "1.0.1",
+        "repo_path": "/Users/geromeyabut/Desktop/Toonedge",
+        "commit_id": null
+    },
+    "statistics": {
+        "total_components": 0,
+        "leaf_nodes": 0,
+        "max_depth": 2
+    },
+    "files_generated": [
+        "overview.md",
+        "module_tree.json",
+        "first_module_tree.json"
+    ]
+}

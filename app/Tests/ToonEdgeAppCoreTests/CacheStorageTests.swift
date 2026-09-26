@@ -38,6 +38,18 @@ import Testing
     #expect(cached == nil)
 }
 
+@Test func fileBackedCacheStoresChapterAssetAtomically() throws {
+    let cache = try FileBackedChapterAssetCache(rootDirectory: temporaryDirectory())
+    let sourceURL = URL(string: "https://fixture.example/chapter-1")!
+    let assetURL = URL(string: "https://images.example.test/chapter-1/001.png")!
+    let data = Data([1, 2, 3, 4])
+
+    try cache.store(data, for: assetURL, sourceURL: sourceURL)
+
+    let storedURL = try #require(cache.cachedAssetURL(for: assetURL, sourceURL: sourceURL))
+    #expect(try Data(contentsOf: storedURL) == data)
+}
+
 @Test func fileBackedCacheCanInitializeInTemporaryDirectory() throws {
     let root = try temporaryDirectory().appendingPathComponent("ToonEdgeCache")
 
