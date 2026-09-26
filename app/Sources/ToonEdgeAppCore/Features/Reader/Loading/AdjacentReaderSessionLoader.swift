@@ -1,8 +1,55 @@
 import Foundation
+import OSLog
 import WebKit
 
-public enum AdjacentReaderSessionLoadError: Error, Equatable, Sendable {
-    case unavailable
+public struct AdjacentReaderSessionLoadError: Error, Equatable, Sendable {
+    public let reason: AdjacentReaderSessionLoadFailureReason
+    public let targetURL: URL?
+    public let confidence: DetectionConfidence?
+    public let parserPath: DetectionParserPath?
+    public let challengeSignals: [String]
+
+    public init(
+        reason: AdjacentReaderSessionLoadFailureReason,
+        targetURL: URL?,
+        confidence: DetectionConfidence? = nil,
+        parserPath: DetectionParserPath? = nil,
+        challengeSignals: [String] = []
+    ) {
+        self.reason = reason
+        self.targetURL = targetURL
+        self.confidence = confidence
+        self.parserPath = parserPath
+        self.challengeSignals = challengeSignals
+    }
+}
+
+public struct AdjacentReaderSessionLoadDiagnostic: Equatable, Sendable {
+    public let direction: ReaderChapterDirection
+    public let elapsedMilliseconds: Int
+    public let reason: AdjacentReaderSessionLoadFailureReason
+    public let targetHost: String?
+    public let confidence: DetectionConfidence?
+    public let parserPath: DetectionParserPath?
+    public let challengeSignals: [String]
+}
+
+public protocol AdjacentReaderSessionLoadDiagnosticsLogging: Sendable {
+    func log(_ diagnostic: AdjacentReaderSessionLoadDiagnostic) async
+}
+
+public struct OSLogAdjacentReaderSessionLoadDiagnosticsLogger: AdjacentReaderSessionLoadDiagnosticsLogging {
+    private let logger: Logger
+
+    public init(logger: Logger = Logger(subsystem: "com.toonedge.app", category: "AdjacentReaderLoad")) {
+        self.logger = logger
+    }
+
+    public func log(_ diagnostic: AdjacentReaderSessionLoadDiagnostic) async {
+        logger.info(
+            "Adjacent Reader load failed direction=\(diagnostic.direction.diagnosticLabel, privacy: .public) elapsedMs=\(diagnostic.elapsedMilliseconds, privacy: .public) reason=\(diagnostic.reason.rawValue, privacy: .public) host=\(diagnostic.targetHost ?? "none", privacy: .public) confidence=\(diagnostic.confidence?.rawValue ?? "none", privacy: .public) parserPath=\(diagnostic.parserPath?.rawValue ?? "none", privacy: .public) challengeSignals=\(diagnostic.challengeSignals.joined(separator: ","), privacy: .public)"
+        )
+    }
 }
 
 public protocol AdjacentChapterPageLoading: Sendable {
@@ -32,11 +79,35 @@ public struct URLSessionAdjacentChapterHTMLLoader: AdjacentChapterHTMLLoading {
     public init() {}
 
     public func loadHTML(from url: URL) async throws -> String {
-        let (data, _) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await URLSession.shared.data(from: url)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AdjacentChapterTransportError.unavailable
+        }
         guard let html = String(data: data, encoding: .utf8) else {
             throw URLError(.cannotDecodeContentData)
         }
+        if let failure = AdjacentChapterHTTPResponseClassifier.failureReason(
+            statusCode: httpResponse.statusCode,
+            html: html
+        ) {
+            throw failure == .challengeOrRateLimit
+                ? AdjacentChapterTransportError.challengeOrRateLimit
+                : AdjacentChapterTransportError.unavailable
+        }
         return html
+    }
+}
+
+enum AdjacentChapterHTTPResponseClassifier {
+    static func failureReason(
+        statusCode: Int,
+        html: String
+    ) -> AdjacentReaderSessionLoadFailureReason? {
+        guard !(200..<300).contains(statusCode) else { return nil }
+        if statusCode == 429 || !StaticHTMLChapterPageAnalysisParser.challengeSignals(in: html).isEmpty {
+            return .challengeOrRateLimit
+        }
+        return .unavailable
     }
 }
 
@@ -45,47 +116,149 @@ public final class AdjacentReaderSessionLoader: AdjacentReaderSessionLoading {
     private let detector: any ChapterPageDetecting
     private let pageLoader: any AdjacentChapterPageLoading
     private let htmlLoader: (any AdjacentChapterHTMLLoading)?
+    private let diagnosticsLogger: any AdjacentReaderSessionLoadDiagnosticsLogging
 
     public init(
         detector: any ChapterPageDetecting,
         pageLoader: any AdjacentChapterPageLoading,
-        htmlLoader: (any AdjacentChapterHTMLLoading)? = nil
+        htmlLoader: (any AdjacentChapterHTMLLoading)? = nil,
+        diagnosticsLogger: any AdjacentReaderSessionLoadDiagnosticsLogging = OSLogAdjacentReaderSessionLoadDiagnosticsLogger()
     ) {
         self.detector = detector
         self.pageLoader = pageLoader
         self.htmlLoader = htmlLoader
+        self.diagnosticsLogger = diagnosticsLogger
     }
 
     public func loadAdjacentReaderSession(
         from url: URL,
         context: AdjacentReaderSessionLoadContext
     ) async throws -> MockReaderSession {
+        let startedAt = Date()
+        let primaryFailure: AdjacentReaderSessionLoadError
+
         do {
-            let result = detector.detect(page: try await pageLoader.loadPageAnalysis(from: url))
-            return try viableSession(from: result, preserving: context)
+            let analysis = try await pageLoader.loadPageAnalysis(from: url)
+            return try viableSession(from: analysis, targetURL: url, preserving: context)
         } catch {
-            guard let htmlLoader else {
-                throw error
-            }
-            let html = try await htmlLoader.loadHTML(from: url)
-            let analysis = StaticHTMLChapterPageAnalysisParser.analysis(html: html, pageURL: url)
-            return try viableSession(from: detector.detect(page: analysis), preserving: context)
+            primaryFailure = typedFailure(from: error, targetURL: url)
         }
+
+        if primaryFailure.reason == .challengeOrRateLimit {
+            await log(primaryFailure, context: context, startedAt: startedAt)
+            throw primaryFailure
+        }
+
+        if let htmlLoader {
+            do {
+                let html = try await htmlLoader.loadHTML(from: url)
+                let analysis = StaticHTMLChapterPageAnalysisParser.analysis(html: html, pageURL: url)
+                return try viableSession(from: analysis, targetURL: url, preserving: context)
+            } catch {
+                let fallbackFailure = typedFailure(from: error, targetURL: url)
+                let finalFailure = preferredFailure(primaryFailure, fallbackFailure)
+                await log(finalFailure, context: context, startedAt: startedAt)
+                throw finalFailure
+            }
+        }
+
+        await log(primaryFailure, context: context, startedAt: startedAt)
+        throw primaryFailure
     }
 
     private func viableSession(
-        from result: DetectionResult,
+        from analysis: DetectionPageAnalysis,
+        targetURL: URL,
         preserving context: AdjacentReaderSessionLoadContext
     ) throws -> MockReaderSession {
-        guard result.confidence == .high,
-              var session = result.readerSession,
+        let result = detector.detect(page: analysis)
+        if analysis.isChallengeOrRateLimitPage {
+            throw AdjacentReaderSessionLoadError(
+                reason: .challengeOrRateLimit,
+                targetURL: targetURL,
+                confidence: result.confidence,
+                parserPath: result.diagnostics.parserPath,
+                challengeSignals: analysis.challengeSignals
+            )
+        }
+        guard result.confidence == .high else {
+            throw AdjacentReaderSessionLoadError(
+                reason: .lowConfidence,
+                targetURL: targetURL,
+                confidence: result.confidence,
+                parserPath: result.diagnostics.parserPath,
+                challengeSignals: analysis.challengeSignals
+            )
+        }
+        guard var session = result.readerSession,
               !session.imageURLs.isEmpty,
               !session.usesMockOrStockImages else {
-            throw AdjacentReaderSessionLoadError.unavailable
+            throw AdjacentReaderSessionLoadError(
+                reason: .nonViableImages,
+                targetURL: targetURL,
+                confidence: result.confidence,
+                parserPath: result.diagnostics.parserPath,
+                challengeSignals: analysis.challengeSignals
+            )
         }
         session.launchOrigin = context.currentSession.launchOrigin
         return session
     }
+
+    private func typedFailure(from error: Error, targetURL: URL) -> AdjacentReaderSessionLoadError {
+        if let typed = error as? AdjacentReaderSessionLoadError {
+            return typed
+        }
+        if let transport = error as? AdjacentChapterTransportError {
+            return AdjacentReaderSessionLoadError(
+                reason: transport == .challengeOrRateLimit ? .challengeOrRateLimit : .unavailable,
+                targetURL: targetURL
+            )
+        }
+        if let urlError = error as? URLError, urlError.code == .timedOut {
+            return AdjacentReaderSessionLoadError(reason: .timeout, targetURL: targetURL)
+        }
+        return AdjacentReaderSessionLoadError(reason: .unavailable, targetURL: targetURL)
+    }
+
+    private func preferredFailure(
+        _ primary: AdjacentReaderSessionLoadError,
+        _ fallback: AdjacentReaderSessionLoadError
+    ) -> AdjacentReaderSessionLoadError {
+        let priority: [AdjacentReaderSessionLoadFailureReason: Int] = [
+            .challengeOrRateLimit: 5,
+            .timeout: 4,
+            .lowConfidence: 3,
+            .nonViableImages: 2,
+            .unavailable: 1
+        ]
+        return priority[fallback.reason, default: 0] > priority[primary.reason, default: 0]
+            ? fallback
+            : primary
+    }
+
+    private func log(
+        _ error: AdjacentReaderSessionLoadError,
+        context: AdjacentReaderSessionLoadContext,
+        startedAt: Date
+    ) async {
+        await diagnosticsLogger.log(
+            AdjacentReaderSessionLoadDiagnostic(
+                direction: context.direction,
+                elapsedMilliseconds: max(0, Int(Date().timeIntervalSince(startedAt) * 1_000)),
+                reason: error.reason,
+                targetHost: error.targetURL?.host()?.lowercased(),
+                confidence: error.confidence,
+                parserPath: error.parserPath,
+                challengeSignals: error.challengeSignals
+            )
+        )
+    }
+}
+
+private enum AdjacentChapterTransportError: Error, Equatable {
+    case challengeOrRateLimit
+    case unavailable
 }
 
 enum StaticHTMLChapterPageAnalysisParser {
@@ -125,7 +298,8 @@ enum StaticHTMLChapterPageAnalysisParser {
             viewportWidth: 390,
             images: images,
             previousChapterURL: chapterNavigationURL(label: "prev", html: html, pageURL: pageURL),
-            nextChapterURL: chapterNavigationURL(label: "next", html: html, pageURL: pageURL)
+            nextChapterURL: chapterNavigationURL(label: "next", html: html, pageURL: pageURL),
+            challengeSignals: challengeSignals(in: html)
         )
     }
 
@@ -197,6 +371,32 @@ enum StaticHTMLChapterPageAnalysisParser {
             .replacingOccurrences(of: "&lt;", with: "<")
             .replacingOccurrences(of: "&gt;", with: ">")
     }
+
+    static func challengeSignals(in html: String) -> [String] {
+        let normalized = html.lowercased()
+        return [
+            normalized.contains("just a moment") ? "title:just-a-moment" : nil,
+            normalized.contains("challenge-platform") ? "challenge-platform-script" : nil,
+            normalized.contains("too many requests") || normalized.contains("rate limit") || normalized.contains("http 429")
+                ? "rate-limit-copy"
+                : nil
+        ].compactMap { $0 }
+    }
+}
+
+private extension DetectionPageAnalysis {
+    var isChallengeOrRateLimitPage: Bool {
+        !challengeSignals.isEmpty || title.lowercased().contains("just a moment")
+    }
+}
+
+private extension ReaderChapterDirection {
+    var diagnosticLabel: String {
+        switch self {
+        case .previous: "previous"
+        case .next: "next"
+        }
+    }
 }
 
 private extension MockReaderSession {
@@ -214,6 +414,7 @@ private final class HiddenWebViewLoadCoordinator: NSObject, WKNavigationDelegate
     private let url: URL
     private var continuation: CheckedContinuation<DetectionPageAnalysis, Error>?
     private var timeoutTask: Task<Void, Never>?
+    private var responseChallengeSignals: [String] = []
 
     init(webView: WKWebView, url: URL) {
         self.webView = webView
@@ -247,12 +448,31 @@ private final class HiddenWebViewLoadCoordinator: NSObject, WKNavigationDelegate
                     throw URLError(.cannotDecodeContentData)
                 }
 
-                let page = try JSONDecoder().decode(DetectionPageAnalysis.self, from: data)
+                var page = try JSONDecoder().decode(DetectionPageAnalysis.self, from: data)
+                page.challengeSignals.append(contentsOf: self.responseChallengeSignals)
+                page.challengeSignals = Array(Set(page.challengeSignals)).sorted()
                 self.finish(.success(page))
             } catch {
                 self.finish(.failure(error))
             }
         }
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationResponse: WKNavigationResponse,
+        decisionHandler: @escaping @MainActor @Sendable (WKNavigationResponsePolicy) -> Void
+    ) {
+        if navigationResponse.isForMainFrame,
+           let response = navigationResponse.response as? HTTPURLResponse {
+            if response.statusCode == 429 {
+                responseChallengeSignals.append("http-status:429")
+            }
+            if response.value(forHTTPHeaderField: "cf-mitigated")?.lowercased() == "challenge" {
+                responseChallengeSignals.append("cf-mitigated:challenge")
+            }
+        }
+        decisionHandler(.allow)
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {

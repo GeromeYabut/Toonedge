@@ -844,7 +844,7 @@ The comfortable grid card chip read `latestChapterLabel` directly from `LibraryS
 
 ## DEF-022 — Reader adjacent navigation masks transient rate-limit/challenge failures
 
-**Status:** Open  
+**Status:** Implemented (verified 2026-09-26)
 **Severity:** High  
 **Reported:** 2026-06-05  
 **Area:** Reader adjacent chapter navigation, hidden WebView loading, site challenge/rate-limit handling, failure UX
@@ -892,6 +892,17 @@ Hidden adjacent chapter loading is likely being intermittently blocked by site-s
 - Normal adjacent chapter navigation still opens Reader Mode as before.
 - Regression tests cover challenge/rate-limit and timeout failure paths.
 - The app does not issue aggressive repeated hidden loads after a transient failure.
+
+### Resolution
+
+- Adjacent loading now preserves typed `timeout`, `challengeOrRateLimit`, `unavailable`, `lowConfidence`, and `nonViableImages` reasons together with the safe target URL and available detection diagnostics.
+- Challenge/rate-limit pages never fall through to the static HTML path, preventing that fallback from acting as a challenge bypass. Timeout and ordinary analysis failures may still use the existing single static fallback.
+- Browser-owned and app-owned Readers now share the typed adjacent-load path; successful browser-owned replacements are published back to the Browser owner without reloading the visible page through Recent or generic browser navigation.
+- Reader feedback is non-blocking and reason-specific. A known target exposes explicit `Retry` and `Open Original` actions; retry is user-initiated and applies a fixed 1.5-second backoff with no automatic loop.
+- Adjacent operations are invalidated when Reader disappears, so a delayed or cancellation-insensitive load cannot reopen or overwrite a dismissed Reader.
+- Dynamic and static analysis recognize rate-limit copy, and HTTP 403/503 challenge bodies are inspected before being classified as generic unavailability.
+- Sanitized diagnostics record direction, elapsed milliseconds, host only, confidence, parser path, and challenge signal names. Query strings, cookies, session data, and full URLs are not logged.
+- Normal stored and hidden adjacent navigation continue to preserve Reader launch context.
 
 ## DEF-021 — Series Detail Continue can reopen chapter 1 after reading later chapters
 

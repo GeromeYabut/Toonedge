@@ -44,6 +44,8 @@ import Testing
 @Test func pageAnalysisScriptCollectsChallengeSignals() {
     #expect(PageAnalysisScript.javaScript.contains("challengeSignals"))
     #expect(PageAnalysisScript.javaScript.contains("cf-mitigated"))
+    #expect(PageAnalysisScript.javaScript.contains("too many requests"))
+    #expect(PageAnalysisScript.javaScript.contains("rate limit"))
 }
 
 @Test func pageAnalysisScriptCollectsAdjacentChapterLinks() {

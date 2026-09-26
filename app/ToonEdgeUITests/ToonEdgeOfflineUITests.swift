@@ -37,3 +37,54 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         )
     }
 }
+
+@MainActor
+final class ToonEdgeAdjacentFailureUITests: XCTestCase {
+    func testChallengeFailureOffersExplicitRetryAndRecoversAfterUserAction() {
+        let app = launchFixture()
+        revealReaderChrome(in: app)
+
+        app.buttons["Next"].tap()
+
+        XCTAssertTrue(app.staticTexts["This site may be rate limiting Reader Mode. Try again in a moment or open the original page."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reader.adjacent.retry"].exists)
+        XCTAssertTrue(app.buttons["reader.adjacent.openOriginal"].exists)
+        let retry = app.buttons["reader.adjacent.retry"]
+        retry.tap()
+        XCTAssertTrue(retry.waitForNonExistence(timeout: 6))
+        RunLoop.current.run(until: Date().addingTimeInterval(2))
+        XCTAssertFalse(retry.exists)
+        XCTAssertTrue(app.scrollViews.firstMatch.exists)
+        if !app.staticTexts["reader.chapter.label"].exists {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        let chapterLabel = app.staticTexts["reader.chapter.label"]
+        XCTAssertTrue(chapterLabel.waitForExistence(timeout: 5))
+        XCTAssertTrue(chapterLabel.label.contains("Chapter 2"))
+    }
+
+    func testChallengeFailureCanOpenKnownOriginalTarget() {
+        let app = launchFixture()
+        revealReaderChrome(in: app)
+
+        app.buttons["Next"].tap()
+        XCTAssertTrue(app.buttons["reader.adjacent.openOriginal"].waitForExistence(timeout: 5))
+        app.buttons["reader.adjacent.openOriginal"].tap()
+
+        XCTAssertTrue(app.staticTexts["Browser"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Close"].exists)
+    }
+
+    private func launchFixture() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-seedAdjacentFailureReader"]
+        app.launch()
+        return app
+    }
+
+    private func revealReaderChrome(in app: XCUIApplication) {
+        XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 5))
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(app.buttons["Next"].waitForExistence(timeout: 5))
+    }
+}

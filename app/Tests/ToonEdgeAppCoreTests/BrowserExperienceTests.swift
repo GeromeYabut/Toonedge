@@ -162,6 +162,29 @@ import Testing
 }
 
 @MainActor
+@Test func browserOwnedReaderAcceptsOnlyViableAdjacentSessionReplacement() throws {
+    let pageURL = try #require(URL(string: "https://example.com/series/chapter-12"))
+    let adjacentURL = try #require(URL(string: "https://example.com/series/chapter-13"))
+    let viewModel = BrowserViewModel(startPoint: .url(pageURL.absoluteString))
+    let current = MockReaderSession(
+        seriesTitle: "Moonlit Edge",
+        chapterTitle: "Chapter 12",
+        sourceURL: pageURL,
+        imageURLs: [try #require(URL(string: "https://img.example.com/12-1.jpg"))]
+    )
+    var adjacent = current
+    adjacent.chapterTitle = "Chapter 13"
+    adjacent.sourceURL = adjacentURL
+    adjacent.imageURLs = [try #require(URL(string: "https://img.example.com/13-1.jpg"))]
+
+    viewModel.presentPendingReaderInsideBrowser(current)
+    viewModel.replaceBrowserOwnedReaderSession(adjacent)
+
+    #expect(viewModel.browserOwnedReaderSession?.sourceURL == adjacentURL)
+    #expect(viewModel.pendingCommand == nil)
+}
+
+@MainActor
 @Test func browserReaderPresentationStateTracksPendingAndVisibleReader() throws {
     let pageURL = try #require(URL(string: "https://example.com/series/chapter-12"))
     let viewModel = BrowserViewModel(startPoint: .url(pageURL.absoluteString))

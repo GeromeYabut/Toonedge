@@ -57,8 +57,12 @@ public struct BrowserView: View {
                             viewModel.dismissBrowserOwnedReader()
                         }
                     },
-                    navigateAdjacentChapterAction: { chapter in
-                        viewModel.load(chapter.sourceURL)
+                    adjacentSessionDidChange: { session in
+                        viewModel.replaceBrowserOwnedReaderSession(session)
+                    },
+                    openAdjacentOriginalPageAction: { url in
+                        viewModel.dismissBrowserOwnedReader()
+                        viewModel.load(url)
                     },
                     router: $router
                 )

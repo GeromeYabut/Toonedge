@@ -190,6 +190,11 @@ public final class BrowserViewModel: ObservableObject {
         readerPresentationLogger.log(.none)
     }
 
+    public func replaceBrowserOwnedReaderSession(_ session: MockReaderSession) {
+        guard browserOwnedReaderSession != nil, isViableReaderSession(session) else { return }
+        browserOwnedReaderSession = session
+    }
+
     public func clearCommand(_ command: BrowserCommand) {
         if pendingCommand == command {
             pendingCommand = nil

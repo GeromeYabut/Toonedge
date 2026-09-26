@@ -64,6 +64,9 @@ public enum PageAnalysisScript {
         document.querySelector('meta[http-equiv="refresh"]') ? 'meta-refresh' : null,
         document.querySelector('script[src*="challenge-platform"]') ? 'challenge-platform-script' : null,
         bodyText.includes('enable javascript and cookies to continue') ? 'challenge-copy' : null,
+        bodyText.includes('too many requests') || bodyText.includes('rate limit') || bodyText.includes('http 429')
+          ? 'rate-limit-copy'
+          : null,
         document.documentElement.innerHTML.includes('cf-mitigated') ? 'cf-mitigated' : null
       ].filter(Boolean);
 

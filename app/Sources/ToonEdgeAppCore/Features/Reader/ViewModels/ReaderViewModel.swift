@@ -23,6 +23,8 @@ public final class ReaderViewModel: ObservableObject {
     private var loadedImageIndices: Set<Int>
     private var visibleImageIndex: Int?
     private var hasAttemptedMetadataRefresh: Bool
+    private let adjacentRetryDelayNanoseconds: UInt64
+    private var adjacentNavigationOperationID: UUID?
 
     public init(
         session: MockReaderSession,
@@ -32,7 +34,8 @@ public final class ReaderViewModel: ObservableObject {
         recentReadingRecorder: (any RecentReadingRecording)? = nil,
         libraryLifecycleService: (any LibraryLifecycleManaging)? = nil,
         seriesMetadataService: (any SeriesMetadataFetching)? = nil,
-        settingsManager: (any SettingsManaging)? = nil
+        settingsManager: (any SettingsManaging)? = nil,
+        adjacentRetryDelayNanoseconds: UInt64 = 1_500_000_000
     ) {
         self.session = session
         self.isChromeVisible = false
@@ -50,11 +53,13 @@ public final class ReaderViewModel: ObservableObject {
         self.libraryLifecycleService = libraryLifecycleService
         self.seriesMetadataService = seriesMetadataService
         self.settingsManager = settingsManager
+        self.adjacentRetryDelayNanoseconds = adjacentRetryDelayNanoseconds
         self.hasCompletedInitialRestore = progressRepository == nil
         self.hasRecordedRecentCacheMetadataForSession = false
         self.loadedImageIndices = []
         self.visibleImageIndex = nil
         self.hasAttemptedMetadataRefresh = false
+        self.adjacentNavigationOperationID = nil
     }
 
     public var progressDisplay: String {
@@ -90,10 +95,21 @@ public final class ReaderViewModel: ObservableObject {
     }
 
     public var adjacentFailureMessage: String? {
-        if case let .failed(_, message) = adjacentLoadState {
-            return message
+        adjacentFailure?.message
+    }
+
+    public var adjacentFailure: AdjacentChapterLoadFailure? {
+        if case let .failed(failure) = adjacentLoadState {
+            return failure
         }
         return nil
+    }
+
+    public var isAdjacentLoading: Bool {
+        if case .loading = adjacentLoadState {
+            return true
+        }
+        return false
     }
 
     public func replaceSession(_ session: MockReaderSession) async {
@@ -110,12 +126,13 @@ public final class ReaderViewModel: ObservableObject {
         await restoreProgress()
     }
 
+    @discardableResult
     public func navigateAdjacentChapter(
         _ direction: ReaderChapterDirection,
         libraryLifecycleService: (any LibraryLifecycleManaging)?,
         adjacentLoader: (any AdjacentReaderSessionLoading)?
-    ) async {
-        guard case .idle = adjacentLoadState else { return }
+    ) async -> Bool {
+        if case .loading = adjacentLoadState { return false }
         let chapter: MockChapter?
         switch direction {
         case .previous:
@@ -123,24 +140,37 @@ public final class ReaderViewModel: ObservableObject {
         case .next:
             chapter = session.nextChapter
         }
-        guard let chapter else { return }
+        guard let chapter else { return false }
 
+        let operationID = UUID()
+        adjacentNavigationOperationID = operationID
         adjacentLoadState = .loading(direction)
         let originalSession = session
 
         if var storedSession = await libraryLifecycleService?.readerSession(forSourceURL: chapter.sourceURL),
            !storedSession.imageURLs.isEmpty {
+            guard isCurrentAdjacentOperation(operationID) else { return false }
             storedSession = preparedAdjacentSession(storedSession, preserving: originalSession)
             await replaceSession(storedSession)
+            guard isCurrentAdjacentOperation(operationID) else { return false }
+            adjacentNavigationOperationID = nil
             adjacentLoadState = .idle
-            return
+            return true
         }
 
         guard let adjacentLoader else {
+            guard isCurrentAdjacentOperation(operationID) else { return false }
+            adjacentNavigationOperationID = nil
             session = originalSession
-            adjacentLoadState = .failed(direction, message: direction.failureMessage)
+            adjacentLoadState = .failed(
+                AdjacentChapterLoadFailure(
+                    direction: direction,
+                    reason: .unavailable,
+                    targetURL: chapter.sourceURL
+                )
+            )
             isChromeVisible = true
-            return
+            return false
         }
 
         do {
@@ -151,14 +181,67 @@ public final class ReaderViewModel: ObservableObject {
             guard !loadedSession.imageURLs.isEmpty else {
                 throw URLError(.cannotDecodeContentData)
             }
+            guard isCurrentAdjacentOperation(operationID) else { return false }
             loadedSession = preparedAdjacentSession(loadedSession, preserving: originalSession)
             await replaceSession(loadedSession)
+            guard isCurrentAdjacentOperation(operationID) else { return false }
+            adjacentNavigationOperationID = nil
             adjacentLoadState = .idle
+            return true
         } catch {
+            guard isCurrentAdjacentOperation(operationID) else { return false }
+            adjacentNavigationOperationID = nil
             session = originalSession
-            adjacentLoadState = .failed(direction, message: direction.failureMessage)
+            let typedError = error as? AdjacentReaderSessionLoadError
+            adjacentLoadState = .failed(
+                AdjacentChapterLoadFailure(
+                    direction: direction,
+                    reason: typedError?.reason ?? .unavailable,
+                    targetURL: typedError?.targetURL ?? chapter.sourceURL
+                )
+            )
             isChromeVisible = true
+            return false
         }
+    }
+
+    @discardableResult
+    public func retryAdjacentChapter(
+        libraryLifecycleService: (any LibraryLifecycleManaging)?,
+        adjacentLoader: (any AdjacentReaderSessionLoading)?
+    ) async -> Bool {
+        guard let failure = adjacentFailure else { return false }
+        let retryOperationID = UUID()
+        adjacentNavigationOperationID = retryOperationID
+        adjacentLoadState = .loading(failure.direction)
+        if adjacentRetryDelayNanoseconds > 0 {
+            do {
+                try await Task.sleep(nanoseconds: adjacentRetryDelayNanoseconds)
+            } catch {
+                if isCurrentAdjacentOperation(retryOperationID) {
+                    adjacentNavigationOperationID = nil
+                    adjacentLoadState = .failed(failure)
+                }
+                return false
+            }
+        }
+        guard isCurrentAdjacentOperation(retryOperationID) else { return false }
+        adjacentNavigationOperationID = nil
+        adjacentLoadState = .idle
+        return await navigateAdjacentChapter(
+            failure.direction,
+            libraryLifecycleService: libraryLifecycleService,
+            adjacentLoader: adjacentLoader
+        )
+    }
+
+    public func cancelAdjacentNavigation() {
+        adjacentNavigationOperationID = nil
+        adjacentLoadState = .idle
+    }
+
+    private func isCurrentAdjacentOperation(_ operationID: UUID) -> Bool {
+        adjacentNavigationOperationID == operationID && !Task.isCancelled
     }
 
     public func toggleChrome() {

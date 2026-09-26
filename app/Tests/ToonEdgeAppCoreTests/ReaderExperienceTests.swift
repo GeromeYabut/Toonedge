@@ -431,7 +431,72 @@ import Testing
 
     #expect(viewModel.session.sourceURL == current.sourceURL)
     #expect(viewModel.adjacentLoadState.isFailure)
-    #expect(viewModel.adjacentFailureMessage == "Could not open next chapter in Reader.")
+    #expect(viewModel.adjacentFailureMessage == "This chapter is unavailable in Reader Mode. Try again or open the original page.")
+}
+
+@MainActor
+@Test func adjacentChallengeFailurePreservesTargetAndRetriesOnlyAfterUserAction() async throws {
+    let nextURL = URL(string: "https://example.com/series/chapter-13")!
+    let next = MockChapter(title: "Chapter 13", sourceURL: nextURL)
+    var current = MockReaderSession.sample
+    current.nextChapter = next
+    var loaded = MockReaderSession.sample
+    loaded.chapterTitle = "Chapter 13"
+    loaded.sourceURL = nextURL
+    loaded.imageURLs = [URL(string: "https://img.example.com/13-1.webp")!]
+    let loader = SequencedAdjacentReaderSessionLoader(
+        results: [
+            .failure(
+                AdjacentReaderSessionLoadError(
+                    reason: .challengeOrRateLimit,
+                    targetURL: nextURL,
+                    confidence: .low,
+                    parserPath: .browserSessionProfile,
+                    challengeSignals: ["http-status:429"]
+                )
+            ),
+            .success(loaded)
+        ]
+    )
+    let viewModel = ReaderViewModel(session: current, adjacentRetryDelayNanoseconds: 0)
+
+    await viewModel.navigateAdjacentChapter(.next, libraryLifecycleService: nil, adjacentLoader: loader)
+
+    #expect(await loader.requestCount == 1)
+    #expect(viewModel.adjacentFailure?.reason == .challengeOrRateLimit)
+    #expect(viewModel.adjacentFailure?.targetURL == nextURL)
+    #expect(viewModel.adjacentFailureMessage == "This site may be rate limiting Reader Mode. Try again in a moment or open the original page.")
+
+    await viewModel.retryAdjacentChapter(libraryLifecycleService: nil, adjacentLoader: loader)
+
+    #expect(await loader.requestCount == 2)
+    #expect(viewModel.session.sourceURL == nextURL)
+    #expect(viewModel.adjacentLoadState == .idle)
+}
+
+@MainActor
+@Test func cancellingAdjacentNavigationPreventsLateSessionReplacement() async throws {
+    let nextURL = try #require(URL(string: "https://example.com/series/chapter-13"))
+    var current = MockReaderSession.sample
+    current.nextChapter = MockChapter(title: "Chapter 13", sourceURL: nextURL)
+    var loaded = MockReaderSession.sample
+    loaded.chapterTitle = "Chapter 13"
+    loaded.sourceURL = nextURL
+    loaded.imageURLs = [try #require(URL(string: "https://img.example.com/13-1.webp"))]
+    let loader = CancellationIgnoringAdjacentReaderSessionLoader(session: loaded)
+    let viewModel = ReaderViewModel(session: current)
+
+    let navigation = Task {
+        await viewModel.navigateAdjacentChapter(.next, libraryLifecycleService: nil, adjacentLoader: loader)
+    }
+    await loader.waitUntilRequested()
+    viewModel.cancelAdjacentNavigation()
+    navigation.cancel()
+    await loader.release()
+    _ = await navigation.value
+
+    #expect(viewModel.session.sourceURL == current.sourceURL)
+    #expect(viewModel.adjacentLoadState == .idle)
 }
 
 @MainActor
@@ -548,6 +613,17 @@ import Testing
 
     #expect(router.presentedReader == nil)
     #expect(router.presentedBrowser == startPoint)
+}
+
+@Test func adjacentFailureOpenOriginalUsesKnownAdjacentTarget() {
+    var router = AppRouter()
+    let targetURL = URL(string: "https://example.com/series/chapter-13")!
+    router.presentReader(.sample)
+
+    router.openOriginalPage(targetURL)
+
+    #expect(router.presentedReader == nil)
+    #expect(router.presentedBrowser == .url(targetURL.absoluteString))
 }
 
 @Test func readerChromeLayoutMovesSecondaryActionsToFloatingRail() {
@@ -701,6 +777,58 @@ private actor RecordingAdjacentReaderSessionLoader: AdjacentReaderSessionLoading
     ) async throws -> MockReaderSession {
         requestedURLs.append(url)
         return try result.get()
+    }
+}
+
+private actor SequencedAdjacentReaderSessionLoader: AdjacentReaderSessionLoading {
+    private var results: [Result<MockReaderSession, Error>]
+    private(set) var requestCount = 0
+
+    init(results: [Result<MockReaderSession, Error>]) {
+        self.results = results
+    }
+
+    func loadAdjacentReaderSession(
+        from url: URL,
+        context: AdjacentReaderSessionLoadContext
+    ) async throws -> MockReaderSession {
+        requestCount += 1
+        guard !results.isEmpty else {
+            throw AdjacentReaderSessionLoadError(reason: .unavailable, targetURL: url)
+        }
+        return try results.removeFirst().get()
+    }
+}
+
+private actor CancellationIgnoringAdjacentReaderSessionLoader: AdjacentReaderSessionLoading {
+    private let session: MockReaderSession
+    private var requested = false
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    init(session: MockReaderSession) {
+        self.session = session
+    }
+
+    func loadAdjacentReaderSession(
+        from url: URL,
+        context: AdjacentReaderSessionLoadContext
+    ) async throws -> MockReaderSession {
+        requested = true
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+        return session
+    }
+
+    func waitUntilRequested() async {
+        while !requested {
+            await Task.yield()
+        }
+    }
+
+    func release() {
+        continuation?.resume()
+        continuation = nil
     }
 }
 

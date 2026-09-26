@@ -73,6 +73,12 @@ public struct AppRouter: Equatable, Sendable {
         }
     }
 
+    public mutating func openOriginalPage(_ sourceURL: URL) {
+        presentedReader = nil
+        presentedBrowser = .url(sourceURL.absoluteString)
+        presentedBrowserReaderLaunchOrigin = nil
+    }
+
     public mutating func dismissReaderToSeries() {
         guard let seriesURL = presentedReader?.seriesURL else {
             presentedReader = nil

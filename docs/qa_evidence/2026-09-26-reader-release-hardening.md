@@ -41,3 +41,24 @@
 - Focused command: `swift test --package-path app --jobs 1 --filter 'seriesDetailContinueUsesDiscoveredChapterThreeImmediatelyAndAfterRepositoryReconstruction|swiftDataRepositoryAddsRecentAdjacentChapterToSavedSeriesDetail|swiftDataRepositoryReconcilesRecentReadingWithSavedChapterContinueTarget'`
 - Result: 3 tests passed, 0 failures.
 - Verified outcomes: `Continue Chapter 3`, chapter 3 URL/ID on immediate return, the same target after repository reconstruction, and persisted Continue targeting for a chapter discovered through adjacent Reader navigation.
+
+## DEF-022 — Typed adjacent-load failures
+
+### TDD and automated coverage
+
+- RED regressions first demonstrated missing typed error metadata, missing actionable retry state, missing explicit adjacent-target routing, and a static fallback that could bypass a detected challenge page.
+- Independent review then found that browser-owned Readers still bypassed the typed loader, a dismissed Reader could receive a late retry result, and challenge recognition did not cover dynamic rate-limit copy or challenge bodies returned with HTTP 403/503. The review regressions failed to compile against the missing ownership replacement, cancellation, and HTTP classification interfaces before those behaviors were added.
+- Loader coverage now includes deterministic challenge, HTTP-429/rate-limit copy, timeout, unavailable/low-confidence, non-viable-image, static-fallback, no-challenge-bypass, and normal-success paths.
+- Browser-owned Reader navigation now uses the same typed loading path as app-owned Reader navigation and publishes only successful viable sessions back to the Browser owner. An operation token plus task cancellation prevents a dismissed Reader from reopening or replacing itself after a delayed result.
+- Dynamic analysis recognizes rate-limit copy, main-frame response metadata carries safe 429/`cf-mitigated` signals, and static HTTP classification inspects challenge bodies before mapping 403/503 responses to generic unavailability.
+- Focused loader command: `swift test --package-path app --jobs 1 --filter adjacentLoader` — 12 tests passed, 0 failures.
+- Focused Reader/routing coverage verifies reason-specific copy, retained target URL, no request before explicit Retry, one request after Retry with injected zero-delay policy, current-session preservation, and adjacent Open Original routing.
+- Review-fix focused command: `swift test --package-path app --jobs 1 --filter 'adjacent|Adjacent|pageAnalysisScriptCollectsChallengeSignals|browserOwnedReaderAcceptsOnlyViableAdjacentSessionReplacement|cancellingAdjacentNavigationPreventsLateSessionReplacement'` — 37 tests passed, 0 failures.
+- Full gate after review fixes: `swift test --package-path app --jobs 1` — 345 tests passed, 0 failures.
+
+### Dedicated iPhone 16e journey
+
+- Command: `xcodebuild -project app/ToonEdge.xcodeproj -scheme ToonEdge -destination 'platform=iOS Simulator,id=4582CDE9-27DB-4669-86AC-0631C1D7F2ED' -derivedDataPath /private/tmp/toonedge-def022-derived test -only-testing:ToonEdgeUITests/ToonEdgeAdjacentFailureUITests CODE_SIGNING_ALLOWED=NO`
+- Result: 2 UI tests passed, 0 failures. The fixture presents challenge/rate-limit feedback, exposes Retry and Open Original, performs no automatic retry, proves the explicit backed-off retry advances the Reader to Chapter 2, and routes Open Original to Browser.
+- Latest result bundle path: `/private/tmp/toonedge-def022-derived/Logs/Test/Test-ToonEdge-2026.09.26_09-14-57--0700.xcresult`.
+- Xcode reported a post-test result-bundle import/CAS warning even though the selected tests succeeded. CI should publish the `.xcresult` directory immediately and separately retain the raw `xcodebuild` log so successful test evidence survives partial result-bundle import failures.

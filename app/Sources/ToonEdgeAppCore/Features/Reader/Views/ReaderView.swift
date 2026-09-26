@@ -10,13 +10,15 @@ public struct ReaderView: View {
     @Binding private var router: AppRouter
     @State private var isSaveStatePickerPresented = false
     @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .reader)
+    @State private var adjacentNavigationTask: Task<Void, Never>?
     private let readerService: any ReaderSessionProviding
     private let adjacentLoader: (any AdjacentReaderSessionLoading)?
     private let libraryLifecycleService: (any LibraryLifecycleManaging)?
     private let dismissAction: (() -> Void)?
     private let viewOriginalPageAction: (() -> Void)?
     private let backAction: (() -> Void)?
-    private let navigateAdjacentChapterAction: ((MockChapter) -> Void)?
+    private let adjacentSessionDidChange: ((MockReaderSession) -> Void)?
+    private let openAdjacentOriginalPageAction: ((URL) -> Void)?
     private let chapterAssetCache: (any ChapterAssetCaching)?
 
     public init(
@@ -34,7 +36,8 @@ public struct ReaderView: View {
         dismissAction: (() -> Void)? = nil,
         viewOriginalPageAction: (() -> Void)? = nil,
         backAction: (() -> Void)? = nil,
-        navigateAdjacentChapterAction: ((MockChapter) -> Void)? = nil,
+        adjacentSessionDidChange: ((MockReaderSession) -> Void)? = nil,
+        openAdjacentOriginalPageAction: ((URL) -> Void)? = nil,
         router: Binding<AppRouter>
     ) {
         var preparedSession = session
@@ -59,7 +62,8 @@ public struct ReaderView: View {
         self.dismissAction = dismissAction
         self.viewOriginalPageAction = viewOriginalPageAction
         self.backAction = backAction
-        self.navigateAdjacentChapterAction = navigateAdjacentChapterAction
+        self.adjacentSessionDidChange = adjacentSessionDidChange
+        self.openAdjacentOriginalPageAction = openAdjacentOriginalPageAction
         self.chapterAssetCache = chapterAssetCache
         self._router = router
     }
@@ -134,6 +138,11 @@ public struct ReaderView: View {
                     isSaveStatePickerPresented = false
                 }
             )
+        }
+        .onDisappear {
+            adjacentNavigationTask?.cancel()
+            adjacentNavigationTask = nil
+            viewModel.cancelAdjacentNavigation()
         }
     }
 
@@ -288,7 +297,7 @@ public struct ReaderView: View {
                     }
                 }
                 .frame(minWidth: 96, alignment: .leading)
-                .disabled(!viewModel.canNavigatePrevious || viewModel.adjacentLoadState != .idle)
+                .disabled(!viewModel.canNavigatePrevious || viewModel.isAdjacentLoading)
 
                 Spacer()
 
@@ -298,6 +307,7 @@ public struct ReaderView: View {
                     .truncationMode(.tail)
                     .frame(maxWidth: 150)
                     .accessibilityLabel(viewModel.currentChapterAccessibilityLabel)
+                    .accessibilityIdentifier("reader.chapter.label")
 
                 Spacer()
 
@@ -312,17 +322,44 @@ public struct ReaderView: View {
                     }
                 }
                 .frame(minWidth: 96, alignment: .trailing)
-                .disabled(!viewModel.canNavigateNext || viewModel.adjacentLoadState != .idle)
+                .disabled(!viewModel.canNavigateNext || viewModel.isAdjacentLoading)
             }
             .font(ToonEdgeTypography.caption)
             .buttonStyle(.plain)
 
-            if let message = viewModel.adjacentFailureMessage {
-                Text(message)
-                    .font(ToonEdgeTypography.caption)
-                    .foregroundStyle(ToonEdgeColor.textSecondary)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            if let failure = viewModel.adjacentFailure {
+                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                    Text(failure.message)
+                        .font(ToonEdgeTypography.caption)
+                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: ToonEdgeSpacing.medium) {
+                        Button("Retry") {
+                            startAdjacentNavigation {
+                                await viewModel.retryAdjacentChapter(
+                                    libraryLifecycleService: libraryLifecycleService,
+                                    adjacentLoader: adjacentLoader
+                                )
+                            }
+                        }
+                        .accessibilityIdentifier("reader.adjacent.retry")
+
+                        if let targetURL = failure.targetURL {
+                            Button("Open Original") {
+                                if let openAdjacentOriginalPageAction {
+                                    openAdjacentOriginalPageAction(targetURL)
+                                } else {
+                                    router.openOriginalPage(targetURL)
+                                }
+                            }
+                            .accessibilityIdentifier("reader.adjacent.openOriginal")
+                        }
+                    }
+                    .font(ToonEdgeTypography.caption.weight(.semibold))
+                    .buttonStyle(.borderless)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             HStack(spacing: ToonEdgeSpacing.medium) {
@@ -354,20 +391,27 @@ public struct ReaderView: View {
     }
 
     private func navigate(_ direction: ReaderChapterDirection) {
-        if let navigateAdjacentChapterAction {
-            let chapter = direction == .previous ? viewModel.session.previousChapter : viewModel.session.nextChapter
-            guard let chapter else { return }
-            navigateAdjacentChapterAction(chapter)
-            return
-        }
-
-        Task {
+        startAdjacentNavigation {
             await viewModel.navigateAdjacentChapter(
                 direction,
                 libraryLifecycleService: libraryLifecycleService,
                 adjacentLoader: adjacentLoader
             )
-            router.presentReader(viewModel.session)
+        }
+    }
+
+    private func startAdjacentNavigation(
+        _ operation: @escaping @MainActor () async -> Bool
+    ) {
+        adjacentNavigationTask?.cancel()
+        adjacentNavigationTask = Task { @MainActor in
+            let succeeded = await operation()
+            guard succeeded, !Task.isCancelled else { return }
+            if let adjacentSessionDidChange {
+                adjacentSessionDidChange(viewModel.session)
+            } else {
+                router.presentReader(viewModel.session)
+            }
         }
     }
 

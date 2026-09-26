@@ -53,6 +53,9 @@ struct ToonEdgeAppEntry: App {
             dependencies.cacheMetadataService = MockCacheMetadataService(entries: entries)
             dependencies.cacheStorageMeasurementService = nil
         }
+        if arguments.contains("-seedAdjacentFailureReader") {
+            dependencies.adjacentReaderSessionLoader = UITestAdjacentFailureLoader()
+        }
         return dependencies
     }
 
@@ -63,6 +66,9 @@ struct ToonEdgeAppEntry: App {
            arguments.indices.contains(marker + 1) {
             return AppRouter(presentedBrowser: .url(arguments[marker + 1]))
         }
+        if arguments.contains("-uiTesting"), arguments.contains("-seedAdjacentFailureReader") {
+            return AppRouter(presentedReader: adjacentFailureFixtureSession)
+        }
         guard arguments.contains("-seedOfflineReader") else {
             return AppRouter()
         }
@@ -70,6 +76,48 @@ struct ToonEdgeAppEntry: App {
             ? uncachedOfflineFixtureSession
             : offlineFixtureSession
         return AppRouter(presentedReader: session)
+    }
+}
+
+private let adjacentFailureFixtureTargetURL = URL(string: "https://fixture.example/series/chapter-2")!
+
+private let adjacentFailureFixtureSession: MockReaderSession = {
+    var session = MockReaderSession(
+        seriesTitle: "Adjacent Failure Fixture",
+        chapterTitle: "Chapter 1",
+        sourceURL: URL(string: "https://fixture.example/series/chapter-1")!,
+        imageURLs: [URL(string: "https://images.example.test/adjacent/001.png")!]
+    )
+    session.nextChapter = MockChapter(title: "Chapter 2", sourceURL: adjacentFailureFixtureTargetURL)
+    return session
+}()
+
+private actor UITestAdjacentFailureLoader: AdjacentReaderSessionLoading {
+    private var attemptCount = 0
+
+    func loadAdjacentReaderSession(
+        from url: URL,
+        context: AdjacentReaderSessionLoadContext
+    ) async throws -> MockReaderSession {
+        attemptCount += 1
+        if attemptCount == 1 {
+            throw AdjacentReaderSessionLoadError(
+                reason: .challengeOrRateLimit,
+                targetURL: url,
+                confidence: .low,
+                parserPath: .browserSessionProfile,
+                challengeSignals: ["http-status:429"]
+            )
+        }
+
+        var session = MockReaderSession(
+            seriesTitle: context.currentSession.seriesTitle,
+            chapterTitle: "Chapter 2",
+            sourceURL: url,
+            imageURLs: [URL(string: "https://images.example.test/adjacent/002.png")!]
+        )
+        session.launchOrigin = context.currentSession.launchOrigin
+        return session
     }
 }
 

@@ -3,6 +3,115 @@ import Testing
 @testable import ToonEdgeAppCore
 
 @MainActor
+@Test func adjacentLoaderReturnsTypedChallengeAndRateLimitFailure() async throws {
+    let sourceURL = URL(string: "https://example.com/chapter-2?session=secret")!
+    let analysis = DetectionPageAnalysis(
+        pageURL: sourceURL,
+        title: "Just a moment...",
+        documentHeight: 700,
+        viewportWidth: 390,
+        images: [],
+        challengeSignals: ["http-status:429", "challenge-platform-script"]
+    )
+    let diagnostics = RecordingAdjacentLoadDiagnosticsLogger()
+    let loader = AdjacentReaderSessionLoader(
+        detector: GenericChapterDetector(),
+        pageLoader: StubAdjacentPageLoader.analysis(analysis),
+        diagnosticsLogger: diagnostics
+    )
+
+    let error = await capturedAdjacentLoadError(loader: loader, url: sourceURL)
+    let event = try #require(await diagnostics.events.first)
+
+    #expect(error?.reason == .challengeOrRateLimit)
+    #expect(error?.targetURL == sourceURL)
+    #expect(event.direction == .next)
+    #expect(event.reason == .challengeOrRateLimit)
+    #expect(event.targetHost == "example.com")
+    #expect(event.challengeSignals == ["http-status:429", "challenge-platform-script"])
+    #expect(event.parserPath == .genericHeuristic)
+}
+
+@MainActor
+@Test func adjacentLoaderReturnsTypedTimeoutFailure() async throws {
+    let sourceURL = URL(string: "https://example.com/chapter-2")!
+    let loader = AdjacentReaderSessionLoader(
+        detector: GenericChapterDetector(),
+        pageLoader: StubAdjacentPageLoader.failure(URLError(.timedOut))
+    )
+
+    let error = await capturedAdjacentLoadError(loader: loader, url: sourceURL)
+
+    #expect(error?.reason == .timeout)
+    #expect(error?.targetURL == sourceURL)
+}
+
+@MainActor
+@Test func adjacentLoaderDoesNotBypassStaticRateLimitFixture() async throws {
+    let sourceURL = URL(string: "https://example.com/chapter-2")!
+    let loader = AdjacentReaderSessionLoader(
+        detector: GenericChapterDetector(),
+        pageLoader: StubAdjacentPageLoader.failure(URLError(.cannotConnectToHost)),
+        htmlLoader: StubAdjacentHTMLLoader(
+            html: """
+            <html>
+              <head><title>Too Many Requests</title></head>
+              <body>HTTP 429 — rate limit exceeded. Try again later.</body>
+            </html>
+            """
+        )
+    )
+
+    let error = await capturedAdjacentLoadError(loader: loader, url: sourceURL)
+
+    #expect(error?.reason == .challengeOrRateLimit)
+    #expect(error?.challengeSignals == ["rate-limit-copy"])
+}
+
+@Test func adjacentHTTPResponseClassifiesChallengeBodiesBeforeGenericHTTPFailure() {
+    #expect(
+        AdjacentChapterHTTPResponseClassifier.failureReason(
+            statusCode: 403,
+            html: "<html><title>Just a moment...</title><script src=\"/challenge-platform/x.js\"></script></html>"
+        ) == .challengeOrRateLimit
+    )
+    #expect(
+        AdjacentChapterHTTPResponseClassifier.failureReason(
+            statusCode: 503,
+            html: "<html><body>Rate limit exceeded. Try again later.</body></html>"
+        ) == .challengeOrRateLimit
+    )
+    #expect(
+        AdjacentChapterHTTPResponseClassifier.failureReason(
+            statusCode: 404,
+            html: "<html><body>Not found</body></html>"
+        ) == .unavailable
+    )
+}
+
+@MainActor
+@Test func adjacentLoaderDoesNotUseStaticFallbackToBypassChallengePage() async throws {
+    let sourceURL = URL(string: "https://example.com/chapter-2")!
+    let challenge = DetectionPageAnalysis(
+        pageURL: sourceURL,
+        title: "Just a moment...",
+        documentHeight: 700,
+        viewportWidth: 390,
+        images: [],
+        challengeSignals: ["challenge-platform-script"]
+    )
+    let loader = AdjacentReaderSessionLoader(
+        detector: GenericChapterDetector(),
+        pageLoader: StubAdjacentPageLoader.analysis(challenge),
+        htmlLoader: StubAdjacentHTMLLoader(html: vortexChapterHTML(pageNumberCount: 5))
+    )
+
+    let error = await capturedAdjacentLoadError(loader: loader, url: sourceURL)
+
+    #expect(error?.reason == .challengeOrRateLimit)
+}
+
+@MainActor
 @Test func adjacentLoaderRejectsLowConfidenceDetectionResult() async throws {
     let sourceURL = URL(string: "https://example.com/chapter-2")!
     let detector = StubChapterDetector(
@@ -20,12 +129,11 @@ import Testing
         pageLoader: StubAdjacentPageLoader.analysis(.mockLowConfidencePage(url: sourceURL))
     )
 
-    await #expect(throws: AdjacentReaderSessionLoadError.unavailable) {
-        _ = try await loader.loadAdjacentReaderSession(
-            from: sourceURL,
-            context: AdjacentReaderSessionLoadContext(currentSession: .sample, direction: .next)
-        )
-    }
+    let error = await capturedAdjacentLoadError(loader: loader, url: sourceURL)
+
+    #expect(error?.reason == .lowConfidence)
+    #expect(error?.targetURL == sourceURL)
+    #expect(error?.confidence == .low)
 }
 
 @MainActor
@@ -199,12 +307,9 @@ import Testing
         pageLoader: StubAdjacentPageLoader.analysis(.mockHighConfidencePage(url: sourceURL))
     )
 
-    await #expect(throws: AdjacentReaderSessionLoadError.unavailable) {
-        _ = try await loader.loadAdjacentReaderSession(
-            from: sourceURL,
-            context: AdjacentReaderSessionLoadContext(currentSession: .sample, direction: .next)
-        )
-    }
+    let error = await capturedAdjacentLoadError(loader: loader, url: sourceURL)
+
+    #expect(error?.reason == .nonViableImages)
 }
 
 @MainActor
@@ -225,12 +330,9 @@ import Testing
         pageLoader: StubAdjacentPageLoader.analysis(.mockHighConfidencePage(url: sourceURL))
     )
 
-    await #expect(throws: AdjacentReaderSessionLoadError.unavailable) {
-        _ = try await loader.loadAdjacentReaderSession(
-            from: sourceURL,
-            context: AdjacentReaderSessionLoadContext(currentSession: .sample, direction: .next)
-        )
-    }
+    let error = await capturedAdjacentLoadError(loader: loader, url: sourceURL)
+
+    #expect(error?.reason == .nonViableImages)
 }
 
 private struct StubChapterDetector: ChapterPageDetecting {
@@ -260,6 +362,32 @@ private struct StubAdjacentHTMLLoader: AdjacentChapterHTMLLoading {
 
     func loadHTML(from url: URL) async throws -> String {
         html
+    }
+}
+
+private actor RecordingAdjacentLoadDiagnosticsLogger: AdjacentReaderSessionLoadDiagnosticsLogging {
+    private(set) var events: [AdjacentReaderSessionLoadDiagnostic] = []
+
+    func log(_ diagnostic: AdjacentReaderSessionLoadDiagnostic) {
+        events.append(diagnostic)
+    }
+}
+
+@MainActor
+private func capturedAdjacentLoadError(
+    loader: AdjacentReaderSessionLoader,
+    url: URL
+) async -> AdjacentReaderSessionLoadError? {
+    do {
+        _ = try await loader.loadAdjacentReaderSession(
+            from: url,
+            context: AdjacentReaderSessionLoadContext(currentSession: .sample, direction: .next)
+        )
+        return nil
+    } catch let error as AdjacentReaderSessionLoadError {
+        return error
+    } catch {
+        return nil
     }
 }
 
