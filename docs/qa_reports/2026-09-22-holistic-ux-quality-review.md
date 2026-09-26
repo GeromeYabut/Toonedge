@@ -262,6 +262,14 @@ The current `app/Tests/ToonEdgeAppCoreTests/` suite has broad unit coverage for 
 | P2 | UI/visual | Light/dark mode, increased contrast, 16e and Pro Max | Text remains readable, cards do not clip, controls meet contrast and minimum target sizes |
 | P2 | Integration — Library | Delayed local snapshot with seven titles | Loading indicator/skeleton appears; zero-title empty state is never shown before the load completes |
 
+## 2026-09-26 release-hardening addendum
+
+- DEF-020 numeric adjacency, DEF-021 authoritative Continue targeting, and DEF-022 typed adjacent-load failures are implemented and verified. DEF-036 remains open because the live Vortex page did not provide a viable final direct-load control.
+- Final package gate: 345 tests passed. Final complete UI gates: 9/9 on iPhone 16e and 9/9 on iPhone 16 Pro Max. The exact required iPhone 16e build succeeded.
+- Settings update success/no-update/failure now has deterministic simulator coverage. Protected-site policy, offline retention, deep Downloads reachability, adjacent Retry/Open Original, and accessibility text-size navigation remain green.
+- Remaining manual release items are a literal spoken VoiceOver/focus-restoration pass and a single 40-panel end-to-end transient-failure traversal. ToonEdge also continues to force its documented dark appearance under system Light mode.
+- Full command, result-bundle, live-site, safety, and limitation details are recorded in [the 2026-09-26 evidence ledger](../qa_evidence/2026-09-26-reader-release-hardening.md).
+
 ## Recommended next slices
 
 1. **Restore launch-site policy and add policy tests.** Mark WEBTOON and protected GlobalComix browser-only, suppress CTA/auto-open, and lock the PRD mapping into `DetectionEngineTests`.

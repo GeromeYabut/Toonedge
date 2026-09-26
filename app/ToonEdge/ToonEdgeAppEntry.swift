@@ -56,6 +56,19 @@ struct ToonEdgeAppEntry: App {
         if arguments.contains("-seedAdjacentFailureReader") {
             dependencies.adjacentReaderSessionLoader = UITestAdjacentFailureLoader()
         }
+        if arguments.contains("-seedUpdateSuccess") {
+            dependencies.updateRefreshService = MockLibraryUpdateRefreshService(
+                result: LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 1, failedCount: 0)
+            )
+        } else if arguments.contains("-seedUpdateFailure") {
+            dependencies.updateRefreshService = MockLibraryUpdateRefreshService(
+                result: LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 0, failedCount: 2)
+            )
+        } else if arguments.contains("-seedUpdateNoChange") {
+            dependencies.updateRefreshService = MockLibraryUpdateRefreshService(
+                result: LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 0, failedCount: 0)
+            )
+        }
         return dependencies
     }
 

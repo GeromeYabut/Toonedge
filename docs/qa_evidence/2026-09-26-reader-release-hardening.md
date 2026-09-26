@@ -62,3 +62,38 @@
 - Result: 2 UI tests passed, 0 failures. The fixture presents challenge/rate-limit feedback, exposes Retry and Open Original, performs no automatic retry, proves the explicit backed-off retry advances the Reader to Chapter 2, and routes Open Original to Browser.
 - Latest result bundle path: `/private/tmp/toonedge-def022-derived/Logs/Test/Test-ToonEdge-2026.09.26_09-14-57--0700.xcresult`.
 - Xcode reported a post-test result-bundle import/CAS warning even though the selected tests succeeded. CI should publish the `.xcresult` directory immediately and separately retain the raw `xcodebuild` log so successful test evidence survives partial result-bundle import failures.
+
+## Release-hardening verification
+
+### Deterministic journeys
+
+- Focused command covering long vertical detection, reader-tagged images before dimensions are available, one transient image timeout followed by success, retained-cache deletion with measured-summary recalculation, Settings success/no-update/failure feedback, protected-reader suppression, and View Original routing: 9 tests passed, 0 failures.
+- The Settings simulator journey was initially RED: the success and failure launches both returned the default `No new chapters found.` result. Test-only launch services were added for success, no-change, and failure; the same UI journey then passed all three visible result messages.
+- Cache deletion/recalculation is covered at the file-backed storage layer. The UI suites also traverse a 20-entry Downloads list and verify item-specific removal controls, but the final run did not delete a real retained file through the UI.
+- Long-chapter behavior is covered by the delayed-dimension detector, placeholder/progress, ordered retention, and transient image retry regressions. A single 40-panel end-to-end simulator traversal with one injected failure was not completed and remains a release-risk item.
+
+### Simulator and build gates
+
+- Final `swift test --package-path app --jobs 1`: 345 tests passed, 0 failures.
+- Complete ToonEdgeUITests, iPhone 16e `4582CDE9-27DB-4669-86AC-0631C1D7F2ED`: 9 tests passed, 0 failures. Result bundle: `/private/tmp/toonedge-final-ui-16e/Logs/Test/Test-ToonEdge-2026.09.26_12-10-50--0700.xcresult`.
+- Complete ToonEdgeUITests, iPhone 16 Pro Max `29E33EEE-8A11-457F-8F7F-BDF2D44A9FE4`: 9 tests passed, 0 failures. Result bundle: `/private/tmp/toonedge-final-ui-pro-max/Logs/Test/Test-ToonEdge-2026.09.26_12-10-50--0700.xcresult`.
+- Exact required iPhone 16e Debug build using `/private/tmp/toonedge-next-hardening-derived`: `** BUILD SUCCEEDED **`.
+- CI recommendation: retain both final `.xcresult` bundles plus raw `xcodebuild` logs as durable artifacts; do not rely on `/private/tmp` surviving the host job.
+
+### Appearance and accessibility
+
+- Safe Home screenshots were inspected in system Light, system Dark, and Dark with Increase Contrast on iPhone 16e. Text, cards, and controls remained readable and unclipped; the simulator was restored to its original Light/normal-contrast state afterward.
+- ToonEdge intentionally applies `.preferredColorScheme(.dark)` and fixed dark design tokens, so system Light mode still renders the dark ToonEdge palette. This is consistent with the existing dark-chrome contract but is not adaptive Light-mode support.
+- Both final UI suites exercise Home search, all four tabs at accessibility text size, Downloads depth, Reader chrome/failure actions, and Settings controls on compact and large devices. Source/test review confirms unique labels for the exercised icon-only controls.
+- A literal spoken VoiceOver traversal and focus-restoration pass across Home, Browser CTA, Reader, Series Detail, Downloads, and Settings was not completed by the available automation. This remains a manual release checklist item; the automated accessibility/hittability results are supporting evidence, not a substitute.
+
+### Live-site and policy results
+
+- Live Vortex Next/Previous could not be exercised because the final direct and in-site chapter controls both remained low confidence with one viable candidate. DEF-036 therefore remains open; deterministic route and adjacent-loader fixtures pass.
+- WEBTOON and protected GlobalComix remain `.browserOnly`; protected-reader fixture analysis remains low confidence and cannot produce a Clean Mode CTA or Reader presentation.
+- Adjacent success/failure back routing and explicit Open Original behavior pass unit and UI coverage. The failure UI preserves the safe adjacent target and opens Browser without retry looping.
+
+### Protected evidence and device safety
+
+- The three protected screenshots remain untracked and were never staged. Final SHA-256 values: `7d2afc1a38bdf99c1899a2704c16b80df106cf855c25fe818e80f7cbdfb688f8`, `56ec7f3cadc27e13cfe6525ec805b6321c64d6e283c60345cd41757df71e000a`, and `49ae9b28d92dfb7bbbd5f69e27f77f5fe117724085163e22f210bc10d4175db5` in the requested file order.
+- The shared iPhone 16 Pro `04F65B71-EEB9-4085-BFBD-8B7406E480A2` was never used as a build, install, launch, boot, shutdown, erase, or UI-test destination.
