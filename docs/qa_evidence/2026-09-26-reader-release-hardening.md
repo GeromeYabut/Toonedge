@@ -24,3 +24,12 @@
 - No challenge signal, authentication bypass, protected-viewer interaction, or aggressive retry loop was used.
 - Result bundles from diagnostic runs are under `/private/tmp/toonedge-live-vortex-derived/Logs/Test/`; these are temporary host artifacts and should be retained by CI when live compatibility checks are run.
 - Conclusion: deterministic app behavior is improved, but DEF-036 remains open because live in-site/direct Reader parity could not be verified against a viable final control.
+
+## DEF-020 — Numeric Reader adjacency
+
+- Existing checkpoint implementation was inspected before changing status. Numeric adjacency uses canonical chapter identity plus `ChapterURLInference`, prefers an exact stored adjacent payload, and does not fall through to sparse Recent ordering.
+- Focused command: `swift test --package-path app --jobs 1 --filter 'swiftDataRepositoryDerivesNumericAdjacentReaderControlsForSparseChapterLists|swiftDataRepositoryPrefersStoredNumericAdjacentChapterWhenPayloadExists|swiftDataRepositoryDoesNotJumpToSparseStoredChapterWhenNumericAdjacentURLIsUnsafe'`
+- Result: 3 tests passed, 0 failures.
+- Sparse chapters 1, 155, and 169 resolve chapter 155 to previous 154 and next 156; an unsafe source pattern resolves neither adjacent target instead of jumping to 1 or 169.
+- Full gate after revalidation: `swift test --package-path app --jobs 1` — 335 tests passed, 0 failures.
+- The exact sparse-chapter journey is repository/integration covered; a dedicated simulator fixture for chapters 1/155/169 does not currently exist. Live Vortex navigation was not used as proof because DEF-036’s final control was non-viable.

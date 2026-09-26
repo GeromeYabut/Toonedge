@@ -941,7 +941,7 @@ After reading multiple chapters in a series and returning from Reader to Series 
 
 ## DEF-020 — Reader Next can jump to the next recent chapter instead of the next numeric chapter
 
-**Status:** Open  
+**Status:** Implemented (verified 2026-09-26)
 **Severity:** High  
 **Reported:** 2026-05-28  
 **Area:** Reader adjacent chapter navigation, Series Detail recent ordering, generated chapter range routing
@@ -987,6 +987,13 @@ On the test toon `Past Life Returner`, Reader `Next` can jump from chapter 155 t
 - Recent activity order does not affect Reader adjacent chapter selection.
 - Generated `All` rows and Reader adjacent controls share the same safe numeric URL inference rules where practical.
 - Regression coverage proves sparse recent chapters do not become adjacent Reader targets.
+
+### Resolution
+
+- The checkpoint implementation already resolves numeric adjacency in `SwiftDataLibraryRepository` from the canonical numeric chapter identity instead of Recent ordering.
+- An exact stored chapter at `current ± 1` is preferred. Otherwise `ChapterURLInference` supplies a target only when the current source URL has a supported numeric pattern.
+- Sparse stored chapters 1, 155, and 169 now produce previous 154 and next 156 for chapter 155. Unsafe URL shapes produce no adjacent target instead of falling through to 1 or 169.
+- Generated chapter rows and Reader adjacency reuse the same conservative URL-inference rules.
 
 ## DEF-019 — Same source series can appear twice in Library Recent
 
