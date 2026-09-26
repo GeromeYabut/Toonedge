@@ -617,6 +617,84 @@ import Testing
 }
 
 @MainActor
+@Test func seriesDetailContinueUsesDiscoveredChapterThreeImmediatelyAndAfterRepositoryReconstruction() async throws {
+    let schema = Schema([
+        StoredSeries.self,
+        StoredChapter.self,
+        StoredProgress.self,
+        StoredSearchHistory.self,
+        StoredRecentReading.self
+    ])
+    let container = try ModelContainer(
+        for: schema,
+        configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+    )
+    let repository = SwiftDataLibraryRepository(
+        modelContext: container.mainContext,
+        modelContainer: container
+    )
+    let seriesID = UUID()
+    let chapter1ID = UUID()
+    let chapter3ID = UUID()
+    let seriesURL = URL(string: "https://example.com/past-life-returner")!
+    let chapter1URL = URL(string: "https://example.com/past-life-returner/chapter-1")!
+    let chapter3URL = URL(string: "https://example.com/past-life-returner/chapter-3")!
+
+    try await repository.addToLibrary(
+        .mock(
+            id: seriesID,
+            title: "Past Life Returner",
+            canonicalURL: seriesURL,
+            chapters: [
+                .mock(
+                    id: chapter1ID,
+                    chapterLabel: "1",
+                    sourceURL: chapter1URL,
+                    imageURLs: [URL(string: "https://img.example.com/chapter-1.jpg")!]
+                )
+            ]
+        ),
+        context: .reader
+    )
+    try await repository.recordReadingProgress(
+        ReaderProgress(currentImageIndex: 0, totalImageCount: 5),
+        forChapterID: chapter1ID,
+        at: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+    try await repository.recordRecentReading(
+        .mockRecent(
+            seriesID: seriesID,
+            chapterID: chapter3ID,
+            seriesTitle: "Past Life Returner",
+            seriesURL: seriesURL,
+            chapterLabel: "3",
+            sourceURL: chapter3URL,
+            readAt: Date(timeIntervalSince1970: 1_700_001_000)
+        )
+    )
+
+    let immediateDetail = try #require(await repository.seriesDetail(for: seriesID))
+    let immediateTarget = try #require(await repository.continueReadingTarget(for: seriesID))
+
+    #expect(immediateDetail.primaryActionTitle == "Continue Chapter 3")
+    #expect(immediateDetail.primaryChapter?.id == chapter3ID)
+    #expect(immediateTarget.chapterID == chapter3ID)
+    #expect(immediateTarget.sourceURL == chapter3URL)
+
+    let reconstructedRepository = SwiftDataLibraryRepository(
+        modelContext: container.mainContext,
+        modelContainer: container
+    )
+    let reconstructedDetail = try #require(await reconstructedRepository.seriesDetail(for: seriesID))
+    let reconstructedTarget = try #require(await reconstructedRepository.continueReadingTarget(for: seriesID))
+
+    #expect(reconstructedDetail.primaryActionTitle == "Continue Chapter 3")
+    #expect(reconstructedDetail.primaryChapter?.id == chapter3ID)
+    #expect(reconstructedTarget.chapterID == chapter3ID)
+    #expect(reconstructedTarget.sourceURL == chapter3URL)
+}
+
+@MainActor
 @Test func librarySummaryResumeTargetMatchesSeriesDetailPrimaryChapterWithoutDetailSnapshotConstruction() async throws {
     let repository = try makeRepository()
     let seriesID = UUID()

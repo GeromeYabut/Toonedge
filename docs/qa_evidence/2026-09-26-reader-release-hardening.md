@@ -33,3 +33,11 @@
 - Sparse chapters 1, 155, and 169 resolve chapter 155 to previous 154 and next 156; an unsafe source pattern resolves neither adjacent target instead of jumping to 1 or 169.
 - Full gate after revalidation: `swift test --package-path app --jobs 1` — 335 tests passed, 0 failures.
 - The exact sparse-chapter journey is repository/integration covered; a dedicated simulator fixture for chapters 1/155/169 does not currently exist. Live Vortex navigation was not used as proof because DEF-036’s final control was non-viable.
+
+## DEF-021 — Authoritative Continue target
+
+- Added an exact chapter 1/chapter 3 persistence regression covering the immediate Series Detail snapshot and a new repository instance over the same SwiftData store.
+- The first RED run failed at repository reconstruction because the test harness used the non-persistent fast-store mode. Switching the reconstruction test to actual in-memory SwiftData I/O made the relaunch boundary valid; no production workaround was added.
+- Focused command: `swift test --package-path app --jobs 1 --filter 'seriesDetailContinueUsesDiscoveredChapterThreeImmediatelyAndAfterRepositoryReconstruction|swiftDataRepositoryAddsRecentAdjacentChapterToSavedSeriesDetail|swiftDataRepositoryReconcilesRecentReadingWithSavedChapterContinueTarget'`
+- Result: 3 tests passed, 0 failures.
+- Verified outcomes: `Continue Chapter 3`, chapter 3 URL/ID on immediate return, the same target after repository reconstruction, and persisted Continue targeting for a chapter discovered through adjacent Reader navigation.
