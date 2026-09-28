@@ -723,6 +723,60 @@ import Testing
     #expect(policy.clearsCachedDetail)
 }
 
+@MainActor
+@Test func failedSeriesSavePreservesDetailAndOffersRetry() async {
+    let detail = SeriesDetailSnapshot.mock(chapters: [ChapterSummary.mock()])
+    let service = FailingSeriesDetailLifecycleService(failing: .save)
+    let model = SeriesDetailMutationModel(service: service, currentDetail: detail)
+
+    await model.save(detail, state: .planned)
+
+    #expect(model.currentDetail == detail)
+    #expect(model.failedOperation == .save)
+    #expect(model.canRetry)
+}
+
+@MainActor
+@Test func failedSeriesStateUpdatePreservesDetailAndOffersRetry() async {
+    let detail = SeriesDetailSnapshot.mock(chapters: [ChapterSummary.mock()])
+    let service = FailingSeriesDetailLifecycleService(failing: .stateUpdate)
+    let model = SeriesDetailMutationModel(service: service, currentDetail: detail)
+
+    await model.updateCollectionState(.completed)
+
+    #expect(model.currentDetail == detail)
+    #expect(model.failedOperation == .stateUpdate)
+    #expect(model.canRetry)
+}
+
+@MainActor
+@Test func failedSeriesRemovalPreservesDetailAndOffersRetry() async {
+    let detail = SeriesDetailSnapshot.mock(chapters: [ChapterSummary.mock()])
+    let service = FailingSeriesDetailLifecycleService(failing: .remove)
+    let model = SeriesDetailMutationModel(service: service, currentDetail: detail)
+
+    await model.removeFromLibrary()
+
+    #expect(model.currentDetail == detail)
+    #expect(model.failedOperation == .remove)
+    #expect(model.canRetry)
+}
+
+@MainActor
+@Test func seriesMutationRetryRunsFailedOperationOnceAndClearsFailure() async {
+    let detail = SeriesDetailSnapshot.mock(chapters: [ChapterSummary.mock()])
+    let service = FailingSeriesDetailLifecycleService(failing: .remove, failureCount: 1)
+    let model = SeriesDetailMutationModel(service: service, currentDetail: detail)
+
+    await model.removeFromLibrary()
+    await model.retry()
+
+    #expect(await service.attemptCount(for: .remove) == 2)
+    #expect(model.currentDetail == nil)
+    #expect(model.failedOperation == nil)
+    #expect(!model.canRetry)
+}
+
 @Test func libraryDetailPrewarmPolicyDoesNotAutomaticallyPrewarmVisibleRows() {
     let policy = LibraryDetailPrewarmPolicy()
 
@@ -880,6 +934,120 @@ import Testing
     #expect(ChapterReadState.inProgress(progressPercent: 0.4).displayLabel == "40%")
     #expect(ChapterReadState.read.displayLabel == "Read")
     #expect(ChapterSummary.mock(isDownloaded: true).downloadLabel == "Downloaded")
+}
+
+@Test func inProgressChapterHasOnePrimaryStateAndPercent() {
+    let presentation = ChapterRowPresentation(
+        readState: .inProgress(progressPercent: 0.42),
+        progressPercent: 0.42,
+        isNew: false,
+        isDownloaded: false,
+        isOpenable: true
+    )
+
+    #expect(presentation.primaryStateText == "In Progress, 42%")
+    #expect(presentation.showsReadCheckmark == false)
+}
+
+@Test func chapterRowsSeparateReadingUpdateAndRetentionStates() {
+    let newChapter = ChapterRowPresentation(
+        readState: .new,
+        progressPercent: 0,
+        isNew: true,
+        isDownloaded: true,
+        isOpenable: true
+    )
+    let unread = ChapterRowPresentation(
+        readState: .unread,
+        progressPercent: 0,
+        isNew: false,
+        isDownloaded: false,
+        isOpenable: true
+    )
+    let read = ChapterRowPresentation(
+        readState: .read,
+        progressPercent: 1,
+        isNew: false,
+        isDownloaded: false,
+        isOpenable: true
+    )
+    let unavailable = ChapterRowPresentation(
+        readState: .unread,
+        progressPercent: 0,
+        isNew: false,
+        isDownloaded: true,
+        isOpenable: false
+    )
+
+    #expect(newChapter.primaryStateText == "New")
+    #expect(newChapter.showsUpdateMarker)
+    #expect(newChapter.showsRetainedMarker)
+    #expect(unread.primaryStateText == "Unread")
+    #expect(!unread.showsUpdateMarker)
+    #expect(read.primaryStateText == "Read")
+    #expect(read.showsReadCheckmark)
+    #expect(unavailable.primaryStateText == "Unavailable")
+    #expect(unavailable.showsRetainedMarker)
+    #expect(!unavailable.showsReadCheckmark)
+}
+
+@Test func seriesDetailHeaderAdaptsWithoutDuplicatingPrimaryAction() {
+    let compact = SeriesDetailHeaderPresentation(accessibilityText: false)
+    let accessibility = SeriesDetailHeaderPresentation(accessibilityText: true)
+
+    #expect(compact.arrangement == .horizontal)
+    #expect(accessibility.arrangement == .vertical)
+    #expect(compact.primaryActionCount == 1)
+    #expect(accessibility.primaryActionCount == 1)
+    #expect(!compact.usesStatusChip)
+    #expect(accessibility.coverWidth < compact.coverWidth)
+}
+
+@Test func chapterUtilityIsVisibleAndHasEquivalentAccessibleActions() {
+    let utility = ChapterUtilityPresentation(isOpenable: true)
+    let unavailable = ChapterUtilityPresentation(isOpenable: false)
+
+    #expect(utility.isVisible)
+    #expect(utility.minimumHitSize == 44)
+    #expect(utility.actions == [.openOriginal, .retainOffline])
+    #expect(utility.voiceOverActions == utility.actions)
+    #expect(!unavailable.isVisible)
+    #expect(unavailable.actions.isEmpty)
+    #expect(unavailable.voiceOverActions.isEmpty)
+}
+
+@Test func generatedOpenableChapterKeepsPrimaryRouteWithoutExposingUndiscoveredUtilities() {
+    let generated = ChapterUtilityPresentation(
+        isOpenable: true,
+        isGeneratedPlaceholder: true
+    )
+    let discovered = ChapterUtilityPresentation(
+        isOpenable: true,
+        isGeneratedPlaceholder: false
+    )
+
+    #expect(!generated.canOpenOriginal)
+    #expect(!generated.canRetainOffline)
+    #expect(!generated.isVisible)
+    #expect(generated.actions.isEmpty)
+    #expect(discovered.canOpenOriginal)
+    #expect(discovered.canRetainOffline)
+    #expect(discovered.actions == [.openOriginal, .retainOffline])
+}
+
+@Test func chapterPrimaryActionUsesConservativeUtilityPolicyForVoiceOverActions() {
+    let generated = ChapterPrimaryActionPresentation(
+        isOpenable: true,
+        isGeneratedPlaceholder: true
+    )
+    let discovered = ChapterPrimaryActionPresentation(
+        isOpenable: true,
+        isGeneratedPlaceholder: false
+    )
+
+    #expect(generated.isEnabled)
+    #expect(generated.voiceOverActions.isEmpty)
+    #expect(discovered.voiceOverActions == [.openOriginal, .retainOffline])
 }
 
 @Test func homeReadingDashboardPrioritizesCurrentReadingAfterSearch() {
@@ -1344,5 +1512,58 @@ private extension ChapterSummary {
             publishedAt: Date(timeIntervalSince1970: 1_700_000_000),
             lastReadAt: lastReadAt
         )
+    }
+}
+
+private actor FailingSeriesDetailLifecycleService: LibraryLifecycleManaging {
+    enum Operation: Equatable, Sendable {
+        case save
+        case stateUpdate
+        case remove
+    }
+
+    private let failingOperation: Operation
+    private var remainingFailures: Int
+    private var attempts: [Operation: Int] = [:]
+    private var detail: SeriesDetailSnapshot?
+
+    init(failing: Operation, failureCount: Int = .max) {
+        self.failingOperation = failing
+        self.remainingFailures = failureCount
+    }
+
+    func attemptCount(for operation: Operation) -> Int {
+        attempts[operation, default: 0]
+    }
+
+    func homeSnapshot() async -> HomeSnapshot { HomeSnapshot(continueReading: [], recentlyUpdated: [], library: []) }
+    func librarySnapshot() async -> LibrarySnapshot { LibrarySnapshot(series: []) }
+    func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? { detail }
+
+    func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {
+        try failIfNeeded(.save)
+    }
+
+    func removeFromLibrary(seriesID: UUID) async throws {
+        try failIfNeeded(.remove)
+        detail = nil
+    }
+
+    func updateLibraryState(_ state: LibraryCollectionState, for seriesID: UUID) async throws {
+        try failIfNeeded(.stateUpdate)
+    }
+
+    func recordUpdateCheckResult(seriesID: UUID, latestChapterLabel: String?, hasUnreadUpdates: Bool, checkedAt: Date) async throws {}
+    func recordReadingProgress(_ progress: ReaderProgress, forChapterID chapterID: UUID, at date: Date) async throws {}
+    func continueReadingTarget(for seriesID: UUID) async -> ContinueReadingTarget? { nil }
+    func readerSession(forChapterID chapterID: UUID) async -> MockReaderSession? { nil }
+    func readerSession(forSourceURL sourceURL: URL) async -> MockReaderSession? { nil }
+    func isSaved(canonicalURL: URL) async -> Bool { false }
+
+    private func failIfNeeded(_ operation: Operation) throws {
+        attempts[operation, default: 0] += 1
+        guard operation == failingOperation, remainingFailures > 0 else { return }
+        if remainingFailures != .max { remainingFailures -= 1 }
+        throw URLError(.cannotWriteToFile)
     }
 }

@@ -1,6 +1,110 @@
 import Foundation
 import SwiftUI
 
+enum SeriesDetailMutationOperation: Equatable, Sendable {
+    case save
+    case stateUpdate
+    case remove
+}
+
+@MainActor
+final class SeriesDetailMutationModel: ObservableObject {
+    @Published private(set) var currentDetail: SeriesDetailSnapshot?
+    @Published private(set) var failedOperation: SeriesDetailMutationOperation?
+
+    private enum Request: Sendable {
+        case save(SeriesDetailSnapshot, LibraryCollectionState)
+        case stateUpdate(LibraryCollectionState)
+        case remove
+
+        var operation: SeriesDetailMutationOperation {
+            switch self {
+            case .save: .save
+            case .stateUpdate: .stateUpdate
+            case .remove: .remove
+            }
+        }
+    }
+
+    private let service: (any LibraryLifecycleManaging)?
+    private var failedRequest: Request?
+
+    init(service: (any LibraryLifecycleManaging)?, currentDetail: SeriesDetailSnapshot?) {
+        self.service = service
+        self.currentDetail = currentDetail
+    }
+
+    var canRetry: Bool { failedRequest != nil }
+
+    var failureMessage: String? {
+        switch failedOperation {
+        case .save: "Could not save this series."
+        case .stateUpdate: "Could not update the collection state."
+        case .remove: "Could not remove this series."
+        case nil: nil
+        }
+    }
+
+    func setCurrentDetail(_ detail: SeriesDetailSnapshot?) {
+        currentDetail = detail
+    }
+
+    func save(_ detail: SeriesDetailSnapshot, state: LibraryCollectionState) async {
+        await perform(.save(detail, state))
+    }
+
+    func updateCollectionState(_ state: LibraryCollectionState) async {
+        await perform(.stateUpdate(state))
+    }
+
+    func removeFromLibrary() async {
+        await perform(.remove)
+    }
+
+    func retry() async {
+        guard let failedRequest else { return }
+        await perform(failedRequest)
+    }
+
+    private func perform(_ request: Request) async {
+        guard let service, let detail = currentDetail else { return }
+
+        do {
+            switch request {
+            case let .save(snapshot, state):
+                var input = snapshot.libraryInput
+                input.libraryState = state
+                try await service.addToLibrary(input, context: .seriesDetail)
+                currentDetail = await service.seriesDetail(for: snapshot.id) ?? savedSnapshot(snapshot, state: state)
+            case let .stateUpdate(state):
+                try await service.updateLibraryState(state, for: detail.id)
+                currentDetail = await service.seriesDetail(for: detail.id) ?? stateUpdatedSnapshot(detail, state: state)
+            case .remove:
+                try await service.removeFromLibrary(seriesID: detail.id)
+                currentDetail = nil
+            }
+            failedRequest = nil
+            failedOperation = nil
+        } catch {
+            failedRequest = request
+            failedOperation = request.operation
+        }
+    }
+
+    private func savedSnapshot(_ detail: SeriesDetailSnapshot, state: LibraryCollectionState) -> SeriesDetailSnapshot {
+        var updated = detail
+        updated.isSaved = true
+        updated.libraryState = state
+        return updated
+    }
+
+    private func stateUpdatedSnapshot(_ detail: SeriesDetailSnapshot, state: LibraryCollectionState) -> SeriesDetailSnapshot {
+        var updated = detail
+        updated.libraryState = state
+        return updated
+    }
+}
+
 struct SeriesDetailSeedShellLayout: Equatable, Sendable {
     var title: String
     var metadata: String
@@ -60,6 +164,8 @@ struct SeriesDetailView: View {
     @State private var cacheFeedback: CacheActionFeedback?
     @State private var pendingSaveDetail: SeriesDetailSnapshot?
     @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
+    @StateObject private var mutationModel: SeriesDetailMutationModel
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(
         seriesID: UUID,
@@ -75,6 +181,12 @@ struct SeriesDetailView: View {
         self._router = router
         self.onDetailHydrated = onDetailHydrated
         self._detail = State(initialValue: cachedDetail)
+        self._mutationModel = StateObject(
+            wrappedValue: SeriesDetailMutationModel(
+                service: dependencies.libraryLifecycleService,
+                currentDetail: cachedDetail
+            )
+        )
     }
 
     var body: some View {
@@ -135,62 +247,106 @@ struct SeriesDetailView: View {
         }
     }
 
+    @ViewBuilder
     private func hydratedContent(_ detail: SeriesDetailSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
-                header(detail)
-                cacheStatus
-            }
-            .padding(ToonEdgeSpacing.large)
-            .background(ToonEdgeColor.background)
-
-            Divider()
-                .overlay(ToonEdgeColor.border)
-
+        if dynamicTypeSize.isAccessibilitySize {
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
-                        chapterToolbar(detail)
-                        chapterList(detail)
+                    VStack(alignment: .leading, spacing: 0) {
+                        detailHeaderArea(detail)
+
+                        Divider()
+                            .overlay(ToonEdgeColor.border)
+
+                        chapterArea(detail)
                     }
-                    .padding(ToonEdgeSpacing.large)
-                    .padding(.bottom, ToonEdgeSpacing.large)
                 }
                 .task(id: detail.chapterListAnchorID) {
-                    let behavior = SeriesDetailInitialScrollBehavior(anchorID: detail.chapterListAnchorID)
-                    guard behavior.shouldScroll, let anchorID = behavior.anchorID else { return }
-                    await Task.yield()
-                    var transaction = Transaction()
-                    transaction.disablesAnimations = behavior.disablesAnimation
-                    transaction.animation = nil
-                    withTransaction(transaction) {
-                        proxy.scrollTo(anchorID, anchor: .center)
+                    await scrollToInitialChapter(detail, proxy: proxy)
+                }
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                detailHeaderArea(detail)
+
+                Divider()
+                    .overlay(ToonEdgeColor.border)
+
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        chapterArea(detail)
+                    }
+                    .task(id: detail.chapterListAnchorID) {
+                        await scrollToInitialChapter(detail, proxy: proxy)
                     }
                 }
             }
         }
     }
 
+    private func detailHeaderArea(_ detail: SeriesDetailSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
+            header(detail)
+            cacheStatus
+            if let mutationFeedback = mutationModel.failureMessage {
+                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                    TEBanner(title: "Library update failed", message: mutationFeedback, systemImage: "exclamationmark.triangle")
+                    if mutationModel.canRetry {
+                        Button("Retry") {
+                            Task {
+                                await mutationModel.retry()
+                                publishSuccessfulMutationIfAvailable()
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("series-detail.mutation-retry")
+                    }
+                }
+            }
+        }
+        .padding(ToonEdgeSpacing.large)
+        .background(ToonEdgeColor.background)
+    }
+
+    private func chapterArea(_ detail: SeriesDetailSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
+            chapterToolbar(detail)
+            chapterList(detail)
+        }
+        .padding(ToonEdgeSpacing.large)
+        .padding(.bottom, ToonEdgeSpacing.large)
+    }
+
+    private func scrollToInitialChapter(_ detail: SeriesDetailSnapshot, proxy: ScrollViewProxy) async {
+        let behavior = SeriesDetailInitialScrollBehavior(anchorID: detail.chapterListAnchorID)
+        guard behavior.shouldScroll, let anchorID = behavior.anchorID else { return }
+        await Task.yield()
+        var transaction = Transaction()
+        transaction.disablesAnimations = behavior.disablesAnimation
+        transaction.animation = nil
+        withTransaction(transaction) {
+            proxy.scrollTo(anchorID, anchor: .center)
+        }
+    }
+
     private func header(_ detail: SeriesDetailSnapshot) -> some View {
         let layout = SeriesDetailHeaderLayout(snapshot: detail)
+        let presentation = SeriesDetailHeaderPresentation(accessibilityText: dynamicTypeSize.isAccessibilitySize)
         return VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
-            HStack(alignment: .top, spacing: ToonEdgeSpacing.medium) {
-                cover(for: detail)
-                    .frame(width: 96, height: 132)
-
-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
-                    HStack(spacing: ToonEdgeSpacing.small) {
-                        TEChip(detail.status, isActive: detail.hasUnreadUpdates)
-                        TEChip(detail.isSaved ? "Saved" : "Follow")
+            Group {
+                if presentation.arrangement == .vertical {
+                    VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
+                        cover(for: detail)
+                            .frame(width: presentation.coverWidth, height: presentation.coverHeight)
+                        headerText(title: layout.title, metadata: layout.metadata, status: detail.status)
                     }
-
-                    Text(layout.title)
-                        .font(ToonEdgeTypography.title)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(layout.metadata)
-                        .font(ToonEdgeTypography.caption)
-                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                } else {
+                    HStack(alignment: .top, spacing: ToonEdgeSpacing.medium) {
+                        cover(for: detail)
+                            .frame(width: presentation.coverWidth, height: presentation.coverHeight)
+                        headerText(title: layout.title, metadata: layout.metadata, status: detail.status)
+                    }
                 }
             }
 
@@ -203,28 +359,21 @@ struct SeriesDetailView: View {
 
     private func seedShell(_ summary: LibrarySeriesSummary) -> some View {
         let layout = SeriesDetailSeedShellLayout(summary: summary)
+        let presentation = SeriesDetailHeaderPresentation(accessibilityText: dynamicTypeSize.isAccessibilitySize)
         return VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
-            HStack(alignment: .top, spacing: ToonEdgeSpacing.medium) {
-                CachedCoverArtwork(url: layout.coverImageURL) {
-                    MissingCoverView(title: layout.title)
-                }
-                .frame(width: 96, height: 132)
-                .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
-                .overlay(RoundedRectangle(cornerRadius: ToonEdgeRadius.small).stroke(ToonEdgeColor.border))
-
-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
-                    HStack(spacing: ToonEdgeSpacing.small) {
-                        TEChip(layout.status, isActive: layout.hasUnreadUpdates)
-                        TEChip("Saved")
+            Group {
+                if presentation.arrangement == .vertical {
+                    VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
+                        seedCover(layout)
+                            .frame(width: presentation.coverWidth, height: presentation.coverHeight)
+                        headerText(title: layout.title, metadata: layout.metadata, status: layout.status)
                     }
-
-                    Text(layout.title)
-                        .font(ToonEdgeTypography.title)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(layout.metadata)
-                        .font(ToonEdgeTypography.caption)
-                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                } else {
+                    HStack(alignment: .top, spacing: ToonEdgeSpacing.medium) {
+                        seedCover(layout)
+                            .frame(width: presentation.coverWidth, height: presentation.coverHeight)
+                        headerText(title: layout.title, metadata: layout.metadata, status: layout.status)
+                    }
                 }
             }
 
@@ -235,6 +384,31 @@ struct SeriesDetailView: View {
                 }
             }
         }
+    }
+
+    private func headerText(title: String, metadata: String, status: String) -> some View {
+        VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+            Text(status.uppercased())
+                .font(ToonEdgeTypography.caption.weight(.semibold))
+                .foregroundStyle(ToonEdgeColor.textSecondary)
+                .tracking(0.6)
+
+            Text(title)
+                .font(ToonEdgeTypography.title)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(metadata)
+                .font(ToonEdgeTypography.caption)
+                .foregroundStyle(ToonEdgeColor.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func seedCover(_ layout: SeriesDetailSeedShellLayout) -> some View {
+        CachedCoverArtwork(url: layout.coverImageURL) {
+            MissingCoverView(title: layout.title)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
     }
 
     @ViewBuilder
@@ -276,7 +450,7 @@ struct SeriesDetailView: View {
                 } label: {
                     Image(systemName: detail.isSaved ? "bookmark.fill" : "bookmark")
                         .foregroundStyle(ToonEdgeColor.accent)
-                        .frame(width: 40, height: 40)
+                        .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(detail.isSaved ? "Saved series" : "Save series")
@@ -293,15 +467,36 @@ struct SeriesDetailView: View {
         } else {
             VStack(spacing: ToonEdgeSpacing.small) {
                 ForEach(chapters) { chapter in
-                    Button {
-                        open(chapter)
-                    } label: {
-                        ChapterRow(chapter: chapter)
+                    let utility = ChapterUtilityPresentation(
+                        isOpenable: chapter.isOpenable,
+                        isGeneratedPlaceholder: chapter.isGeneratedPlaceholder
+                    )
+                    HStack(spacing: ToonEdgeSpacing.small) {
+                        chapterPrimaryAction(chapter)
+
+                        if utility.isVisible {
+                            Menu {
+                                Button("Open Original Page", systemImage: "safari") {
+                                    openOriginal(chapter)
+                                }
+                                Button("Retain Offline", systemImage: "arrow.down.circle") {
+                                    retain(chapter)
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                                    .frame(width: utility.minimumHitSize, height: utility.minimumHitSize)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Chapter \(chapter.chapterLabel) actions")
+                            .accessibilityIdentifier("series-detail.chapter-actions.\(chapter.id.uuidString)")
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .disabled(!chapter.isOpenable)
                     .contextMenu {
-                        if chapter.isOpenable {
+                        if utility.isVisible {
+                            Button("Open Original Page", systemImage: "safari") {
+                                openOriginal(chapter)
+                            }
                             Button("Retain Offline", systemImage: "arrow.down.circle") {
                                 retain(chapter)
                             }
@@ -310,6 +505,34 @@ struct SeriesDetailView: View {
                     .id(chapter.id)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func chapterPrimaryAction(_ chapter: ChapterSummary) -> some View {
+        let presentation = ChapterPrimaryActionPresentation(
+            isOpenable: chapter.isOpenable,
+            isGeneratedPlaceholder: chapter.isGeneratedPlaceholder
+        )
+        let button = Button {
+            open(chapter)
+        } label: {
+            ChapterRow(chapter: chapter)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .disabled(!presentation.isEnabled)
+
+        if presentation.voiceOverActions.isEmpty {
+            button
+        } else {
+            button
+                .accessibilityAction(named: "Open Original Page") {
+                    openOriginal(chapter)
+                }
+                .accessibilityAction(named: "Retain Offline") {
+                    retain(chapter)
+                }
         }
     }
 
@@ -329,6 +552,7 @@ struct SeriesDetailView: View {
 
     private func publishDetail(_ updatedDetail: SeriesDetailSnapshot?) {
         detail = updatedDetail
+        mutationModel.setCurrentDetail(updatedDetail)
         onDetailHydrated(SeriesDetailCachePolicy(detail: updatedDetail).cachedDetail)
     }
 
@@ -364,12 +588,12 @@ struct SeriesDetailView: View {
     }
 
     private func toggleLibraryMembership(_ detail: SeriesDetailSnapshot) {
-        guard let lifecycleService = dependencies.libraryLifecycleService else { return }
+        guard dependencies.libraryLifecycleService != nil else { return }
 
         Task {
             if detail.isSaved {
-                try? await lifecycleService.removeFromLibrary(seriesID: detail.id)
-                publishDetail(nil)
+                await mutationModel.removeFromLibrary()
+                publishSuccessfulMutationIfAvailable()
             } else {
                 saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
                 pendingSaveDetail = detail
@@ -378,24 +602,26 @@ struct SeriesDetailView: View {
     }
 
     private func confirmSave(_ detail: SeriesDetailSnapshot, state: LibraryCollectionState) {
-        guard let lifecycleService = dependencies.libraryLifecycleService else { return }
+        guard dependencies.libraryLifecycleService != nil else { return }
         pendingSaveDetail = nil
-        var input = detail.libraryInput
-        input.libraryState = state
-
         Task {
-            try? await lifecycleService.addToLibrary(input, context: .seriesDetail)
-            publishDetail(await dependencies.libraryService.seriesDetail(for: detail.id))
+            await mutationModel.save(detail, state: state)
+            publishSuccessfulMutationIfAvailable()
         }
     }
 
     private func updateLibraryState(_ state: LibraryCollectionState) {
-        guard let lifecycleService = dependencies.libraryLifecycleService else { return }
+        guard dependencies.libraryLifecycleService != nil else { return }
 
         Task {
-            try? await lifecycleService.updateLibraryState(state, for: seriesID)
-            publishDetail(await dependencies.libraryService.seriesDetail(for: seriesID))
+            await mutationModel.updateCollectionState(state)
+            publishSuccessfulMutationIfAvailable()
         }
+    }
+
+    private func publishSuccessfulMutationIfAvailable() {
+        guard mutationModel.failedOperation == nil else { return }
+        publishDetail(mutationModel.currentDetail)
     }
 
     private func retain(_ chapter: ChapterSummary) {
@@ -413,6 +639,10 @@ struct SeriesDetailView: View {
             }
         }
     }
+
+    private func openOriginal(_ chapter: ChapterSummary) {
+        router.openOriginalPage(chapter.sourceURL)
+    }
 }
 
 struct SeriesDetailHeaderLayout: Equatable, Sendable {
@@ -426,6 +656,27 @@ struct SeriesDetailHeaderLayout: Equatable, Sendable {
         self.metadata = "\(snapshot.sourceDomain) • \(snapshot.chaptersRead)/\(snapshot.totalKnownChapters ?? snapshot.chapters.count) chapters"
         self.synopsisText = nil
         self.primaryActionTitle = snapshot.primaryActionTitle
+    }
+}
+
+struct SeriesDetailHeaderPresentation: Equatable, Sendable {
+    enum Arrangement: Equatable, Sendable {
+        case horizontal
+        case vertical
+    }
+
+    var arrangement: Arrangement
+    var coverWidth: CGFloat
+    var coverHeight: CGFloat
+    var primaryActionCount: Int
+    var usesStatusChip: Bool
+
+    init(accessibilityText: Bool) {
+        self.arrangement = accessibilityText ? .vertical : .horizontal
+        self.coverWidth = accessibilityText ? 64 : 80
+        self.coverHeight = accessibilityText ? 88 : 112
+        self.primaryActionCount = 1
+        self.usesStatusChip = false
     }
 }
 
@@ -611,8 +862,99 @@ private extension SeriesDetailSnapshot {
     }
 }
 
+struct ChapterRowPresentation: Equatable, Sendable {
+    var primaryStateText: String
+    var showsReadCheckmark: Bool
+    var showsUpdateMarker: Bool
+    var showsRetainedMarker: Bool
+
+    init(
+        readState: ChapterReadState,
+        progressPercent: Double,
+        isNew: Bool,
+        isDownloaded: Bool,
+        isOpenable: Bool
+    ) {
+        self.showsUpdateMarker = isNew
+        self.showsRetainedMarker = isDownloaded
+        guard isOpenable else {
+            self.primaryStateText = "Unavailable"
+            self.showsReadCheckmark = false
+            return
+        }
+
+        switch readState {
+        case .new:
+            self.primaryStateText = "New"
+            self.showsReadCheckmark = false
+        case .unread:
+            self.primaryStateText = "Unread"
+            self.showsReadCheckmark = false
+        case .inProgress:
+            self.primaryStateText = "In Progress, \(Int((progressPercent * 100).rounded()))%"
+            self.showsReadCheckmark = false
+        case .read:
+            self.primaryStateText = "Read"
+            self.showsReadCheckmark = true
+        }
+    }
+}
+
+struct ChapterUtilityPresentation: Equatable, Sendable {
+    enum Action: Equatable, Sendable {
+        case openOriginal
+        case retainOffline
+    }
+
+    var isVisible: Bool { !actions.isEmpty }
+    var minimumHitSize: CGFloat { 44 }
+    var canOpenOriginal: Bool
+    var canRetainOffline: Bool
+    var actions: [Action]
+    var voiceOverActions: [Action] { actions }
+
+    init(isOpenable: Bool, isGeneratedPlaceholder: Bool = false) {
+        let hasDiscoveredTarget = isOpenable && !isGeneratedPlaceholder
+        self.canOpenOriginal = hasDiscoveredTarget
+        self.canRetainOffline = hasDiscoveredTarget
+        self.actions = [
+            canOpenOriginal ? .openOriginal : nil,
+            canRetainOffline ? .retainOffline : nil
+        ].compactMap { $0 }
+    }
+}
+
+struct ChapterPrimaryActionPresentation: Equatable, Sendable {
+    var isEnabled: Bool
+    var voiceOverActions: [ChapterUtilityPresentation.Action]
+
+    init(isOpenable: Bool, isGeneratedPlaceholder: Bool) {
+        let utility = ChapterUtilityPresentation(
+            isOpenable: isOpenable,
+            isGeneratedPlaceholder: isGeneratedPlaceholder
+        )
+        self.isEnabled = isOpenable
+        self.voiceOverActions = utility.voiceOverActions
+    }
+}
+
 private struct ChapterRow: View {
     let chapter: ChapterSummary
+    private var presentation: ChapterRowPresentation {
+        let progressPercent: Double
+        if case let .inProgress(value) = chapter.readState {
+            progressPercent = value
+        } else {
+            progressPercent = 0
+        }
+        return ChapterRowPresentation(
+            readState: chapter.readState,
+            progressPercent: progressPercent,
+            isNew: chapter.readState == .new,
+            isDownloaded: chapter.isDownloaded,
+            isOpenable: chapter.isOpenable
+        )
+    }
 
     var body: some View {
         HStack(spacing: ToonEdgeSpacing.medium) {
@@ -623,7 +965,7 @@ private struct ChapterRow: View {
                     .font(ToonEdgeTypography.body.weight(.semibold))
                     .foregroundStyle(ToonEdgeColor.textPrimary)
 
-                Text(subtitle)
+                Text("Chapter \(chapter.chapterLabel)")
                     .font(ToonEdgeTypography.caption)
                     .foregroundStyle(ToonEdgeColor.textSecondary)
             }
@@ -631,9 +973,11 @@ private struct ChapterRow: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: ToonEdgeSpacing.xsmall) {
-                TEChip(chapter.readState.displayLabel, isActive: isPrimaryState)
+                Text(presentation.primaryStateText)
+                    .font(ToonEdgeTypography.caption)
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
 
-                if chapter.isDownloaded {
+                if presentation.showsRetainedMarker {
                     Image(systemName: "arrow.down.circle.fill")
                         .font(ToonEdgeTypography.caption)
                         .foregroundStyle(ToonEdgeColor.success)
@@ -641,12 +985,10 @@ private struct ChapterRow: View {
                 }
             }
         }
-        .padding(ToonEdgeSpacing.large)
-        .background(rowBackground, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: ToonEdgeRadius.medium)
-                .stroke(rowBorder)
-        )
+        .padding(.vertical, ToonEdgeSpacing.medium)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(chapter.title), \(presentation.primaryStateText)\(presentation.showsRetainedMarker ? ", retained" : "")")
     }
 
     private var stateMark: some View {
@@ -655,44 +997,6 @@ private struct ChapterRow: View {
             .foregroundStyle(stateColor)
             .frame(width: 32, height: 32)
             .background(stateColor.opacity(0.16), in: Circle())
-    }
-
-    private var subtitle: String {
-        if !chapter.isOpenable {
-            return "Chapter \(chapter.chapterLabel) • Unavailable"
-        }
-
-        if let downloadLabel = chapter.downloadLabel {
-            return "Chapter \(chapter.chapterLabel) • \(downloadLabel)"
-        } else {
-            return "Chapter \(chapter.chapterLabel)"
-        }
-    }
-
-    private var isPrimaryState: Bool {
-        switch chapter.readState {
-        case .new, .inProgress:
-            true
-        case .unread, .read:
-            false
-        }
-    }
-
-    private var rowBackground: Color {
-        switch chapter.readState {
-        case .new:
-            ToonEdgeColor.success.opacity(0.14)
-        case .inProgress:
-            ToonEdgeColor.accentSoft
-        case .unread:
-            ToonEdgeColor.elevated
-        case .read:
-            ToonEdgeColor.panel
-        }
-    }
-
-    private var rowBorder: Color {
-        chapter.isDownloaded ? ToonEdgeColor.success.opacity(0.55) : ToonEdgeColor.border
     }
 
     private var stateColor: Color {
