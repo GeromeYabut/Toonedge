@@ -42,6 +42,47 @@ import Testing
     #expect(reader.currentSettings() == expected)
 }
 
+@MainActor
+@Test func staleReaderSettingsSnapshotCannotOverwriteDisabledHapticPreference() async throws {
+    let suiteName = "ToonEdgeIndependentInteractionSettings-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defaults.removePersistentDomain(forName: suiteName)
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let interactionPreferences = UserDefaultsInteractionPreferences(suiteName: suiteName)
+    let readerSettings = UserDefaultsSettingsRepository(userDefaults: defaults)
+    interactionPreferences.setHapticFeedbackEnabled(false)
+
+    var staleSnapshot = readerSettings.currentSettings()
+    staleSnapshot.displayMode = .fitScreen
+    await readerSettings.updateSettings(staleSnapshot)
+
+    let reconstructedInteractionPreferences = UserDefaultsInteractionPreferences(suiteName: suiteName)
+    let reconstructedReaderSettings = UserDefaultsSettingsRepository(userDefaults: defaults)
+    #expect(!reconstructedInteractionPreferences.isHapticFeedbackEnabled())
+    #expect(reconstructedReaderSettings.currentSettings().displayMode == .fitScreen)
+}
+
+@MainActor
+@Test func settingsHapticToggleUsesIndependentPreferenceAndDisablesFeedbackImmediately() {
+    let preferences = InMemoryInteractionPreferences(isHapticFeedbackEnabled: true)
+    let feedback = RecordingInteractionFeedback(preferences: preferences)
+    let viewModel = SettingsViewModel(
+        settingsManager: MockSettingsService(),
+        cacheMetadataManager: MockCacheMetadataService(),
+        interactionPreferences: preferences
+    )
+
+    #expect(viewModel.isHapticFeedbackEnabled)
+    viewModel.setHapticFeedbackEnabled(false)
+    feedback.emit(.selectionChanged)
+
+    #expect(!viewModel.isHapticFeedbackEnabled)
+    #expect(!preferences.isHapticFeedbackEnabled())
+    #expect(feedback.events.isEmpty)
+    #expect(viewModel.settings == .default)
+}
+
 @Test func readerSettingsFallBackFieldByFieldForInvalidStoredValues() throws {
     let suiteName = "ToonEdgeInvalidSettingsTests-\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
@@ -65,7 +106,8 @@ import Testing
     let manager = MockSettingsService()
     let viewModel = SettingsViewModel(
         settingsManager: manager,
-        cacheMetadataManager: MockCacheMetadataService()
+        cacheMetadataManager: MockCacheMetadataService(),
+        interactionPreferences: InMemoryInteractionPreferences()
     )
 
     await viewModel.setCanvas(.black)
@@ -107,7 +149,8 @@ import Testing
 @Test func settingsUpdateFeedbackReportsUnavailableService() async {
     let viewModel = SettingsViewModel(
         settingsManager: MockSettingsService(),
-        cacheMetadataManager: MockCacheMetadataService()
+        cacheMetadataManager: MockCacheMetadataService(),
+        interactionPreferences: InMemoryInteractionPreferences()
     )
 
     await viewModel.refreshUpdates()
@@ -122,6 +165,7 @@ import Testing
     let viewModel = SettingsViewModel(
         settingsManager: MockSettingsService(),
         cacheMetadataManager: MockCacheMetadataService(),
+        interactionPreferences: InMemoryInteractionPreferences(),
         updateRefreshService: service
     )
 
