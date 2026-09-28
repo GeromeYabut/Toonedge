@@ -25,6 +25,19 @@ import Testing
 }
 
 @MainActor
+@Test func interactionPreferenceRejectsNumericValuesThatBridgeToBool() throws {
+    let suite = "InteractionFeedbackTests.\(UUID().uuidString)"
+    defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+    let defaults = try #require(UserDefaults(suiteName: suite))
+
+    defaults.set(0, forKey: UserDefaultsInteractionPreferences.hapticFeedbackEnabledKey)
+    #expect(UserDefaultsInteractionPreferences(suiteName: suite).isHapticFeedbackEnabled())
+
+    defaults.set(1, forKey: UserDefaultsInteractionPreferences.hapticFeedbackEnabledKey)
+    #expect(UserDefaultsInteractionPreferences(suiteName: suite).isHapticFeedbackEnabled())
+}
+
+@MainActor
 @Test func disabledFeedbackRecordsNoEvents() {
     let recorder = RecordingInteractionFeedback(isEnabled: false)
 

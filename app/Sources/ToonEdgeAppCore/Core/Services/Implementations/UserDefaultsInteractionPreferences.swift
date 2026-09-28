@@ -1,4 +1,5 @@
 import Foundation
+import CoreFoundation
 
 @MainActor
 public final class UserDefaultsInteractionPreferences: InteractionPreferencesManaging {
@@ -15,10 +16,11 @@ public final class UserDefaultsInteractionPreferences: InteractionPreferencesMan
     }
 
     public func isHapticFeedbackEnabled() -> Bool {
-        guard let enabled = defaults.object(forKey: Self.hapticFeedbackEnabledKey) as? Bool else {
+        guard let storedValue = defaults.object(forKey: Self.hapticFeedbackEnabledKey),
+              CFGetTypeID(storedValue as CFTypeRef) == CFBooleanGetTypeID() else {
             return true
         }
-        return enabled
+        return defaults.bool(forKey: Self.hapticFeedbackEnabledKey)
     }
 
     public func setHapticFeedbackEnabled(_ enabled: Bool) {
