@@ -22,7 +22,36 @@ public enum LibraryContentPhase: Equatable, Sendable {
     }
 }
 
+enum LibraryEmptyReason: Equatable, Sendable {
+    case collection
+    case filter
+
+    init(totalCount: Int, visibleCount: Int) {
+        self = totalCount == 0 && visibleCount == 0 ? .collection : .filter
+    }
+
+    var message: String {
+        switch self {
+        case .collection:
+            "Nothing saved"
+        case .filter:
+            "No titles in this section"
+        }
+    }
+}
+
+struct LibraryDensityPresentation: Equatable, Sendable {
+    var savedPreference: LibraryViewMode
+    var renderedMode: LibraryViewMode
+
+    init(saved: LibraryViewMode, accessibilityText: Bool) {
+        self.savedPreference = saved
+        self.renderedMode = accessibilityText ? .list : saved
+    }
+}
+
 public struct LibraryView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private let dependencies: AppDependencies
     @Binding private var router: AppRouter
     @State private var snapshot = LibrarySnapshot(series: [])
@@ -150,25 +179,17 @@ public struct LibraryView: View {
         let result = await updateRefreshService.refreshUpdates()
         await reloadSnapshot()
         isRefreshingUpdates = false
-        showRefreshFeedback(message: refreshMessage(for: result))
-    }
-
-    private func refreshMessage(for result: LibraryUpdateRefreshResult) -> String {
-        if result.failedCount > 0 {
-            return "\(result.checkedCount) checked, \(result.updatedCount) \(pluralize("update", count: result.updatedCount)), \(result.failedCount) failed"
-        }
-
-        return "\(result.checkedCount) checked, \(result.updatedCount) \(pluralize("update", count: result.updatedCount))"
-    }
-
-    private func pluralize(_ singular: String, count: Int) -> String {
-        count == 1 ? singular : "\(singular)s"
+        showRefreshFeedback(result: result)
     }
 
     @ViewBuilder
     private var content: some View {
         let visible = snapshot.series(for: selectedSegment)
-        let emptyLayout = LibraryEmptyStateLayout(hasLoadedSnapshot: hasLoadedSnapshot, visibleSeries: visible)
+        let emptyLayout = LibraryEmptyStateLayout(
+            hasLoadedSnapshot: hasLoadedSnapshot,
+            totalCount: snapshot.series.count,
+            visibleSeries: visible
+        )
 
         switch LibraryContentPhase(hasLoadedSnapshot: hasLoadedSnapshot, visibleCount: visible.count) {
         case .loading:
@@ -179,21 +200,37 @@ public struct LibraryView: View {
             LibraryEmptyStateView(layout: emptyLayout)
                 .accessibilityIdentifier("library.empty")
         case .content:
-            let gridLayout = LibraryGridLayout(mode: selectedViewMode)
+            collection(visible, mode: LibraryDensityPresentation(
+                saved: selectedViewMode,
+                accessibilityText: dynamicTypeSize.isAccessibilitySize
+            ).renderedMode)
+        }
+    }
 
-            LazyVGrid(
-                columns: gridLayout.columns,
-                spacing: gridLayout.itemSpacing
-            ) {
+    @ViewBuilder
+    private func collection(_ visible: [LibrarySeriesSummary], mode: LibraryViewMode) -> some View {
+        if mode == .list {
+            LazyVStack(spacing: 0) {
                 ForEach(visible) { series in
                     NavigationLink(value: LibrarySeriesDetailRoute(summary: series)) {
-                        switch selectedViewMode {
-                        case .comfortable:
+                        SeriesListRow(series: series)
+                    }
+                    .buttonStyle(.plain)
+
+                    if series.id != visible.last?.id {
+                        Divider().padding(.leading, LibrarySeriesListRowLayout.default.coverWidth + ToonEdgeSpacing.medium)
+                    }
+                }
+            }
+        } else {
+            let gridLayout = LibraryGridLayout(mode: mode)
+            LazyVGrid(columns: gridLayout.columns, spacing: gridLayout.itemSpacing) {
+                ForEach(visible) { series in
+                    NavigationLink(value: LibrarySeriesDetailRoute(summary: series)) {
+                        if mode == .comfortable {
                             SeriesCard(series: series, layout: .comfortable)
-                        case .compact:
+                        } else {
                             SeriesCompactTile(series: series, layout: .compact)
-                        case .list:
-                            SeriesListRow(series: series)
                         }
                     }
                     .buttonStyle(.plain)
@@ -202,8 +239,8 @@ public struct LibraryView: View {
         }
     }
 
-    private func showRefreshFeedback(message: String) {
-        let feedback = LibraryRefreshFeedback(message: message)
+    private func showRefreshFeedback(result: LibraryUpdateRefreshResult) {
+        let feedback = LibraryRefreshFeedback(result: result)
         refreshFeedback = feedback
 
         Task { [feedbackID = feedback.id] in
@@ -289,14 +326,15 @@ struct LibraryRefreshFeedbackLayout: Equatable, Sendable {
     var dismissAccessibilityLabel: String
     var autoDismissDelay: Int
 
-    init(message: String) {
-        self.title = "Updated"
-        self.message = message
+    init(result: LibraryUpdateRefreshResult) {
+        let feedback = LibraryRefreshFeedbackPresentation(result: result)
+        self.title = feedback.title
+        self.message = feedback.message
         self.presentationStyle = .floatingOverlay
         self.overlayAlignment = .bottomTrailing
         self.maximumWidth = 280
         self.contentSize = .compact
-        self.accentColorRole = .purple
+        self.accentColorRole = feedback.accentColorRole
         self.reservesContentSpace = false
         self.dismissAccessibilityLabel = "Dismiss update refresh"
         self.autoDismissDelay = Self.autoDismissDelay
@@ -317,6 +355,33 @@ enum LibraryRefreshFeedbackContentSize: Equatable, Sendable {
 
 enum LibraryRefreshFeedbackAccentColorRole: Equatable, Sendable {
     case purple
+    case success
+    case warning
+    case failure
+}
+
+struct LibraryRefreshFeedbackPresentation: Equatable, Sendable {
+    var title: String
+    var message: String
+    var accentColorRole: LibraryRefreshFeedbackAccentColorRole
+
+    init(result: LibraryUpdateRefreshResult) {
+        self.message = "\(result.checkedCount) checked, \(result.updatedCount) \(result.updatedCount == 1 ? "update" : "updates")"
+        if result.failedCount == result.checkedCount, result.checkedCount > 0 {
+            self.title = "Update check failed"
+            self.accentColorRole = .failure
+        } else if result.failedCount > 0 {
+            self.title = "Some updates unavailable"
+            self.message += ", \(result.failedCount) failed"
+            self.accentColorRole = .warning
+        } else if result.updatedCount > 0 {
+            self.title = "Updates found"
+            self.accentColorRole = .success
+        } else {
+            self.title = "No new chapters"
+            self.accentColorRole = .purple
+        }
+    }
 }
 
 struct LibraryContentLayout: Equatable, Sendable {
@@ -407,6 +472,8 @@ private struct LibraryFilterRow: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityAddTraits(selection == segment ? .isSelected : [])
+                    .accessibilityValue(selection == segment ? "Selected" : "Not selected")
                 }
             }
             .padding(.vertical, ToonEdgeSpacing.xsmall)
@@ -424,13 +491,15 @@ private struct LibraryViewModeControl: View {
                     selection = mode
                 } label: {
                     Image(systemName: mode.systemImage)
-                        .frame(width: 34, height: 30)
+                        .frame(width: 44, height: 44)
                         .background(selection == mode ? ToonEdgeColor.panel : Color.clear)
                         .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(selection == mode ? ToonEdgeColor.textPrimary : ToonEdgeColor.textSecondary)
                 .accessibilityLabel("\(mode.title) library view")
+                .accessibilityAddTraits(selection == mode ? .isSelected : [])
+                .accessibilityValue(selection == mode ? "Selected" : "Not selected")
             }
         }
         .padding(ToonEdgeSpacing.xsmall)
@@ -445,9 +514,9 @@ struct LibraryEmptyStateLayout: Equatable, Sendable {
     var imageName: String
     var imageURL: URL?
 
-    init(hasLoadedSnapshot: Bool, visibleSeries: [LibrarySeriesSummary]) {
+    init(hasLoadedSnapshot: Bool, totalCount: Int = 0, visibleSeries: [LibrarySeriesSummary]) {
         self.isVisible = hasLoadedSnapshot && visibleSeries.isEmpty
-        self.message = "Nothing saved"
+        self.message = LibraryEmptyReason(totalCount: totalCount, visibleCount: visibleSeries.count).message
         self.imageName = ToonEdgeAppCoreResources.sleepyLibraryEmptyImageName
         self.imageURL = ToonEdgeAppCoreResources.urlForImage(named: imageName, extension: "png")
     }
@@ -474,8 +543,8 @@ private struct LibraryRefreshFeedback: Equatable {
     let id = UUID()
     let layout: LibraryRefreshFeedbackLayout
 
-    init(message: String) {
-        self.layout = LibraryRefreshFeedbackLayout(message: message)
+    init(result: LibraryUpdateRefreshResult) {
+        self.layout = LibraryRefreshFeedbackLayout(result: result)
     }
 }
 
@@ -498,7 +567,7 @@ private struct LibraryCollectionControls: View {
             if layout.refreshButtonIsVisible {
                 Button(action: refresh) {
                     Image(systemName: layout.refreshSystemImage)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 44, height: 44)
                         .contentTransition(.symbolEffect(.replace))
                 }
                 .buttonStyle(.plain)
@@ -550,6 +619,12 @@ private struct LibraryRefreshFeedbackView: View {
         switch layout.accentColorRole {
         case .purple:
             return ToonEdgeColor.accent
+        case .success:
+            return ToonEdgeColor.success
+        case .warning:
+            return ToonEdgeColor.warning
+        case .failure:
+            return ToonEdgeColor.failure
         }
     }
 }
@@ -670,10 +745,6 @@ private struct SeriesCard: View {
         }
         .frame(width: layout.coverImageWidth, height: layout.coverHeight)
         .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: layout.cornerRadius)
-                .stroke(ToonEdgeColor.border.opacity(0.65))
-        )
     }
 
     private var progressTint: Color {
@@ -697,10 +768,6 @@ private struct SeriesCompactTile: View {
             .frame(maxWidth: .infinity)
             .frame(height: layout.coverHeight)
             .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
-            .overlay(
-                RoundedRectangle(cornerRadius: layout.cornerRadius)
-                    .stroke(ToonEdgeColor.border.opacity(0.45))
-            )
 
             Text(series.title)
                 .font(ToonEdgeTypography.caption.weight(.semibold))
@@ -757,7 +824,6 @@ private struct SeriesListRow: View {
         .padding(.vertical, ToonEdgeSpacing.small)
         .padding(.horizontal, ToonEdgeSpacing.small)
         .frame(height: layout.rowHeight)
-        .background(ToonEdgeColor.elevated.opacity(0.65), in: RoundedRectangle(cornerRadius: layout.cornerRadius))
     }
 }
 

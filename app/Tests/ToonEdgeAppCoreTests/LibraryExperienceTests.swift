@@ -154,22 +154,22 @@ import Testing
 }
 
 @Test func libraryRefreshFeedbackLayoutIsDismissibleAndAutoExpires() {
-    let layout = LibraryRefreshFeedbackLayout(message: "2 checked, 1 update")
+    let layout = LibraryRefreshFeedbackLayout(result: .init(checkedCount: 2, updatedCount: 1, failedCount: 0))
 
-    #expect(layout.title == "Updated")
+    #expect(layout.title == "Updates found")
     #expect(layout.message == "2 checked, 1 update")
     #expect(layout.presentationStyle == .floatingOverlay)
     #expect(layout.overlayAlignment == .bottomTrailing)
     #expect(layout.maximumWidth == 280)
     #expect(layout.contentSize == .compact)
-    #expect(layout.accentColorRole == .purple)
+    #expect(layout.accentColorRole == .success)
     #expect(!layout.reservesContentSpace)
     #expect(layout.dismissAccessibilityLabel == "Dismiss update refresh")
     #expect(layout.autoDismissDelay == 5)
 }
 
 @Test func libraryContentLayoutKeepsRefreshFeedbackOutOfFlow() {
-    let layout = LibraryContentLayout(refreshFeedback: LibraryRefreshFeedbackLayout(message: "2 checked, 1 update"))
+    let layout = LibraryContentLayout(refreshFeedback: LibraryRefreshFeedbackLayout(result: .init(checkedCount: 2, updatedCount: 1, failedCount: 0)))
 
     #expect(layout.refreshFeedbackIsOverlay)
     #expect(layout.contentStartsWithSegmentedControl)
@@ -186,6 +186,18 @@ import Testing
     #expect(visible.imageURL?.lastPathComponent == "sleepy transparent.png")
     #expect(!loading.isVisible)
     #expect(!populated.isVisible)
+}
+
+@Test func libraryDistinguishesEmptyCollectionFromEmptyFilter() {
+    #expect(LibraryEmptyReason(totalCount: 0, visibleCount: 0) == .collection)
+    #expect(LibraryEmptyReason(totalCount: 4, visibleCount: 0) == .filter)
+}
+
+@Test func accessibilityLayoutDoesNotOverwriteSavedDensity() {
+    let policy = LibraryDensityPresentation(saved: .compact, accessibilityText: true)
+
+    #expect(policy.savedPreference == .compact)
+    #expect(policy.renderedMode == .list)
 }
 
 @Test func sleepyLibraryEmptyStateMascotImageIsBundled() throws {
