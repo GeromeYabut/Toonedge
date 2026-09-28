@@ -139,6 +139,18 @@ Across screens, the product must use consistent visual/state language for:
 - downloaded content
 - unsupported or non-extractable content
 
+### 3.6 Quiet editorial presentation
+
+The visual direction is defined in `docs/plans/2026-09-27-quiet-editorial-ux-design.md`.
+
+- Borderless editorial groups are the default; repeated outlined cards are not.
+- Typography, spacing, alignment, artwork, and restrained motion establish hierarchy.
+- Elevated surfaces are reserved for navigation/reader chrome, sheets, selected state, and transient feedback.
+- Utility screens follow system light/dark appearance; Reader canvas remains an explicit reading preference.
+- Purple is reserved for primary action, selection, and meaningful update state.
+- Custom controls provide visible pressed states and at least 44×44-point hit regions.
+- Haptics are optional, semantic, and limited to meaningful user-caused outcomes.
+
 ---
 
 ## 4. Screen specifications
@@ -154,8 +166,8 @@ Home is the primary launchpad for both search-based reading and saved reading.
 - Surface saved reading and updates without overwhelming search.
 
 ## Required UI elements
-- top app bar with product identity and settings/accessory actions
-- universal search / URL field near top
+- universal search / URL field as the topmost primary content element
+- optional restrained product identity after the search field; Settings remains available through the primary Settings tab
 - Continue Reading section
 - Recently Updated section
 - All Library or equivalent saved collection section
@@ -189,6 +201,7 @@ Visual priority should be:
 
 ## Interaction rules
 - Pull to refresh may refresh updates and recent state.
+- Home does not duplicate Settings as an accessory action, and manual refresh does not visually compete with search.
 - Long press on library items may open utility actions in later implementation, but this is optional for MVP.
 - Home should never auto-open reader without the user intentionally choosing/opening content first.
 

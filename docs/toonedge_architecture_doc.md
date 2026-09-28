@@ -166,7 +166,9 @@ Responsibilities:
 - define colors, typography, spacing, radius, and motion tokens
 - provide reusable buttons, chips, cards, banners, segmented controls, list rows, and loading/error states
 - keep visual primitives independent from feature-specific business logic
-- support the dark-first, utility-premium visual direction consistently across Home, Browser, Reader, Library, Downloads, and Settings
+- support the quiet-editorial visual direction defined in `docs/plans/2026-09-27-quiet-editorial-ux-design.md`
+- use system-adaptive application chrome outside Reader while keeping explicit Reader canvas choices independent from app appearance
+- make borderless editorial grouping the default and reserve elevated surfaces for chrome, sheets, selection, and transient feedback
 
 ### 5.11 Persistence / Repository Module
 Responsibilities:

@@ -1515,6 +1515,107 @@ Library cards currently risk mixing two different concepts: latest known chapter
 
 ---
 
+## Epic 12 — Quiet Editorial UX and Interaction Refinement
+
+### Goal
+Replace repeated dashboard-like card styling with an adaptive, borderless, quiet-editorial system while preserving ToonEdge's search-first behavior, local-first data flow, conservative detection, and explicit Reader escape routes.
+
+### Story 12.1 — Establish adaptive quiet-editorial foundations
+**Status:** planned
+
+**Acceptance criteria**
+- Utility screens follow system light/dark appearance; Reader canvas remains independent.
+- Semantic colors include increased-contrast variants and preserve readable foreground/background contrast.
+- Default typography uses the system design rather than applying rounded type to every role.
+- Borderless editorial groups, inset separators, selected surfaces, elevated chrome, and pressed states are explicit reusable primitives.
+- Existing `TECard` call sites migrate intentionally rather than changing globally without screen verification.
+- Custom action hit regions remain at least 44×44 points and Reduce Motion is respected.
+- Four-tab navigation, identifiers, routing, detection, persistence, and Reader behavior remain unchanged.
+
+### Story 12.2 — Refine Home and Search into a search-first editorial entry
+**Status:** planned
+
+**Acceptance criteria**
+- Home retains restrained product identity and makes universal search the first visual action.
+- Duplicate Settings and visible refresh accessories no longer compete with search; pull-to-refresh remains available.
+- Empty Home uses terse borderless copy without a duplicate full-width search CTA.
+- Continue Reading remains artwork-led and progress-aware.
+- Recently Updated and All Library rows open the correct Series Detail rather than acting as no-op buttons.
+- Search suggestions are borderless whole-row actions with consistent metadata and unchanged priority/routing behavior.
+- Invalid input remains inline and recoverable; large text and VoiceOver preserve meaning and hit targets.
+
+### Story 12.3 — Simplify Browser chrome and Clean Mode presentation
+**Status:** planned
+
+**Acceptance criteria**
+- Browser emphasizes domain/address context without an outlined dashboard card.
+- Reload appears once and all Browser actions have at least 44×44-point hit regions.
+- The decorative bottom-center `Browser` label is removed; UI tests use stable identifiers.
+- The complete Clean Mode surface is a clear, nonblocking, tappable action.
+- Low-confidence, browser-only, protected, and nonviable pages never expose Clean Mode.
+- Browser history, live WebView ownership, detection scheduling, Reader promotion, and View Original Page remain unchanged.
+
+### Story 12.4 — Refine Reader chrome, settings, and adjacent feedback
+**Status:** planned
+
+**Acceptance criteria**
+- Reader starts with chrome hidden and one reading-surface tap toggles it exactly once.
+- Scrolling and toolbar actions never accidentally toggle chrome.
+- Accessible Show/Hide Controls actions supplement the touch gesture.
+- Back, Library, Settings, Previous, Next, progress, and View Original remain explicit and origin-aware.
+- Reader Settings scrolls at accessibility sizes, provides selected semantics, supports medium/large detents, and exposes Done.
+- Canvas choices use borderless selection rather than three outlined cards.
+- Adjacent loading/failure remains nonblocking and preserves typed Retry/Open Original behavior without retry loops.
+
+### Story 12.5 — Refine Library and Series Detail as editorial collection surfaces
+**Status:** planned
+
+**Acceptance criteria**
+- Comfortable, Compact, and List modes preserve their density meaning and saved preference without enclosing item borders.
+- Filter and density controls expose selected state and adapt at accessibility text sizes.
+- Empty collection and empty selected-filter states are distinct.
+- Series Detail uses a compact publication-style header and one progress-aware primary action.
+- Chapter rows communicate New, Unread, In Progress, Read, and cache/download state without redundant cards, chips, and color-only meaning.
+- A visible chapter utility/menu and equivalent VoiceOver action accompany any context-menu shortcut.
+- Seeded/cached entry, local-first hydration, background refresh, numeric resume semantics, and Library-origin Reader fallback remain unchanged.
+
+### Story 12.6 — Refine Downloads and Settings as focused utility lists
+**Status:** planned
+
+**Acceptance criteria**
+- Downloads uses a compact storage header and borderless rows, not an introductory banner plus nested cards.
+- Downloads distinguishes loading, empty, content, successful removal, failed removal, and retry; failure preserves the row.
+- Visible remove actions remain at least 44×44 points and measured storage recalculates after success.
+- Settings uses editorial groups/separators while retaining Reader Preferences, Storage, New Chapters, and About.
+- Storage routes to Downloads and update checking distinguishes updates, no changes, partial failure, total failure, and unavailable service.
+- User-facing copy contains no scaffold/mock terminology and does not overpromise offline availability.
+
+### Story 12.7 — Add optional semantic haptic feedback
+**Status:** planned
+
+**Acceptance criteria**
+- A dependency-injected semantic feedback service owns system feedback mapping.
+- A separately persisted app-wide Haptic Feedback preference defaults on and disables feedback immediately.
+- Confirmed save, retain/remove, adjacent-transition, invalid-input, and update-found outcomes emit the approved feedback at most once.
+- Failures never emit success feedback; cancellation, stale completion, no-op, and disabled actions remain silent.
+- Automatic detection/Reader entry, scrolling, progress, image loading/retry, brightness, and chrome visibility remain silent.
+- Native switches, sliders, and pickers do not receive duplicate custom feedback.
+- No SwiftData migration is introduced.
+
+### Story 12.8 — Complete editorial accessibility, appearance, motion, and device QA
+**Status:** planned
+
+**Acceptance criteria**
+- Focused regressions for every Story 12.1–12.7 behavior and the full Swift suite pass.
+- Complete ToonEdgeUITests pass on the dedicated iPhone 16e and iPhone 16 Pro Max.
+- Home, Browser Clean Mode CTA, Reader chrome/settings/failures, Library, Series Detail, Downloads, and Settings pass light, dark, increased contrast, accessibility text, Reduce Motion, and spoken VoiceOver review.
+- Haptic intensity and semantics are reviewed on a physical supported iPhone with the preference both enabled and disabled.
+- Protected WEBTOON and GlobalComix pages remain browser-only and View Original Page remains available.
+- Safe screenshots, commands, result bundles, limitations, and artifact-retention recommendations are recorded.
+- The three protected local screenshots remain untracked and unchanged, and the shared iPhone 16 Pro remains untouched.
+
+---
+
 ## Post-MVP Epic — Multi-Page Chapter Stitching
 
 ### Goal
@@ -1543,6 +1644,8 @@ Do not implement in MVP unless explicitly requested.
 8. Epic 8 — Persistence, Follow State, and Reading Lifecycle  
 9. Epic 9 — Updates and Cache  
 10. Epic 10 — Hardening and QA
+11. Epic 11 — Product Hardening
+12. Epic 12 — Quiet Editorial UX and Interaction Refinement
 
 ### Epic 1 story order
 
