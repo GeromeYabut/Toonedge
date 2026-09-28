@@ -144,6 +144,8 @@ public struct BrowserView: View {
 
             bottomControls
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("browser.root")
     }
 
     private var topBar: some View {
