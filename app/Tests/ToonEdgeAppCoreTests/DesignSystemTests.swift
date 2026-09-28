@@ -31,3 +31,21 @@ import Testing
     #expect(ToonEdgeMotionPolicy(reduceMotion: true).positionalDuration == 0)
     #expect(ToonEdgeMotionPolicy(reduceMotion: false).positionalDuration == 0.18)
 }
+
+@Test func bannerOwnsAnAdaptiveForegroundAndBackground() {
+    for appearance in ToonEdgeAppearance.allCases {
+        let palette = ToonEdgePaletteValues.resolve(appearance)
+        // A banner must not inherit the fixed Reader canvas foreground.
+        #expect(palette.banner.foreground == palette.textPrimary)
+        #expect(palette.banner.background == palette.panel)
+        #expect(palette.banner.foreground.contrastRatio(with: palette.banner.background) >= 4.5)
+        #expect(palette.textSecondary.contrastRatio(with: palette.banner.background) >= 4.5)
+    }
+}
+
+@Test func filledActionsMaintainTextContrastInEveryAppearance() {
+    for appearance in ToonEdgeAppearance.allCases {
+        let pair = ToonEdgePaletteValues.resolve(appearance).filledAction
+        #expect(pair.foreground.contrastRatio(with: pair.background) >= 4.5)
+    }
+}

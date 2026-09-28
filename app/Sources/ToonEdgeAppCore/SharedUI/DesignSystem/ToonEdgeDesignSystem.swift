@@ -58,6 +58,11 @@ public struct ToonEdgeColorValue: Equatable, Sendable {
     }
 }
 
+public struct ToonEdgeColorPair: Equatable, Sendable {
+    public let foreground: ToonEdgeColorValue
+    public let background: ToonEdgeColorValue
+}
+
 public struct ToonEdgePaletteValues: Equatable, Sendable {
     public let canvas: ToonEdgeColorValue
     public let raised: ToonEdgeColorValue
@@ -72,6 +77,17 @@ public struct ToonEdgePaletteValues: Equatable, Sendable {
     public let border: ToonEdgeColorValue
 
     public var textOnCanvasContrast: Double { textPrimary.contrastRatio(with: canvas) }
+
+    public var banner: ToonEdgeColorPair {
+        .init(foreground: textPrimary, background: panel)
+    }
+
+    public var filledAction: ToonEdgeColorPair {
+        .init(
+            foreground: accent.contrastRatio(with: .white) >= 4.5 ? .white : .black,
+            background: accent
+        )
+    }
 
     public static func resolve(_ appearance: ToonEdgeAppearance) -> Self {
         let increased = appearance == .lightIncreasedContrast || appearance == .darkIncreasedContrast
@@ -116,6 +132,10 @@ public enum ToonEdgeColor {
     public static let textSecondary = adaptive { $0.textSecondary }
     public static let accent = adaptive { $0.accent }
     public static let accentSoft = adaptive { $0.accentSoft }
+    public static let filledActionForeground = adaptive { $0.filledAction.foreground }
+    public static let filledActionBackground = adaptive { $0.filledAction.background }
+    public static let bannerForeground = adaptive { $0.banner.foreground }
+    public static let bannerBackground = adaptive { $0.banner.background }
     public static let success = adaptive { $0.success }
     public static let warning = adaptive { $0.warning }
     public static let failure = adaptive { $0.failure }

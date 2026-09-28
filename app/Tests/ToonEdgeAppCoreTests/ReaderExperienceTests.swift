@@ -2,6 +2,13 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@MainActor
+@Test func readerSettingsSwatchesMatchFixedReaderCanvases() {
+    for canvas in [ReaderCanvas.charcoal, .black, .paper] {
+        #expect(ReaderSettingsView.swatch(for: canvas) == ReaderCanvasPalette.values(for: canvas).background.color)
+    }
+}
+
 @Test func readerCanvasColorsDoNotDependOnSystemAppearance() {
     for canvas in [ReaderCanvas.charcoal, .black, .paper] {
         let values = ReaderCanvasPalette.values(for: canvas)

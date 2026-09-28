@@ -23,8 +23,8 @@ public struct TEButton: View {
                 .font(ToonEdgeTypography.body.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, ToonEdgeSpacing.medium)
-                .background(ToonEdgeColor.accent, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
-                .foregroundStyle(.white)
+                .background(ToonEdgeColor.filledActionBackground, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
+                .foregroundStyle(ToonEdgeColor.filledActionForeground)
         }
         .buttonStyle(.plain)
     }
@@ -140,7 +140,8 @@ public struct AddToLibraryStatePickerView: View {
                 .font(ToonEdgeTypography.body.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, ToonEdgeSpacing.medium)
-                .background(ToonEdgeColor.accent, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+                .background(ToonEdgeColor.filledActionBackground, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+                .foregroundStyle(ToonEdgeColor.filledActionForeground)
             }
             .buttonStyle(.plain)
         }
@@ -190,7 +191,8 @@ public struct TEBanner: View {
             Spacer()
         }
         .padding(ToonEdgeSpacing.large)
-        .background(ToonEdgeColor.panel, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
+        .foregroundStyle(ToonEdgeColor.bannerForeground)
+        .background(ToonEdgeColor.bannerBackground, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
     }
 }
 
