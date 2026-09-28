@@ -2,6 +2,27 @@ import XCTest
 
 @MainActor
 final class ToonEdgeOfflineUITests: XCTestCase {
+    func testFailedDownloadRemovalPreservesRowAndRetrySucceeds() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-resetTestData", "-seedDownloadsRemovalRetry"]
+        app.launch()
+        app.tabBars.buttons["tab.downloads"].tap()
+
+        let chapter = app.staticTexts["Retry Chapter 9"]
+        XCTAssertTrue(chapter.waitForExistence(timeout: 5))
+        app.buttons["Remove Retry Fixture, Retry Chapter 9 from cache"].tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)["downloads.feedback.failure"].waitForExistence(timeout: 5))
+        XCTAssertTrue(chapter.exists, "A failed removal must preserve its row")
+        let retry = app.buttons["downloads.removal.retry"]
+        XCTAssertTrue(retry.exists)
+        retry.tap()
+
+        XCTAssertTrue(chapter.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["downloads.feedback.success"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["downloads.empty"].exists)
+    }
+
     func testRetainedChapterReopensOfflineInOrderAndUncachedChapterExplainsFailure() {
         var app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-seedOfflineReader", "-resetOfflineFixture"]
