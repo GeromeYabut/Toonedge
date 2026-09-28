@@ -2,6 +2,16 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@Test func readerCanvasColorsDoNotDependOnSystemAppearance() {
+    for canvas in [ReaderCanvas.charcoal, .black, .paper] {
+        let values = ReaderCanvasPalette.values(for: canvas)
+        #expect(values.textContrast >= 4.5)
+    }
+    #expect(ReaderCanvasPalette.values(for: .charcoal).background == .init(red: 0.05, green: 0.055, blue: 0.075))
+    #expect(ReaderCanvasPalette.values(for: .black).background == .black)
+    #expect(ReaderCanvasPalette.values(for: .paper).background == .init(red: 0.89, green: 0.86, blue: 0.78))
+}
+
 @Test func chapterIdentityPrefersExplicitNumberOverNoisyLabel() {
     #expect(ChapterNumericLabelExtractor.label(chapterNumber: 1, chapterLabel: "Top", title: "Chapter 7 - Manhua Top") == "1")
     #expect(ChapterNumericLabelExtractor.label(chapterNumber: 7, chapterLabel: "Chapter", title: "Chapter 1") == "7")
