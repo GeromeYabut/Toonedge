@@ -499,7 +499,7 @@ Entities should include:
 
 ## 20. Open Questions for Next Revision
 - whether to expose user-facing toggles for auto-open reader behavior in v1 or later
-- fixture validation for the initial enabled-public site profiles and approved popular reader profiles
+- the minimum diversity of rendering-pattern fixtures required for release confidence
 
 ## 21. MVP Implementation Decisions
 - Update checking in MVP runs on foreground, pull-to-refresh, and selected series open. Background refresh remains a future extension point.
@@ -508,7 +508,7 @@ Entities should include:
 - Bottom navigation for MVP is Home, Library, Downloads, and Settings. Browser is launched from Home/Search and preserved for return from Reader Mode, not exposed as a required bottom tab.
 - Exact initial detection thresholds are defined in the architecture doc and should be tuned during Epic 10 using fixture pages and diagnostics.
 - Reader entry presentation is driven by an explicit detector-owned disposition so Browser does not duplicate threshold or hard-block policy.
-- Initial launch-site policy is defined as enabled-public, approved non-promoted, and browser-only tiers in this PRD and the architecture doc.
+- Compatibility policy is capability-based: generic best effort first, optional internal adapters second, and browser-only fallback for unsupported or protected rendering patterns.
 
 ## 21.1 Resolved Conflicts and Clarifications
 - Architecture owns technical boundaries, module ownership, and persistence/service architecture.
@@ -521,52 +521,40 @@ Entities should include:
 - The Architecture document's `>=78` high, `55-77` medium, and `45-54` manual-only entry bands are authoritative. Implementations using different defaults must be aligned before the guarded manual action ships.
 - Planned UX work that says all low-confidence pages hide Clean Mode must distinguish ordinary/hard-blocked low confidence from the approved manual-only band.
 
-## 22. Launch Site Research and Policy
+## 22. Best-Effort Compatibility Policy
 
-Site support is split into three tiers so ToonEdge can validate real reader behavior while avoiding catalog-like promotion of third-party reader sites.
+ToonEdge provides best-effort Clean Mode for user-opened long-strip chapter pages whose ordered images can be safely extracted from the rendered DOM. Compatibility is defined by rendering capability rather than by a public list of named sites.
 
-### Tier 1 — MVP clean-reader profiles enabled by default
-- ComicFury public webcomic pages
-- The Duck Webcomics public comic pages
-- Generic creator-owned or self-hosted webcomic pages, including WordPress/Webcomic/ComicPress-style pages when the page passes detection hard gates
+### 22.1 Generic-first behavior
 
-These sources are best suited for the first public build because they are public webcomic hosting or creator-owned pages, and they validate the core Browser -> Detection -> Reader loop without centering the product on piracy-oriented catalogs.
+- Unknown domains must pass through generic rendered-DOM analysis rather than being rejected for lacking a site profile.
+- Generic extraction should recognize direct image sources, common lazy-load attributes, `srcset`, protocol-relative URLs, relative URLs, ordered vertical image flows, and conventional previous/next chapter links.
+- Confidence and hard-block policy must be identical for generic and adapter-assisted detection.
+- Site-specific profiles or templates may improve extraction internally, but they are implementation adapters rather than product promises, recommendations, or an allowlist.
+- The application must not expose a source catalog, named compatibility directory, or “supported sites” marketing claim.
 
-### Tier 2 — approved popular manhwa reader targets, non-promoted
-- Asura Scans: `asurascans.com`, with `asuracomic.net` treated as a legacy/redirect domain
-- ManhwaTop: `manhwatop.com`
-- ManhuaTop: `manhuatop.org`
-- ManhwaClan: `manhwaclan.com`
-- MangaBuddy: `mangabuddy.com`
-- Vortex Scans: `vortexscans.org` and current reader domains if verified during implementation
-- Flame Scans / Flame Comics: current reader domains to be verified during implementation
-- RoliaScan: current reader domains to be verified during implementation
+### 22.2 Capability classes
 
-Tier 2 is approved as reader-rendering target support. These sites should render correctly in ToonEdge Reader when the user explicitly opens a page or URL and the page passes detection. Do not promote these sites in search suggestions, do not include them as built-in catalog entries, do not list them in onboarding, and do not surface them as recommended sources.
+Validation must cover representative behavior rather than domain count:
 
-Tier 2 support must remain user-initiated. Do not bypass anti-bot, login, paywall, delayed-release, subscription, or protected viewer behavior. Do not enable manual download/offline retention for these domains in MVP.
+- ordered images embedded in initial HTML;
+- images populated into the rendered DOM through common lazy attributes;
+- browser-session pages whose images appear after safe hydration;
+- direct and relative image URLs, `srcset`, CDN hosts, and request-context requirements;
+- challenge, authentication, paywall, error, canvas/blob, protected-viewer, and unsupported paginated pages that must remain in Browser.
 
-### Tier 3 — browser-only / no extraction by default
-- WEBTOON
-- Tapas
-- MANGA Plus
-- GlobalComix paid, login, subscription, or protected-reader pages
-- Any source requiring authentication, canvas/blob extraction, DRM bypass, anti-scrape workarounds, or protected media access
+### 22.3 Evidence and release claims
 
-### Research notes
-- Asura Scans is highly relevant to the target audience. Public traffic estimates show roughly 12M+ monthly visits, and ComicK group popularity data ranks Asura far above other scanlation groups.
-- ManhwaTop is also high-volume. Semrush reports roughly 19M monthly visits in March 2026 and lists adjacent reader destinations such as ManhuaTop and ManhwaClan.
-- MangaBuddy and Bato-style aggregators demonstrate strong demand, but Bato's 2026 shutdown and piracy reporting reinforce the need for a conservative App Store posture.
-- Several reader sites publish terms or DMCA pages that restrict copying, distribution, bulk access, or infringement. Treat popularity as a compatibility signal, not as a reason to promote sources inside the product.
+- A passing synthetic unit case proves detector behavior, not live-site compatibility.
+- A sanitized fixture proves regression behavior for one rendering pattern.
+- A live-device flow proves only the observed page and date; it must not become a permanent site-wide guarantee.
+- Release readiness requires a maintained pattern matrix with positive, negative, delayed-hydration, image-delivery, and failure fixtures.
+- Device validation must exercise Browser → Detection → Reader → View Original Page, image loading/order, failure fallback, and exact browser-state preservation.
+- Evidence may record domains internally in `docs/site_rendering_research_catalog.md`, but named sites remain outside the PRD and user-facing product surfaces.
 
-Sources reviewed:
-- Apple App Review Guidelines 5.2.2: https://developer.apple.com/app-store/review/guidelines/
-- Asura Scans traffic estimate: https://hypestat.com/info/asurascans.com
-- Asura Scans current site / terms links: https://asurascans.com/
-- ManhwaTop traffic estimate: https://www.semrush.com/website/manhwatop.com/overview/
-- ManhwaTop terms: https://manhwatop.com/conditions-and-terms/
-- ManhwaTop legal disclaimer: https://manhwatop.com/legal-disclaimer-page/
-- ComicK popular groups: https://comick.dev/group/popular
-- Bato shutdown reporting: https://www.thepopverse.com/comics-manga-piracy-site-shutdown-bato-50-thousand-dollars-a-month
-- Vortex Scans DMCA / terms page: https://vortexscans.org/dmca-policy
-- RoliaScan terms: https://goldenhazestudio.com/terms
+### 22.4 Boundaries
+
+- Do not bypass authentication, paywalls, anti-bot challenges, DRM, protected viewers, or access controls.
+- Do not stitch paginated chapters in MVP.
+- Do not promote internal test targets in Search, onboarding, Home, or Settings.
+- When extraction is unsafe or incomplete, remain in Browser and preserve the exact original page.

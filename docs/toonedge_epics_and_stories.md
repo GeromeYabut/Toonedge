@@ -1616,6 +1616,217 @@ Replace repeated dashboard-like card styling with an adaptive, borderless, quiet
 
 ---
 
+## Epic 13 — Competitive MVP Hardening and Generic Compatibility Validation
+
+### Goal
+
+Strengthen ToonEdge's core browser-to-reader and local-library loop with bounded Reader loading, guarded recovery, native saved-content search, zoom, Library organization, and local history controls, then validate best-effort compatibility by rendering pattern rather than by promising named-site support.
+
+### Scope and constraints
+
+- Preserve the smart-reading-browser product model; do not add a source catalog or public supported-site list.
+- Unknown domains continue through generic rendered-DOM analysis.
+- Automatic Reader entry remains conservative and detector-owned.
+- Authentication, paywalls, challenges, protected viewers, canvas/blob media, and unsupported pagination remain in Browser.
+- Prefetch does not imply offline retention.
+- Zoom is transient and does not alter progress or Reader settings.
+- Library search, sorting, filtering, and history management remain local-first.
+- No SwiftData schema migration, account, cloud service, external tracker, browser tab, ML detector, or multi-page stitching is introduced.
+
+### Implementation plan index
+
+- Story 13.1: [Reader continuity and bounded prefetch](superpowers/plans/2026-09-28-story-13.1-reader-continuity-prefetch.md)
+- Story 13.2: [Guarded manual Clean Mode](superpowers/plans/2026-09-28-story-13.2-guarded-manual-clean-mode.md)
+- Story 13.3: [Saved-Library search](superpowers/plans/2026-09-28-story-13.3-saved-library-search.md)
+- Story 13.4: [Reader zoom](superpowers/plans/2026-09-28-story-13.4-reader-zoom.md)
+- Story 13.5: [Library sort and source filter](superpowers/plans/2026-09-28-story-13.5-library-sort-filter.md)
+- Story 13.6: [Search-history controls](superpowers/plans/2026-09-28-story-13.6-search-history-controls.md)
+- Story 13.7: [Generic compatibility matrix](superpowers/plans/2026-09-28-story-13.7-generic-compatibility-matrix.md)
+- Story 13.8: [Live-device compatibility validation](superpowers/plans/2026-09-28-story-13.8-live-device-compatibility-validation.md)
+
+### Story 13.1 — Add chapter-scoped Reader continuity and bounded prefetch
+
+**Status:** planned
+
+**Dependencies:** Existing Reader session, page metadata, request-context, cache, and progress contracts.
+
+**User story**
+
+As a reader scrolling a long chapter, I want upcoming panels to be ready without flashes or layout jumps so reading remains continuous even on a variable connection.
+
+**Acceptance criteria**
+
+- One chapter-scoped pipeline owns page loading, decoding, retry, deduplication, and cancellation.
+- The default working window is the current page, two pages ahead, and one recently visible page behind.
+- No more than three fetch/decode operations run concurrently.
+- Decoded memory, existing file cache, and network are consulted in that order.
+- Decode work occurs off the main actor; UI state publication is main-actor isolated.
+- Known dimensions reserve final page geometry before display.
+- A page failure preserves its geometry and provides isolated retry without resetting the chapter.
+- Progress advances only after a successfully loaded page becomes visible.
+- Chapter replacement, Reader dismissal, and memory pressure cancel or reduce speculative work without presenting cancellation as an error.
+- Network prefetch does not mark content as retained offline.
+- Unit tests cover scheduling, concurrency, deduplication, cache order, cancellation, stale-session suppression, failure, retry, and progress gating.
+
+### Story 13.2 — Expose guarded manual Clean Mode eligibility
+
+**Status:** planned
+
+**Dependencies:** Existing detection scoring, profile hard blocks, Browser-owned Reader presentation, and source-page preservation.
+
+**User story**
+
+As a reader on a plausible chapter page that ToonEdge will not open automatically, I want a safe manual attempt so I can recover without weakening automatic trust rules.
+
+**Acceptance criteria**
+
+- Detection produces an explicit automatic, recommended, manual, or unavailable Reader-entry disposition.
+- High begins at score `78`, medium covers `55...77`, and manual-only covers `45...54`, subject to documented viability constraints.
+- Manual-only results require a viable normalized Reader session and no hard block.
+- Challenge, authentication, paywall, browser-only, unsupported pagination, protected viewer, canvas/blob, error, and nonviable results are unavailable regardless of score.
+- Browser renders `Try Clean Mode` as a secondary tool action only for manual disposition.
+- Existing high auto-open and medium `Read in Clean Mode` behavior remains distinct.
+- Success uses the existing Browser-owned Reader path and retains `View Original Page`.
+- Failure leaves the exact Browser page and history intact with nonblocking feedback.
+- Navigation clears stale disposition and pending session state.
+- Boundary and hard-block tests cover all four dispositions.
+
+### Story 13.3 — Add saved-Library matches to universal search
+
+**Status:** planned
+
+**Dependencies:** Existing Search overlay, lightweight Library snapshots, seeded Series Detail routing, and search-history suggestions.
+
+**User story**
+
+As a reader searching from Home, I want saved titles to appear alongside web options so I can resume known content without navigating through Library first.
+
+**Acceptance criteria**
+
+- Search loads a lightweight local Library projection once per presentation and does not hydrate Series Detail per result.
+- Matching supports normalized exact title, prefix, ordered token prefix, and all-token containment.
+- Results are deterministic, deduplicated, bounded, and available offline.
+- Exact clipboard link remains first; exact and partial Library matches follow; the explicit web-search action remains visible.
+- Saved results are labeled as Library content and show lifecycle/resume context where available.
+- Suggestion destinations are typed so a saved result opens seeded native Series Detail rather than Browser.
+- Opening a saved result does not create a web-search-history row.
+- Empty query remains restrained and does not expose the Library as a catalog.
+- Failure to load Library data preserves existing clipboard/history/site/web suggestions.
+- Tests cover ranking, normalization, deduplication, offline results, routing, history isolation, and graceful degradation.
+
+### Story 13.4 — Add bounded pinch and double-tap zoom to Reader
+
+**Status:** planned
+
+**Dependencies:** Story 13.1 pipeline-owned page state and the existing lazy long-strip Reader.
+
+**User story**
+
+As a reader viewing small text or artwork detail, I want to zoom and pan temporarily without losing my chapter position.
+
+**Acceptance criteria**
+
+- Reader content supports focal-point pinch zoom from `1x` through `3x`.
+- At `1x`, the existing vertical ScrollView remains the sole drag owner.
+- Above `1x`, chapter scrolling pauses and drag pans the scaled strip within recoverable bounds.
+- Returning to `1x` clears translation and restores vertical scrolling at the prior chapter position.
+- Spatial double tap at `1x` zooms to `2x`; double tap while zoomed resets to `1x`.
+- Double tap and the existing single-tap chrome gesture do not trigger each other.
+- Zoom resets on session replacement, adjacent-chapter navigation, and Reader dismissal.
+- Zoom does not change progress, page order, aspect ratio, canvas, or stored Reader settings.
+- Chrome provides an accessible Reset Zoom action while zoomed.
+- Reduce Motion avoids nonessential reset animation.
+- Unit and UI tests cover bounds, focal anchoring, gesture ownership, reset, chrome coexistence, and chapter replacement.
+
+### Story 13.5 — Complete Library sorting and saved-source filtering
+
+**Status:** planned
+
+**Dependencies:** Existing `LibrarySnapshot`, lifecycle segments, view densities, domain normalization, and `LibraryViewPreferences`.
+
+**User story**
+
+As a reader with a growing Library, I want to order and narrow my saved titles without changing their metadata or being shown source recommendations.
+
+**Acceptance criteria**
+
+- A pure collection query composes lifecycle segment, sort key, sort direction, source-domain selection, and view density.
+- Sort options are recent activity, title, and unread updates first.
+- Direction is available only where meaningful; unread updates uses a fixed unread-first order.
+- Source choices are normalized and derived only from domains already in the complete local Library snapshot.
+- Empty source selection means All Sources; obsolete stored sources are removed safely.
+- Reset restores Recent, activity descending, all sources, and preserves the current density preference unless the user resets density explicitly.
+- Segment, sort, direction, source selection, and density persist locally.
+- Sorting/filtering does not mutate series, chapter, progress, or update metadata.
+- A filtered empty state explains that filters are active and offers Reset; a genuinely empty segment retains its existing state.
+- Tests cover all query dimensions, stable tie-breaking, nil dates, normalization, preference fallback, and removed-source repair.
+
+### Story 13.6 — Add individual and clear-all local search-history controls
+
+**Status:** planned
+
+**Dependencies:** Existing `StoredSearchHistory`, Search overlay composition, Settings, and SwiftData repository.
+
+**User story**
+
+As a privacy-conscious reader, I want to remove individual searches or clear all search history without losing Library, progress, downloads, or website state.
+
+**Acceptance criteria**
+
+- A `SearchHistoryManaging` contract supports recording, reading, deleting one UUID, and clearing all history.
+- Persistent and in-memory repositories implement identical delete behavior.
+- Search exposes visible and accessibility-equivalent deletion only for persisted recent links/searches.
+- Successful deletion recomposes visible suggestions immediately and persists across relaunch.
+- Failed deletion keeps or reloads the row and shows retryable nonblocking feedback.
+- Settings provides a confirmed `Clear Search History` action with precise data-scope copy.
+- Cancel performs no operation.
+- Clear-all deletes only `StoredSearchHistory`; Library, chapters, progress, recent reading, cache metadata/files, settings, cookies, and website data remain unchanged.
+- Tests cover repository isolation, failure behavior, UI-model refresh, confirmation cancellation, and relaunch persistence.
+
+### Story 13.7 — Build a rendering-pattern compatibility fixture matrix
+
+**Status:** planned
+
+**Dependencies:** Story 13.2 entry disposition, existing page-analysis payloads, detector fixtures, and Browser presentation tests.
+
+**User story**
+
+As the product team, we want evidence that generic Clean Mode handles diverse rendering patterns so compatibility is measured by capability rather than a named-site count.
+
+**Acceptance criteria**
+
+- A machine-readable manifest maps every sanitized fixture to capability class, expected parser path, entry disposition, ordered candidate count, adjacent-link behavior, and Reader eligibility.
+- Positive coverage includes embedded HTML, lazy/hydrated DOM, browser-session hydration, direct/relative/protocol-relative URLs, `srcset`, common lazy attributes, CDN host variation, and request-context metadata.
+- Negative coverage includes advertisement/thumbnail grids, challenge/auth/paywall/error pages, protected canvas/blob viewers, and unsupported pagination.
+- At least one positive fixture uses an unknown domain and proves generic routing without a registered profile.
+- Parameterized tests exercise production payload decoding, detection, and Browser disposition behavior.
+- Manifest completeness fails when a fixture is unclassified or an expected fixture is missing.
+- The matrix reports `covered`, `partial`, or `unsupported-by-policy`; it makes no site-wide guarantee.
+- Internal fixture content contains no credentials, cookies, personal history, or unnecessary copyrighted image data.
+
+### Story 13.8 — Complete live-device generic compatibility release validation
+
+**Status:** planned
+
+**Dependencies:** Stories 13.1–13.7 complete and their automated suites passing.
+
+**User story**
+
+As the release owner, I want dated device evidence across rendering capabilities so best-effort compatibility claims reflect observed behavior and safe fallback.
+
+**Acceptance criteria**
+
+- A bounded, replaceable sample is selected for rendering diversity rather than brand count.
+- Each run records observation date, capability class, Browser/Detection/Reader result, image order/loading result, original-page return, Browser-state preservation, and sanitized failure category.
+- Positive flows exercise Browser → Detection → Reader → View Original Page on a supported physical iPhone.
+- Negative flows confirm challenge, authentication, paywall, protected-viewer, canvas/blob, and paginated cases remain in Browser without an unsafe action.
+- Failures are classified as generic extractor gap, internal adapter opportunity, unsupported-by-policy, or external/transient before follow-up work is proposed.
+- Reproducible generic gaps receive sanitized fixtures and regression-test references where legally and technically practical.
+- Named domains may appear only in internal research/QA evidence, never in the PRD or user-facing compatibility claims.
+- The report includes commands, device/OS, limitations, artifact-retention guidance, and a release recommendation without claiming universal compatibility.
+
+---
+
 ## Post-MVP Epic — Multi-Page Chapter Stitching
 
 ### Goal
@@ -1646,6 +1857,7 @@ Do not implement in MVP unless explicitly requested.
 10. Epic 10 — Hardening and QA
 11. Epic 11 — Product Hardening
 12. Epic 12 — Quiet Editorial UX and Interaction Refinement
+13. Epic 13 — Competitive MVP Hardening and Generic Compatibility Validation
 
 ### Epic 1 story order
 

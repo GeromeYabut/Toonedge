@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-28
 
-**Status:** Proposed requirements for product review
+**Status:** Approved product requirements
 
 **Decision model:** Evidence-led selective parity
 

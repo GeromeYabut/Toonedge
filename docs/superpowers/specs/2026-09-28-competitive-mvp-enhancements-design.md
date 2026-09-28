@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-28
 
-**Status:** Draft for product and technical review
+**Status:** Approved; amended with capability-based validation stories
 
 **Decision owner:** Product/engineering review
 
@@ -12,14 +12,16 @@
 
 ## 1. Decision summary
 
-Implement the competitive response as six thin vertical slices within ToonEdge's existing local-first architecture:
+Implement the competitive response as six product slices plus two release-validation slices within ToonEdge's existing local-first architecture:
 
 1. chapter-scoped reader prefetch and decode coordination;
 2. explicit, guarded manual Clean Mode eligibility;
 3. saved-library matches in universal search;
 4. transient bounded zoom over the existing long-strip reader;
 5. composable Library sorting and source filtering;
-6. individual and clear-all local search-history controls.
+6. individual and clear-all local search-history controls;
+7. rendering-pattern fixture validation for generic best-effort compatibility;
+8. live-device compatibility validation and evidence capture.
 
 The design does not copy MangaPin's account, catalog, sync, tracker, social, prediction, or multi-mode reader surfaces. Existing ToonEdge behavior remains authoritative where it is already complete: URL/query classification, browser ownership, conservative detection, exact original-page escape, progress persistence, adjacent chapter loading, lifecycle states, update checking, and cache retention.
 
@@ -77,6 +79,8 @@ The implementation remains feature-oriented, with domain values and protocols in
 | Reader zoom | Reader surface | `ReaderZoomState` | None | None |
 | Library organization | `LibraryView` | `LibraryCollectionQuery` | Existing `LibraryProviding` | `LibraryViewPreferences` in `UserDefaults` |
 | History controls | Search and Settings | Search/Settings view models | `SearchHistoryManaging` | Existing `StoredSearchHistory` rows |
+| Pattern validation | Test target and fixtures | Capability matrix | Existing detector/browser contracts | Sanitized fixture resources only |
+| Device validation | QA harness and evidence | Release checklist | Existing Browser/Reader flows | Safe screenshots and logs only |
 
 ### Dependency direction
 
@@ -417,6 +421,20 @@ Clipboard, common-site, Library, and generic search suggestions cannot be delete
 
 Settings receives the same `SearchHistoryManaging` dependency and adds a Local Data section with `Clear Search History`. The destructive action requires confirmation and clearly states that Library, progress, downloads, cookies, and website data are unaffected. Success/failure feedback is local to the section. Cancel performs no operation.
 
+### 6.7 Rendering-pattern compatibility validation
+
+Best-effort support is validated by capability class, not by accumulating named-site promises. Add a maintained compatibility matrix and sanitized fixtures for embedded HTML, lazy/hydrated DOM, browser-session hydration, relative and protocol-relative sources, `srcset`, CDN/request-context delivery, advertisement and thumbnail negatives, challenge/auth/paywall/error hard blocks, protected canvas/blob viewers, and unsupported pagination.
+
+Each fixture must declare its expected parser path, entry disposition, ordered candidate count, adjacent-link behavior, and whether Reader presentation is allowed. Fixture tests run through the same `PageAnalysisScript` payload model, `ProfileAwareChapterDetector`, and Browser presentation policy used by production. Unknown fixture domains must demonstrate that the generic path is the default rather than a named-profile allowlist.
+
+The matrix records `covered`, `partial`, or `unsupported-by-policy` per capability. It must not claim that a passing fixture guarantees an entire live domain.
+
+### 6.8 Live-device compatibility validation
+
+Use a bounded, replaceable sample of user-opened long-strip pages to validate the production Browser → Detection → Reader → View Original Page flow on a supported iPhone. The sample is chosen for rendering diversity, not brand coverage. Record the observation date, capability class, result, failure category, image-order/loading result, navigation preservation, and whether a sanitized regression fixture was captured.
+
+Live findings may identify domains in the internal research catalog and QA evidence, but named sites do not enter the PRD, Search suggestions, onboarding, or product claims. Authentication, paywalls, anti-bot challenges, protected viewers, and paginated chapters remain Browser-only. Any discovered failure must be classified as a generic extractor gap, an adapter opportunity, an unsupported policy case, or an external/transient failure before code changes are proposed.
+
 ## 7. Cross-cutting interface changes
 
 The expected contract changes are:
@@ -429,6 +447,7 @@ The expected contract changes are:
 - `ReaderPageAssetLoading`, `ReaderImageDecoding`, and chapter-scoped `ReaderPagePipeline`;
 - `LibraryCollectionQuery`, sort types, and expanded `LibraryViewPreferences`;
 - transient `ReaderZoomState` with no persistence dependency.
+- a capability-matrix fixture manifest consumed by parameterized detection/browser tests; no production dependency on the manifest.
 
 Compatibility initializers/defaults may be retained temporarily for tests and previews, but production composition must inject the new complete contracts. No view may instantiate a SwiftData repository or URLSession-specific implementation directly.
 
@@ -533,6 +552,14 @@ Diagnostics must not log full URLs, query strings, search text, titles, cookie v
 - save failure behavior;
 - proof that Library, progress, recent reading, cache metadata, and settings remain unchanged.
 
+**Generic compatibility**
+
+- parameterized positive fixtures for embedded, hydrated, and browser-session image delivery;
+- relative URL, protocol-relative URL, `srcset`, lazy-attribute, ordering, and request-context cases;
+- negative fixtures for ads, thumbnails, challenges, authentication/paywalls, errors, protected viewers, and pagination;
+- generic unknown-domain routing without a registered profile;
+- manifest completeness so every fixture declares an expected outcome.
+
 ### Integration and UI tests
 
 - delayed 25+ page fixture: rapid scroll, stable placeholders, page-local failure, retry;
@@ -542,22 +569,26 @@ Diagnostics must not log full URLs, query strings, search text, titles, cookie v
 - pinch, pan, reset, continued vertical reading, and adjacent-chapter reset;
 - Library segment plus source filter with Reset from filtered empty state;
 - individual history deletion and Settings clear-all after relaunch;
+- capability-diverse live-device Browser → Reader → View Original flows with dated internal evidence;
 - VoiceOver labels, Dynamic Type layouts, 44-point actions, contrast, and Reduce Motion regressions.
 
 Existing detection false-positive, navigation, progress, cache, update, persistence, accessibility, and source-policy tests remain regression gates.
 
 ## 12. Delivery boundaries and dependency order
 
-The later epic should keep one story per vertical slice. Within shared surfaces, use this order:
+The later epic should keep one story per product slice and two separate validation stories. Within shared surfaces, use this order:
 
 ```text
 Reader track:   continuity/prefetch -> zoom
 Search track:   Library matches -> history controls
 Browser track:  manual Clean Mode (independent)
 Library track:  sort/source filter (independent)
+Validation:     pattern fixture matrix -> live-device evidence
 ```
 
 Reader prefetch comes before zoom because zoom must render pipeline-owned page state. Library search comes before history controls because both introduce `SearchOverlayViewModel` and typed suggestion composition; doing them in that order avoids building the overlay state owner twice.
+
+Pattern validation should land after the manual Clean Mode disposition is available so fixtures can assert the complete entry policy. Live-device validation is the final release gate after all six product slices and the fixture matrix are complete.
 
 No story may be called complete until its vertical behavior, error state, protocol/mock wiring, unit tests, integration coverage where feasible, and regression suite are all present.
 
@@ -602,5 +633,6 @@ Approval is requested for the following implementation decisions:
 5. Implement zoom as a transient transform around the existing lazy strip, with vertical scroll paused only while zoomed.
 6. Apply Library sort/filter in a pure snapshot query and persist only the presentation preferences.
 7. Limit history clearing strictly to `StoredSearchHistory`.
+8. Validate best-effort compatibility by rendering pattern; keep named-domain observations internal and out of product claims.
 
-After this design is approved or amended, the next deliverable will be one epic, six appropriately scoped stories, and a separate executable implementation plan for each story.
+After this design is approved or amended, the next deliverable will be one epic, eight appropriately scoped stories, and a separate executable implementation plan for each story.
