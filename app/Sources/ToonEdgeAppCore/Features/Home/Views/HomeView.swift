@@ -1,12 +1,11 @@
 import SwiftUI
 
 public struct HomeView: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private let layout = HomeDashboardLayout()
     private let dependencies: AppDependencies
     @Binding private var router: AppRouter
     @State private var snapshot = HomeSnapshot(continueReading: [], recentlyUpdated: [], library: [])
     @State private var hasLoadedSnapshot = false
-    @State private var isRefreshingUpdates = false
     @State private var refreshMessage: String?
 
     public init(dependencies: AppDependencies, router: Binding<AppRouter>) {
@@ -18,15 +17,8 @@ public struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: ToonEdgeSpacing.xlarge) {
-                    topBar
-                    refreshStatus
-
-                    if hasLoadedSnapshot && snapshot.isEmpty {
-                        emptyState
-                    } else {
-                        continueReadingSection
-                        section("Recently Updated", items: snapshot.recentlyUpdated, style: .compact)
-                        section("All Library", items: snapshot.library, style: .compact)
+                    ForEach(layout.contentPriority, id: \.self) { section in
+                        dashboardSection(section)
                     }
                 }
                 .padding(ToonEdgeSpacing.large)
@@ -35,17 +27,31 @@ public struct HomeView: View {
                 await reloadSnapshot()
             }
             .refreshable {
-                await refreshUpdates()
+                if layout.refreshPlacement == .pullToRefresh {
+                    await refreshUpdates()
+                }
             }
             .toonEdgeScreen()
         }
     }
 
-    private var topBar: some View {
-        HStack(spacing: ToonEdgeSpacing.medium) {
+    @ViewBuilder
+    private func dashboardSection(_ section: HomeDashboardSection) -> some View {
+        switch section {
+        case .search:
             searchEntry
-            settingsButton
-            refreshButton
+            refreshStatus
+            if hasLoadedSnapshot && snapshot.isEmpty {
+                emptyState
+            }
+        case .continueReading:
+            if !snapshot.continueReading.isEmpty {
+                continueReadingSection
+            }
+        case .recentlyUpdated:
+            self.section("Recently Updated", items: snapshot.recentlyUpdated, style: .compact)
+        case .libraryPreview:
+            self.section("All Library", items: snapshot.library, style: .compact)
         }
     }
 
@@ -57,7 +63,7 @@ public struct HomeView: View {
         } label: {
             HStack(spacing: ToonEdgeSpacing.small) {
                 Image(systemName: "globe")
-                    .font(dynamicTypeSize.isAccessibilitySize ? .system(size: 22, weight: .semibold) : ToonEdgeTypography.body.weight(.semibold))
+                    .font(ToonEdgeTypography.body)
                     .foregroundStyle(ToonEdgeColor.textSecondary)
 
                 ViewThatFits(in: .horizontal) {
@@ -65,7 +71,7 @@ public struct HomeView: View {
                     Text("Search or enter URL").fixedSize(horizontal: true, vertical: false)
                     Text("Search / URL")
                 }
-                .font(dynamicTypeSize.isAccessibilitySize ? .system(size: 22) : ToonEdgeTypography.body)
+                .font(ToonEdgeTypography.body)
                 .foregroundStyle(ToonEdgeColor.textSecondary)
                 .lineLimit(2)
 
@@ -74,52 +80,12 @@ public struct HomeView: View {
             .padding(.horizontal, layout.horizontalPadding)
             .frame(minHeight: layout.height)
             .frame(maxWidth: .infinity)
-            .background(ToonEdgeColor.panel.opacity(0.82), in: RoundedRectangle(cornerRadius: layout.cornerRadius))
-            .overlay(
-                RoundedRectangle(cornerRadius: layout.cornerRadius)
-                    .stroke(ToonEdgeColor.border.opacity(0.55))
-            )
+            .padding(.vertical, ToonEdgeSpacing.small)
+            .background(ToonEdgeColor.panel, in: RoundedRectangle(cornerRadius: layout.cornerRadius))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(TEActionStyle())
         .accessibilityLabel("Search the web or paste a chapter link")
         .accessibilityIdentifier("home.searchEntry")
-    }
-
-    private var settingsButton: some View {
-        let layout = HomeTopAccessoryLayout()
-
-        return Button {
-            router.selectedTab = .settings
-        } label: {
-            Image(systemName: "gearshape")
-                .font(ToonEdgeTypography.body.weight(.semibold))
-                .foregroundStyle(ToonEdgeColor.textSecondary)
-                .frame(width: layout.size, height: layout.size)
-                .background(ToonEdgeColor.panel.opacity(0.72), in: RoundedRectangle(cornerRadius: layout.cornerRadius))
-                .overlay(RoundedRectangle(cornerRadius: layout.cornerRadius).stroke(ToonEdgeColor.border.opacity(0.5)))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Settings")
-    }
-
-    private var refreshButton: some View {
-        let layout = HomeTopAccessoryLayout()
-
-        return Button {
-            Task {
-                await refreshUpdates()
-            }
-        } label: {
-            Image(systemName: isRefreshingUpdates ? "hourglass" : "arrow.clockwise")
-                .font(ToonEdgeTypography.body.weight(.semibold))
-                .foregroundStyle(ToonEdgeColor.textSecondary)
-                .frame(width: layout.size, height: layout.size)
-                .background(ToonEdgeColor.panel.opacity(0.72), in: RoundedRectangle(cornerRadius: layout.cornerRadius))
-                .overlay(RoundedRectangle(cornerRadius: layout.cornerRadius).stroke(ToonEdgeColor.border.opacity(0.5)))
-        }
-        .buttonStyle(.plain)
-        .disabled(isRefreshingUpdates || dependencies.updateRefreshService == nil)
-        .accessibilityLabel("Check for new chapters")
     }
 
     @ViewBuilder
@@ -135,47 +101,37 @@ public struct HomeView: View {
                 Text(layout.message)
                     .font(ToonEdgeTypography.caption)
                     .foregroundStyle(ToonEdgeColor.textSecondary)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, ToonEdgeSpacing.medium)
             .padding(.vertical, ToonEdgeSpacing.small)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(ToonEdgeColor.panel.opacity(0.58), in: RoundedRectangle(cornerRadius: layout.cornerRadius))
-            .overlay(RoundedRectangle(cornerRadius: layout.cornerRadius).stroke(ToonEdgeColor.border.opacity(0.45)))
         }
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
-            TEBanner(
-                title: "No saved reading yet",
-                message: "Start with search or paste a chapter link. Your reading progress will appear here later.",
-                systemImage: "book.closed"
-            )
-
-            TEButton("Start a web reading session", systemImage: "magnifyingglass") {
-                router.presentSearch()
-            }
+        VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+            Text("Nothing saved yet").font(ToonEdgeTypography.sectionTitle)
+            Text("Search or paste a chapter link.")
+                .font(ToonEdgeTypography.body)
+                .foregroundStyle(ToonEdgeColor.textSecondary)
         }
     }
 
+    @ViewBuilder
     private func section(_ title: String, items: [SeriesSummary], style: HomeSectionStyle) -> some View {
-        VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
-            Text(title)
-                .font(ToonEdgeTypography.sectionTitle)
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
+                Text(title)
+                    .font(ToonEdgeTypography.sectionTitle)
 
-            if items.isEmpty {
-                TEBanner(title: "Nothing here yet", message: "This section will fill as mock state changes.", systemImage: "tray")
-            } else {
-                VStack(spacing: ToonEdgeSpacing.small) {
-                    ForEach(items) { item in
-                        Button {
-                            selectSeries(HomeSeriesSelectionRoute(style: style, seriesID: item.id))
-                        } label: {
-                            HomeSeriesCard(item: item, style: style)
-                        }
-                        .buttonStyle(.plain)
+                TEEditorialGroup(items) { item in
+                    Button {
+                        selectSeries(HomeSeriesSelectionRoute(style: style, seriesID: item.id))
+                    } label: {
+                        HomeSeriesCard(item: item, style: style)
                     }
+                    .buttonStyle(TEActionStyle())
                 }
             }
         }
@@ -183,50 +139,45 @@ public struct HomeView: View {
 
     private var continueReadingSection: some View {
         VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
-            HStack {
-                Text("Continue Reading")
-                    .font(ToonEdgeTypography.sectionTitle)
-                Spacer()
-                if snapshot.showsContinueReadingViewAll {
-                    Button("View All") {
-                        router.openLibraryRecent()
-                    }
-                    .font(ToonEdgeTypography.caption.weight(.semibold))
-                    .buttonStyle(.plain)
-                    .foregroundStyle(ToonEdgeColor.accent)
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    continueReadingHeading
+                    Spacer()
+                    continueReadingViewAll
+                }
+                VStack(alignment: .leading) {
+                    continueReadingHeading
+                    continueReadingViewAll
                 }
             }
 
-            if snapshot.continueReading.isEmpty {
-                TEBanner(title: "Nothing here yet", message: "This section will fill as mock state changes.", systemImage: "tray")
-            } else {
-                let featured = snapshot.continueReading.first
-                let remaining = Array(snapshot.continueReading.dropFirst())
-
-                VStack(spacing: ToonEdgeSpacing.small) {
-                    if let featured {
-                        Button {
-                            selectSeries(HomeSeriesSelectionRoute(style: .featured, seriesID: featured.id))
-                        } label: {
-                            HomeSeriesCard(item: featured, style: .featured)
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    if !remaining.isEmpty {
-                        VStack(spacing: ToonEdgeSpacing.xsmall) {
-                            ForEach(remaining) { item in
-                                Button {
-                                    selectSeries(.continueReading(item.id))
-                                } label: {
-                                    HomeSeriesCard(item: item, style: .compact)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
+            TEEditorialGroup(snapshot.continueReading) { item in
+                let style: HomeSectionStyle = item.id == snapshot.continueReading.first?.id ? .featured : .compact
+                Button {
+                    selectSeries(.continueReading(item.id))
+                } label: {
+                    HomeSeriesCard(item: item, style: style)
                 }
+                .buttonStyle(TEActionStyle())
             }
+        }
+    }
+
+    private var continueReadingHeading: some View {
+        Text("Continue Reading")
+            .font(ToonEdgeTypography.sectionTitle)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private var continueReadingViewAll: some View {
+        if snapshot.showsContinueReadingViewAll {
+            Button("View All") {
+                router.openLibraryRecent()
+            }
+            .font(ToonEdgeTypography.caption.weight(.semibold))
+            .buttonStyle(TEActionStyle())
+            .foregroundStyle(ToonEdgeColor.accent)
         }
     }
 
@@ -264,10 +215,8 @@ public struct HomeView: View {
             return
         }
 
-        isRefreshingUpdates = true
         let result = await updateRefreshService.refreshUpdates()
         await reloadSnapshot()
-        isRefreshingUpdates = false
         refreshMessage = refreshMessage(for: result)
     }
 
@@ -317,16 +266,18 @@ struct HomeDashboardLayout: Equatable, Sendable {
     var searchPlacement: HomeSearchPlacement
     var refreshPlacement: HomeRefreshPlacement
     var usesCircularTopAccessoryButtons: Bool
+    let showsDuplicateSearchCTA = false
+    let showsSettingsAccessory = false
 
     init() {
         self.contentPriority = [.search, .continueReading, .recentlyUpdated, .libraryPreview]
         self.searchPlacement = .compactCommandBar
-        self.refreshPlacement = .inlineStatus
+        self.refreshPlacement = .pullToRefresh
         self.usesCircularTopAccessoryButtons = false
     }
 }
 
-enum HomeDashboardSection: Equatable, Sendable {
+enum HomeDashboardSection: Hashable, Sendable {
     case search
     case continueReading
     case recentlyUpdated
@@ -338,7 +289,7 @@ enum HomeSearchPlacement: Equatable, Sendable {
 }
 
 enum HomeRefreshPlacement: Equatable, Sendable {
-    case inlineStatus
+    case pullToRefresh
 }
 
 struct HomeSearchEntryLayout: Equatable, Sendable {
@@ -358,15 +309,15 @@ struct HomeSearchEntryLayout: Equatable, Sendable {
 }
 
 struct HomeSeriesCardLayout: Equatable, Sendable {
-    var fixedHeight: CGFloat
+    var fixedHeight: CGFloat?
     var coverWidth: CGFloat
     var coverHeight: CGFloat
     var cornerRadius: CGFloat
-    var titleLineLimit: Int
+    var titleLineLimit: Int?
     var progressHeight: CGFloat
     var usesOuterCardContainer: Bool
 
-    init(style: HomeSectionStyle) {
+    init(style: HomeSectionStyle, isAccessibilitySize: Bool = false) {
         switch style {
         case .featured:
             self.fixedHeight = 156
@@ -385,49 +336,59 @@ struct HomeSeriesCardLayout: Equatable, Sendable {
             self.progressHeight = 0
             self.usesOuterCardContainer = false
         }
-    }
-}
-
-struct HomeTopAccessoryLayout: Equatable, Sendable {
-    var size: CGFloat
-    var cornerRadius: CGFloat
-    var usesCircleShape: Bool
-
-    init() {
-        self.size = 40
-        self.cornerRadius = 10
-        self.usesCircleShape = false
+        if isAccessibilitySize {
+            self.fixedHeight = nil
+            self.titleLineLimit = nil
+        }
     }
 }
 
 struct HomeRefreshStatusLayout: Equatable, Sendable {
     var message: String
-    var cornerRadius: CGFloat
     var usesBannerContainer: Bool
 
     init(message: String) {
         self.message = message
-        self.cornerRadius = 10
         self.usesBannerContainer = false
     }
 }
 
 private struct HomeSeriesCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let item: SeriesSummary
     let style: HomeSectionStyle
 
     var body: some View {
-        let layout = HomeSeriesCardLayout(style: style)
+        let layout = HomeSeriesCardLayout(style: style, isAccessibilitySize: dynamicTypeSize.isAccessibilitySize)
 
         Group {
-            if style == .featured {
+            if dynamicTypeSize.isAccessibilitySize {
+                accessibleCard(layout: layout)
+            } else if style == .featured {
                 featuredCard(layout: layout)
             } else {
                 compactCard(layout: layout)
             }
         }
         .frame(height: layout.fixedHeight)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+
+    private func accessibleCard(layout: HomeSeriesCardLayout) -> some View {
+        VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+            cover(cornerRadius: layout.cornerRadius)
+                .frame(width: layout.coverWidth, height: layout.coverHeight)
+                .accessibilityHidden(true)
+            titleBlock(titleLineLimit: layout.titleLineLimit)
+            if style == .featured {
+                ProgressView(value: item.progressPercent)
+                    .tint(ToonEdgeColor.accent)
+                    .accessibilityLabel("Reading progress")
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func featuredCard(layout: HomeSeriesCardLayout) -> some View {
@@ -439,8 +400,9 @@ private struct HomeSeriesCard: View {
                 titleBlock(titleLineLimit: layout.titleLineLimit)
                 Spacer(minLength: 0)
                 ProgressView(value: item.progressPercent)
-                    .tint(item.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.accent)
+                    .tint(ToonEdgeColor.accent)
                     .frame(height: layout.progressHeight)
+                    .accessibilityLabel("Reading progress")
             }
             .frame(minHeight: layout.coverHeight)
 
@@ -470,15 +432,15 @@ private struct HomeSeriesCard: View {
         .padding(.vertical, ToonEdgeSpacing.xsmall)
     }
 
-    private func titleBlock(titleLineLimit: Int) -> some View {
+    private func titleBlock(titleLineLimit: Int?) -> some View {
         VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
-            HStack(spacing: ToonEdgeSpacing.small) {
-                Text(item.title)
-                    .font(ToonEdgeTypography.body.weight(.semibold))
-                    .lineLimit(titleLineLimit)
-                if item.hasUnreadUpdates {
-                    TEChip("New", isActive: true)
-                }
+            Text(item.title)
+                .font(ToonEdgeTypography.body.weight(.semibold))
+                .lineLimit(titleLineLimit)
+            if item.hasUnreadUpdates {
+                Label("New chapters", systemImage: "circle.fill")
+                    .font(ToonEdgeTypography.caption)
+                    .foregroundStyle(ToonEdgeColor.accent)
             }
 
             Text(item.subtitle)
@@ -492,10 +454,6 @@ private struct HomeSeriesCard: View {
             coverPlaceholder(cornerRadius: cornerRadius)
         }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: cornerRadius)
-                .stroke(ToonEdgeColor.border.opacity(0.55))
-        )
     }
 
     private func coverPlaceholder(cornerRadius: CGFloat) -> some View {

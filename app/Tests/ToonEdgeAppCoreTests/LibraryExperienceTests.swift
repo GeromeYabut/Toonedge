@@ -887,8 +887,27 @@ import Testing
 
     #expect(layout.contentPriority == [.search, .continueReading, .recentlyUpdated, .libraryPreview])
     #expect(layout.searchPlacement == .compactCommandBar)
-    #expect(layout.refreshPlacement == .inlineStatus)
+    #expect(layout.refreshPlacement == .pullToRefresh)
     #expect(layout.usesCircularTopAccessoryButtons == false)
+}
+
+@Test func quietHomeKeepsSearchFirstWithoutDuplicatePrimaryAction() {
+    let layout = HomeDashboardLayout()
+
+    #expect(layout.contentPriority == [.search, .continueReading, .recentlyUpdated, .libraryPreview])
+    #expect(layout.showsDuplicateSearchCTA == false)
+    #expect(layout.showsSettingsAccessory == false)
+    #expect(layout.refreshPlacement == .pullToRefresh)
+}
+
+@Test func quietHomeSeriesRowsExpandAtAccessibilitySizes() {
+    for style in [HomeSectionStyle.featured, .compact] {
+        let layout = HomeSeriesCardLayout(style: style, isAccessibilitySize: true)
+
+        #expect(layout.fixedHeight == nil)
+        #expect(layout.titleLineLimit == nil)
+        #expect(!layout.usesOuterCardContainer)
+    }
 }
 
 @Test func homeSearchEntryUsesRestrainedBrowserCommandBarStyling() {
@@ -901,15 +920,10 @@ import Testing
     #expect(layout.horizontalPadding == ToonEdgeSpacing.medium)
 }
 
-@Test func homeChromeUsesQuietDashboardControls() {
-    let accessory = HomeTopAccessoryLayout()
+@Test func homeRefreshFeedbackKeepsResultWithoutBannerContainer() {
     let status = HomeRefreshStatusLayout(message: "Checked 2, found 1 update.")
 
-    #expect(accessory.size == 40)
-    #expect(accessory.cornerRadius == 10)
-    #expect(accessory.usesCircleShape == false)
     #expect(status.message == "Checked 2, found 1 update.")
-    #expect(status.cornerRadius == 10)
     #expect(status.usesBannerContainer == false)
 }
 
