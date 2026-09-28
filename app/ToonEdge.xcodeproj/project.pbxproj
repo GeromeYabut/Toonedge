@@ -19,6 +19,7 @@
 		A1000000000000000000000A /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* DownloadsView.swift */; };
 		A1000000000000000000000B /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* HomeView.swift */; };
 		A1000000000000000000000C /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* LibraryView.swift */; };
+		A10000000000000000000033 /* SeriesDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000033 /* SeriesDetailView.swift */; };
 		A1000000000000000000000D /* ReaderPlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000D /* ReaderPlaceholderView.swift */; };
 		A1000000000000000000000E /* SearchOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000E /* SearchOverlayView.swift */; };
 		A1000000000000000000000F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000F /* SettingsView.swift */; };
@@ -70,6 +71,7 @@
 		A2000000000000000000000A /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Downloads/Views/DownloadsView.swift; sourceTree = "<group>"; };
 		A2000000000000000000000B /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Home/Views/HomeView.swift; sourceTree = "<group>"; };
 		A2000000000000000000000C /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Library/Views/LibraryView.swift; sourceTree = "<group>"; };
+		A20000000000000000000033 /* SeriesDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Library/Views/SeriesDetailView.swift; sourceTree = "<group>"; };
 		A2000000000000000000000D /* ReaderPlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Views/ReaderPlaceholderView.swift; sourceTree = "<group>"; };
 		A2000000000000000000000E /* SearchOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Search/Views/SearchOverlayView.swift; sourceTree = "<group>"; };
 		A2000000000000000000000F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Settings/Views/SettingsView.swift; sourceTree = "<group>"; };
@@ -164,6 +166,7 @@
 				A2000000000000000000000A /* DownloadsView.swift */,
 				A2000000000000000000000B /* HomeView.swift */,
 				A2000000000000000000000C /* LibraryView.swift */,
+				A20000000000000000000033 /* SeriesDetailView.swift */,
 				A2000000000000000000000D /* ReaderPlaceholderView.swift */,
 				A20000000000000000000015 /* ReaderView.swift */,
 				A20000000000000000000032 /* ReaderCanvasPalette.swift */,
@@ -371,6 +374,7 @@
 				A1000000000000000000000A /* DownloadsView.swift in Sources */,
 				A1000000000000000000000B /* HomeView.swift in Sources */,
 				A1000000000000000000000C /* LibraryView.swift in Sources */,
+				A10000000000000000000033 /* SeriesDetailView.swift in Sources */,
 				A1000000000000000000000D /* ReaderPlaceholderView.swift in Sources */,
 				A10000000000000000000015 /* ReaderView.swift in Sources */,
 				A10000000000000000000032 /* ReaderCanvasPalette.swift in Sources */,
