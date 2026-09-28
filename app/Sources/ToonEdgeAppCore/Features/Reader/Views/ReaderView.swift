@@ -131,7 +131,7 @@ public struct ReaderView: View {
         .animation(.easeInOut(duration: 0.16), value: viewModel.isChromeVisible)
         .sheet(isPresented: $viewModel.isSettingsPresented) {
             ReaderSettingsView(viewModel: viewModel)
-                .presentationDetents([.medium])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isSaveStatePickerPresented) {
