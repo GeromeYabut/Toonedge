@@ -2,8 +2,13 @@
 
 **Product:** ToonEdge  
 **Platform:** iOS, iPhone-first  
-**Document Version:** v1.0  
+**Document Version:** v1.1
 **Status:** Draft for review
+**Last Revised:** 2026-09-28
+
+### Revision Summary
+
+Version 1.1 incorporates the approved requirements from the 2026-09-28 MangaPin competitive review. It adds six bounded MVP requirements: Reader continuity and prefetch, guarded manual Clean Mode, saved-library search matches, Reader zoom, operational Library sorting/source filtering, and local search-history controls. It also records the approved post-MVP opportunity backlog without promoting those items into the release commitment.
 
 ## 1. Overview
 
@@ -35,12 +40,15 @@ The product should prioritize trust, speed, and ease of reading over complexity.
 - Automatically detect chapter pages with high reliability
 - Persist a local library of ongoing reads
 - Track reading progress and restore users to their exact place
-- Notify users when a saved series has a new chapter available
+- Surface when a saved series has a new chapter available
 
 ### 3.2 Secondary Goals
 - Support offline-friendly local caching of recent reading content
 - Minimize friction between discovery and reading
 - Create a strong mobile-native reading experience for iPhone users
+- Keep long-strip reading visually stable while images load
+- Make saved content discoverable from the universal search entry point
+- Give users direct control over locally stored search history
 
 ### 3.3 Non-Goals
 - Building a first-party hosted content library
@@ -48,6 +56,9 @@ The product should prioritize trust, speed, and ease of reading over complexity.
 - Supporting desktop or Android in v1
 - Implementing machine-learning-based detection in MVP
 - Supporting multi-page chapter stitching in MVP
+- Requiring an account or cloud sync in MVP
+- Building external tracker, social, recommendation, or community features
+- Adding browser tabs or conventional paginated manga modes in MVP
 
 ## 4. Target Users
 
@@ -89,12 +100,17 @@ Reader exit semantics:
 - Detection engine for identifying chapter pages
 - Automatic entry into reader mode at high confidence
 - Reader mode with native iPhone-optimized display
+- Bounded ahead-of-scroll Reader prefetch and stable page placeholders
+- Pinch and double-tap zoom in the long-strip Reader
 - Local library and progress persistence
+- Saved-library matches in universal search
+- Operational Library sorting and filtering by sources already in the user's collection
+- Individual and clear-all local search-history controls
 - New chapter availability checks for saved series
 - Local caching of reading content
 - Site-specific parsing profiles plus fallback generic detection
 - Medium-confidence detection prompt via reader CTA banner
-- Manual user override to enter reader mode
+- Guarded manual Clean Mode attempt for viable manual-only detections
 - Ability to return to original webpage from reader mode
 - Reader actions for `Add to Library` and `Open in Library`
 - Google as the default web search provider for query submissions
@@ -108,20 +124,25 @@ Reader exit semantics:
 - Tabs in the browser
 - ML-based document or image classification
 - Extensive settings complexity beyond core reading preferences
+- Source migration, batch download queues, and per-series reader overrides
+- Cloud backup, external tracker integration, notes, ratings, custom lists, and reading statistics
+- Background chapter notifications or predicted release dates
+- Single-page, double-page, left-to-right, or right-to-left reading modes
 
 ## 7. User Experience Summary
 
 ToonEdge is centered on a single high-frequency user loop:
 1. User opens ToonEdge
 2. User either resumes from library or uses the search bar
-3. User enters a URL or a search query
-4. App opens the destination inside the in-app browser
+3. User enters a URL, search query, or saved-series title
+4. A saved-series result opens native Series Detail; a URL or web query opens the in-app browser
 5. Detection engine analyzes the loaded page
 6. If high confidence, app auto-enters Reader Mode
 7. If medium confidence, app shows a “Read in Clean Mode” prompt
-8. User reads in native reader
-9. Progress is saved automatically
-10. Series can be added to library and tracked for updates
+8. If manual-only eligibility is confirmed, Browser offers a secondary “Try Clean Mode” action
+9. User reads in the native reader
+10. Progress is saved automatically
+11. Series can be added to library and tracked for updates
 
 ## 8. Functional Requirements
 
@@ -130,6 +151,7 @@ ToonEdge is centered on a single high-frequency user loop:
 - The search bar must accept both URLs and general search queries
 - The Home screen must also display Continue Reading, Recently Updated, and All Library
 - The search bar must not be a library-only search field
+- The search experience must include local saved-series matches without turning Home into a catalog
 - The Home screen must communicate two primary actions: resume reading from saved library, and start a new reading session from the web
 
 ### 8.2 Search Input Classification
@@ -155,7 +177,16 @@ ToonEdge is centered on a single high-frequency user loop:
 Detection confidence model:
 - high confidence: auto-enter Reader Mode
 - medium confidence: show reader CTA
-- low confidence: do nothing
+- manual-only low confidence: expose a secondary manual attempt only when the detector has a viable session and no hard block
+- all other low confidence: do nothing
+
+Reader entry thresholds are:
+- high: score `>= 78` plus high-confidence viability constraints
+- medium: score `55-77` plus medium-confidence viability constraints
+- manual-only: score `45-54`, no hard block, and a viable normalized Reader session
+- unavailable: score below `45`, nonviable output, or any hard block
+
+The detector owns entry eligibility. Browser UI must not infer eligibility from score alone or bypass challenge, authentication, paywall, protected-viewer, browser-only, unsupported-paginated, DRM/canvas/blob, error-page, or other hard blocks.
 
 Detection features may include:
 - count of large vertically stacked images
@@ -174,6 +205,15 @@ Detection features may include:
 - Use edge-to-edge or fit-to-width rendering by default
 - Preserve image aspect ratio
 - Provide smooth scrolling for long chapters
+- Prefetch and decode the current page, two pages ahead, and retain one recently visible page behind by default
+- Limit concurrent page fetch/decode work to three operations
+- Reuse available cached assets before requesting the network
+- Preserve the selected Reader canvas and page geometry while images load or fail
+- Keep a failed page isolated and retryable without resetting the chapter
+- Support pinch zoom from `1x` through `3x`
+- Support double tap to toggle between `1x` and `2x`, with a zoomed double tap returning to `1x`
+- Allow panning while zoomed and immediately restore normal vertical scrolling at `1x`
+- Reset transient zoom when changing chapters or leaving Reader
 - Automatically save reading progress
 - Restore the user to their last reading position
 
@@ -186,6 +226,10 @@ Reader controls must provide:
 - reader settings entry point
 - “View Original Page” action
 - Library action that always opens the Library root
+- an accessible Reset Zoom action while content is zoomed
+
+Reader prefetch must not imply explicit offline retention. Network-prefetched content may remain memory-scoped; user-requested offline retention continues to use the existing download/cache lifecycle.
+
 ### 8.6 Library System
 
 The Library is a first-class organizational surface for managing reading state and collection intent.
@@ -220,8 +264,8 @@ A saved series may exist in one of the following states:
 - Completed
   - user finished the available content
 
-- Archived (future)
-  - hidden from primary surfaces but 
+- Dropped
+  - intentionally stopped and excluded from active reading surfaces
 
 #### Reading Progress Visualization
 
@@ -236,10 +280,16 @@ Series cards should support:
 #### Library Filtering
 
 The Library should support:
-- segmented filtering (Recent, Reading, Planned)
-- optional sort order
-- optional source filtering
+- segmented filtering (Recent, Reading, Planned, Dropped, Completed)
+- sorting by recent activity, title, or unread updates first
+- ascending and descending order where meaningful
+- multi-select source filtering derived only from domains already present in the user's Library
 - reading status filtering
+- composition of lifecycle segment, sort, source filter, and view density
+- a Reset action that restores Recent, recent activity descending, and all sources
+- local persistence of selected segment, sort, source filter, and view density
+
+Sorting and filtering must not mutate saved series metadata. Source filters must not become source recommendations, discovery shortcuts, or a hardcoded source catalog. If active filters produce no results, Library must explain that filters are active and offer Reset.
 
 ### 8.7 Add to Library Flow
 - After a user begins or completes reading a chapter, the app may prompt them to add the series to their library
@@ -266,11 +316,33 @@ For series saved in the library, the app must:
 - For unknown sources, the app must fall back to generic heuristic detection
 - The architecture should allow new site profiles to be added without redesigning the reader system
 
+### 8.11 Saved-Library Search
+
+- Universal search must match saved series locally as the user types
+- Matching must be case-insensitive and support exact title, title prefix, and token containment
+- Results must be deterministic, deduplicated, available offline, and visibly labeled as saved content
+- Saved results should show useful local context such as lifecycle state and resume chapter
+- Selecting a saved result must open native Series Detail and must not submit a web search
+- An exact clipboard-link action remains first; exact and partial saved matches follow; the explicit web-search action remains visible
+- Empty-query behavior must remain restrained and must not list the Library as a catalog
+- Opening a saved result must not create a web-search-history entry
+
+### 8.12 Local Search-History Controls
+
+- Users must be able to delete an individual recent search or recent link from Search
+- Settings must provide `Clear Search History` with confirmation
+- Successful deletion must update visible suggestions immediately and persist across relaunch
+- Clearing search history must delete only locally stored search/link history
+- Clearing search history must not delete Library entries, reading progress, recent reading, downloads, cache metadata, cookies, or website data
+- Canceling confirmation must have no effect
+- The feature must not introduce an account, analytics upload, or remote history store
+
 ## 9. Search UX Details
 - Search is not a library-only function; it is a unified entry system
 - Search should feel instant and lightweight
 - Users should not need to think about whether they are entering a URL or a search query
-- The browser should be the output target for both URLs and search queries
+- The browser should be the output target for URLs and web queries; saved-library results open native Series Detail
+- Saved-library matching must remain local and work without a network connection
 - Detection should occur after page load, not on the Home screen alone
 - The app may suggest opening a copied link from clipboard, but should not auto-open clipboard content without explicit user action
 - Browser tabs are explicitly not required in v1
@@ -280,7 +352,9 @@ For series saved in the library, the app must:
 - Heuristic signals may include image count, image dimensions, vertical clustering, URL patterns, central reading container, image host consistency, chapter metadata, high document height, and low decorative-image proportion
 - The extractor must account for lazy-loading where practical
 - The engine should guard against blog posts, galleries, comment sections, ad-heavy sidebars, and product pages with repeated thumbnails
-- If detection is uncertain or extraction fails: remain in browser, allow manual reader attempt, do not auto-enter reader
+- If detection is uncertain or extraction fails: remain in browser and do not auto-enter Reader
+- A secondary manual attempt may be exposed only for the `45-54` manual-only band when a viable normalized session exists and no hard block applies
+- Manual failure must leave the exact browser page and navigation history intact
 
 ## 11. Multi-Page Chapter Stitching
 Status: Post-MVP only.
@@ -296,17 +370,22 @@ Initial technical direction: sequential retrieval, not parallel, for the first i
 ## 12. UX Requirements by Screen
 - Home: universal search and URL bar, Continue Reading, Recently Updated, All Library
 - Series Detail: title, cover, follow state, chapter list, read/unread indicators, download/cache action where available
-- Browser: address/search bar, back/forward/refresh, page content, medium-confidence “Read in Clean Mode” CTA when relevant
-- Reader: immersive reading, minimal chrome, quick return to original page, saved progress, chapter navigation where available
+- Browser: address/search bar, back/forward/refresh, page content, medium-confidence “Read in Clean Mode” CTA, and a secondary manual-only “Try Clean Mode” tool action when eligible
+- Reader: immersive reading, minimal chrome, stable bounded prefetch, pinch/double-tap zoom, quick return to original page, saved progress, chapter navigation where available
+- Library: lifecycle segments, view density, recent/title/unread sorting, source filtering derived from saved domains, filtered empty-state Reset
 - Downloads / Cache Management: viewing downloaded or cached reading content, removing downloaded items, monitoring storage usage
-- Settings: reader behavior settings, cache management, update checking behavior where exposed
+- Settings: reader behavior settings, cache management, local search-history clearing, update checking behavior where exposed
 
 ## 13. Key User Flows
 - Start from Search Query
 - Start from URL
+- Open a Saved Series from Universal Search
 - Resume from Library
+- Attempt Manual Clean Mode from Browser
 - New Chapter Flow
 - Return to Original Page
+- Delete One Search-History Item
+- Clear Search History from Settings
 
 ## 14. Technical Architecture Requirements
 High-level components:
@@ -318,6 +397,7 @@ High-level components:
 - detection engine
 - extraction and parsing engine
 - reader rendering engine
+- chapter-scoped page loading/prefetch coordination
 - local persistence and library storage
 - caching / download manager
 - update-checking engine
@@ -332,17 +412,29 @@ Entities should include:
 
 ## 16. Quality Requirements
 - Reader should feel smooth on long image chapters
+- Reader page loading must not produce full-canvas flashes or scroll-position jumps
+- No more than three Reader page fetch/decode operations may be active concurrently
+- Leaving or replacing a chapter must cancel stale nonessential prefetch work
 - Search suggestions should appear quickly
+- Saved-library search results must be available offline and route to native Series Detail
 - Transition from browser to reader at high confidence should feel immediate and deliberate
+- Manual Clean Mode must never weaken detection hard blocks
 - Caching should improve reopen speed for recent chapters
 - Detection must degrade gracefully when uncertain
 - Reader progress must persist reliably
+- Reader zoom must preserve content bounds, progress, image order, and normal `1x` scrolling
+- Library filtering and sorting must be deterministic and nonmutating
+- Search-history deletion must not affect any other local data category
 
 ## 17. Risks and Constraints
 - Detection fragility due to source changes
 - False positives harming trust
 - Source variability from lazy-loading or obfuscated markup
 - Storage growth from cached images
+- Memory pressure from decoded long-strip images
+- Gesture conflict between Reader zoom, vertical scrolling, and chrome toggling
+- Confusion between saved-library results and web-search suggestions
+- Detection threshold drift between documented policy and implementation
 
 ## 18. Release Phasing
 ### MVP / v1
@@ -354,8 +446,14 @@ Entities should include:
 - Site profiles plus fallback generic extraction
 - Auto-enter Reader Mode at high confidence
 - Prompt at medium confidence
+- Guarded manual Clean Mode at manual-only confidence
 - Native reader
+- Bounded Reader prefetch and page-local retry
+- Pinch and double-tap Reader zoom
 - Local library
+- Saved-library matches in universal search
+- Library sorting and saved-source filtering
+- Individual and clear-all local search-history controls
 - Progress saving
 - New chapter checking
 - Local caching basics
@@ -363,11 +461,21 @@ Entities should include:
 
 ### Post-MVP
 - Multi-page chapter stitching
-- More advanced caching/downloads
-- More site profiles
-- configurable auto-open preference if needed
-- optional push notifications
-- cloud sync
+- Source migration and source-health tooling with preview, confirmation, duplicate detection, and rollback
+- Per-series overrides for a small subset of global Reader preferences
+- Batch chapter downloads with a visible bounded queue, retry, and storage estimates
+- Portable local backup/export and safe import before any cloud-sync work
+- Optional local notes and personal ratings
+- Custom lists and tags after collection-scale research demonstrates the need
+- Transparent local reading statistics with reset/correction controls
+- Opt-in update notifications after confirmed update accuracy and iOS scheduling constraints are addressed
+- External tracker import/export with explicit mapping and conflict behavior
+- Cloud backup and multi-device sync only after safe local export/import and migration rollback are proven
+- Additional single-page, double-page, left-to-right, and right-to-left reading modes as a deliberate product expansion
+- Per-site browser-protection controls only when compatibility evidence demonstrates the need
+- Restrained Home customization that permanently keeps universal search first
+- More site profiles that continue to comply with the launch-site policy
+- Configurable high-confidence auto-open preference if user research demonstrates the need
 
 ## 19. Explicit Product Decisions Locked In
 1. The app name is ToonEdge.
@@ -377,11 +485,17 @@ Entities should include:
 5. Detection occurs after page load inside the browser.
 6. At high confidence, the app auto-enters Reader Mode.
 7. At medium confidence, the app shows a reader conversion prompt.
-8. At low confidence, the app remains in browser mode.
+8. At manual-only low confidence, the app may expose a secondary guarded attempt; all other low-confidence and hard-blocked pages remain in Browser.
 9. Detection strategy is hybrid and conservative for auto-entry, not aggressive.
 10. Multi-page chapter stitching is future, not MVP.
 11. Users must always be able to return to the original webpage.
 12. The product stores library data locally and checks saved series for new chapters.
+13. Saved Library results are included in universal search but open native Series Detail rather than Browser.
+14. Reader zoom is transient and bounded to `1x...3x`.
+15. Reader prefetch is bounded and does not imply an offline download.
+16. Library sort and source filters are presentation preferences and do not mutate collection metadata.
+17. Search-history clearing affects only locally stored search/link history.
+18. Accounts, cloud sync, browser tabs, external trackers, and social/community features remain outside MVP.
 
 ## 20. Open Questions for Next Revision
 - whether to expose user-facing toggles for auto-open reader behavior in v1 or later
@@ -393,6 +507,7 @@ Entities should include:
 - SwiftData is the MVP persistence store behind repository protocols.
 - Bottom navigation for MVP is Home, Library, Downloads, and Settings. Browser is launched from Home/Search and preserved for return from Reader Mode, not exposed as a required bottom tab.
 - Exact initial detection thresholds are defined in the architecture doc and should be tuned during Epic 10 using fixture pages and diagnostics.
+- Reader entry presentation is driven by an explicit detector-owned disposition so Browser does not duplicate threshold or hard-block policy.
 - Initial launch-site policy is defined as enabled-public, approved non-promoted, and browser-only tiers in this PRD and the architecture doc.
 
 ## 21.1 Resolved Conflicts and Clarifications
@@ -403,6 +518,8 @@ Entities should include:
 - MVP bottom navigation is Home, Library, Downloads, and Settings. Browser is a launched flow, not a required bottom tab.
 - SwiftData is the MVP persistence store.
 - Manual offline-retain downloads are deferred until later cache/download work; recent cache visibility/removal is the first MVP slice.
+- The Architecture document's `>=78` high, `55-77` medium, and `45-54` manual-only entry bands are authoritative. Implementations using different defaults must be aligned before the guarded manual action ships.
+- Planned UX work that says all low-confidence pages hide Clean Mode must distinguish ordinary/hard-blocked low confidence from the approved manual-only band.
 
 ## 22. Launch Site Research and Policy
 
