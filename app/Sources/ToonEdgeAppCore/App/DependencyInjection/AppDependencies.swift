@@ -16,6 +16,8 @@ public struct AppDependencies: Sendable {
     public var chapterIndexRefreshService: (any SeriesChapterIndexRefreshing)?
     public var updateRefreshService: (any LibraryUpdateRefreshing)?
     public var settingsService: any SettingsManaging
+    public var interactionPreferences: any InteractionPreferencesManaging
+    public var interactionFeedback: any InteractionFeedbackProviding
     public var browserService: any BrowserCoordinating
     public var readerService: any ReaderSessionProviding
     public var adjacentReaderSessionLoader: (any AdjacentReaderSessionLoading)?
@@ -24,6 +26,7 @@ public struct AppDependencies: Sendable {
     public var seriesMetadataService: (any SeriesMetadataFetching)?
     public var browserPresentationFixture: BrowserPresentationFixture?
 
+    @MainActor
     public init(
         persistenceContainer: ModelContainer? = nil,
         libraryService: any LibraryProviding,
@@ -39,6 +42,8 @@ public struct AppDependencies: Sendable {
         chapterIndexRefreshService: (any SeriesChapterIndexRefreshing)? = nil,
         updateRefreshService: (any LibraryUpdateRefreshing)? = nil,
         settingsService: any SettingsManaging,
+        interactionPreferences: any InteractionPreferencesManaging,
+        interactionFeedback: any InteractionFeedbackProviding,
         browserService: any BrowserCoordinating,
         readerService: any ReaderSessionProviding,
         adjacentReaderSessionLoader: (any AdjacentReaderSessionLoading)? = nil,
@@ -61,6 +66,8 @@ public struct AppDependencies: Sendable {
         self.chapterIndexRefreshService = chapterIndexRefreshService
         self.updateRefreshService = updateRefreshService
         self.settingsService = settingsService
+        self.interactionPreferences = interactionPreferences
+        self.interactionFeedback = interactionFeedback
         self.browserService = browserService
         self.readerService = readerService
         self.adjacentReaderSessionLoader = adjacentReaderSessionLoader
@@ -70,9 +77,16 @@ public struct AppDependencies: Sendable {
         self.browserPresentationFixture = browserPresentationFixture
     }
 
-    public static func mock() -> AppDependencies {
+    @MainActor
+    public static func mock(
+        interactionPreferences: (any InteractionPreferencesManaging)? = nil,
+        interactionFeedback: (any InteractionFeedbackProviding)? = nil
+    ) -> AppDependencies {
         let cacheMetadataService = MockCacheMetadataService()
         let assetCache = try? FileBackedChapterAssetCache(rootDirectory: defaultCacheDirectory())
+        let resolvedInteractionPreferences = interactionPreferences ?? InMemoryInteractionPreferences()
+        let resolvedInteractionFeedback = interactionFeedback
+            ?? RecordingInteractionFeedback(preferences: resolvedInteractionPreferences)
         return AppDependencies(
             libraryService: MockLibraryService(),
             searchSuggestionProvider: MockSearchSuggestionProvider(),
@@ -84,6 +98,8 @@ public struct AppDependencies: Sendable {
             chapterIndexRefreshService: MockSeriesChapterIndexRefreshService(),
             updateRefreshService: MockLibraryUpdateRefreshService(),
             settingsService: MockSettingsService(),
+            interactionPreferences: resolvedInteractionPreferences,
+            interactionFeedback: resolvedInteractionFeedback,
             browserService: MockBrowserService(),
             readerService: MockReaderService(),
             readerProgressRepository: UserDefaultsReaderProgressRepository(),
@@ -111,6 +127,14 @@ public struct AppDependencies: Sendable {
             indexLibrary: repository,
             fetcher: HTMLChapterIndexFetcher()
         )
+        let interactionPreferences = UserDefaultsInteractionPreferences()
+        #if canImport(UIKit)
+        let interactionFeedback: any InteractionFeedbackProviding = SystemInteractionFeedback(
+            preferences: interactionPreferences
+        )
+        #else
+        let interactionFeedback: any InteractionFeedbackProviding = SilentInteractionFeedback()
+        #endif
 
         return AppDependencies(
             persistenceContainer: container,
@@ -134,6 +158,8 @@ public struct AppDependencies: Sendable {
                 diagnosticsLogger: diagnosticsLogger
             ),
             settingsService: UserDefaultsSettingsRepository(),
+            interactionPreferences: interactionPreferences,
+            interactionFeedback: interactionFeedback,
             browserService: MockBrowserService(),
             readerService: MockReaderService(),
             adjacentReaderSessionLoader: AdjacentReaderSessionLoader(

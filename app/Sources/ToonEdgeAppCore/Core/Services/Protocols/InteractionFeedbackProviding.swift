@@ -6,12 +6,12 @@ public enum InteractionFeedbackEvent: Equatable, Sendable {
 }
 
 @MainActor
-public protocol InteractionFeedbackProviding: AnyObject {
+public protocol InteractionFeedbackProviding: AnyObject, Sendable {
     func emit(_ event: InteractionFeedbackEvent)
 }
 
 @MainActor
-public protocol InteractionPreferencesManaging: AnyObject {
+public protocol InteractionPreferencesManaging: AnyObject, Sendable {
     func isHapticFeedbackEnabled() -> Bool
     func setHapticFeedbackEnabled(_ enabled: Bool)
 }

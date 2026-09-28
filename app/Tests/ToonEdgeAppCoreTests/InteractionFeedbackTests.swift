@@ -26,7 +26,7 @@ import Testing
 
 @MainActor
 @Test func disabledFeedbackRecordsNoEvents() {
-    let recorder = TaskOneRecordingInteractionFeedback(isEnabled: false)
+    let recorder = RecordingInteractionFeedback(isEnabled: false)
 
     recorder.emit(.operationSucceeded)
 
@@ -34,16 +34,21 @@ import Testing
 }
 
 @MainActor
-private final class TaskOneRecordingInteractionFeedback: InteractionFeedbackProviding {
-    private let isEnabled: Bool
-    private(set) var events: [InteractionFeedbackEvent] = []
+@Test func recordingFeedbackUsesCurrentPreferenceForEverySemanticEvent() {
+    let preferences = InMemoryInteractionPreferences(isHapticFeedbackEnabled: true)
+    let recorder = RecordingInteractionFeedback(preferences: preferences)
 
-    init(isEnabled: Bool) {
-        self.isEnabled = isEnabled
-    }
+    recorder.emit(.selectionChanged)
+    recorder.emit(.operationSucceeded)
+    recorder.emit(.chapterTransitioned)
+    recorder.emit(.userActionWarning)
+    preferences.setHapticFeedbackEnabled(false)
+    recorder.emit(.operationSucceeded)
 
-    func emit(_ event: InteractionFeedbackEvent) {
-        guard isEnabled else { return }
-        events.append(event)
-    }
+    #expect(recorder.events == [
+        .selectionChanged,
+        .operationSucceeded,
+        .chapterTransitioned,
+        .userActionWarning
+    ])
 }

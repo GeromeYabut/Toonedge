@@ -1,6 +1,7 @@
 import Testing
 @testable import ToonEdgeAppCore
 
+@MainActor
 @Test func mockDependenciesExposeStableFeatureData() async {
     let dependencies = AppDependencies.mock()
 
@@ -42,10 +43,36 @@ import Testing
     #expect(dependencies.cacheMetadataService is SwiftDataLibraryRepository)
 }
 
+@MainActor
 @Test func mockDependenciesExposeUpdateRefreshService() {
     let dependencies = AppDependencies.mock()
 
     #expect(dependencies.updateRefreshService != nil)
+}
+
+@MainActor
+@Test func persistentDependenciesComposePlatformFeedbackAndIndependentPreferences() throws {
+    let dependencies = try AppDependencies.persistent(inMemory: true, usesModelContextIO: false)
+
+    #expect(dependencies.interactionPreferences is UserDefaultsInteractionPreferences)
+    #if canImport(UIKit)
+    #expect(dependencies.interactionFeedback is SystemInteractionFeedback)
+    #else
+    #expect(dependencies.interactionFeedback is SilentInteractionFeedback)
+    #endif
+}
+
+@MainActor
+@Test func mockDependenciesRetainInjectedInteractionFeedback() {
+    let preferences = InMemoryInteractionPreferences(isHapticFeedbackEnabled: true)
+    let recorder = RecordingInteractionFeedback(preferences: preferences)
+    let dependencies = AppDependencies.mock(
+        interactionPreferences: preferences,
+        interactionFeedback: recorder
+    )
+
+    #expect(dependencies.interactionPreferences === preferences)
+    #expect(dependencies.interactionFeedback === recorder)
 }
 
 @MainActor
