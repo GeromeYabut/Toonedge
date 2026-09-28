@@ -1220,8 +1220,16 @@ import Testing
     #expect(compact.fixedCardHeight < comfortable.fixedCardHeight)
     #expect(compact.coverHeight < comfortable.coverHeight)
     #expect(compact.cornerRadius <= comfortable.cornerRadius)
-    #expect(list.rowHeight < compact.fixedCardHeight)
+    #expect((list.rowHeight ?? .greatestFiniteMagnitude) < compact.fixedCardHeight)
     #expect(list.cornerRadius <= compact.cornerRadius)
+}
+
+@Test func libraryListRowsExpandAndKeepAFullWidthHitShapeAtAccessibilitySizes() {
+    let layout = LibrarySeriesListRowLayout(accessibilityText: true)
+
+    #expect(layout.rowHeight == nil)
+    #expect(layout.textLineLimit == nil)
+    #expect(layout.usesFullWidthHitShape)
 }
 
 @Test func libraryChromeUsesRestrainedNativeCollectionStyling() {

@@ -786,13 +786,38 @@ private struct SeriesCompactTile: View {
 }
 
 private struct SeriesListRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let series: LibrarySeriesSummary
-    private let layout = LibrarySeriesListRowLayout.default
     private var content: LibrarySeriesCardContent {
         LibrarySeriesCardContent(series: series)
     }
+    private var layout: LibrarySeriesListRowLayout {
+        LibrarySeriesListRowLayout(accessibilityText: dynamicTypeSize.isAccessibilitySize)
+    }
 
     var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                    leadingContent
+                    statusBadge
+                }
+            } else {
+                HStack(spacing: ToonEdgeSpacing.medium) {
+                    leadingContent
+                    Spacer(minLength: ToonEdgeSpacing.small)
+                    statusBadge
+                }
+            }
+        }
+        .padding(.vertical, ToonEdgeSpacing.small)
+        .padding(.horizontal, ToonEdgeSpacing.small)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: layout.rowHeight)
+        .contentShape(Rectangle())
+    }
+
+    private var leadingContent: some View {
         HStack(spacing: ToonEdgeSpacing.medium) {
             CachedCoverArtwork(url: series.coverImageURL) {
                 MissingCoverView(title: series.title)
@@ -803,27 +828,25 @@ private struct SeriesListRow: View {
             VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
                 Text(series.title)
                     .font(ToonEdgeTypography.body.weight(.semibold))
-                    .lineLimit(1)
+                    .lineLimit(layout.textLineLimit)
                 Text(content.listMetadata)
                     .font(ToonEdgeTypography.caption)
                     .foregroundStyle(ToonEdgeColor.textSecondary)
-                    .lineLimit(1)
+                    .lineLimit(layout.textLineLimit)
                 ProgressView(value: series.progressPercent)
                     .tint(series.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.accent)
                     .frame(height: 4)
             }
-
-            Spacer(minLength: ToonEdgeSpacing.small)
-
-            if series.hasUnreadUpdates {
-                TEChip("New", isActive: true)
-            } else if series.isCompleted {
-                TEChip("Done")
-            }
         }
-        .padding(.vertical, ToonEdgeSpacing.small)
-        .padding(.horizontal, ToonEdgeSpacing.small)
-        .frame(height: layout.rowHeight)
+    }
+
+    @ViewBuilder
+    private var statusBadge: some View {
+        if series.hasUnreadUpdates {
+            TEChip("New", isActive: true)
+        } else if series.isCompleted {
+            TEChip("Done")
+        }
     }
 }
 
@@ -991,17 +1014,23 @@ struct LibrarySeriesCardLayout: Equatable, Sendable {
 }
 
 struct LibrarySeriesListRowLayout: Equatable, Sendable {
-    var rowHeight: CGFloat
+    var rowHeight: CGFloat?
     var coverWidth: CGFloat
     var coverHeight: CGFloat
     var cornerRadius: CGFloat
+    var textLineLimit: Int?
+    var usesFullWidthHitShape: Bool
 
-    static let `default` = LibrarySeriesListRowLayout(
-        rowHeight: 82,
-        coverWidth: 46,
-        coverHeight: 64,
-        cornerRadius: 4
-    )
+    init(accessibilityText: Bool) {
+        self.rowHeight = accessibilityText ? nil : 82
+        self.coverWidth = 46
+        self.coverHeight = 64
+        self.cornerRadius = 4
+        self.textLineLimit = accessibilityText ? nil : 1
+        self.usesFullWidthHitShape = true
+    }
+
+    static let `default` = LibrarySeriesListRowLayout(accessibilityText: false)
 }
 
 enum LibrarySeriesCardCoverAlignment: Equatable, Sendable {
