@@ -13,8 +13,32 @@ final class ToonEdgeSettingsUITests: XCTestCase {
         )
         verifyUpdateResult(
             launchArgument: "-seedUpdateFailure",
-            expected: "Checked 3 series; 2 could not be refreshed."
+            expected: "No updates found; 2 series could not be refreshed."
         )
+    }
+
+    func testAccessibilityTextUsesAdaptivePickersAndKeepsUtilitiesReachable() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-uiTesting",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL"
+        ]
+        app.launch()
+        app.tabBars.buttons["tab.settings"].tap()
+
+        let readerFit = app.descendants(matching: .any)["settings.readerFit"]
+        XCTAssertTrue(readerFit.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.segmentedControls["settings.readerFit"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["settings.canvas"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["settings.pageSpacing"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["settings.brightness"].exists)
+
+        let manageDownloads = app.buttons["settings.manageDownloads"]
+        for _ in 0..<8 where !manageDownloads.isHittable {
+            app.scrollViews.firstMatch.swipeUp()
+        }
+        XCTAssertTrue(manageDownloads.isHittable)
     }
 
     func testReaderFitPersistsAcrossRelaunchAndStorageOpensDownloads() {

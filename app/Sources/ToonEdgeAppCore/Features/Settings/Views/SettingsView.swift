@@ -1,11 +1,53 @@
 import SwiftUI
 
+public enum SettingsUpdateFeedback: Equatable, Sendable {
+    case noSavedSeries
+    case noChanges
+    case updatesFound(count: Int)
+    case partial(updated: Int, failed: Int)
+    case totalFailure(failed: Int)
+    case unavailable
+
+    public init(result: LibraryUpdateRefreshResult) {
+        if result.checkedCount == 0 {
+            self = .noSavedSeries
+        } else if result.updatedCount == 0, result.failedCount >= result.checkedCount {
+            self = .totalFailure(failed: result.failedCount)
+        } else if result.failedCount > 0 {
+            self = .partial(updated: result.updatedCount, failed: result.failedCount)
+        } else if result.updatedCount > 0 {
+            self = .updatesFound(count: result.updatedCount)
+        } else {
+            self = .noChanges
+        }
+    }
+
+    public var message: String {
+        switch self {
+        case .noSavedSeries:
+            "No saved series to check."
+        case .noChanges:
+            "No new chapters found."
+        case let .updatesFound(count):
+            "Found updates for \(count) series."
+        case let .partial(updated, failed):
+            updated == 0
+                ? "No updates found; \(failed) series could not be refreshed."
+                : "Found updates for \(updated) series; \(failed) series could not be refreshed."
+        case let .totalFailure(failed):
+            "Could not refresh \(failed) series."
+        case .unavailable:
+            "Update checking is unavailable."
+        }
+    }
+}
+
 @MainActor
 public final class SettingsViewModel: ObservableObject {
     @Published public private(set) var settings: ReaderSettings
     @Published public private(set) var storageSummary: DownloadSummary
     @Published public private(set) var isCheckingForUpdates = false
-    @Published public private(set) var updateMessage: String?
+    @Published public private(set) var updateFeedback: SettingsUpdateFeedback?
 
     private let settingsManager: any SettingsManaging
     private let cacheMetadataManager: any CacheMetadataManaging
@@ -56,25 +98,21 @@ public final class SettingsViewModel: ObservableObject {
     }
 
     public func refreshUpdates() async {
+        guard !isCheckingForUpdates else { return }
         guard let updateRefreshService else {
-            updateMessage = "Update checking is unavailable."
+            updateFeedback = .unavailable
             return
         }
         isCheckingForUpdates = true
         defer { isCheckingForUpdates = false }
         let result = await updateRefreshService.refreshUpdates()
-        if result.failedCount > 0 {
-            updateMessage = "Checked \(result.checkedCount) series; \(result.failedCount) could not be refreshed."
-        } else if result.updatedCount > 0 {
-            updateMessage = "Found updates for \(result.updatedCount) series."
-        } else {
-            updateMessage = "No new chapters found."
-        }
+        updateFeedback = SettingsUpdateFeedback(result: result)
     }
 }
 
 public struct SettingsView: View {
     @StateObject private var viewModel: SettingsViewModel
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private let onShowDownloads: () -> Void
 
     public init(dependencies: AppDependencies, onShowDownloads: @escaping () -> Void = {}) {
@@ -92,87 +130,68 @@ public struct SettingsView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
                     settingsSection("Reader Preferences") {
-                        VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
-                            Text("Reader Fit").font(ToonEdgeTypography.body.weight(.semibold))
-                            Picker("Reader Fit", selection: displayModeBinding) {
-                                ForEach(ReaderDisplayMode.allCases) { mode in
-                                    Text(mode.title).tag(mode)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                            .accessibilityIdentifier("settings.readerFit")
-
-                            Text("Canvas").font(ToonEdgeTypography.body.weight(.semibold))
-                            Picker("Canvas", selection: canvasBinding) {
-                                Text("Charcoal").tag(ReaderCanvas.charcoal)
-                                Text("Black").tag(ReaderCanvas.black)
-                                Text("Paper").tag(ReaderCanvas.paper)
-                            }
-                            .pickerStyle(.segmented)
-
-                            Toggle("Page Spacing", isOn: pageSpacingBinding)
-                                .font(ToonEdgeTypography.body)
-
-                            VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
-                                Text("Brightness Aid").font(ToonEdgeTypography.body.weight(.semibold))
-                                Slider(value: brightnessBinding, in: 0...0.75)
-                                    .tint(ToonEdgeColor.accent)
-                            }
+                        TEEditorialGroup(SettingsPreference.allCases, spacing: 0, separatorInset: 0) { preference in
+                            preferenceRow(preference)
                         }
                     }
 
                     settingsSection("Storage Management") {
-                        VStack(spacing: ToonEdgeSpacing.medium) {
-                            TEListRow(
-                                title: "\(viewModel.storageSummary.cachedItemCount) cached chapters",
-                                subtitle: viewModel.storageSummary.storageDescription,
-                                systemImage: "externaldrive"
-                            )
+                        TEEditorialGroup([SettingsUtility.storage]) { _ in
                             Button(action: onShowDownloads) {
-                                Label("Manage Downloads", systemImage: "arrow.down.circle")
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .frame(minHeight: 44)
+                                storageDisclosureLabel
                             }
                             .buttonStyle(.plain)
+                            .modifier(TEEditorialRowStyle())
+                            .accessibilityLabel("Downloads")
+                            .accessibilityValue("\(storageItemDescription), \(viewModel.storageSummary.storageDescription)")
+                            .accessibilityHint("Opens downloaded data management")
                             .accessibilityIdentifier("settings.manageDownloads")
                         }
                     }
 
                     settingsSection("New Chapters") {
                         VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
-                            Button {
-                                Task { await viewModel.refreshUpdates() }
-                            } label: {
-                                Label(
-                                    viewModel.isCheckingForUpdates ? "Checking…" : "Check for New Chapters",
-                                    systemImage: "arrow.clockwise"
-                                )
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .frame(minHeight: 44)
+                            TEEditorialGroup([SettingsUtility.updateCheck]) { _ in
+                                Button {
+                                    Task { await viewModel.refreshUpdates() }
+                                } label: {
+                                    Label(
+                                        viewModel.isCheckingForUpdates ? "Checking…" : "Check for New Chapters",
+                                        systemImage: "arrow.clockwise"
+                                    )
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                .buttonStyle(.plain)
+                                .modifier(TEEditorialRowStyle())
+                                .disabled(viewModel.isCheckingForUpdates)
+                                .accessibilityIdentifier("settings.checkUpdates")
                             }
-                            .buttonStyle(.plain)
-                            .disabled(viewModel.isCheckingForUpdates)
-                            .accessibilityIdentifier("settings.checkUpdates")
 
-                            if let message = viewModel.updateMessage {
-                                Text(message)
+                            if !viewModel.isCheckingForUpdates, let feedback = viewModel.updateFeedback {
+                                Text(feedback.message)
                                     .font(ToonEdgeTypography.caption)
                                     .foregroundStyle(ToonEdgeColor.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .padding(.horizontal, ToonEdgeSpacing.medium)
                                     .accessibilityIdentifier("settings.updateResult")
                             }
                         }
                     }
 
                     settingsSection("About ToonEdge") {
-                        VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
-                            Text("ToonEdge \(appVersion)")
-                                .font(ToonEdgeTypography.body.weight(.semibold))
-                            Text("ToonEdge is a local-first reading browser. Content remains on its source website, and protected viewers stay in the browser.")
-                                .font(ToonEdgeTypography.caption)
-                                .foregroundStyle(ToonEdgeColor.textSecondary)
-                            Text("Support and legal information will be provided with the App Store release.")
-                                .font(ToonEdgeTypography.caption)
-                                .foregroundStyle(ToonEdgeColor.textSecondary)
+                        TEEditorialGroup([SettingsUtility.about]) { _ in
+                            VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                                Text("ToonEdge \(appVersion)")
+                                    .font(ToonEdgeTypography.body.weight(.semibold))
+                                Text("A local-first reading browser. Content remains on its source website, and protected viewers stay in the browser.")
+                                    .font(ToonEdgeTypography.caption)
+                                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                                Text("Support, privacy, and legal details are available with the release information for this build.")
+                                    .font(ToonEdgeTypography.caption)
+                                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                            }
+                            .fixedSize(horizontal: false, vertical: true)
+                            .modifier(TEEditorialRowStyle())
                         }
                     }
                 }
@@ -191,7 +210,121 @@ public struct SettingsView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
             Text(title).font(ToonEdgeTypography.sectionTitle)
-            TECard(content: content)
+            content()
+        }
+    }
+
+    @ViewBuilder
+    private func preferenceRow(_ preference: SettingsPreference) -> some View {
+        switch preference {
+        case .readerFit:
+            adaptivePicker(
+                title: "Reader Fit",
+                selection: displayModeBinding,
+                values: ReaderDisplayMode.allCases,
+                label: { $0.title },
+                accessibilityIdentifier: "settings.readerFit"
+            )
+        case .canvas:
+            adaptivePicker(
+                title: "Canvas",
+                selection: canvasBinding,
+                values: [.charcoal, .black, .paper],
+                label: { $0.title },
+                accessibilityIdentifier: "settings.canvas"
+            )
+        case .pageSpacing:
+            Toggle("Page Spacing", isOn: pageSpacingBinding)
+                .accessibilityIdentifier("settings.pageSpacing")
+                .modifier(TEEditorialRowStyle())
+        case .brightness:
+            VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                Text("Brightness Aid")
+                    .font(ToonEdgeTypography.body.weight(.semibold))
+                Slider(value: brightnessBinding, in: 0...0.75)
+                    .tint(ToonEdgeColor.accent)
+                    .accessibilityIdentifier("settings.brightness")
+            }
+            .modifier(TEEditorialRowStyle())
+        }
+    }
+
+    @ViewBuilder
+    private func adaptivePicker<Value: Hashable>(
+        title: String,
+        selection: Binding<Value>,
+        values: [Value],
+        label: @escaping (Value) -> String,
+        accessibilityIdentifier: String
+    ) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            Picker(title, selection: selection) {
+                ForEach(values, id: \.self) { value in
+                    Text(label(value)).tag(value)
+                }
+            }
+            .pickerStyle(.menu)
+            .accessibilityIdentifier(accessibilityIdentifier)
+            .modifier(TEEditorialRowStyle())
+        } else {
+            VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                Text(title)
+                    .font(ToonEdgeTypography.body.weight(.semibold))
+                Picker(title, selection: selection) {
+                    ForEach(values, id: \.self) { value in
+                        Text(label(value)).tag(value)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier(accessibilityIdentifier)
+            }
+            .modifier(TEEditorialRowStyle())
+        }
+    }
+
+    private var storageItemDescription: String {
+        let count = viewModel.storageSummary.cachedItemCount
+        return count == 1 ? "1 cached chapter" : "\(count) cached chapters"
+    }
+
+    @ViewBuilder
+    private var storageDisclosureLabel: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                Label("Downloads", systemImage: "externaldrive")
+                    .font(ToonEdgeTypography.body.weight(.semibold))
+                Text(storageItemDescription)
+                    .font(ToonEdgeTypography.caption)
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                HStack {
+                    Text(viewModel.storageSummary.storageDescription)
+                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                    Spacer(minLength: ToonEdgeSpacing.small)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                }
+            }
+        } else {
+            HStack(spacing: ToonEdgeSpacing.medium) {
+                Image(systemName: "externaldrive")
+                    .frame(width: 28)
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+                    Text("Downloads")
+                        .font(ToonEdgeTypography.body.weight(.semibold))
+                    Text(storageItemDescription)
+                        .font(ToonEdgeTypography.caption)
+                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                }
+                Spacer(minLength: ToonEdgeSpacing.small)
+                Text(viewModel.storageSummary.storageDescription)
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                    .fixedSize(horizontal: true, vertical: false)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
+            }
         }
     }
 
@@ -222,4 +355,16 @@ public struct SettingsView: View {
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
     }
+}
+
+private enum SettingsPreference: String, CaseIterable, Identifiable {
+    case readerFit, canvas, pageSpacing, brightness
+
+    var id: String { rawValue }
+}
+
+private enum SettingsUtility: String, Identifiable {
+    case storage, updateCheck, about
+
+    var id: String { rawValue }
 }
