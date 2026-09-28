@@ -170,9 +170,7 @@ public struct HomeView: View {
                 VStack(spacing: ToonEdgeSpacing.small) {
                     ForEach(items) { item in
                         Button {
-                            if style == .featured {
-                                openContinueReading(item)
-                            }
+                            selectSeries(HomeSeriesSelectionRoute(style: style, seriesID: item.id))
                         } label: {
                             HomeSeriesCard(item: item, style: style)
                         }
@@ -208,7 +206,7 @@ public struct HomeView: View {
                 VStack(spacing: ToonEdgeSpacing.small) {
                     if let featured {
                         Button {
-                            openContinueReading(featured)
+                            selectSeries(HomeSeriesSelectionRoute(style: .featured, seriesID: featured.id))
                         } label: {
                             HomeSeriesCard(item: featured, style: .featured)
                         }
@@ -219,7 +217,7 @@ public struct HomeView: View {
                         VStack(spacing: ToonEdgeSpacing.xsmall) {
                             ForEach(remaining) { item in
                                 Button {
-                                    openContinueReading(item)
+                                    selectSeries(.continueReading(item.id))
                                 } label: {
                                     HomeSeriesCard(item: item, style: .compact)
                                 }
@@ -232,9 +230,18 @@ public struct HomeView: View {
         }
     }
 
-    private func openContinueReading(_ item: SeriesSummary) {
+    private func selectSeries(_ route: HomeSeriesSelectionRoute) {
+        switch route {
+        case .continueReading(let seriesID):
+            openContinueReading(seriesID: seriesID)
+        case .libraryDetail(let seriesID):
+            router.openLibraryDetail(seriesID: seriesID)
+        }
+    }
+
+    private func openContinueReading(seriesID: UUID) {
         Task {
-            let target = await dependencies.libraryLifecycleService?.continueReadingTarget(for: item.id)
+            let target = await dependencies.libraryLifecycleService?.continueReadingTarget(for: seriesID)
             if let target,
                let session = await dependencies.libraryLifecycleService?.readerSession(forChapterID: target.chapterID) {
                 var librarySession = session
@@ -282,6 +289,15 @@ public struct HomeView: View {
         }
 
         return "Chapter"
+    }
+}
+
+enum HomeSeriesSelectionRoute: Equatable {
+    case continueReading(UUID)
+    case libraryDetail(UUID)
+
+    init(style: HomeSectionStyle, seriesID: UUID) {
+        self = style == .featured ? .continueReading(seriesID) : .libraryDetail(seriesID)
     }
 }
 

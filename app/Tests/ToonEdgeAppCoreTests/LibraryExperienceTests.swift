@@ -870,6 +870,18 @@ import Testing
     #expect(ChapterSummary.mock(isDownloaded: true).downloadLabel == "Downloaded")
 }
 
+@Test func homeCollectionRowsOpenSeriesDetail() {
+    let id = UUID()
+
+    #expect(HomeSeriesSelectionRoute(style: .compact, seriesID: id) == .libraryDetail(id))
+}
+
+@Test func homeFeaturedRowRemainsContinueReading() {
+    let id = UUID()
+
+    #expect(HomeSeriesSelectionRoute(style: .featured, seriesID: id) == .continueReading(id))
+}
+
 @Test func homeReadingDashboardPrioritizesCurrentReadingAfterSearch() {
     let layout = HomeDashboardLayout()
 
