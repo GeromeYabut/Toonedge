@@ -173,6 +173,28 @@ import Testing
     #expect(router.pendingLibrarySeriesID == nil)
 }
 
+@Test func readerLibraryActionOpensLibraryRootFromEveryLaunchOrigin() {
+    let origins: [ReaderLaunchOrigin] = [
+        .browser,
+        .homeContinueReading,
+        .library(seriesID: UUID())
+    ]
+
+    for origin in origins {
+        var router = AppRouter(selectedTab: .home)
+        var session = MockReaderSession.sample
+        session.launchOrigin = origin
+        router.presentReader(session)
+
+        router.openLibraryRoot()
+
+        #expect(router.selectedTab == .library)
+        #expect(router.presentedReader == nil)
+        #expect(router.presentedBrowser == nil)
+        #expect(router.pendingLibrarySeriesID == nil)
+    }
+}
+
 @Test func openingLibraryRootDismissesBrowserOwnedReaderSoLibraryIsVisible() {
     var router = AppRouter()
     router.presentBrowser(.url("https://example.com/series/chapter-12"))

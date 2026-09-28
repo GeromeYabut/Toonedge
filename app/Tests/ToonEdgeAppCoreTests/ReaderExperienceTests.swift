@@ -652,17 +652,65 @@ import Testing
 }
 
 @Test func readerChromeLayoutMovesSecondaryActionsToFloatingRail() {
-    let savedLayout = ReaderChromeLayout.actions(isLibraryAvailable: true, isSavedToLibrary: true)
-    let unsavedLayout = ReaderChromeLayout.actions(isLibraryAvailable: true, isSavedToLibrary: false)
-    let noLibraryLayout = ReaderChromeLayout.actions(isLibraryAvailable: false, isSavedToLibrary: false)
+    let savedLayout = ReaderChromeLayout.actions(
+        launchOrigin: .browser,
+        isLibraryAvailable: true,
+        isSavedToLibrary: true,
+        canNavigatePrevious: true,
+        canNavigateNext: false
+    )
+    let unsavedLayout = ReaderChromeLayout.actions(
+        launchOrigin: .homeContinueReading,
+        isLibraryAvailable: true,
+        isSavedToLibrary: false,
+        canNavigatePrevious: false,
+        canNavigateNext: true
+    )
+    let noLibraryLayout = ReaderChromeLayout.actions(
+        launchOrigin: .library(seriesID: UUID()),
+        isLibraryAvailable: false,
+        isSavedToLibrary: false,
+        canNavigatePrevious: false,
+        canNavigateNext: false
+    )
 
-    #expect(savedLayout.top == [.back, .home])
+    #expect(savedLayout.top == [.back, .library])
     #expect(savedLayout.floating == [.download, .saved, .viewOriginalPage, .settings])
-    #expect(savedLayout.bottom.contains(.viewOriginalPage) == false)
-    #expect(savedLayout.top.contains(.library) == false)
+    #expect(savedLayout.bottom == [.previousChapter, .nextChapter])
+    #expect(savedLayout.isEnabled(.previousChapter))
+    #expect(!savedLayout.isEnabled(.nextChapter))
 
     #expect(unsavedLayout.floating == [.download, .save, .viewOriginalPage, .settings])
+    #expect(!unsavedLayout.isEnabled(.previousChapter))
+    #expect(unsavedLayout.isEnabled(.nextChapter))
     #expect(noLibraryLayout.floating == [.download, .viewOriginalPage, .settings])
+    #expect(!noLibraryLayout.isEnabled(.previousChapter))
+    #expect(!noLibraryLayout.isEnabled(.nextChapter))
+
+    #expect(savedLayout.launchOrigin == .browser)
+    #expect(unsavedLayout.launchOrigin == .homeContinueReading)
+    if case .library = noLibraryLayout.launchOrigin {
+        // Expected origin is retained for origin-aware Back routing.
+    } else {
+        Issue.record("Expected Library launch origin")
+    }
+
+    for layout in [savedLayout, unsavedLayout, noLibraryLayout] {
+        #expect(layout.top == [.back, .library])
+        #expect(layout.floating.contains(.viewOriginalPage))
+        #expect(layout.floating.contains(.settings))
+        #expect(layout.showsChapterContext)
+        #expect(layout.showsProgress)
+        #expect(layout.minimumActionSize == 44)
+        #expect(Set(layout.actions.map(layout.identifier(for:))).count == layout.actions.count)
+    }
+}
+
+@Test func adjacentRecoveryActionsKeepAccessibleHitRegions() {
+    let layout = ReaderAdjacentRecoveryActionLayout()
+
+    #expect(layout.minimumHitSize(for: .retry) >= 44)
+    #expect(layout.minimumHitSize(for: .openOriginal) >= 44)
 }
 
 private struct FailingCacheMetadataService: CacheMetadataManaging {

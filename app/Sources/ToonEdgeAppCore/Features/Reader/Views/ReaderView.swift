@@ -220,21 +220,6 @@ public struct ReaderView: View {
                 .padding(.trailing, ToonEdgeSpacing.large)
                 .padding(.bottom, 132)
         }
-        .background(
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.74),
-                    Color.black.opacity(0.22),
-                    Color.clear,
-                    Color.black.opacity(0.30),
-                    Color.black.opacity(0.78)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
-        )
     }
 
     private var topChrome: some View {
@@ -252,20 +237,23 @@ public struct ReaderView: View {
                     .font(ToonEdgeTypography.caption)
                     .foregroundStyle(textColor)
                     .lineLimit(1)
+                    .accessibilityIdentifier("reader.series.label")
                 Text(viewModel.session.chapterTitle)
                     .font(ToonEdgeTypography.sectionTitle)
                     .lineLimit(1)
+                    .accessibilityIdentifier("reader.chapter.context")
             }
 
             Spacer(minLength: ToonEdgeSpacing.small)
 
-            ReaderIconButton(systemImage: "house", label: "Open Home", identifier: "reader.home") {
-                router.openHomeRoot()
+            ReaderIconButton(systemImage: "books.vertical", label: "Open Library", identifier: "reader.library") {
+                router.openLibraryRoot()
             }
         }
         .padding(.horizontal, ToonEdgeSpacing.large)
         .padding(.top, ToonEdgeSpacing.large)
         .padding(.bottom, ToonEdgeSpacing.medium)
+        .background(.ultraThinMaterial)
         .task {
             await viewModel.refreshSavedState()
         }
@@ -309,6 +297,8 @@ public struct ReaderView: View {
                 viewModel.showSettings()
             }
         }
+        .padding(ToonEdgeSpacing.xsmall)
+        .background(.ultraThinMaterial, in: Capsule())
     }
 
     private var bottomChrome: some View {
@@ -324,9 +314,9 @@ public struct ReaderView: View {
                             .labelStyle(.titleAndIcon)
                     }
                 }
-                .frame(minWidth: 96, alignment: .leading)
+                .frame(minWidth: 96, minHeight: chromeLayout.minimumActionSize, alignment: .leading)
                 .accessibilityIdentifier("reader.previousChapter")
-                .disabled(!viewModel.canNavigatePrevious || viewModel.isAdjacentLoading)
+                .disabled(!chromeLayout.isEnabled(.previousChapter) || viewModel.isAdjacentLoading)
 
                 Spacer()
 
@@ -350,9 +340,9 @@ public struct ReaderView: View {
                             .labelStyle(.titleAndIcon)
                     }
                 }
-                .frame(minWidth: 96, alignment: .trailing)
+                .frame(minWidth: 96, minHeight: chromeLayout.minimumActionSize, alignment: .trailing)
                 .accessibilityIdentifier("reader.nextChapter")
-                .disabled(!viewModel.canNavigateNext || viewModel.isAdjacentLoading)
+                .disabled(!chromeLayout.isEnabled(.nextChapter) || viewModel.isAdjacentLoading)
             }
             .font(ToonEdgeTypography.caption)
             .buttonStyle(.plain)
@@ -373,6 +363,11 @@ public struct ReaderView: View {
                                 )
                             }
                         }
+                        .frame(
+                            minWidth: adjacentRecoveryActionLayout.minimumHitSize(for: .retry),
+                            minHeight: adjacentRecoveryActionLayout.minimumHitSize(for: .retry)
+                        )
+                        .contentShape(Rectangle())
                         .accessibilityIdentifier("reader.adjacent.retry")
 
                         if let targetURL = failure.targetURL {
@@ -383,6 +378,11 @@ public struct ReaderView: View {
                                     router.openOriginalPage(targetURL)
                                 }
                             }
+                            .frame(
+                                minWidth: adjacentRecoveryActionLayout.minimumHitSize(for: .openOriginal),
+                                minHeight: adjacentRecoveryActionLayout.minimumHitSize(for: .openOriginal)
+                            )
+                            .contentShape(Rectangle())
                             .accessibilityIdentifier("reader.adjacent.openOriginal")
                         }
                     }
@@ -399,6 +399,7 @@ public struct ReaderView: View {
                     .font(ToonEdgeTypography.caption)
                     .monospacedDigit()
                     .frame(width: 44, alignment: .trailing)
+                    .accessibilityIdentifier("reader.progress.value")
             }
         }
         .padding(ToonEdgeSpacing.large)
@@ -419,6 +420,20 @@ public struct ReaderView: View {
 
     private var readerColorScheme: ColorScheme {
         viewModel.settings.readerCanvas == .paper ? .light : .dark
+    }
+
+    private var chromeLayout: ReaderChromeLayout {
+        ReaderChromeLayout.actions(
+            launchOrigin: viewModel.session.launchOrigin,
+            isLibraryAvailable: libraryLifecycleService != nil,
+            isSavedToLibrary: viewModel.isSavedToLibrary,
+            canNavigatePrevious: viewModel.canNavigatePrevious,
+            canNavigateNext: viewModel.canNavigateNext
+        )
+    }
+
+    private var adjacentRecoveryActionLayout: ReaderAdjacentRecoveryActionLayout {
+        ReaderAdjacentRecoveryActionLayout()
     }
 
     private var readerControlsAccessibilityActionName: String {
@@ -497,32 +512,92 @@ struct ReaderGesturePolicy {
 
 enum ReaderChromeAction: Equatable {
     case back
-    case home
     case download
     case save
     case saved
     case library
     case viewOriginalPage
     case settings
+    case previousChapter
+    case nextChapter
 }
 
 struct ReaderChromeLayout: Equatable {
+    var launchOrigin: ReaderLaunchOrigin
     var top: [ReaderChromeAction]
     var floating: [ReaderChromeAction]
     var bottom: [ReaderChromeAction]
+    var enabledActions: [ReaderChromeAction]
+    var showsChapterContext: Bool
+    var showsProgress: Bool
+    var minimumActionSize: CGFloat
 
-    static func actions(isLibraryAvailable: Bool, isSavedToLibrary: Bool) -> ReaderChromeLayout {
+    var actions: [ReaderChromeAction] {
+        top + floating + bottom
+    }
+
+    static func actions(
+        launchOrigin: ReaderLaunchOrigin,
+        isLibraryAvailable: Bool,
+        isSavedToLibrary: Bool,
+        canNavigatePrevious: Bool,
+        canNavigateNext: Bool
+    ) -> ReaderChromeLayout {
         var floating: [ReaderChromeAction] = [.download]
         if isLibraryAvailable {
             floating.append(isSavedToLibrary ? .saved : .save)
         }
         floating.append(contentsOf: [.viewOriginalPage, .settings])
 
+        var enabledActions = [ReaderChromeAction.back, .library] + floating
+        if canNavigatePrevious {
+            enabledActions.append(.previousChapter)
+        }
+        if canNavigateNext {
+            enabledActions.append(.nextChapter)
+        }
+
         return ReaderChromeLayout(
-            top: [.back, .home],
+            launchOrigin: launchOrigin,
+            top: [.back, .library],
             floating: floating,
-            bottom: []
+            bottom: [.previousChapter, .nextChapter],
+            enabledActions: enabledActions,
+            showsChapterContext: true,
+            showsProgress: true,
+            minimumActionSize: 44
         )
+    }
+
+    func isEnabled(_ action: ReaderChromeAction) -> Bool {
+        enabledActions.contains(action)
+    }
+
+    func identifier(for action: ReaderChromeAction) -> String {
+        switch action {
+        case .back: "reader.back"
+        case .download: "reader.retainChapter"
+        case .save, .saved: "reader.saveToLibrary"
+        case .library: "reader.library"
+        case .viewOriginalPage: "reader.viewOriginalPage"
+        case .settings: "reader.settings"
+        case .previousChapter: "reader.previousChapter"
+        case .nextChapter: "reader.nextChapter"
+        }
+    }
+}
+
+enum ReaderAdjacentRecoveryAction: Equatable {
+    case retry
+    case openOriginal
+}
+
+struct ReaderAdjacentRecoveryActionLayout: Equatable {
+    func minimumHitSize(for action: ReaderAdjacentRecoveryAction) -> CGFloat {
+        switch action {
+        case .retry, .openOriginal:
+            44
+        }
     }
 }
 
@@ -711,8 +786,7 @@ private struct ReaderIconButton: View {
             Image(systemName: systemImage)
                 .font(.system(size: 16, weight: .semibold))
                 .frame(width: 44, height: 44)
-                .background(Color.black.opacity(0.34), in: Circle())
-                .overlay(Circle().stroke(Color.white.opacity(0.12)))
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
