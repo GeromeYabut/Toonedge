@@ -74,7 +74,7 @@ public struct ReaderSettingsView: View {
         } label: {
             HStack(spacing: ToonEdgeSpacing.small) {
                 Circle()
-                    .fill(swatch(for: canvas))
+                    .fill(Self.swatch(for: canvas))
                     .frame(width: 18, height: 18)
                     .overlay(Circle().stroke(ToonEdgeColor.border))
                 Text(canvas.title)
@@ -94,14 +94,7 @@ public struct ReaderSettingsView: View {
         .buttonStyle(.plain)
     }
 
-    private func swatch(for canvas: ReaderCanvas) -> Color {
-        switch canvas {
-        case .charcoal:
-            ToonEdgeColor.background
-        case .black:
-            .black
-        case .paper:
-            Color(red: 0.89, green: 0.86, blue: 0.78)
-        }
+    static func swatch(for canvas: ReaderCanvas) -> Color {
+        ReaderCanvasPalette.values(for: canvas).background.color
     }
 }

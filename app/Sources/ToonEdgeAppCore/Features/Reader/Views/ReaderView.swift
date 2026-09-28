@@ -74,9 +74,11 @@ public struct ReaderView: View {
                 .ignoresSafeArea()
 
             readerStrip
+                .environment(\.colorScheme, readerColorScheme)
 
             if viewModel.isChromeVisible {
                 chrome
+                    .environment(\.colorScheme, readerColorScheme)
                     .transition(.opacity)
             }
 
@@ -160,6 +162,7 @@ public struct ReaderView: View {
                                 metadata: viewModel.session.pageMetadata[safe: index],
                                 sourceURL: viewModel.session.sourceURL,
                                 assetCache: chapterAssetCache,
+                                palette: canvasPalette,
                                 requestContext: viewModel.session.imageRequestContext,
                                 onImageLoaded: {
                                     Task {
@@ -235,7 +238,7 @@ public struct ReaderView: View {
             VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
                 Text(viewModel.session.seriesTitle)
                     .font(ToonEdgeTypography.caption)
-                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                    .foregroundStyle(textColor)
                     .lineLimit(1)
                 Text(viewModel.session.chapterTitle)
                     .font(ToonEdgeTypography.sectionTitle)
@@ -331,7 +334,7 @@ public struct ReaderView: View {
                 VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
                     Text(failure.message)
                         .font(ToonEdgeTypography.caption)
-                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                        .foregroundStyle(textColor)
                         .fixedSize(horizontal: false, vertical: true)
 
                     HStack(spacing: ToonEdgeSpacing.medium) {
@@ -376,18 +379,19 @@ public struct ReaderView: View {
     }
 
     private var canvasColor: Color {
-        switch viewModel.settings.readerCanvas {
-        case .charcoal:
-            ToonEdgeColor.background
-        case .black:
-            .black
-        case .paper:
-            Color(red: 0.89, green: 0.86, blue: 0.78)
-        }
+        canvasPalette.background.color
     }
 
     private var textColor: Color {
-        viewModel.settings.readerCanvas == .paper ? Color(red: 0.10, green: 0.09, blue: 0.08) : ToonEdgeColor.textPrimary
+        canvasPalette.foreground.color
+    }
+
+    private var canvasPalette: ReaderCanvasPaletteValues {
+        ReaderCanvasPalette.values(for: viewModel.settings.readerCanvas)
+    }
+
+    private var readerColorScheme: ColorScheme {
+        viewModel.settings.readerCanvas == .paper ? .light : .dark
     }
 
     private func navigate(_ direction: ReaderChapterDirection) {
@@ -482,6 +486,7 @@ private struct ReaderImagePanel: View {
     let metadata: ReaderPageMetadata?
     let sourceURL: URL
     let assetCache: (any ChapterAssetCaching)?
+    let palette: ReaderCanvasPaletteValues
     let onImageLoaded: () -> Void
     @StateObject private var loader: ReaderPageImageLoader
 
@@ -493,6 +498,7 @@ private struct ReaderImagePanel: View {
         metadata: ReaderPageMetadata?,
         sourceURL: URL,
         assetCache: (any ChapterAssetCaching)?,
+        palette: ReaderCanvasPaletteValues,
         requestContext: ReaderImageRequestContext?,
         onImageLoaded: @escaping () -> Void
     ) {
@@ -503,6 +509,7 @@ private struct ReaderImagePanel: View {
         self.metadata = metadata
         self.sourceURL = sourceURL
         self.assetCache = assetCache
+        self.palette = palette
         self.onImageLoaded = onImageLoaded
         self._loader = StateObject(wrappedValue: ReaderPageImageLoader(
             imageURL: imageURL,
@@ -519,7 +526,7 @@ private struct ReaderImagePanel: View {
                 placeholder
                     .overlay {
                         ProgressView()
-                            .tint(ToonEdgeColor.textSecondary)
+                            .tint(palette.foreground.color)
                     }
             case .loaded(let data):
                 if let image = image(from: data) {
@@ -553,11 +560,11 @@ private struct ReaderImagePanel: View {
             .overlay {
                 VStack(spacing: ToonEdgeSpacing.small) {
                     Image(systemName: "photo")
-                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                        .foregroundStyle(palette.foreground.color)
                     Text("Page \(index + 1) unavailable. Connect to the internet and retry.")
                         .font(ToonEdgeTypography.caption)
                         .multilineTextAlignment(.center)
-                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                        .foregroundStyle(palette.foreground.color)
                         .accessibilityIdentifier("reader.page.failed.\(index + 1)")
                     Button("Retry") {
                         Task {
@@ -596,7 +603,7 @@ private struct ReaderImagePanel: View {
 
     private var placeholder: some View {
         RoundedRectangle(cornerRadius: 0)
-            .fill(ToonEdgeColor.panel)
+            .fill(palette.background.color)
             .frame(
                 width: imageWidth,
                 height: ReaderPageLayout.placeholderHeight(
@@ -608,7 +615,7 @@ private struct ReaderImagePanel: View {
             .overlay {
                 Text("Page \(index + 1)")
                     .font(ToonEdgeTypography.caption)
-                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                    .foregroundStyle(palette.foreground.color)
             }
     }
 }
