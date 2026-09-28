@@ -56,7 +56,8 @@ public struct SearchOverlayView: View {
             if let validationMessage {
                 Text(validationMessage)
                     .font(ToonEdgeTypography.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(ToonEdgeColor.failure)
+                    .accessibilityIdentifier("search.validation")
             }
 
             if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -115,14 +116,16 @@ public struct SearchOverlayView: View {
             router.dismissSheet()
         }
         .font(ToonEdgeTypography.body.weight(.semibold))
-        .buttonStyle(.plain)
+        .buttonStyle(TEActionStyle())
         .foregroundStyle(ToonEdgeColor.textPrimary)
+        .accessibilityIdentifier("search.cancel")
     }
 
     private var searchField: some View {
         HStack(spacing: ToonEdgeSpacing.medium) {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(ToonEdgeColor.accent)
+                .foregroundStyle(isSearchFocused ? ToonEdgeColor.accent : ToonEdgeColor.textSecondary)
+                .accessibilityHidden(true)
 
             ZStack(alignment: .leading) {
                 if query.isEmpty {
@@ -138,6 +141,8 @@ public struct SearchOverlayView: View {
                     .submitLabel(.go)
                     .onSubmit(openCurrentQuery)
                     .onChange(of: query) { _, _ in validationMessage = nil }
+                    .accessibilityLabel("Search the web or paste a chapter link")
+                    .accessibilityIdentifier("search.input")
                     #if os(iOS)
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
@@ -152,15 +157,13 @@ public struct SearchOverlayView: View {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(ToonEdgeColor.textSecondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(TEActionStyle())
+                .accessibilityLabel("Clear search")
+                .accessibilityIdentifier("search.clear")
             }
         }
         .padding(ToonEdgeSpacing.large)
         .background(ToonEdgeColor.panel, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: ToonEdgeRadius.medium)
-                .stroke(isSearchFocused ? ToonEdgeColor.accent : ToonEdgeColor.border)
-        )
         .frame(maxWidth: .infinity)
     }
 
@@ -173,13 +176,14 @@ public struct SearchOverlayView: View {
                     systemImage: "magnifyingglass"
                 )
             } else {
-                ForEach(currentSuggestions) { suggestion in
+                TEEditorialGroup(currentSuggestions, spacing: 0, separatorInset: SearchSuggestionRowLayout().separatorInset) { suggestion in
                     Button {
                         open(suggestion)
                     } label: {
                         SearchSuggestionRow(suggestion: suggestion)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(TEActionStyle())
+                    .accessibilityIdentifier(suggestion.kind == .searchAction ? "search.submitSuggestion" : "search.suggestion")
                 }
             }
         }
@@ -210,6 +214,7 @@ public struct SearchOverlayView: View {
             return
         case .invalidURL:
             validationMessage = "Enter a complete web address or search phrase."
+            isSearchFocused = true
             return
         case .valid(let validatedInput):
             input = validatedInput
@@ -230,33 +235,44 @@ public struct SearchOverlayView: View {
     }
 }
 
+struct SearchSuggestionRowLayout: Equatable, Sendable {
+    let minimumHeight: CGFloat = TEActionMetrics.minimumHitSize
+    let iconWidth: CGFloat = 28
+    var separatorInset: CGFloat { iconWidth + ToonEdgeSpacing.medium * 2 }
+}
+
 private struct SearchSuggestionRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let suggestion: SearchSuggestion
+    private let layout = SearchSuggestionRowLayout()
 
     var body: some View {
-        TECard {
-            HStack(spacing: ToonEdgeSpacing.medium) {
-                Image(systemName: suggestion.systemImage)
-                    .frame(width: 28, height: 28)
-                    .foregroundStyle(iconColor)
+        HStack(spacing: ToonEdgeSpacing.medium) {
+            Image(systemName: suggestion.systemImage)
+                .frame(width: layout.iconWidth, height: layout.iconWidth)
+                .foregroundStyle(iconColor)
+                .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
-                    Text(suggestion.title)
-                        .font(ToonEdgeTypography.body.weight(.semibold))
-                        .lineLimit(1)
-                    Text(suggestion.subtitle)
-                        .font(ToonEdgeTypography.caption)
-                        .foregroundStyle(ToonEdgeColor.textSecondary)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                Text(kindLabel)
+            VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+                Text(suggestion.title)
+                    .font(ToonEdgeTypography.body)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                Text(suggestion.subtitle)
                     .font(ToonEdgeTypography.caption)
-                    .foregroundStyle(suggestion.sourceSupportTier == .enabledPublic ? ToonEdgeColor.success : ToonEdgeColor.textSecondary)
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
             }
+
+            Spacer()
+
+            Text(kindLabel)
+                .font(ToonEdgeTypography.caption)
+                .foregroundStyle(ToonEdgeColor.textSecondary)
+                .fixedSize(horizontal: true, vertical: false)
         }
+        .frame(maxWidth: .infinity, minHeight: layout.minimumHeight, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 
     private var iconColor: Color {

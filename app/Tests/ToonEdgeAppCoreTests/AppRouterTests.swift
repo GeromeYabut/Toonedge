@@ -197,13 +197,15 @@ import Testing
 }
 
 @Test func openingLibraryDetailSelectsLibraryAndStoresDestination() {
-    var router = AppRouter()
+    var router = AppRouter(selectedTab: .home)
     let seriesID = UUID()
 
     router.openLibraryDetail(seriesID: seriesID)
 
     #expect(router.selectedTab == .library)
     #expect(router.pendingLibrarySeriesID == seriesID)
+    #expect(router.presentedReader == nil)
+    #expect(router.presentedBrowser == nil)
 }
 
 @Test func openingHomeRootDismissesReaderBrowserAndPendingLibraryDestinations() {

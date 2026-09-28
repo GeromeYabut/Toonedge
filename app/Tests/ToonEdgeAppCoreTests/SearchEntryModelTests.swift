@@ -2,6 +2,14 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@Test func searchSuggestionEditorialRowsKeepInsetAndMinimumActionSize() {
+    let layout = SearchSuggestionRowLayout()
+
+    #expect(layout.minimumHeight == 44)
+    #expect(layout.iconWidth == 28)
+    #expect(layout.separatorInset == layout.iconWidth + ToonEdgeSpacing.medium * 2)
+}
+
 @Test func searchOverlayFirstOpenLayoutKeepsInputInContentHeader() {
     let layout = SearchOverlayFirstOpenLayout.default
 
