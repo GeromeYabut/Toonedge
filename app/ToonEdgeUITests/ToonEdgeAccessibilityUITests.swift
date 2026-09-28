@@ -2,6 +2,14 @@ import XCTest
 
 @MainActor
 final class ToonEdgeAccessibilityUITests: XCTestCase {
+    func testPrimaryTabsRemainHittableInLightAppearance() {
+        assertPrimaryTabsRemainHittable(appearance: "Light")
+    }
+
+    func testPrimaryTabsRemainHittableInDarkAppearance() {
+        assertPrimaryTabsRemainHittable(appearance: "Dark")
+    }
+
     func testHomeSearchEntryIsAvailable() {
         let app = launchApp()
         let searchEntry = app.buttons["home.searchEntry"]
@@ -50,9 +58,33 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["library.empty"].exists)
     }
 
-    private func launchApp(largeText: Bool = false, extraArguments: [String] = []) -> XCUIApplication {
+    private func assertPrimaryTabsRemainHittable(appearance: String) {
+        let app = launchApp(appearance: appearance)
+        let tabs = [
+            ("tab.home", "Home"),
+            ("tab.library", "Library"),
+            ("tab.downloads", "Downloads"),
+            ("tab.settings", "Settings")
+        ]
+        for (identifier, label) in tabs {
+            let button = tabButton(app, identifier: identifier, label: label)
+            XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing \(identifier) in \(appearance)")
+            XCTAssertTrue(button.isHittable, "Unhittable \(identifier) in \(appearance)")
+            button.tap()
+            XCTAssertTrue(button.isSelected, "Unselected \(identifier) in \(appearance)")
+            for (otherIdentifier, otherLabel) in tabs {
+                XCTAssertTrue(tabButton(app, identifier: otherIdentifier, label: otherLabel).isHittable,
+                              "Unhittable \(otherIdentifier) on \(identifier) in \(appearance)")
+            }
+        }
+    }
+
+    private func launchApp(largeText: Bool = false, appearance: String? = nil, extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-resetTestData"] + extraArguments
+        if let appearance {
+            app.launchArguments += ["-AppleInterfaceStyle", appearance]
+        }
         if largeText {
             app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityExtraExtraExtraLarge"]
         }
