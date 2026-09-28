@@ -1,9 +1,23 @@
 import SwiftUI
 
+public struct BrowserChromeLayout: Equatable, Sendable {
+    public enum ReloadPlacement: Equatable, Sendable {
+        case bottomToolbar
+    }
+
+    public let reloadPlacement: ReloadPlacement = .bottomToolbar
+    public let showsTopReload = false
+    public let showsDecorativeBrowserStatus = false
+    public let minimumActionSize: CGFloat = 44
+
+    public init() {}
+}
+
 public struct BrowserView: View {
     private let dependencies: AppDependencies
     @Binding private var router: AppRouter
     @StateObject private var viewModel: BrowserViewModel
+    private let chromeLayout = BrowserChromeLayout()
     @State private var pendingLibrarySaveSession: MockReaderSession?
     @State private var librarySaveState = AddToLibraryStatePickerModel.defaultState(for: .browser)
 
@@ -139,7 +153,7 @@ public struct BrowserView: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 15, weight: .semibold))
-                    .frame(width: 34, height: 34)
+                    .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
             }
             .buttonStyle(.plain)
             .foregroundStyle(ToonEdgeColor.textPrimary)
@@ -150,11 +164,11 @@ public struct BrowserView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(viewModel.addressDisplay.isEmpty ? "Search or enter URL" : viewModel.addressDisplay)
-                        .font(ToonEdgeTypography.caption)
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(ToonEdgeColor.textPrimary)
                         .lineLimit(1)
                     Text(viewModel.subtitleDisplay)
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .font(.caption)
                         .foregroundStyle(ToonEdgeColor.textSecondary)
                         .lineLimit(1)
                 }
@@ -168,23 +182,13 @@ public struct BrowserView: View {
                     .stroke(ToonEdgeColor.border)
             )
 
-            Button {
-                viewModel.reload()
-            } label: {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 15, weight: .semibold))
-                    .frame(width: 34, height: 34)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(ToonEdgeColor.textPrimary)
-
             if viewModel.detectionResult?.readerSession != nil, dependencies.libraryLifecycleService != nil {
                 Button {
                     presentDetectedSessionLibrarySave()
                 } label: {
                     Image(systemName: "bookmark")
                         .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 34, height: 34)
+                        .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(ToonEdgeColor.textPrimary)
@@ -203,7 +207,7 @@ public struct BrowserView: View {
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 19, weight: .semibold))
-                    .frame(width: 44, height: 44)
+                    .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
             }
             .disabled(!viewModel.canGoBack)
 
@@ -212,24 +216,20 @@ public struct BrowserView: View {
             } label: {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 19, weight: .semibold))
-                    .frame(width: 44, height: 44)
+                    .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
             }
             .disabled(!viewModel.canGoForward)
 
             Spacer()
 
-            Text(viewModel.isLoading ? "Loading" : "Browser")
-                .font(ToonEdgeTypography.caption)
-                .foregroundStyle(ToonEdgeColor.textSecondary)
-
-            Spacer()
-
-            Button {
-                viewModel.reload()
-            } label: {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 18, weight: .semibold))
-                    .frame(width: 44, height: 44)
+            if chromeLayout.reloadPlacement == .bottomToolbar {
+                Button {
+                    viewModel.reload()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 18, weight: .semibold))
+                        .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
+                }
             }
         }
         .buttonStyle(.plain)

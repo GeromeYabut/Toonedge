@@ -2,6 +2,15 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@Test func quietBrowserChromeDoesNotDuplicateReloadOrStatusLabel() {
+    let layout = BrowserChromeLayout()
+
+    #expect(layout.reloadPlacement == .bottomToolbar)
+    #expect(layout.showsTopReload == false)
+    #expect(layout.showsDecorativeBrowserStatus == false)
+    #expect(layout.minimumActionSize == 44)
+}
+
 @Test func routeObservationSchedulesSettledURLOnce() throws {
     let series = try #require(URL(string: "https://vortexscans.org/series/past-life-returner"))
     let chapter = try #require(URL(string: "https://vortexscans.org/series/past-life-returner/chapter-169"))
