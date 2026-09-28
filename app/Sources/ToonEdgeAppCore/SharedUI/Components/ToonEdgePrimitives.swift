@@ -5,6 +5,198 @@ import UIKit
 import AppKit
 #endif
 
+public enum TEEditorialGroupStyle: Equatable, Sendable {
+    case plain, elevated
+
+    public static let `default`: Self = .plain
+    public var drawsBorder: Bool { false }
+    public var usesElevation: Bool { self == .elevated }
+}
+
+/// A borderless group of identified rows. A nil inset omits separators;
+/// a non-nil inset draws separators between rows, never after the last row.
+public struct TEEditorialGroup<Rows: RandomAccessCollection, Row: View>: View where Rows.Element: Identifiable {
+    private let rows: Rows
+    private let spacing: CGFloat
+    private let separatorInset: CGFloat?
+    private let style: TEEditorialGroupStyle
+    private let row: (Rows.Element) -> Row
+
+    public init(
+        _ rows: Rows,
+        spacing: CGFloat = ToonEdgeSpacing.small,
+        separatorInset: CGFloat? = nil,
+        style: TEEditorialGroupStyle = .default,
+        @ViewBuilder row: @escaping (Rows.Element) -> Row
+    ) {
+        self.rows = rows
+        self.spacing = spacing
+        self.separatorInset = separatorInset
+        self.style = style
+        self.row = row
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: spacing) {
+            ForEach(rows) { item in
+                row(item)
+                if let separatorInset, item.id != rows.last?.id {
+                    Rectangle()
+                        .fill(ToonEdgeColor.border)
+                        .frame(height: 1)
+                        .padding(.leading, max(0, separatorInset))
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+        .background(
+            style.usesElevation ? ToonEdgeColor.elevated : Color.clear,
+            in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium)
+        )
+    }
+}
+
+public enum TEActionMetrics {
+    public static let minimumHitSize: CGFloat = 44
+}
+
+/// Selection is conveyed by both a quiet surface and an accessibility trait.
+public struct TEEditorialRowStyle: ViewModifier {
+    private let isSelected: Bool
+
+    public init(isSelected: Bool = false) {
+        self.isSelected = isSelected
+    }
+
+    public func body(content: Content) -> some View {
+        content
+            .font(ToonEdgeTypography.body)
+            .foregroundStyle(ToonEdgeColor.textPrimary)
+            .padding(.horizontal, ToonEdgeSpacing.medium)
+            .padding(.vertical, ToonEdgeSpacing.small)
+            .frame(minWidth: TEActionMetrics.minimumHitSize, maxWidth: .infinity,
+                   minHeight: TEActionMetrics.minimumHitSize, alignment: .leading)
+            .background(isSelected ? ToonEdgeColor.panel : Color.clear,
+                        in: RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+            .contentShape(Rectangle())
+            .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+}
+
+public struct TEActionFeedback: Equatable, Sendable {
+    public let opacity: Double
+    public let scale: CGFloat
+
+    public init(isPressed: Bool, isEnabled: Bool, reduceMotion: Bool) {
+        opacity = !isEnabled ? 0.45 : (isPressed ? 0.75 : 1)
+        scale = isEnabled && isPressed && !reduceMotion ? 0.98 : 1
+    }
+}
+
+public struct TEActionStyle: ButtonStyle {
+    public enum Surface: Equatable, Sendable {
+        case plain, filled, elevated
+    }
+
+    private let surface: Surface
+
+    public init(surface: Surface = .plain) {
+        self.surface = surface
+    }
+
+    public func makeBody(configuration: Configuration) -> some View {
+        TEActionLabel(surface: surface, isPressed: configuration.isPressed) {
+            configuration.label
+        }
+    }
+}
+
+/// Shared by the real ButtonStyle and the deterministic pressed-state preview.
+private struct TEActionLabel<Label: View>: View {
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let surface: TEActionStyle.Surface
+    let isPressed: Bool
+    @ViewBuilder let label: () -> Label
+
+    var body: some View {
+        let feedback = TEActionFeedback(isPressed: isPressed, isEnabled: isEnabled, reduceMotion: reduceMotion)
+        label()
+            .font(ToonEdgeTypography.body.weight(.semibold))
+            .padding(.horizontal, ToonEdgeSpacing.medium)
+            .padding(.vertical, ToonEdgeSpacing.small)
+            .frame(minWidth: TEActionMetrics.minimumHitSize, minHeight: TEActionMetrics.minimumHitSize)
+            .foregroundStyle(surface == .filled ? ToonEdgeColor.filledActionForeground : ToonEdgeColor.textPrimary)
+            .background(background, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+            .opacity(feedback.opacity)
+            .scaleEffect(feedback.scale)
+            .animation(reduceMotion ? nil : .easeOut(duration: ToonEdgeMotionPolicy(reduceMotion: false).positionalDuration), value: isPressed)
+            // Keep the hit region unscaled even while the visual label is pressed.
+            .frame(minWidth: TEActionMetrics.minimumHitSize, minHeight: TEActionMetrics.minimumHitSize)
+            .contentShape(Rectangle())
+    }
+
+    private var background: Color {
+        switch surface {
+        case .plain: .clear
+        case .filled: ToonEdgeColor.filledActionBackground
+        case .elevated: ToonEdgeColor.elevated
+        }
+    }
+}
+
+/// No feature routing or state: this host exercises the same views used by clients.
+struct TEEditorialPrimitiveGallery: View {
+    private enum Sample: String, CaseIterable, Identifiable {
+        case plain = "Plain row", selected = "Selected row"
+        var id: Self { self }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
+            Text("Editorial primitives").font(ToonEdgeTypography.title)
+            TEEditorialGroup(Sample.allCases, separatorInset: ToonEdgeSpacing.medium) { sample in
+                HStack {
+                    Text(sample.rawValue)
+                    if sample == .selected {
+                        Spacer()
+                        Image(systemName: "checkmark").accessibilityHidden(true)
+                    }
+                }
+                .modifier(TEEditorialRowStyle(isSelected: sample == .selected))
+            }
+            TEEditorialGroup([Sample.plain], style: .elevated) { _ in
+                Text("Elevated group").modifier(TEEditorialRowStyle())
+            }
+            Button("Plain action") {}.buttonStyle(TEActionStyle())
+            Button("Filled action") {}.buttonStyle(TEActionStyle(surface: .filled))
+            Button("Elevated action") {}.buttonStyle(TEActionStyle(surface: .elevated))
+            Button("Disabled action") {}.buttonStyle(TEActionStyle()).disabled(true)
+            Button("Pressed action") {}.buttonStyle(TEPressedPreviewStyle())
+        }
+        .padding(ToonEdgeSpacing.large)
+        .foregroundStyle(ToonEdgeColor.textPrimary)
+        .background(ToonEdgeColor.background)
+    }
+}
+
+private struct TEPressedPreviewStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        TEActionLabel(surface: .filled, isPressed: true) { configuration.label }
+    }
+}
+
+private struct TEEditorialPrimitivePreviews: PreviewProvider {
+    static var previews: some View {
+        ForEach([ColorScheme.light, .dark], id: \.self) { scheme in
+            TEEditorialPrimitiveGallery()
+                .environment(\.colorScheme, scheme)
+                .previewLayout(.fixed(width: 360, height: 680))
+                .previewDisplayName("\(scheme)")
+        }
+    }
+}
+
 public struct TEButton: View {
     private let title: String
     private let systemImage: String?
