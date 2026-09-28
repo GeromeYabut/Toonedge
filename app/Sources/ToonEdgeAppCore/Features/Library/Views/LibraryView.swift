@@ -22,7 +22,36 @@ public enum LibraryContentPhase: Equatable, Sendable {
     }
 }
 
+enum LibraryEmptyReason: Equatable, Sendable {
+    case collection
+    case filter
+
+    init(totalCount: Int, visibleCount: Int) {
+        self = totalCount == 0 && visibleCount == 0 ? .collection : .filter
+    }
+
+    var message: String {
+        switch self {
+        case .collection:
+            "Nothing saved"
+        case .filter:
+            "No titles in this section"
+        }
+    }
+}
+
+struct LibraryDensityPresentation: Equatable, Sendable {
+    var savedPreference: LibraryViewMode
+    var renderedMode: LibraryViewMode
+
+    init(saved: LibraryViewMode, accessibilityText: Bool) {
+        self.savedPreference = saved
+        self.renderedMode = accessibilityText ? .list : saved
+    }
+}
+
 public struct LibraryView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private let dependencies: AppDependencies
     @Binding private var router: AppRouter
     @State private var snapshot = LibrarySnapshot(series: [])
@@ -150,25 +179,17 @@ public struct LibraryView: View {
         let result = await updateRefreshService.refreshUpdates()
         await reloadSnapshot()
         isRefreshingUpdates = false
-        showRefreshFeedback(message: refreshMessage(for: result))
-    }
-
-    private func refreshMessage(for result: LibraryUpdateRefreshResult) -> String {
-        if result.failedCount > 0 {
-            return "\(result.checkedCount) checked, \(result.updatedCount) \(pluralize("update", count: result.updatedCount)), \(result.failedCount) failed"
-        }
-
-        return "\(result.checkedCount) checked, \(result.updatedCount) \(pluralize("update", count: result.updatedCount))"
-    }
-
-    private func pluralize(_ singular: String, count: Int) -> String {
-        count == 1 ? singular : "\(singular)s"
+        showRefreshFeedback(result: result)
     }
 
     @ViewBuilder
     private var content: some View {
         let visible = snapshot.series(for: selectedSegment)
-        let emptyLayout = LibraryEmptyStateLayout(hasLoadedSnapshot: hasLoadedSnapshot, visibleSeries: visible)
+        let emptyLayout = LibraryEmptyStateLayout(
+            hasLoadedSnapshot: hasLoadedSnapshot,
+            totalCount: snapshot.series.count,
+            visibleSeries: visible
+        )
 
         switch LibraryContentPhase(hasLoadedSnapshot: hasLoadedSnapshot, visibleCount: visible.count) {
         case .loading:
@@ -179,21 +200,37 @@ public struct LibraryView: View {
             LibraryEmptyStateView(layout: emptyLayout)
                 .accessibilityIdentifier("library.empty")
         case .content:
-            let gridLayout = LibraryGridLayout(mode: selectedViewMode)
+            collection(visible, mode: LibraryDensityPresentation(
+                saved: selectedViewMode,
+                accessibilityText: dynamicTypeSize.isAccessibilitySize
+            ).renderedMode)
+        }
+    }
 
-            LazyVGrid(
-                columns: gridLayout.columns,
-                spacing: gridLayout.itemSpacing
-            ) {
+    @ViewBuilder
+    private func collection(_ visible: [LibrarySeriesSummary], mode: LibraryViewMode) -> some View {
+        if mode == .list {
+            LazyVStack(spacing: 0) {
                 ForEach(visible) { series in
                     NavigationLink(value: LibrarySeriesDetailRoute(summary: series)) {
-                        switch selectedViewMode {
-                        case .comfortable:
+                        SeriesListRow(series: series)
+                    }
+                    .buttonStyle(.plain)
+
+                    if series.id != visible.last?.id {
+                        Divider().padding(.leading, LibrarySeriesListRowLayout.default.coverWidth + ToonEdgeSpacing.medium)
+                    }
+                }
+            }
+        } else {
+            let gridLayout = LibraryGridLayout(mode: mode)
+            LazyVGrid(columns: gridLayout.columns, spacing: gridLayout.itemSpacing) {
+                ForEach(visible) { series in
+                    NavigationLink(value: LibrarySeriesDetailRoute(summary: series)) {
+                        if mode == .comfortable {
                             SeriesCard(series: series, layout: .comfortable)
-                        case .compact:
+                        } else {
                             SeriesCompactTile(series: series, layout: .compact)
-                        case .list:
-                            SeriesListRow(series: series)
                         }
                     }
                     .buttonStyle(.plain)
@@ -202,8 +239,8 @@ public struct LibraryView: View {
         }
     }
 
-    private func showRefreshFeedback(message: String) {
-        let feedback = LibraryRefreshFeedback(message: message)
+    private func showRefreshFeedback(result: LibraryUpdateRefreshResult) {
+        let feedback = LibraryRefreshFeedback(result: result)
         refreshFeedback = feedback
 
         Task { [feedbackID = feedback.id] in
@@ -274,52 +311,6 @@ struct LibraryCollectionControlsLayout: Equatable, Sendable {
     }
 }
 
-struct SeriesDetailSeedShellLayout: Equatable, Sendable {
-    var title: String
-    var metadata: String
-    var coverImageURL: URL?
-    var status: String
-    var hasUnreadUpdates: Bool
-    var showsLoadingBanner: Bool
-    var exposesContinueAction: Bool
-    var primaryChapter: ChapterSummary?
-    var primaryActionTitle: String?
-
-    init(summary: LibrarySeriesSummary) {
-        self.title = summary.title
-        self.metadata = "\(summary.sourceDomain) • \(summary.chapterSummaryText)"
-        self.coverImageURL = summary.coverImageURL
-        self.status = summary.libraryState.title
-        self.hasUnreadUpdates = summary.hasUnreadUpdates
-        self.showsLoadingBanner = false
-        self.primaryChapter = summary.resumeTarget?.chapter
-        self.primaryActionTitle = summary.resumeTarget?.actionTitle
-        self.exposesContinueAction = summary.resumeTarget != nil
-    }
-}
-
-struct SeriesDetailChapterOpenRoute: Equatable, Sendable {
-    var chapter: ChapterSummary
-    var seriesID: UUID
-
-    var browserStartPoint: BrowserStartPoint {
-        .url(chapter.sourceURL.absoluteString)
-    }
-
-    var browserReaderLaunchOrigin: ReaderLaunchOrigin {
-        .library(seriesID: seriesID)
-    }
-}
-
-struct SeriesDetailCoverLayout: Equatable, Sendable {
-    var coverImageURL: URL?
-    var usesPlaceholder: Bool
-
-    init(coverImageURL: URL?) {
-        self.coverImageURL = coverImageURL
-        self.usesPlaceholder = coverImageURL == nil
-    }
-}
 
 struct LibraryRefreshFeedbackLayout: Equatable, Sendable {
     static let autoDismissDelay = 5
@@ -335,14 +326,15 @@ struct LibraryRefreshFeedbackLayout: Equatable, Sendable {
     var dismissAccessibilityLabel: String
     var autoDismissDelay: Int
 
-    init(message: String) {
-        self.title = "Updated"
-        self.message = message
+    init(result: LibraryUpdateRefreshResult) {
+        let feedback = LibraryRefreshFeedbackPresentation(result: result)
+        self.title = feedback.title
+        self.message = feedback.message
         self.presentationStyle = .floatingOverlay
         self.overlayAlignment = .bottomTrailing
         self.maximumWidth = 280
         self.contentSize = .compact
-        self.accentColorRole = .purple
+        self.accentColorRole = feedback.accentColorRole
         self.reservesContentSpace = false
         self.dismissAccessibilityLabel = "Dismiss update refresh"
         self.autoDismissDelay = Self.autoDismissDelay
@@ -363,6 +355,33 @@ enum LibraryRefreshFeedbackContentSize: Equatable, Sendable {
 
 enum LibraryRefreshFeedbackAccentColorRole: Equatable, Sendable {
     case purple
+    case success
+    case warning
+    case failure
+}
+
+struct LibraryRefreshFeedbackPresentation: Equatable, Sendable {
+    var title: String
+    var message: String
+    var accentColorRole: LibraryRefreshFeedbackAccentColorRole
+
+    init(result: LibraryUpdateRefreshResult) {
+        self.message = "\(result.checkedCount) checked, \(result.updatedCount) \(result.updatedCount == 1 ? "update" : "updates")"
+        if result.failedCount == result.checkedCount, result.checkedCount > 0 {
+            self.title = "Update check failed"
+            self.accentColorRole = .failure
+        } else if result.failedCount > 0 {
+            self.title = "Some updates unavailable"
+            self.message += ", \(result.failedCount) failed"
+            self.accentColorRole = .warning
+        } else if result.updatedCount > 0 {
+            self.title = "Updates found"
+            self.accentColorRole = .success
+        } else {
+            self.title = "No new chapters"
+            self.accentColorRole = .purple
+        }
+    }
 }
 
 struct LibraryContentLayout: Equatable, Sendable {
@@ -453,6 +472,8 @@ private struct LibraryFilterRow: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityAddTraits(selection == segment ? .isSelected : [])
+                    .accessibilityValue(selection == segment ? "Selected" : "Not selected")
                 }
             }
             .padding(.vertical, ToonEdgeSpacing.xsmall)
@@ -470,13 +491,15 @@ private struct LibraryViewModeControl: View {
                     selection = mode
                 } label: {
                     Image(systemName: mode.systemImage)
-                        .frame(width: 34, height: 30)
+                        .frame(width: 44, height: 44)
                         .background(selection == mode ? ToonEdgeColor.panel : Color.clear)
                         .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(selection == mode ? ToonEdgeColor.textPrimary : ToonEdgeColor.textSecondary)
                 .accessibilityLabel("\(mode.title) library view")
+                .accessibilityAddTraits(selection == mode ? .isSelected : [])
+                .accessibilityValue(selection == mode ? "Selected" : "Not selected")
             }
         }
         .padding(ToonEdgeSpacing.xsmall)
@@ -491,9 +514,9 @@ struct LibraryEmptyStateLayout: Equatable, Sendable {
     var imageName: String
     var imageURL: URL?
 
-    init(hasLoadedSnapshot: Bool, visibleSeries: [LibrarySeriesSummary]) {
+    init(hasLoadedSnapshot: Bool, totalCount: Int = 0, visibleSeries: [LibrarySeriesSummary]) {
         self.isVisible = hasLoadedSnapshot && visibleSeries.isEmpty
-        self.message = "Nothing saved"
+        self.message = LibraryEmptyReason(totalCount: totalCount, visibleCount: visibleSeries.count).message
         self.imageName = ToonEdgeAppCoreResources.sleepyLibraryEmptyImageName
         self.imageURL = ToonEdgeAppCoreResources.urlForImage(named: imageName, extension: "png")
     }
@@ -520,8 +543,8 @@ private struct LibraryRefreshFeedback: Equatable {
     let id = UUID()
     let layout: LibraryRefreshFeedbackLayout
 
-    init(message: String) {
-        self.layout = LibraryRefreshFeedbackLayout(message: message)
+    init(result: LibraryUpdateRefreshResult) {
+        self.layout = LibraryRefreshFeedbackLayout(result: result)
     }
 }
 
@@ -544,7 +567,7 @@ private struct LibraryCollectionControls: View {
             if layout.refreshButtonIsVisible {
                 Button(action: refresh) {
                     Image(systemName: layout.refreshSystemImage)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 44, height: 44)
                         .contentTransition(.symbolEffect(.replace))
                 }
                 .buttonStyle(.plain)
@@ -596,6 +619,12 @@ private struct LibraryRefreshFeedbackView: View {
         switch layout.accentColorRole {
         case .purple:
             return ToonEdgeColor.accent
+        case .success:
+            return ToonEdgeColor.success
+        case .warning:
+            return ToonEdgeColor.warning
+        case .failure:
+            return ToonEdgeColor.failure
         }
     }
 }
@@ -716,10 +745,6 @@ private struct SeriesCard: View {
         }
         .frame(width: layout.coverImageWidth, height: layout.coverHeight)
         .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: layout.cornerRadius)
-                .stroke(ToonEdgeColor.border.opacity(0.65))
-        )
     }
 
     private var progressTint: Color {
@@ -743,10 +768,6 @@ private struct SeriesCompactTile: View {
             .frame(maxWidth: .infinity)
             .frame(height: layout.coverHeight)
             .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
-            .overlay(
-                RoundedRectangle(cornerRadius: layout.cornerRadius)
-                    .stroke(ToonEdgeColor.border.opacity(0.45))
-            )
 
             Text(series.title)
                 .font(ToonEdgeTypography.caption.weight(.semibold))
@@ -765,13 +786,38 @@ private struct SeriesCompactTile: View {
 }
 
 private struct SeriesListRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let series: LibrarySeriesSummary
-    private let layout = LibrarySeriesListRowLayout.default
     private var content: LibrarySeriesCardContent {
         LibrarySeriesCardContent(series: series)
     }
+    private var layout: LibrarySeriesListRowLayout {
+        LibrarySeriesListRowLayout(accessibilityText: dynamicTypeSize.isAccessibilitySize)
+    }
 
     var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                    leadingContent
+                    statusBadge
+                }
+            } else {
+                HStack(spacing: ToonEdgeSpacing.medium) {
+                    leadingContent
+                    Spacer(minLength: ToonEdgeSpacing.small)
+                    statusBadge
+                }
+            }
+        }
+        .padding(.vertical, ToonEdgeSpacing.small)
+        .padding(.horizontal, ToonEdgeSpacing.small)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: layout.rowHeight)
+        .contentShape(Rectangle())
+    }
+
+    private var leadingContent: some View {
         HStack(spacing: ToonEdgeSpacing.medium) {
             CachedCoverArtwork(url: series.coverImageURL) {
                 MissingCoverView(title: series.title)
@@ -782,28 +828,25 @@ private struct SeriesListRow: View {
             VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
                 Text(series.title)
                     .font(ToonEdgeTypography.body.weight(.semibold))
-                    .lineLimit(1)
+                    .lineLimit(layout.textLineLimit)
                 Text(content.listMetadata)
                     .font(ToonEdgeTypography.caption)
                     .foregroundStyle(ToonEdgeColor.textSecondary)
-                    .lineLimit(1)
+                    .lineLimit(layout.textLineLimit)
                 ProgressView(value: series.progressPercent)
                     .tint(series.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.accent)
                     .frame(height: 4)
             }
-
-            Spacer(minLength: ToonEdgeSpacing.small)
-
-            if series.hasUnreadUpdates {
-                TEChip("New", isActive: true)
-            } else if series.isCompleted {
-                TEChip("Done")
-            }
         }
-        .padding(.vertical, ToonEdgeSpacing.small)
-        .padding(.horizontal, ToonEdgeSpacing.small)
-        .frame(height: layout.rowHeight)
-        .background(ToonEdgeColor.elevated.opacity(0.65), in: RoundedRectangle(cornerRadius: layout.cornerRadius))
+    }
+
+    @ViewBuilder
+    private var statusBadge: some View {
+        if series.hasUnreadUpdates {
+            TEChip("New", isActive: true)
+        } else if series.isCompleted {
+            TEChip("Done")
+        }
     }
 }
 
@@ -971,17 +1014,23 @@ struct LibrarySeriesCardLayout: Equatable, Sendable {
 }
 
 struct LibrarySeriesListRowLayout: Equatable, Sendable {
-    var rowHeight: CGFloat
+    var rowHeight: CGFloat?
     var coverWidth: CGFloat
     var coverHeight: CGFloat
     var cornerRadius: CGFloat
+    var textLineLimit: Int?
+    var usesFullWidthHitShape: Bool
 
-    static let `default` = LibrarySeriesListRowLayout(
-        rowHeight: 82,
-        coverWidth: 46,
-        coverHeight: 64,
-        cornerRadius: 4
-    )
+    init(accessibilityText: Bool) {
+        self.rowHeight = accessibilityText ? nil : 82
+        self.coverWidth = 46
+        self.coverHeight = 64
+        self.cornerRadius = 4
+        self.textLineLimit = accessibilityText ? nil : 1
+        self.usesFullWidthHitShape = true
+    }
+
+    static let `default` = LibrarySeriesListRowLayout(accessibilityText: false)
 }
 
 enum LibrarySeriesCardCoverAlignment: Equatable, Sendable {
@@ -995,7 +1044,7 @@ enum LibrarySeriesCardCoverAlignment: Equatable, Sendable {
     }
 }
 
-private struct MissingCoverView: View {
+struct MissingCoverView: View {
     let title: String
 
     var body: some View {
@@ -1029,535 +1078,6 @@ private struct MissingCoverView: View {
     }
 }
 
-private struct SeriesDetailView: View {
-    let seriesID: UUID
-    let seedSummary: LibrarySeriesSummary?
-    let dependencies: AppDependencies
-    let onDetailHydrated: @MainActor (SeriesDetailSnapshot?) -> Void
-    @Binding var router: AppRouter
-    @State private var detail: SeriesDetailSnapshot?
-    @State private var hasLoaded = false
-    @State private var hasAttemptedChapterIndexRefresh = false
-    @State private var cacheFeedback: CacheActionFeedback?
-    @State private var pendingSaveDetail: SeriesDetailSnapshot?
-    @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
-
-    init(
-        seriesID: UUID,
-        seedSummary: LibrarySeriesSummary? = nil,
-        cachedDetail: SeriesDetailSnapshot? = nil,
-        dependencies: AppDependencies,
-        router: Binding<AppRouter>,
-        onDetailHydrated: @escaping @MainActor (SeriesDetailSnapshot?) -> Void = { _ in }
-    ) {
-        self.seriesID = seriesID
-        self.seedSummary = seedSummary
-        self.dependencies = dependencies
-        self._router = router
-        self.onDetailHydrated = onDetailHydrated
-        self._detail = State(initialValue: cachedDetail)
-    }
-
-    var body: some View {
-        content
-            .navigationTitle("")
-            .task {
-                await reloadDetail()
-            }
-            .task(id: detail?.id) {
-                guard detail != nil else { return }
-                await refreshChapterIndexIfAvailable()
-            }
-            .onChange(of: router.presentedReader) { oldValue, newValue in
-                guard oldValue != nil, newValue == nil else { return }
-                Task {
-                    await reloadDetail()
-                }
-            }
-            .sheet(item: $pendingSaveDetail) { detail in
-                AddToLibraryStatePickerView(
-                    title: detail.title,
-                    selectedState: $saveState,
-                    context: .seriesDetail,
-                    confirm: { state in
-                        confirmSave(detail, state: state)
-                    },
-                    cancel: {
-                        pendingSaveDetail = nil
-                    }
-                )
-            }
-            .toonEdgeScreen()
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        if let detail {
-            hydratedContent(detail)
-        } else if let seedSummary {
-            ScrollView {
-                seedShell(seedSummary)
-                    .padding(ToonEdgeSpacing.large)
-            }
-        } else if hasLoaded {
-            ScrollView {
-                TEBanner(
-                    title: "Series unavailable",
-                    message: "This saved title could not be loaded from the mock repository.",
-                    systemImage: "exclamationmark.triangle"
-                )
-                .padding(ToonEdgeSpacing.large)
-            }
-        } else {
-            ScrollView {
-                TEBanner(title: "Loading series", message: "Preparing chapter state.", systemImage: "hourglass")
-                    .padding(ToonEdgeSpacing.large)
-            }
-        }
-    }
-
-    private func hydratedContent(_ detail: SeriesDetailSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
-                header(detail)
-                cacheStatus
-            }
-            .padding(ToonEdgeSpacing.large)
-            .background(ToonEdgeColor.background)
-
-            Divider()
-                .overlay(ToonEdgeColor.border)
-
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
-                        chapterToolbar(detail)
-                        chapterList(detail)
-                    }
-                    .padding(ToonEdgeSpacing.large)
-                    .padding(.bottom, ToonEdgeSpacing.large)
-                }
-                .task(id: detail.chapterListAnchorID) {
-                    let behavior = SeriesDetailInitialScrollBehavior(anchorID: detail.chapterListAnchorID)
-                    guard behavior.shouldScroll, let anchorID = behavior.anchorID else { return }
-                    await Task.yield()
-                    var transaction = Transaction()
-                    transaction.disablesAnimations = behavior.disablesAnimation
-                    transaction.animation = nil
-                    withTransaction(transaction) {
-                        proxy.scrollTo(anchorID, anchor: .center)
-                    }
-                }
-            }
-        }
-    }
-
-    private func header(_ detail: SeriesDetailSnapshot) -> some View {
-        let layout = SeriesDetailHeaderLayout(snapshot: detail)
-        return VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
-            HStack(alignment: .top, spacing: ToonEdgeSpacing.medium) {
-                cover(for: detail)
-                    .frame(width: 96, height: 132)
-
-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
-                    HStack(spacing: ToonEdgeSpacing.small) {
-                        TEChip(detail.status, isActive: detail.hasUnreadUpdates)
-                        TEChip(detail.isSaved ? "Saved" : "Follow")
-                    }
-
-                    Text(layout.title)
-                        .font(ToonEdgeTypography.title)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(layout.metadata)
-                        .font(ToonEdgeTypography.caption)
-                        .foregroundStyle(ToonEdgeColor.textSecondary)
-                }
-            }
-
-            TEButton(layout.primaryActionTitle, systemImage: "play.fill") {
-                open(detail.primaryChapter)
-            }
-            .disabled(detail.primaryChapter == nil)
-        }
-    }
-
-    private func seedShell(_ summary: LibrarySeriesSummary) -> some View {
-        let layout = SeriesDetailSeedShellLayout(summary: summary)
-        return VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
-            HStack(alignment: .top, spacing: ToonEdgeSpacing.medium) {
-                CachedCoverArtwork(url: layout.coverImageURL) {
-                    MissingCoverView(title: layout.title)
-                }
-                .frame(width: 96, height: 132)
-                .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
-                .overlay(RoundedRectangle(cornerRadius: ToonEdgeRadius.small).stroke(ToonEdgeColor.border))
-
-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
-                    HStack(spacing: ToonEdgeSpacing.small) {
-                        TEChip(layout.status, isActive: layout.hasUnreadUpdates)
-                        TEChip("Saved")
-                    }
-
-                    Text(layout.title)
-                        .font(ToonEdgeTypography.title)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(layout.metadata)
-                        .font(ToonEdgeTypography.caption)
-                        .foregroundStyle(ToonEdgeColor.textSecondary)
-                }
-            }
-
-            if let primaryChapter = layout.primaryChapter,
-               let primaryActionTitle = layout.primaryActionTitle {
-                TEButton(primaryActionTitle, systemImage: "play.fill") {
-                    open(primaryChapter)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var cacheStatus: some View {
-        if let cacheFeedback {
-            TEBanner(
-                title: cacheFeedback.isFailure ? "Cache action failed" : "Cache updated",
-                message: cacheFeedback.message,
-                systemImage: cacheFeedback.isFailure ? "exclamationmark.triangle" : "checkmark.circle"
-            )
-        }
-    }
-
-    private func chapterToolbar(_ detail: SeriesDetailSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
-            HStack {
-                Text("Chapters")
-                    .font(ToonEdgeTypography.sectionTitle)
-                Spacer()
-                Menu {
-                    Button(detail.isSaved ? "Remove from Library" : "Add to Library") {
-                        toggleLibraryMembership(detail)
-                    }
-
-                    Divider()
-
-                    Button("Mark Reading") {
-                        updateLibraryState(.reading)
-                    }
-                    Button("Mark Planned") {
-                        updateLibraryState(.planned)
-                    }
-                    Button("Mark Dropped") {
-                        updateLibraryState(.dropped)
-                    }
-                    Button("Mark Completed") {
-                        updateLibraryState(.completed)
-                    }
-                } label: {
-                    Image(systemName: detail.isSaved ? "bookmark.fill" : "bookmark")
-                        .foregroundStyle(ToonEdgeColor.accent)
-                        .frame(width: 40, height: 40)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(detail.isSaved ? "Saved series" : "Save series")
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func chapterList(_ detail: SeriesDetailSnapshot) -> some View {
-        let chapters = detail.chapterList(for: .all)
-
-        if chapters.isEmpty {
-            TEBanner(title: "No chapters yet", message: "Chapter metadata will appear here when available.", systemImage: "list.bullet")
-        } else {
-            VStack(spacing: ToonEdgeSpacing.small) {
-                ForEach(chapters) { chapter in
-                    Button {
-                        open(chapter)
-                    } label: {
-                        ChapterRow(chapter: chapter)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!chapter.isOpenable)
-                    .contextMenu {
-                        if chapter.isOpenable {
-                            Button("Retain Offline", systemImage: "arrow.down.circle") {
-                                retain(chapter)
-                            }
-                        }
-                    }
-                    .id(chapter.id)
-                }
-            }
-        }
-    }
-
-    private func cover(for detail: SeriesDetailSnapshot) -> some View {
-        CachedCoverArtwork(url: detail.coverImageURL) {
-            MissingCoverView(title: detail.title)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
-        .overlay(RoundedRectangle(cornerRadius: ToonEdgeRadius.small).stroke(ToonEdgeColor.border))
-    }
-
-    private func reloadDetail() async {
-        let loadedDetail = await dependencies.libraryService.seriesDetail(for: seriesID)
-        hasLoaded = true
-        publishDetail(loadedDetail)
-    }
-
-    private func publishDetail(_ updatedDetail: SeriesDetailSnapshot?) {
-        detail = updatedDetail
-        onDetailHydrated(SeriesDetailCachePolicy(detail: updatedDetail).cachedDetail)
-    }
-
-    private func refreshChapterIndexIfAvailable() async {
-        guard SeriesDetailRefreshBehavior.shouldAttemptRefresh(
-            detail: detail,
-            hasAttemptedChapterIndexRefresh: hasAttemptedChapterIndexRefresh,
-            chapterIndexRefreshService: dependencies.chapterIndexRefreshService
-        ) else {
-            return
-        }
-
-        hasAttemptedChapterIndexRefresh = true
-        let outcome = await dependencies.chapterIndexRefreshService?.refreshChapterIndex(for: seriesID)
-        if SeriesDetailRefreshBehavior.shouldReloadDetail(after: outcome) {
-            await reloadDetail()
-        }
-    }
-
-    private func open(_ chapter: ChapterSummary?) {
-        guard let chapter, chapter.isOpenable else { return }
-
-        Task {
-            if let directSession = await dependencies.libraryLifecycleService?.readerSession(forChapterID: chapter.id) {
-                var librarySession = directSession
-                librarySession.launchOrigin = .library(seriesID: seriesID)
-                router.presentReader(librarySession)
-                return
-            }
-            let route = SeriesDetailChapterOpenRoute(chapter: chapter, seriesID: seriesID)
-            router.presentBrowser(route.browserStartPoint, readerLaunchOrigin: route.browserReaderLaunchOrigin)
-        }
-    }
-
-    private func toggleLibraryMembership(_ detail: SeriesDetailSnapshot) {
-        guard let lifecycleService = dependencies.libraryLifecycleService else { return }
-
-        Task {
-            if detail.isSaved {
-                try? await lifecycleService.removeFromLibrary(seriesID: detail.id)
-                publishDetail(nil)
-            } else {
-                saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
-                pendingSaveDetail = detail
-            }
-        }
-    }
-
-    private func confirmSave(_ detail: SeriesDetailSnapshot, state: LibraryCollectionState) {
-        guard let lifecycleService = dependencies.libraryLifecycleService else { return }
-        pendingSaveDetail = nil
-        var input = detail.libraryInput
-        input.libraryState = state
-
-        Task {
-            try? await lifecycleService.addToLibrary(input, context: .seriesDetail)
-            publishDetail(await dependencies.libraryService.seriesDetail(for: detail.id))
-        }
-    }
-
-    private func updateLibraryState(_ state: LibraryCollectionState) {
-        guard let lifecycleService = dependencies.libraryLifecycleService else { return }
-
-        Task {
-            try? await lifecycleService.updateLibraryState(state, for: seriesID)
-            publishDetail(await dependencies.libraryService.seriesDetail(for: seriesID))
-        }
-    }
-
-    private func retain(_ chapter: ChapterSummary) {
-        Task {
-            do {
-                let result = try await dependencies.cacheMetadataService.updateCacheRetention(
-                    for: chapter.sourceURL,
-                    retentionState: .retained,
-                    cachedAt: Date()
-                )
-                cacheFeedback = .success(result)
-                publishDetail(await dependencies.libraryService.seriesDetail(for: seriesID))
-            } catch {
-                cacheFeedback = .failure("Could not retain this chapter offline.")
-            }
-        }
-    }
-}
-
-struct SeriesDetailHeaderLayout: Equatable, Sendable {
-    var title: String
-    var metadata: String
-    var synopsisText: String?
-    var primaryActionTitle: String
-
-    init(snapshot: SeriesDetailSnapshot) {
-        self.title = snapshot.title
-        self.metadata = "\(snapshot.sourceDomain) • \(snapshot.chaptersRead)/\(snapshot.totalKnownChapters ?? snapshot.chapters.count) chapters"
-        self.synopsisText = nil
-        self.primaryActionTitle = snapshot.primaryActionTitle
-    }
-}
-
-struct SeriesDetailPageLayout: Equatable, Sendable {
-    enum StateKind: Equatable, Sendable {
-        case hydrated
-        case seeded
-        case loading
-        case unavailable
-    }
-
-    var stateKind: StateKind
-    var keepsHeaderFixed: Bool
-    var scrollsChaptersIndependently: Bool
-    var keepsPrimaryActionVisible: Bool
-
-    init(detail: SeriesDetailSnapshot?, seedSummary: LibrarySeriesSummary?, hasLoaded: Bool) {
-        if let detail {
-            self.stateKind = .hydrated
-            self.keepsHeaderFixed = true
-            self.scrollsChaptersIndependently = true
-            self.keepsPrimaryActionVisible = detail.primaryChapter != nil
-        } else if seedSummary != nil {
-            self.stateKind = .seeded
-            self.keepsHeaderFixed = true
-            self.scrollsChaptersIndependently = false
-            self.keepsPrimaryActionVisible = false
-        } else if hasLoaded {
-            self.stateKind = .unavailable
-            self.keepsHeaderFixed = false
-            self.scrollsChaptersIndependently = false
-            self.keepsPrimaryActionVisible = false
-        } else {
-            self.stateKind = .loading
-            self.keepsHeaderFixed = false
-            self.scrollsChaptersIndependently = false
-            self.keepsPrimaryActionVisible = false
-        }
-    }
-}
-
-struct SeriesDetailChapterSectionLayout: Equatable, Sendable {
-    var showsSegmentedControl: Bool
-    var defaultMode: SeriesDetailChapterListMode
-
-    init() {
-        self.showsSegmentedControl = false
-        self.defaultMode = .all
-    }
-}
-
-struct SeriesDetailInitialScrollBehavior: Equatable, Sendable {
-    var anchorID: UUID?
-    var delayMilliseconds: Int
-    var disablesAnimation: Bool
-
-    init(anchorID: UUID?) {
-        self.anchorID = anchorID
-        self.delayMilliseconds = 0
-        self.disablesAnimation = anchorID != nil
-    }
-
-    var shouldScroll: Bool {
-        anchorID != nil
-    }
-}
-
-struct SeriesDetailRefreshBehavior {
-    static func shouldAttemptRefresh(
-        detail: SeriesDetailSnapshot?,
-        hasAttemptedChapterIndexRefresh: Bool,
-        chapterIndexRefreshService: (any SeriesChapterIndexRefreshing)?
-    ) -> Bool {
-        detail != nil && !hasAttemptedChapterIndexRefresh && chapterIndexRefreshService != nil
-    }
-
-    static func shouldReloadDetail(after outcome: ChapterIndexRefreshOutcome?) -> Bool {
-        outcome?.didRefresh == true
-    }
-}
-
-struct SeriesDetailStartupPlan: Equatable, Sendable {
-    enum Phase: Equatable, Sendable {
-        case loadLocalDetail
-        case startBackgroundRefresh
-        case idle
-    }
-
-    var localDetailLoaded: Bool
-    var refreshAttempted: Bool
-
-    var nextPhase: Phase {
-        if !localDetailLoaded {
-            return .loadLocalDetail
-        }
-
-        if !refreshAttempted {
-            return .startBackgroundRefresh
-        }
-
-        return .idle
-    }
-}
-
-struct SeriesDetailEntryLayout: Equatable, Sendable {
-    enum VisibleState: Equatable, Sendable {
-        case hydratedDetail
-        case seededShell
-        case loading
-        case unavailable
-    }
-
-    var visibleState: VisibleState
-    var exposesContinueAction: Bool
-    var startsBackgroundRefresh: Bool
-
-    init(
-        cachedDetail: SeriesDetailSnapshot?,
-        seedSummary: LibrarySeriesSummary?,
-        hasLoaded: Bool
-    ) {
-        if let cachedDetail {
-            self.visibleState = .hydratedDetail
-            self.exposesContinueAction = cachedDetail.primaryChapter != nil
-            self.startsBackgroundRefresh = true
-        } else if seedSummary != nil {
-            self.visibleState = .seededShell
-            self.exposesContinueAction = false
-            self.startsBackgroundRefresh = false
-        } else if hasLoaded {
-            self.visibleState = .unavailable
-            self.exposesContinueAction = false
-            self.startsBackgroundRefresh = false
-        } else {
-            self.visibleState = .loading
-            self.exposesContinueAction = false
-            self.startsBackgroundRefresh = false
-        }
-    }
-}
-
-struct SeriesDetailCachePolicy: Equatable, Sendable {
-    var cachedDetail: SeriesDetailSnapshot?
-    var clearsCachedDetail: Bool
-
-    init(detail: SeriesDetailSnapshot?) {
-        self.cachedDetail = detail
-        self.clearsCachedDetail = detail == nil
-    }
-}
-
 struct LibraryDetailPrewarmPolicy: Equatable, Sendable {
     enum Trigger: Equatable, Sendable {
         case navigationOnly
@@ -1565,149 +1085,4 @@ struct LibraryDetailPrewarmPolicy: Equatable, Sendable {
 
     var automaticallyPrewarmsVisibleRows: Bool { false }
     var prewarmTrigger: Trigger { .navigationOnly }
-}
-
-private extension SeriesDetailSnapshot {
-    var libraryInput: LibrarySeriesInput {
-        LibrarySeriesInput(
-            id: id,
-            title: title,
-            canonicalURL: canonicalURL,
-            sourceDomain: sourceDomain,
-            coverImageURL: coverImageURL,
-            status: status,
-            synopsis: synopsis,
-            latestKnownChapterLabel: chapters.max { lhs, rhs in
-                (lhs.chapterNumber ?? .leastNonzeroMagnitude) < (rhs.chapterNumber ?? .leastNonzeroMagnitude)
-            }?.chapterLabel,
-            libraryState: libraryState,
-            chapters: chapters.map {
-                LibraryChapterInput(
-                    id: $0.id,
-                    title: $0.title,
-                    chapterLabel: $0.chapterLabel,
-                    chapterNumber: $0.chapterNumber,
-                    sourceURL: $0.sourceURL,
-                    imageURLs: [],
-                    publishedAt: $0.publishedAt
-                )
-            }
-        )
-    }
-
-    private var canonicalURL: URL {
-        chapters.first?.sourceURL.deletingLastPathComponent()
-            ?? URL(string: "https://\(sourceDomain)")!
-    }
-}
-
-private struct ChapterRow: View {
-    let chapter: ChapterSummary
-
-    var body: some View {
-        HStack(spacing: ToonEdgeSpacing.medium) {
-            stateMark
-
-            VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
-                Text(chapter.title)
-                    .font(ToonEdgeTypography.body.weight(.semibold))
-                    .foregroundStyle(ToonEdgeColor.textPrimary)
-
-                Text(subtitle)
-                    .font(ToonEdgeTypography.caption)
-                    .foregroundStyle(ToonEdgeColor.textSecondary)
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: ToonEdgeSpacing.xsmall) {
-                TEChip(chapter.readState.displayLabel, isActive: isPrimaryState)
-
-                if chapter.isDownloaded {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(ToonEdgeTypography.caption)
-                        .foregroundStyle(ToonEdgeColor.success)
-                        .accessibilityLabel("Downloaded")
-                }
-            }
-        }
-        .padding(ToonEdgeSpacing.large)
-        .background(rowBackground, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: ToonEdgeRadius.medium)
-                .stroke(rowBorder)
-        )
-    }
-
-    private var stateMark: some View {
-        Image(systemName: stateIcon)
-            .font(ToonEdgeTypography.body.weight(.semibold))
-            .foregroundStyle(stateColor)
-            .frame(width: 32, height: 32)
-            .background(stateColor.opacity(0.16), in: Circle())
-    }
-
-    private var subtitle: String {
-        if !chapter.isOpenable {
-            return "Chapter \(chapter.chapterLabel) • Unavailable"
-        }
-
-        if let downloadLabel = chapter.downloadLabel {
-            return "Chapter \(chapter.chapterLabel) • \(downloadLabel)"
-        } else {
-            return "Chapter \(chapter.chapterLabel)"
-        }
-    }
-
-    private var isPrimaryState: Bool {
-        switch chapter.readState {
-        case .new, .inProgress:
-            true
-        case .unread, .read:
-            false
-        }
-    }
-
-    private var rowBackground: Color {
-        switch chapter.readState {
-        case .new:
-            ToonEdgeColor.success.opacity(0.14)
-        case .inProgress:
-            ToonEdgeColor.accentSoft
-        case .unread:
-            ToonEdgeColor.elevated
-        case .read:
-            ToonEdgeColor.panel
-        }
-    }
-
-    private var rowBorder: Color {
-        chapter.isDownloaded ? ToonEdgeColor.success.opacity(0.55) : ToonEdgeColor.border
-    }
-
-    private var stateColor: Color {
-        switch chapter.readState {
-        case .new:
-            ToonEdgeColor.success
-        case .inProgress:
-            ToonEdgeColor.accent
-        case .unread:
-            ToonEdgeColor.textSecondary
-        case .read:
-            ToonEdgeColor.textPrimary.opacity(0.72)
-        }
-    }
-
-    private var stateIcon: String {
-        switch chapter.readState {
-        case .new:
-            "sparkle"
-        case .inProgress:
-            "play.fill"
-        case .unread:
-            "circle"
-        case .read:
-            "checkmark.circle.fill"
-        }
-    }
 }
