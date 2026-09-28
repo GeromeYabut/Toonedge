@@ -123,6 +123,10 @@ public struct ReaderView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.root")
+        .accessibilityValue(readerControlsAccessibilityActionName)
+        .accessibilityAction(named: Text(readerControlsAccessibilityActionName)) {
+            handleInteraction(.readingSurfaceTap)
+        }
         .foregroundStyle(textColor)
         .animation(.easeInOut(duration: 0.16), value: viewModel.isChromeVisible)
         .sheet(isPresented: $viewModel.isSettingsPresented) {
@@ -183,9 +187,10 @@ public struct ReaderView: View {
                     .padding(.vertical, viewModel.settings.isPageSpacingEnabled ? ToonEdgeSpacing.small : 0)
                 }
                 .scrollIndicators(.hidden)
+                .accessibilityIdentifier("reader.readingSurface")
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    viewModel.toggleChrome()
+                    handleInteraction(.readingSurfaceTap)
                 }
                 .task(id: viewModel.session.id) {
                     await viewModel.restoreProgress()
@@ -197,6 +202,14 @@ public struct ReaderView: View {
 
     private var chrome: some View {
         ZStack(alignment: .bottomTrailing) {
+            Color.clear
+                .frame(width: 1, height: 1)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Reader controls")
+                .accessibilityIdentifier("reader.chrome")
+                .accessibilityAddTraits(.isStaticText)
+                .allowsHitTesting(false)
+
             VStack(spacing: 0) {
                 topChrome
                 Spacer()
@@ -222,14 +235,11 @@ public struct ReaderView: View {
             .ignoresSafeArea()
             .allowsHitTesting(false)
         )
-        .onTapGesture {
-            viewModel.toggleChrome()
-        }
     }
 
     private var topChrome: some View {
         HStack(spacing: ToonEdgeSpacing.medium) {
-            ReaderIconButton(systemImage: "chevron.left", label: "Back") {
+            ReaderIconButton(systemImage: "chevron.left", label: "Back", identifier: "reader.back") {
                 if let backAction {
                     backAction()
                 } else {
@@ -249,7 +259,7 @@ public struct ReaderView: View {
 
             Spacer(minLength: ToonEdgeSpacing.small)
 
-            ReaderIconButton(systemImage: "house", label: "Open Home") {
+            ReaderIconButton(systemImage: "house", label: "Open Home", identifier: "reader.home") {
                 router.openHomeRoot()
             }
         }
@@ -263,7 +273,11 @@ public struct ReaderView: View {
 
     private var floatingActionRail: some View {
         VStack(spacing: ToonEdgeSpacing.small) {
-            ReaderIconButton(systemImage: "arrow.down.circle", label: "Retain Chapter Offline") {
+            ReaderIconButton(
+                systemImage: "arrow.down.circle",
+                label: "Retain Chapter Offline",
+                identifier: "reader.retainChapter"
+            ) {
                 Task {
                     await viewModel.retainCurrentChapter()
                 }
@@ -272,17 +286,26 @@ public struct ReaderView: View {
             if libraryLifecycleService != nil {
                 ReaderIconButton(
                     systemImage: viewModel.isSavedToLibrary ? "bookmark.fill" : "bookmark",
-                    label: viewModel.isSavedToLibrary ? "Saved to Library" : "Add to Library"
+                    label: viewModel.isSavedToLibrary ? "Saved to Library" : "Add to Library",
+                    identifier: "reader.saveToLibrary"
                 ) {
                     presentLibrarySave()
                 }
             }
 
-            ReaderIconButton(systemImage: "safari", label: "View Original Page") {
+            ReaderIconButton(
+                systemImage: "safari",
+                label: "View Original Page",
+                identifier: "reader.viewOriginalPage"
+            ) {
                 viewOriginalPageAction?() ?? router.viewOriginalPage()
             }
 
-            ReaderIconButton(systemImage: "gearshape", label: "Reader Settings") {
+            ReaderIconButton(
+                systemImage: "gearshape",
+                label: "Reader Settings",
+                identifier: "reader.settings"
+            ) {
                 viewModel.showSettings()
             }
         }
@@ -302,6 +325,7 @@ public struct ReaderView: View {
                     }
                 }
                 .frame(minWidth: 96, alignment: .leading)
+                .accessibilityIdentifier("reader.previousChapter")
                 .disabled(!viewModel.canNavigatePrevious || viewModel.isAdjacentLoading)
 
                 Spacer()
@@ -327,6 +351,7 @@ public struct ReaderView: View {
                     }
                 }
                 .frame(minWidth: 96, alignment: .trailing)
+                .accessibilityIdentifier("reader.nextChapter")
                 .disabled(!viewModel.canNavigateNext || viewModel.isAdjacentLoading)
             }
             .font(ToonEdgeTypography.caption)
@@ -396,6 +421,15 @@ public struct ReaderView: View {
         viewModel.settings.readerCanvas == .paper ? .light : .dark
     }
 
+    private var readerControlsAccessibilityActionName: String {
+        viewModel.isChromeVisible ? "Hide Reader Controls" : "Show Reader Controls"
+    }
+
+    private func handleInteraction(_ source: ReaderInteractionSource) {
+        guard ReaderGesturePolicy().togglesChrome(for: source) else { return }
+        viewModel.toggleChrome()
+    }
+
     private func navigate(_ direction: ReaderChapterDirection) {
         startAdjacentNavigation {
             await viewModel.navigateAdjacentChapter(
@@ -446,6 +480,18 @@ public struct ReaderView: View {
             await viewModel.saveCurrentSessionToLibrary(libraryState: state)
             emitSaveHaptic()
         }
+    }
+}
+
+enum ReaderInteractionSource: Equatable {
+    case readingSurfaceTap
+    case scroll
+    case toolbarAction
+}
+
+struct ReaderGesturePolicy {
+    func togglesChrome(for source: ReaderInteractionSource) -> Bool {
+        source == .readingSurfaceTap
     }
 }
 
@@ -657,6 +703,7 @@ private extension Array {
 private struct ReaderIconButton: View {
     let systemImage: String
     let label: String
+    let identifier: String
     let action: () -> Void
 
     var body: some View {
@@ -669,5 +716,6 @@ private struct ReaderIconButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+        .accessibilityIdentifier(identifier)
     }
 }

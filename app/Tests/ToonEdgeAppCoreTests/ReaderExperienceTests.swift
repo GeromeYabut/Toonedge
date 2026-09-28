@@ -49,6 +49,14 @@ import Testing
     #expect(viewModel.progressDisplay == "0%")
 }
 
+@Test func readerGesturePolicyOnlyTogglesFromReadingSurface() {
+    let policy = ReaderGesturePolicy()
+
+    #expect(policy.togglesChrome(for: .readingSurfaceTap))
+    #expect(!policy.togglesChrome(for: .scroll))
+    #expect(!policy.togglesChrome(for: .toolbarAction))
+}
+
 @MainActor
 @Test func readerDefaultsToSeamlessPageFlow() {
     let viewModel = ReaderViewModel(session: .sample)
