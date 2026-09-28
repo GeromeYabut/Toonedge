@@ -164,12 +164,86 @@ import Testing
 }
 
 @MainActor
-@Test func downloadsViewModelRemoveFailureProducesRetryableFeedback() async {
-    let viewModel = DownloadsViewModel(cacheMetadataManager: FailingCacheMetadataService())
+@Test func failedRemovalPreservesEntryAndRetryTarget() async {
+    let sourceURL = URL(string: "https://example.com/failure/chapter-1")!
+    let entry = CacheMetadataEntry.fixture(sourceURL: sourceURL)
+    let service = RecoveringCacheMetadataService(entry: entry)
+    let viewModel = DownloadsViewModel(cacheMetadataManager: service)
 
-    await viewModel.remove(sourceURL: URL(string: "https://example.com/failure/chapter-1")!)
+    await viewModel.load()
+    await viewModel.remove(sourceURL: sourceURL)
 
     #expect(viewModel.cacheFeedback?.isFailure == true)
+    #expect(viewModel.entries.contains(entry))
+    #expect(viewModel.failedRemovalURL == sourceURL)
+}
+
+@MainActor
+@Test func retryingFailedRemovalRefreshesEntriesAndSummary() async {
+    let sourceURL = URL(string: "https://example.com/retry/chapter-1")!
+    let service = RecoveringCacheMetadataService(entry: .fixture(sourceURL: sourceURL))
+    let viewModel = DownloadsViewModel(cacheMetadataManager: service)
+
+    await viewModel.load()
+    await viewModel.remove(sourceURL: sourceURL)
+    await service.allowRemoval()
+    await viewModel.retryFailedRemoval()
+
+    #expect(viewModel.entries.isEmpty)
+    #expect(viewModel.summary.cachedItemCount == 0)
+    #expect(viewModel.failedRemovalURL == nil)
+    #expect(viewModel.cacheFeedback?.result == .removed)
+}
+
+@MainActor
+@Test func duplicateRemovalForActiveTargetIsSuppressed() async {
+    let sourceURL = URL(string: "https://example.com/active/chapter-1")!
+    let service = SuspendedRemovalCacheMetadataService(entry: .fixture(sourceURL: sourceURL))
+    let viewModel = DownloadsViewModel(cacheMetadataManager: service)
+    await viewModel.load()
+
+    let firstRemoval = Task { await viewModel.remove(sourceURL: sourceURL) }
+    while await service.removeCallCount == 0 {
+        await Task.yield()
+    }
+
+    await viewModel.remove(sourceURL: sourceURL)
+
+    #expect(await service.removeCallCount == 1)
+    await service.finishRemoval()
+    await firstRemoval.value
+}
+
+@MainActor
+@Test func duplicateRemovalRemainsSuppressedWhileAnotherTargetIsActive() async {
+    let firstURL = URL(string: "https://example.com/active/chapter-a")!
+    let secondURL = URL(string: "https://example.com/active/chapter-b")!
+    let service = OverlappingRemovalCacheMetadataService(entries: [
+        .fixture(sourceURL: firstURL),
+        .fixture(sourceURL: secondURL)
+    ])
+    let viewModel = DownloadsViewModel(cacheMetadataManager: service)
+    await viewModel.load()
+
+    let firstRemoval = Task { await viewModel.remove(sourceURL: firstURL) }
+    while await service.removeCallCount(for: firstURL) == 0 {
+        await Task.yield()
+    }
+
+    let secondRemoval = Task { await viewModel.remove(sourceURL: secondURL) }
+    while await service.removeCallCount(for: secondURL) == 0 {
+        await Task.yield()
+    }
+
+    await viewModel.remove(sourceURL: firstURL)
+
+    #expect(await service.removeCallCount(for: firstURL) == 1)
+    #expect(await service.removeCallCount(for: secondURL) == 1)
+
+    await service.finishRemoval(for: firstURL)
+    await service.finishRemoval(for: secondURL)
+    await firstRemoval.value
+    await secondRemoval.value
 }
 
 @MainActor
@@ -213,13 +287,31 @@ private func makeRepository() throws -> SwiftDataLibraryRepository {
     )
 }
 
-private struct FailingCacheMetadataService: CacheMetadataManaging {
+private actor RecoveringCacheMetadataService: CacheMetadataManaging {
+    private var entry: CacheMetadataEntry?
+    private var removalIsAllowed = false
+
+    init(entry: CacheMetadataEntry) {
+        self.entry = entry
+    }
+
+    func allowRemoval() {
+        removalIsAllowed = true
+    }
+
     func recordCacheMetadata(_ input: CacheMetadataInput) async throws -> CacheActionResult {
         throw URLError(.cannotWriteToFile)
     }
 
     func removeCacheMetadata(for sourceURL: URL) async throws -> CacheActionResult {
-        throw URLError(.cannotRemoveFile)
+        guard removalIsAllowed else {
+            throw URLError(.cannotRemoveFile)
+        }
+        guard entry?.sourceURL == sourceURL else {
+            return .notFound
+        }
+        entry = nil
+        return .removed
     }
 
     func updateCacheRetention(
@@ -231,11 +323,131 @@ private struct FailingCacheMetadataService: CacheMetadataManaging {
     }
 
     func cacheMetadataEntries() async -> [CacheMetadataEntry] {
-        []
+        entry.map { [$0] } ?? []
     }
 
     func downloadSummary() async -> DownloadSummary {
-        DownloadSummary(cachedItemCount: 0, storageDescription: "No cached chapters yet")
+        DownloadSummary(
+            cachedItemCount: entry == nil ? 0 : 1,
+            storageDescription: entry == nil ? "No cached chapters yet" : "1 KB estimated"
+        )
+    }
+}
+
+private actor SuspendedRemovalCacheMetadataService: CacheMetadataManaging {
+    private var entry: CacheMetadataEntry?
+    private var removalContinuation: CheckedContinuation<Void, Never>?
+    private(set) var removeCallCount = 0
+
+    init(entry: CacheMetadataEntry) {
+        self.entry = entry
+    }
+
+    func finishRemoval() {
+        removalContinuation?.resume()
+        removalContinuation = nil
+    }
+
+    func recordCacheMetadata(_ input: CacheMetadataInput) async throws -> CacheActionResult {
+        throw URLError(.cannotWriteToFile)
+    }
+
+    func removeCacheMetadata(for sourceURL: URL) async throws -> CacheActionResult {
+        removeCallCount += 1
+        guard removeCallCount == 1 else {
+            return .unchanged
+        }
+        await withCheckedContinuation { continuation in
+            removalContinuation = continuation
+        }
+        entry = nil
+        return .removed
+    }
+
+    func updateCacheRetention(
+        for sourceURL: URL,
+        retentionState: CacheRetentionState,
+        cachedAt: Date
+    ) async throws -> CacheActionResult {
+        throw URLError(.cannotWriteToFile)
+    }
+
+    func cacheMetadataEntries() async -> [CacheMetadataEntry] {
+        entry.map { [$0] } ?? []
+    }
+
+    func downloadSummary() async -> DownloadSummary {
+        DownloadSummary(
+            cachedItemCount: entry == nil ? 0 : 1,
+            storageDescription: entry == nil ? "No cached chapters yet" : "1 KB estimated"
+        )
+    }
+}
+
+private actor OverlappingRemovalCacheMetadataService: CacheMetadataManaging {
+    private var entriesByURL: [URL: CacheMetadataEntry]
+    private var removalContinuations: [URL: CheckedContinuation<Void, Never>] = [:]
+    private var removeCallCounts: [URL: Int] = [:]
+
+    init(entries: [CacheMetadataEntry]) {
+        self.entriesByURL = Dictionary(uniqueKeysWithValues: entries.map { ($0.sourceURL, $0) })
+    }
+
+    func removeCallCount(for sourceURL: URL) -> Int {
+        removeCallCounts[sourceURL, default: 0]
+    }
+
+    func finishRemoval(for sourceURL: URL) {
+        removalContinuations.removeValue(forKey: sourceURL)?.resume()
+    }
+
+    func recordCacheMetadata(_ input: CacheMetadataInput) async throws -> CacheActionResult {
+        throw URLError(.cannotWriteToFile)
+    }
+
+    func removeCacheMetadata(for sourceURL: URL) async throws -> CacheActionResult {
+        removeCallCounts[sourceURL, default: 0] += 1
+        guard removeCallCounts[sourceURL] == 1 else {
+            return .unchanged
+        }
+        await withCheckedContinuation { continuation in
+            removalContinuations[sourceURL] = continuation
+        }
+        return entriesByURL.removeValue(forKey: sourceURL) == nil ? .notFound : .removed
+    }
+
+    func updateCacheRetention(
+        for sourceURL: URL,
+        retentionState: CacheRetentionState,
+        cachedAt: Date
+    ) async throws -> CacheActionResult {
+        throw URLError(.cannotWriteToFile)
+    }
+
+    func cacheMetadataEntries() async -> [CacheMetadataEntry] {
+        Array(entriesByURL.values)
+    }
+
+    func downloadSummary() async -> DownloadSummary {
+        DownloadSummary(
+            cachedItemCount: entriesByURL.count,
+            storageDescription: "\(entriesByURL.count) KB estimated"
+        )
+    }
+}
+
+private extension CacheMetadataEntry {
+    static func fixture(sourceURL: URL) -> CacheMetadataEntry {
+        CacheMetadataEntry(
+            sourceURL: sourceURL,
+            seriesTitle: "Retry Fixture",
+            chapterTitle: "Chapter 1",
+            chapterLabel: "1",
+            imageCount: 1,
+            estimatedStorageBytes: 1_024,
+            retentionState: .retained,
+            cachedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
     }
 }
 

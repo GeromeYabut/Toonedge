@@ -1,5 +1,21 @@
 import SwiftUI
 
+public enum DownloadsContentPhase: Equatable, Sendable {
+    case loading
+    case empty
+    case content
+
+    public init(hasLoaded: Bool, entryCount: Int) {
+        if !hasLoaded {
+            self = .loading
+        } else if entryCount == 0 {
+            self = .empty
+        } else {
+            self = .content
+        }
+    }
+}
+
 public struct DownloadsContentLayout: Equatable, Sendable {
     public let entryCount: Int
     public let usesScrollableContent = true
@@ -19,6 +35,9 @@ public final class DownloadsViewModel: ObservableObject {
     @Published public private(set) var summary: DownloadSummary
     @Published public private(set) var entries: [CacheMetadataEntry]
     @Published public private(set) var cacheFeedback: CacheActionFeedback?
+    @Published public private(set) var hasLoaded: Bool
+    @Published public private(set) var failedRemovalURL: URL?
+    @Published public private(set) var removalInProgressURLs: Set<URL>
     private let cacheMetadataManager: any CacheMetadataManaging
     private let storageMeasurementService: (any CacheStorageMeasuring)?
 
@@ -31,6 +50,13 @@ public final class DownloadsViewModel: ObservableObject {
         self.summary = DownloadSummary(cachedItemCount: 0, storageDescription: "Loading")
         self.entries = []
         self.cacheFeedback = nil
+        self.hasLoaded = false
+        self.failedRemovalURL = nil
+        self.removalInProgressURLs = []
+    }
+
+    public var contentPhase: DownloadsContentPhase {
+        DownloadsContentPhase(hasLoaded: hasLoaded, entryCount: entries.count)
     }
 
     public func load() async {
@@ -40,16 +66,36 @@ public final class DownloadsViewModel: ObservableObject {
         } else {
             summary = await cacheMetadataManager.downloadSummary()
         }
+        hasLoaded = true
     }
 
     public func remove(sourceURL: URL) async {
+        guard removalInProgressURLs.insert(sourceURL).inserted else {
+            return
+        }
+
+        defer {
+            removalInProgressURLs.remove(sourceURL)
+        }
+
         do {
             let result = try await cacheMetadataManager.removeCacheMetadata(for: sourceURL)
             cacheFeedback = .success(result)
+            if failedRemovalURL == sourceURL {
+                failedRemovalURL = nil
+            }
             await load()
         } catch {
             cacheFeedback = .failure("Could not remove cached chapter.")
+            failedRemovalURL = sourceURL
         }
+    }
+
+    public func retryFailedRemoval() async {
+        guard let failedRemovalURL else {
+            return
+        }
+        await remove(sourceURL: failedRemovalURL)
     }
 }
 

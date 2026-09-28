@@ -2,6 +2,12 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@Test func downloadsDoNotShowEmptyBeforeLoadCompletes() {
+    #expect(DownloadsContentPhase(hasLoaded: false, entryCount: 0) == .loading)
+    #expect(DownloadsContentPhase(hasLoaded: true, entryCount: 0) == .empty)
+    #expect(DownloadsContentPhase(hasLoaded: true, entryCount: 1) == .content)
+}
+
 @Test func fileBackedCacheMapsSourceURLToDeterministicChapterDirectory() throws {
     let root = try temporaryDirectory()
     let cache = try FileBackedChapterAssetCache(rootDirectory: root)
