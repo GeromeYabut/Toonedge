@@ -189,6 +189,13 @@ public enum ToonEdgeRadius {
 
 public enum ToonEdgeTypographyMetrics {
     public struct Role: Equatable, Sendable {
+        public enum TextStyle: Equatable, Sendable {
+            case title2
+            case headline
+            case body
+            case caption
+        }
+
         public enum Design: Equatable, Sendable {
             case `default`
         }
@@ -199,22 +206,70 @@ public enum ToonEdgeTypographyMetrics {
             case bold
         }
 
+        public let textStyle: TextStyle
         public let design: Design
         public let weight: Weight
         public let usesMonospacedDigits: Bool
 
-        public init(design: Design, weight: Weight, usesMonospacedDigits: Bool = false) {
+        public init(
+            textStyle: TextStyle,
+            design: Design,
+            weight: Weight,
+            usesMonospacedDigits: Bool = false
+        ) {
+            self.textStyle = textStyle
             self.design = design
             self.weight = weight
             self.usesMonospacedDigits = usesMonospacedDigits
         }
+
+        public var font: Font {
+            let font = Font.system(
+                swiftUITextStyle,
+                design: swiftUIDesign,
+                weight: swiftUIWeight
+            )
+            return usesMonospacedDigits ? font.monospacedDigit() : font
+        }
+
+        private var swiftUITextStyle: Font.TextStyle {
+            switch textStyle {
+            case .title2:
+                .title2
+            case .headline:
+                .headline
+            case .body:
+                .body
+            case .caption:
+                .caption
+            }
+        }
+
+        private var swiftUIDesign: Font.Design {
+            switch design {
+            case .default:
+                .default
+            }
+        }
+
+        private var swiftUIWeight: Font.Weight {
+            switch weight {
+            case .regular:
+                .regular
+            case .semibold:
+                .semibold
+            case .bold:
+                .bold
+            }
+        }
     }
 
-    public static let title = Role(design: .default, weight: .bold)
-    public static let sectionTitle = Role(design: .default, weight: .semibold)
-    public static let body = Role(design: .default, weight: .regular)
-    public static let caption = Role(design: .default, weight: .regular)
+    public static let title = Role(textStyle: .title2, design: .default, weight: .bold)
+    public static let sectionTitle = Role(textStyle: .headline, design: .default, weight: .semibold)
+    public static let body = Role(textStyle: .body, design: .default, weight: .regular)
+    public static let caption = Role(textStyle: .caption, design: .default, weight: .regular)
     public static let numericMetadata = Role(
+        textStyle: .caption,
         design: .default,
         weight: .regular,
         usesMonospacedDigits: true
@@ -222,12 +277,11 @@ public enum ToonEdgeTypographyMetrics {
 }
 
 public enum ToonEdgeTypography {
-    public static let title = Font.system(.title2, design: .default, weight: .bold)
-    public static let sectionTitle = Font.system(.headline, design: .default, weight: .semibold)
-    public static let body = Font.system(.body, design: .default, weight: .regular)
-    public static let caption = Font.system(.caption, design: .default, weight: .regular)
-    public static let numericMetadata = Font.system(.caption, design: .default, weight: .regular)
-        .monospacedDigit()
+    public static let title = ToonEdgeTypographyMetrics.title.font
+    public static let sectionTitle = ToonEdgeTypographyMetrics.sectionTitle.font
+    public static let body = ToonEdgeTypographyMetrics.body.font
+    public static let caption = ToonEdgeTypographyMetrics.caption.font
+    public static let numericMetadata = ToonEdgeTypographyMetrics.numericMetadata.font
 }
 
 public struct ToonEdgeNavigationChrome: Equatable, Sendable {

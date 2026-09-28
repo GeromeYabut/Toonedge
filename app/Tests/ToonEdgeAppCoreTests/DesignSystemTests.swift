@@ -7,9 +7,14 @@ import Testing
 }
 
 @Test func editorialTypographyUsesSystemDesignAndRestrainedWeights() {
+    #expect(ToonEdgeTypographyMetrics.title.textStyle == .title2)
+    #expect(ToonEdgeTypographyMetrics.sectionTitle.textStyle == .headline)
+    #expect(ToonEdgeTypographyMetrics.title.weight == .bold)
+    #expect(ToonEdgeTypographyMetrics.sectionTitle.weight == .semibold)
     #expect(ToonEdgeTypographyMetrics.body.design == .default)
     #expect(ToonEdgeTypographyMetrics.caption.design == .default)
     #expect(ToonEdgeTypographyMetrics.body.weight == .regular)
+    #expect(ToonEdgeTypographyMetrics.caption.weight == .regular)
     #expect(ToonEdgeTypographyMetrics.numericMetadata.usesMonospacedDigits)
 }
 
