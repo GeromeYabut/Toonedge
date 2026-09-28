@@ -525,6 +525,38 @@ import Testing
 }
 
 @MainActor
+@Test func repeatedAdjacentNavigationWhileLoadingInvokesOneLoaderAndKeepsCurrentSession() async throws {
+    let nextURL = try #require(URL(string: "https://example.com/series/chapter-13"))
+    var current = MockReaderSession.sample
+    current.nextChapter = MockChapter(title: "Chapter 13", sourceURL: nextURL)
+    var loaded = MockReaderSession.sample
+    loaded.sourceURL = nextURL
+    loaded.imageURLs = [try #require(URL(string: "https://img.example.com/13-1.webp"))]
+    let loader = CancellationIgnoringAdjacentReaderSessionLoader(session: loaded)
+    let viewModel = ReaderViewModel(session: current)
+
+    let firstNavigation = Task {
+        await viewModel.navigateAdjacentChapter(.next, libraryLifecycleService: nil, adjacentLoader: loader)
+    }
+    await loader.waitUntilRequested()
+    let repeatedNavigation = await viewModel.navigateAdjacentChapter(
+        .next,
+        libraryLifecycleService: nil,
+        adjacentLoader: loader
+    )
+
+    #expect(!repeatedNavigation)
+    #expect(await loader.requestCount == 1)
+    #expect(viewModel.isAdjacentLoading)
+    #expect(viewModel.session.sourceURL == current.sourceURL)
+
+    viewModel.cancelAdjacentNavigation()
+    firstNavigation.cancel()
+    await loader.release()
+    _ = await firstNavigation.value
+}
+
+@MainActor
 @Test func adjacentNavigationRejectsBlankHiddenLoadedReaderSession() async throws {
     let next = MockChapter(title: "Chapter 13", sourceURL: URL(string: "https://example.com/series/chapter-13")!)
     var current = MockReaderSession.sample
@@ -713,6 +745,59 @@ import Testing
     #expect(layout.minimumHitSize(for: .openOriginal) >= 44)
 }
 
+@Test func adjacentFeedbackKeepsTypedRecoveryCompactAndTargetAware() {
+    let knownTarget = URL(string: "https://example.com/series/chapter-13")!
+    let expectedMessages: [AdjacentReaderSessionLoadFailureReason: String] = [
+        .timeout: "Chapter timed out.",
+        .challengeOrRateLimit: "Reader access is temporarily limited.",
+        .unavailable: "Chapter unavailable in Reader.",
+        .lowConfidence: "Chapter could not be verified.",
+        .nonViableImages: "No usable chapter images found."
+    ]
+
+    for (reason, message) in expectedMessages {
+        let failure = AdjacentChapterLoadFailure(
+            direction: .next,
+            reason: reason,
+            targetURL: knownTarget
+        )
+        let presentation = ReaderAdjacentFeedbackPresentation(state: .failed(failure))
+
+        #expect(presentation?.message == message)
+        #expect(presentation?.actions == [.retry, .openOriginal])
+        #expect(presentation?.isCompact == true)
+        #expect(presentation?.keepsCurrentSessionVisible == true)
+    }
+
+    let unknownTarget = AdjacentChapterLoadFailure(
+        direction: .previous,
+        reason: .unavailable,
+        targetURL: nil
+    )
+    #expect(
+        ReaderAdjacentFeedbackPresentation(state: .failed(unknownTarget))?.actions == [.retry]
+    )
+}
+
+@Test func adjacentFeedbackLoadingDisablesNavigationAndAnnouncesEachTransitionOnce() {
+    var announcements = ReaderAdjacentAnnouncementPolicy()
+    let loading = AdjacentChapterLoadState.loading(.next)
+    let failure = AdjacentChapterLoadState.failed(
+        AdjacentChapterLoadFailure(
+            direction: .next,
+            reason: .timeout,
+            targetURL: nil
+        )
+    )
+
+    #expect(ReaderAdjacentFeedbackPresentation(state: loading)?.disablesNavigationControls == true)
+    #expect(ReaderAdjacentFeedbackPresentation(state: loading)?.actions.isEmpty == true)
+    #expect(announcements.announcement(for: loading) == "Loading next chapter.")
+    #expect(announcements.announcement(for: loading) == nil)
+    #expect(announcements.announcement(for: failure) == "Chapter timed out.")
+    #expect(announcements.announcement(for: failure) == nil)
+}
+
 private struct FailingCacheMetadataService: CacheMetadataManaging {
     func recordCacheMetadata(_ input: CacheMetadataInput) async throws -> CacheActionResult {
         throw URLError(.cannotWriteToFile)
@@ -877,6 +962,7 @@ private actor CancellationIgnoringAdjacentReaderSessionLoader: AdjacentReaderSes
     private let session: MockReaderSession
     private var requested = false
     private var continuation: CheckedContinuation<Void, Never>?
+    private(set) var requestCount = 0
 
     init(session: MockReaderSession) {
         self.session = session
@@ -886,6 +972,7 @@ private actor CancellationIgnoringAdjacentReaderSessionLoader: AdjacentReaderSes
         from url: URL,
         context: AdjacentReaderSessionLoadContext
     ) async throws -> MockReaderSession {
+        requestCount += 1
         requested = true
         await withCheckedContinuation { continuation in
             self.continuation = continuation

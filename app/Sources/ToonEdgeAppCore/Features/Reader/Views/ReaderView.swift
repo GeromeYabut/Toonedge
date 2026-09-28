@@ -11,6 +11,7 @@ public struct ReaderView: View {
     @State private var isSaveStatePickerPresented = false
     @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .reader)
     @State private var adjacentNavigationTask: Task<Void, Never>?
+    @State private var adjacentAnnouncementPolicy = ReaderAdjacentAnnouncementPolicy()
     private let readerService: any ReaderSessionProviding
     private let adjacentLoader: (any AdjacentReaderSessionLoading)?
     private let libraryLifecycleService: (any LibraryLifecycleManaging)?
@@ -129,6 +130,14 @@ public struct ReaderView: View {
         }
         .foregroundStyle(textColor)
         .animation(.easeInOut(duration: 0.16), value: viewModel.isChromeVisible)
+        .onChange(of: viewModel.adjacentLoadState) { _, state in
+            guard let announcement = adjacentAnnouncementPolicy.announcement(for: state) else {
+                return
+            }
+            #if os(iOS)
+            UIAccessibility.post(notification: .announcement, argument: announcement)
+            #endif
+        }
         .sheet(isPresented: $viewModel.isSettingsPresented) {
             ReaderSettingsView(viewModel: viewModel)
                 .presentationDetents([.medium, .large])
@@ -347,49 +356,8 @@ public struct ReaderView: View {
             .font(ToonEdgeTypography.caption)
             .buttonStyle(.plain)
 
-            if let failure = viewModel.adjacentFailure {
-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
-                    Text(failure.message)
-                        .font(ToonEdgeTypography.caption)
-                        .foregroundStyle(textColor)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack(spacing: ToonEdgeSpacing.medium) {
-                        Button("Retry") {
-                            startAdjacentNavigation {
-                                await viewModel.retryAdjacentChapter(
-                                    libraryLifecycleService: libraryLifecycleService,
-                                    adjacentLoader: adjacentLoader
-                                )
-                            }
-                        }
-                        .frame(
-                            minWidth: adjacentRecoveryActionLayout.minimumHitSize(for: .retry),
-                            minHeight: adjacentRecoveryActionLayout.minimumHitSize(for: .retry)
-                        )
-                        .contentShape(Rectangle())
-                        .accessibilityIdentifier("reader.adjacent.retry")
-
-                        if let targetURL = failure.targetURL {
-                            Button("Open Original") {
-                                if let openAdjacentOriginalPageAction {
-                                    openAdjacentOriginalPageAction(targetURL)
-                                } else {
-                                    router.openOriginalPage(targetURL)
-                                }
-                            }
-                            .frame(
-                                minWidth: adjacentRecoveryActionLayout.minimumHitSize(for: .openOriginal),
-                                minHeight: adjacentRecoveryActionLayout.minimumHitSize(for: .openOriginal)
-                            )
-                            .contentShape(Rectangle())
-                            .accessibilityIdentifier("reader.adjacent.openOriginal")
-                        }
-                    }
-                    .font(ToonEdgeTypography.caption.weight(.semibold))
-                    .buttonStyle(.borderless)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if let presentation = ReaderAdjacentFeedbackPresentation(state: viewModel.adjacentLoadState) {
+                adjacentFeedback(presentation)
             }
 
             HStack(spacing: ToonEdgeSpacing.medium) {
@@ -404,6 +372,70 @@ public struct ReaderView: View {
         }
         .padding(ToonEdgeSpacing.large)
         .background(.ultraThinMaterial)
+    }
+
+    @ViewBuilder
+    private func adjacentFeedback(_ presentation: ReaderAdjacentFeedbackPresentation) -> some View {
+        HStack(spacing: ToonEdgeSpacing.small) {
+            if presentation.disablesNavigationControls {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Image(systemName: presentation.systemImage)
+                    .foregroundStyle(ToonEdgeColor.accent)
+                    .accessibilityHidden(true)
+            }
+
+            Text(presentation.message)
+                .font(ToonEdgeTypography.caption)
+                .foregroundStyle(textColor.opacity(0.82))
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: ToonEdgeSpacing.xsmall)
+
+            if presentation.actions.contains(.retry) {
+                Button("Retry") {
+                    startAdjacentNavigation {
+                        await viewModel.retryAdjacentChapter(
+                            libraryLifecycleService: libraryLifecycleService,
+                            adjacentLoader: adjacentLoader
+                        )
+                    }
+                }
+                .frame(
+                    minWidth: adjacentRecoveryActionLayout.minimumHitSize(for: .retry),
+                    minHeight: adjacentRecoveryActionLayout.minimumHitSize(for: .retry)
+                )
+                .contentShape(Rectangle())
+                .accessibilityIdentifier("reader.adjacent.retry")
+            }
+
+            if presentation.actions.contains(.openOriginal),
+               let targetURL = viewModel.adjacentFailure?.targetURL {
+                Button("Open Original") {
+                    if let openAdjacentOriginalPageAction {
+                        openAdjacentOriginalPageAction(targetURL)
+                    } else {
+                        router.openOriginalPage(targetURL)
+                    }
+                }
+                .frame(
+                    minWidth: adjacentRecoveryActionLayout.minimumHitSize(for: .openOriginal),
+                    minHeight: adjacentRecoveryActionLayout.minimumHitSize(for: .openOriginal)
+                )
+                .contentShape(Rectangle())
+                .accessibilityIdentifier("reader.adjacent.openOriginal")
+            }
+        }
+        .font(ToonEdgeTypography.caption.weight(.semibold))
+        .buttonStyle(.plain)
+        .padding(.top, ToonEdgeSpacing.xsmall)
+        .overlay(alignment: .top) {
+            Divider()
+                .opacity(0.35)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("reader.adjacent.feedback")
     }
 
     private var canvasColor: Color {
@@ -598,6 +630,56 @@ struct ReaderAdjacentRecoveryActionLayout: Equatable {
         case .retry, .openOriginal:
             44
         }
+    }
+}
+
+struct ReaderAdjacentFeedbackPresentation: Equatable {
+    let message: String
+    let systemImage: String
+    let actions: [ReaderAdjacentRecoveryAction]
+    let disablesNavigationControls: Bool
+    let isCompact = true
+    let keepsCurrentSessionVisible = true
+
+    init?(state: AdjacentChapterLoadState) {
+        switch state {
+        case .idle:
+            return nil
+        case .loading(let direction):
+            message = direction == .previous ? "Loading previous chapter…" : "Loading next chapter…"
+            systemImage = "arrow.trianglehead.2.clockwise"
+            actions = []
+            disablesNavigationControls = true
+        case .failed(let failure):
+            switch failure.reason {
+            case .timeout:
+                message = "Chapter timed out."
+            case .challengeOrRateLimit:
+                message = "Reader access is temporarily limited."
+            case .unavailable:
+                message = "Chapter unavailable in Reader."
+            case .lowConfidence:
+                message = "Chapter could not be verified."
+            case .nonViableImages:
+                message = "No usable chapter images found."
+            }
+            systemImage = "exclamationmark.circle"
+            actions = failure.targetURL == nil ? [.retry] : [.retry, .openOriginal]
+            disablesNavigationControls = false
+        }
+    }
+}
+
+struct ReaderAdjacentAnnouncementPolicy {
+    private var lastState: AdjacentChapterLoadState?
+
+    mutating func announcement(for state: AdjacentChapterLoadState) -> String? {
+        guard state != lastState else { return nil }
+        lastState = state
+        guard let presentation = ReaderAdjacentFeedbackPresentation(state: state) else {
+            return nil
+        }
+        return presentation.message.replacingOccurrences(of: "…", with: ".")
     }
 }
 
