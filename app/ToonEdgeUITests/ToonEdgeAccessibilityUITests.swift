@@ -48,6 +48,44 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
         attachScreenshot(app, name: "downloads-final-entry")
     }
 
+    func testDelayedDownloadsTransitionFromLoadingToEmpty() {
+        let app = launchApp(extraArguments: ["-seedDelayedDownloadsEmpty"])
+        tabButton(app, identifier: "tab.downloads", label: "Downloads").tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)["downloads.loading"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.descendants(matching: .any)["downloads.empty"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["downloads.empty"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.descendants(matching: .any)["downloads.loading"].exists)
+    }
+
+    func testDelayedDownloadsTransitionFromLoadingToContent() {
+        let app = launchApp(extraArguments: ["-seedDelayedDownloadsContent"])
+        tabButton(app, identifier: "tab.downloads", label: "Downloads").tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)["downloads.loading"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Delayed Chapter 7"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.descendants(matching: .any)["downloads.empty"].exists)
+    }
+
+    func testDownloadsEditorialHeaderAndActionsRemainAccessibleAtLargeText() {
+        let app = launchApp(largeText: true, extraArguments: ["-seedDownloads20"])
+        tabButton(app, identifier: "tab.downloads", label: "Downloads").tap()
+
+        let storageHeader = app.descendants(matching: .any)["downloads.storageHeader"]
+        XCTAssertTrue(storageHeader.waitForExistence(timeout: 5))
+        XCTAssertTrue(storageHeader.label.contains("20 chapters"))
+        XCTAssertFalse(app.staticTexts["Local reading cache"].exists)
+
+        let firstRemove = app.buttons["Remove Fixture Series, Fixture Chapter 20 from cache"]
+        let scrollView = app.scrollViews.firstMatch
+        for _ in 0..<25 where !firstRemove.isHittable {
+            scrollView.swipeUp()
+        }
+        XCTAssertTrue(firstRemove.isHittable)
+        XCTAssertTrue(firstRemove.label.contains("Fixture Series"))
+        XCTAssertTrue(firstRemove.label.contains("Fixture Chapter 20"))
+    }
+
     func testDelayedPopulatedLibraryNeverShowsEmptyState() {
         let app = launchApp(extraArguments: ["-seedDelayedLibrary"])
         app.tabBars.buttons["tab.library"].tap()

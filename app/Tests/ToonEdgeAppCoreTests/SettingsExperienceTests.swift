@@ -60,24 +60,77 @@ import Testing
     ))
 }
 
+@Test func settingsUpdateFeedbackDistinguishesAllOutcomes() {
+    let noSavedSeries = SettingsUpdateFeedback(result: .init(checkedCount: 0, updatedCount: 0, failedCount: 0))
+    let noChanges = SettingsUpdateFeedback(result: .init(checkedCount: 4, updatedCount: 0, failedCount: 0))
+    let updatesFound = SettingsUpdateFeedback(result: .init(checkedCount: 4, updatedCount: 2, failedCount: 0))
+    let partial = SettingsUpdateFeedback(result: .init(checkedCount: 4, updatedCount: 2, failedCount: 1))
+    let partialWithoutUpdates = SettingsUpdateFeedback(result: .init(checkedCount: 3, updatedCount: 0, failedCount: 2))
+    let totalFailure = SettingsUpdateFeedback(result: .init(checkedCount: 4, updatedCount: 0, failedCount: 4))
+
+    #expect(noSavedSeries == .noSavedSeries)
+    #expect(noSavedSeries.message == "No saved series to check.")
+    #expect(noChanges == .noChanges)
+    #expect(noChanges.message == "No new chapters found.")
+    #expect(updatesFound == .updatesFound(count: 2))
+    #expect(updatesFound.message == "Found updates for 2 series.")
+    #expect(partial == .partial(updated: 2, failed: 1))
+    #expect(partial.message == "Found updates for 2 series; 1 series could not be refreshed.")
+    #expect(partialWithoutUpdates == .partial(updated: 0, failed: 2))
+    #expect(partialWithoutUpdates.message == "No updates found; 2 series could not be refreshed.")
+    #expect(totalFailure == .totalFailure(failed: 4))
+    #expect(totalFailure.message == "Could not refresh 4 series.")
+}
+
 @MainActor
-@Test(arguments: [
-    (LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 1, failedCount: 0), "Found updates for 1 series."),
-    (LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 0, failedCount: 0), "No new chapters found."),
-    (LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 0, failedCount: 2), "Checked 3 series; 2 could not be refreshed.")
-])
-func settingsUpdateFeedbackCoversSuccessNoUpdateAndFailure(
-    result: LibraryUpdateRefreshResult,
-    expectedMessage: String
-) async {
+@Test func settingsUpdateFeedbackReportsUnavailableService() async {
     let viewModel = SettingsViewModel(
         settingsManager: MockSettingsService(),
-        cacheMetadataManager: MockCacheMetadataService(),
-        updateRefreshService: MockLibraryUpdateRefreshService(result: result)
+        cacheMetadataManager: MockCacheMetadataService()
     )
 
     await viewModel.refreshUpdates()
 
-    #expect(viewModel.updateMessage == expectedMessage)
+    #expect(viewModel.updateFeedback == .unavailable)
     #expect(!viewModel.isCheckingForUpdates)
+}
+
+@MainActor
+@Test func settingsUpdateCheckSuppressesDuplicateRequests() async {
+    let service = SuspendedSettingsUpdateRefreshService()
+    let viewModel = SettingsViewModel(
+        settingsManager: MockSettingsService(),
+        cacheMetadataManager: MockCacheMetadataService(),
+        updateRefreshService: service
+    )
+
+    let firstCheck = Task { await viewModel.refreshUpdates() }
+    while await service.refreshCallCount == 0 {
+        await Task.yield()
+    }
+
+    await viewModel.refreshUpdates()
+
+    #expect(await service.refreshCallCount == 1)
+    await service.finish()
+    await firstCheck.value
+    #expect(viewModel.updateFeedback == .noChanges)
+}
+
+private actor SuspendedSettingsUpdateRefreshService: LibraryUpdateRefreshing {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private(set) var refreshCallCount = 0
+
+    func finish() {
+        continuation?.resume()
+        continuation = nil
+    }
+
+    func refreshUpdates() async -> LibraryUpdateRefreshResult {
+        refreshCallCount += 1
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+        return LibraryUpdateRefreshResult(checkedCount: 2, updatedCount: 0, failedCount: 0)
+    }
 }

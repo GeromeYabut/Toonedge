@@ -68,6 +68,44 @@ struct ToonEdgeAppEntry: App {
             dependencies.cacheMetadataService = MockCacheMetadataService(entries: entries)
             dependencies.cacheStorageMeasurementService = nil
         }
+        if arguments.contains("-seedDelayedDownloadsEmpty") {
+            let service = DelayedUITestCacheMetadataService(entries: [])
+            dependencies.downloadService = service
+            dependencies.cacheMetadataService = service
+            dependencies.cacheStorageMeasurementService = nil
+        } else if arguments.contains("-seedDelayedDownloadsContent") {
+            let service = DelayedUITestCacheMetadataService(entries: [
+                CacheMetadataEntry(
+                    sourceURL: URL(string: "https://fixture.example/delayed/chapter-7")!,
+                    seriesTitle: "Delayed Fixture",
+                    chapterTitle: "Delayed Chapter 7",
+                    chapterLabel: "7",
+                    imageCount: 1,
+                    estimatedStorageBytes: 7_000,
+                    retentionState: .recent,
+                    cachedAt: Date(timeIntervalSince1970: 7)
+                )
+            ])
+            dependencies.downloadService = service
+            dependencies.cacheMetadataService = service
+            dependencies.cacheStorageMeasurementService = nil
+        } else if arguments.contains("-seedDownloadsRemovalRetry") {
+            let service = RetryRemovalUITestCacheMetadataService(
+                entry: CacheMetadataEntry(
+                    sourceURL: URL(string: "https://fixture.example/retry/chapter-9")!,
+                    seriesTitle: "Retry Fixture",
+                    chapterTitle: "Retry Chapter 9",
+                    chapterLabel: "9",
+                    imageCount: 1,
+                    estimatedStorageBytes: 9_000,
+                    retentionState: .retained,
+                    cachedAt: Date(timeIntervalSince1970: 9)
+                )
+            )
+            dependencies.downloadService = service
+            dependencies.cacheMetadataService = service
+            dependencies.cacheStorageMeasurementService = nil
+        }
         if arguments.contains("-seedAdjacentFailureReader") {
             dependencies.adjacentReaderSessionLoader = UITestAdjacentFailureLoader()
         }
@@ -108,6 +146,93 @@ struct ToonEdgeAppEntry: App {
             : offlineFixtureSession
         return AppRouter(presentedReader: session)
     }
+}
+
+private actor DelayedUITestCacheMetadataService: CacheMetadataManaging {
+    private var entries: [CacheMetadataEntry]
+
+    init(entries: [CacheMetadataEntry]) {
+        self.entries = entries
+    }
+
+    func recordCacheMetadata(_ input: CacheMetadataInput) async throws -> CacheActionResult {
+        throw URLError(.unsupportedURL)
+    }
+
+    func removeCacheMetadata(for sourceURL: URL) async throws -> CacheActionResult {
+        let originalCount = entries.count
+        entries.removeAll { $0.sourceURL == sourceURL }
+        return entries.count == originalCount ? .notFound : .removed
+    }
+
+    func updateCacheRetention(
+        for sourceURL: URL,
+        retentionState: CacheRetentionState,
+        cachedAt: Date
+    ) async throws -> CacheActionResult {
+        throw URLError(.unsupportedURL)
+    }
+
+    func cacheMetadataEntries() async -> [CacheMetadataEntry] {
+        try? await Task.sleep(for: .seconds(2))
+        return entries
+    }
+
+    func downloadSummary() async -> DownloadSummary {
+        summary(for: entries)
+    }
+}
+
+private actor RetryRemovalUITestCacheMetadataService: CacheMetadataManaging {
+    private var entry: CacheMetadataEntry?
+    private var removalAttempts = 0
+
+    init(entry: CacheMetadataEntry) {
+        self.entry = entry
+    }
+
+    func recordCacheMetadata(_ input: CacheMetadataInput) async throws -> CacheActionResult {
+        throw URLError(.unsupportedURL)
+    }
+
+    func removeCacheMetadata(for sourceURL: URL) async throws -> CacheActionResult {
+        removalAttempts += 1
+        if removalAttempts == 1 {
+            throw URLError(.cannotRemoveFile)
+        }
+        guard entry?.sourceURL == sourceURL else { return .notFound }
+        entry = nil
+        return .removed
+    }
+
+    func updateCacheRetention(
+        for sourceURL: URL,
+        retentionState: CacheRetentionState,
+        cachedAt: Date
+    ) async throws -> CacheActionResult {
+        throw URLError(.unsupportedURL)
+    }
+
+    func cacheMetadataEntries() async -> [CacheMetadataEntry] {
+        entry.map { [$0] } ?? []
+    }
+
+    func downloadSummary() async -> DownloadSummary {
+        summary(for: entry.map { [$0] } ?? [])
+    }
+}
+
+private func summary(for entries: [CacheMetadataEntry]) -> DownloadSummary {
+    let estimatedBytes = entries.reduce(Int64(0)) { $0 + $1.estimatedStorageBytes }
+    return DownloadSummary(
+        cachedItemCount: entries.count,
+        storageDescription: entries.isEmpty
+            ? "No local storage tracked"
+            : DownloadSummary.storageDescription(for: estimatedBytes),
+        recentItemCount: entries.filter { $0.retentionState == .recent }.count,
+        retainedItemCount: entries.filter { $0.retentionState == .retained }.count,
+        totalEstimatedBytes: estimatedBytes
+    )
 }
 
 private let adjacentFailureFixtureTargetURL = URL(string: "https://fixture.example/series/chapter-2")!
