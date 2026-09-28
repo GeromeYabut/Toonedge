@@ -67,7 +67,10 @@ final class ToonEdgeAdjacentFailureUITests: XCTestCase {
 
         app.buttons["Next"].tap()
 
-        XCTAssertTrue(app.staticTexts["This site may be rate limiting Reader Mode. Try again in a moment or open the original page."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Reader access is temporarily limited."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.otherElements["reader.adjacent.feedback"].exists)
+        XCTAssertTrue(app.staticTexts["reader.chapter.label"].label.contains("Chapter 1"))
+        XCTAssertTrue(app.scrollViews.firstMatch.exists, "The current Reader session should remain visible")
         XCTAssertTrue(app.buttons["reader.adjacent.retry"].exists)
         XCTAssertTrue(app.buttons["reader.adjacent.openOriginal"].exists)
         let retry = app.buttons["reader.adjacent.retry"]

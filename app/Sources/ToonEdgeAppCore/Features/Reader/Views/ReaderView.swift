@@ -11,6 +11,7 @@ public struct ReaderView: View {
     @State private var isSaveStatePickerPresented = false
     @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .reader)
     @State private var adjacentNavigationTask: Task<Void, Never>?
+    @State private var adjacentAnnouncementPolicy = ReaderAdjacentAnnouncementPolicy()
     private let readerService: any ReaderSessionProviding
     private let adjacentLoader: (any AdjacentReaderSessionLoading)?
     private let libraryLifecycleService: (any LibraryLifecycleManaging)?
@@ -123,11 +124,23 @@ public struct ReaderView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.root")
+        .accessibilityValue(readerControlsAccessibilityActionName)
+        .accessibilityAction(named: Text(readerControlsAccessibilityActionName)) {
+            handleInteraction(.readingSurfaceTap)
+        }
         .foregroundStyle(textColor)
         .animation(.easeInOut(duration: 0.16), value: viewModel.isChromeVisible)
+        .onChange(of: viewModel.adjacentLoadState) { _, state in
+            guard let announcement = adjacentAnnouncementPolicy.announcement(for: state) else {
+                return
+            }
+            #if os(iOS)
+            UIAccessibility.post(notification: .announcement, argument: announcement)
+            #endif
+        }
         .sheet(isPresented: $viewModel.isSettingsPresented) {
             ReaderSettingsView(viewModel: viewModel)
-                .presentationDetents([.medium])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isSaveStatePickerPresented) {
@@ -183,9 +196,10 @@ public struct ReaderView: View {
                     .padding(.vertical, viewModel.settings.isPageSpacingEnabled ? ToonEdgeSpacing.small : 0)
                 }
                 .scrollIndicators(.hidden)
+                .accessibilityIdentifier("reader.readingSurface")
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    viewModel.toggleChrome()
+                    handleInteraction(.readingSurfaceTap)
                 }
                 .task(id: viewModel.session.id) {
                     await viewModel.restoreProgress()
@@ -197,6 +211,14 @@ public struct ReaderView: View {
 
     private var chrome: some View {
         ZStack(alignment: .bottomTrailing) {
+            Color.clear
+                .frame(width: 1, height: 1)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Reader controls")
+                .accessibilityIdentifier("reader.chrome")
+                .accessibilityAddTraits(.isStaticText)
+                .allowsHitTesting(false)
+
             VStack(spacing: 0) {
                 topChrome
                 Spacer()
@@ -207,29 +229,11 @@ public struct ReaderView: View {
                 .padding(.trailing, ToonEdgeSpacing.large)
                 .padding(.bottom, 132)
         }
-        .background(
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.74),
-                    Color.black.opacity(0.22),
-                    Color.clear,
-                    Color.black.opacity(0.30),
-                    Color.black.opacity(0.78)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
-        )
-        .onTapGesture {
-            viewModel.toggleChrome()
-        }
     }
 
     private var topChrome: some View {
         HStack(spacing: ToonEdgeSpacing.medium) {
-            ReaderIconButton(systemImage: "chevron.left", label: "Back") {
+            ReaderIconButton(systemImage: "chevron.left", label: "Back", identifier: "reader.back") {
                 if let backAction {
                     backAction()
                 } else {
@@ -242,20 +246,23 @@ public struct ReaderView: View {
                     .font(ToonEdgeTypography.caption)
                     .foregroundStyle(textColor)
                     .lineLimit(1)
+                    .accessibilityIdentifier("reader.series.label")
                 Text(viewModel.session.chapterTitle)
                     .font(ToonEdgeTypography.sectionTitle)
                     .lineLimit(1)
+                    .accessibilityIdentifier("reader.chapter.context")
             }
 
             Spacer(minLength: ToonEdgeSpacing.small)
 
-            ReaderIconButton(systemImage: "house", label: "Open Home") {
-                router.openHomeRoot()
+            ReaderIconButton(systemImage: "books.vertical", label: "Open Library", identifier: "reader.library") {
+                router.openLibraryRoot()
             }
         }
         .padding(.horizontal, ToonEdgeSpacing.large)
         .padding(.top, ToonEdgeSpacing.large)
         .padding(.bottom, ToonEdgeSpacing.medium)
+        .background(.ultraThinMaterial)
         .task {
             await viewModel.refreshSavedState()
         }
@@ -263,7 +270,11 @@ public struct ReaderView: View {
 
     private var floatingActionRail: some View {
         VStack(spacing: ToonEdgeSpacing.small) {
-            ReaderIconButton(systemImage: "arrow.down.circle", label: "Retain Chapter Offline") {
+            ReaderIconButton(
+                systemImage: "arrow.down.circle",
+                label: "Retain Chapter Offline",
+                identifier: "reader.retainChapter"
+            ) {
                 Task {
                     await viewModel.retainCurrentChapter()
                 }
@@ -272,20 +283,31 @@ public struct ReaderView: View {
             if libraryLifecycleService != nil {
                 ReaderIconButton(
                     systemImage: viewModel.isSavedToLibrary ? "bookmark.fill" : "bookmark",
-                    label: viewModel.isSavedToLibrary ? "Saved to Library" : "Add to Library"
+                    label: viewModel.isSavedToLibrary ? "Saved to Library" : "Add to Library",
+                    identifier: "reader.saveToLibrary"
                 ) {
                     presentLibrarySave()
                 }
             }
 
-            ReaderIconButton(systemImage: "safari", label: "View Original Page") {
+            ReaderIconButton(
+                systemImage: "safari",
+                label: "View Original Page",
+                identifier: "reader.viewOriginalPage"
+            ) {
                 viewOriginalPageAction?() ?? router.viewOriginalPage()
             }
 
-            ReaderIconButton(systemImage: "gearshape", label: "Reader Settings") {
+            ReaderIconButton(
+                systemImage: "gearshape",
+                label: "Reader Settings",
+                identifier: "reader.settings"
+            ) {
                 viewModel.showSettings()
             }
         }
+        .padding(ToonEdgeSpacing.xsmall)
+        .background(.ultraThinMaterial, in: Capsule())
     }
 
     private var bottomChrome: some View {
@@ -301,8 +323,9 @@ public struct ReaderView: View {
                             .labelStyle(.titleAndIcon)
                     }
                 }
-                .frame(minWidth: 96, alignment: .leading)
-                .disabled(!viewModel.canNavigatePrevious || viewModel.isAdjacentLoading)
+                .frame(minWidth: 96, minHeight: chromeLayout.minimumActionSize, alignment: .leading)
+                .accessibilityIdentifier("reader.previousChapter")
+                .disabled(!chromeLayout.isEnabled(.previousChapter) || viewModel.isAdjacentLoading)
 
                 Spacer()
 
@@ -326,45 +349,15 @@ public struct ReaderView: View {
                             .labelStyle(.titleAndIcon)
                     }
                 }
-                .frame(minWidth: 96, alignment: .trailing)
-                .disabled(!viewModel.canNavigateNext || viewModel.isAdjacentLoading)
+                .frame(minWidth: 96, minHeight: chromeLayout.minimumActionSize, alignment: .trailing)
+                .accessibilityIdentifier("reader.nextChapter")
+                .disabled(!chromeLayout.isEnabled(.nextChapter) || viewModel.isAdjacentLoading)
             }
             .font(ToonEdgeTypography.caption)
             .buttonStyle(.plain)
 
-            if let failure = viewModel.adjacentFailure {
-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
-                    Text(failure.message)
-                        .font(ToonEdgeTypography.caption)
-                        .foregroundStyle(textColor)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack(spacing: ToonEdgeSpacing.medium) {
-                        Button("Retry") {
-                            startAdjacentNavigation {
-                                await viewModel.retryAdjacentChapter(
-                                    libraryLifecycleService: libraryLifecycleService,
-                                    adjacentLoader: adjacentLoader
-                                )
-                            }
-                        }
-                        .accessibilityIdentifier("reader.adjacent.retry")
-
-                        if let targetURL = failure.targetURL {
-                            Button("Open Original") {
-                                if let openAdjacentOriginalPageAction {
-                                    openAdjacentOriginalPageAction(targetURL)
-                                } else {
-                                    router.openOriginalPage(targetURL)
-                                }
-                            }
-                            .accessibilityIdentifier("reader.adjacent.openOriginal")
-                        }
-                    }
-                    .font(ToonEdgeTypography.caption.weight(.semibold))
-                    .buttonStyle(.borderless)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if let presentation = ReaderAdjacentFeedbackPresentation(state: viewModel.adjacentLoadState) {
+                adjacentFeedback(presentation)
             }
 
             HStack(spacing: ToonEdgeSpacing.medium) {
@@ -374,10 +367,75 @@ public struct ReaderView: View {
                     .font(ToonEdgeTypography.caption)
                     .monospacedDigit()
                     .frame(width: 44, alignment: .trailing)
+                    .accessibilityIdentifier("reader.progress.value")
             }
         }
         .padding(ToonEdgeSpacing.large)
         .background(.ultraThinMaterial)
+    }
+
+    @ViewBuilder
+    private func adjacentFeedback(_ presentation: ReaderAdjacentFeedbackPresentation) -> some View {
+        HStack(spacing: ToonEdgeSpacing.small) {
+            if presentation.disablesNavigationControls {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Image(systemName: presentation.systemImage)
+                    .foregroundStyle(ToonEdgeColor.accent)
+                    .accessibilityHidden(true)
+            }
+
+            Text(presentation.message)
+                .font(ToonEdgeTypography.caption)
+                .foregroundStyle(textColor.opacity(0.82))
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: ToonEdgeSpacing.xsmall)
+
+            if presentation.actions.contains(.retry) {
+                Button("Retry") {
+                    startAdjacentNavigation {
+                        await viewModel.retryAdjacentChapter(
+                            libraryLifecycleService: libraryLifecycleService,
+                            adjacentLoader: adjacentLoader
+                        )
+                    }
+                }
+                .frame(
+                    minWidth: adjacentRecoveryActionLayout.minimumHitSize(for: .retry),
+                    minHeight: adjacentRecoveryActionLayout.minimumHitSize(for: .retry)
+                )
+                .contentShape(Rectangle())
+                .accessibilityIdentifier("reader.adjacent.retry")
+            }
+
+            if presentation.actions.contains(.openOriginal),
+               let targetURL = viewModel.adjacentFailure?.targetURL {
+                Button("Open Original") {
+                    if let openAdjacentOriginalPageAction {
+                        openAdjacentOriginalPageAction(targetURL)
+                    } else {
+                        router.openOriginalPage(targetURL)
+                    }
+                }
+                .frame(
+                    minWidth: adjacentRecoveryActionLayout.minimumHitSize(for: .openOriginal),
+                    minHeight: adjacentRecoveryActionLayout.minimumHitSize(for: .openOriginal)
+                )
+                .contentShape(Rectangle())
+                .accessibilityIdentifier("reader.adjacent.openOriginal")
+            }
+        }
+        .font(ToonEdgeTypography.caption.weight(.semibold))
+        .buttonStyle(.plain)
+        .padding(.top, ToonEdgeSpacing.xsmall)
+        .overlay(alignment: .top) {
+            Divider()
+                .opacity(0.35)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("reader.adjacent.feedback")
     }
 
     private var canvasColor: Color {
@@ -394,6 +452,29 @@ public struct ReaderView: View {
 
     private var readerColorScheme: ColorScheme {
         viewModel.settings.readerCanvas == .paper ? .light : .dark
+    }
+
+    private var chromeLayout: ReaderChromeLayout {
+        ReaderChromeLayout.actions(
+            launchOrigin: viewModel.session.launchOrigin,
+            isLibraryAvailable: libraryLifecycleService != nil,
+            isSavedToLibrary: viewModel.isSavedToLibrary,
+            canNavigatePrevious: viewModel.canNavigatePrevious,
+            canNavigateNext: viewModel.canNavigateNext
+        )
+    }
+
+    private var adjacentRecoveryActionLayout: ReaderAdjacentRecoveryActionLayout {
+        ReaderAdjacentRecoveryActionLayout()
+    }
+
+    private var readerControlsAccessibilityActionName: String {
+        viewModel.isChromeVisible ? "Hide Reader Controls" : "Show Reader Controls"
+    }
+
+    private func handleInteraction(_ source: ReaderInteractionSource) {
+        guard ReaderGesturePolicy().togglesChrome(for: source) else { return }
+        viewModel.toggleChrome()
     }
 
     private func navigate(_ direction: ReaderChapterDirection) {
@@ -449,34 +530,156 @@ public struct ReaderView: View {
     }
 }
 
+enum ReaderInteractionSource: Equatable {
+    case readingSurfaceTap
+    case scroll
+    case toolbarAction
+}
+
+struct ReaderGesturePolicy {
+    func togglesChrome(for source: ReaderInteractionSource) -> Bool {
+        source == .readingSurfaceTap
+    }
+}
+
 enum ReaderChromeAction: Equatable {
     case back
-    case home
     case download
     case save
     case saved
     case library
     case viewOriginalPage
     case settings
+    case previousChapter
+    case nextChapter
 }
 
 struct ReaderChromeLayout: Equatable {
+    var launchOrigin: ReaderLaunchOrigin
     var top: [ReaderChromeAction]
     var floating: [ReaderChromeAction]
     var bottom: [ReaderChromeAction]
+    var enabledActions: [ReaderChromeAction]
+    var showsChapterContext: Bool
+    var showsProgress: Bool
+    var minimumActionSize: CGFloat
 
-    static func actions(isLibraryAvailable: Bool, isSavedToLibrary: Bool) -> ReaderChromeLayout {
+    var actions: [ReaderChromeAction] {
+        top + floating + bottom
+    }
+
+    static func actions(
+        launchOrigin: ReaderLaunchOrigin,
+        isLibraryAvailable: Bool,
+        isSavedToLibrary: Bool,
+        canNavigatePrevious: Bool,
+        canNavigateNext: Bool
+    ) -> ReaderChromeLayout {
         var floating: [ReaderChromeAction] = [.download]
         if isLibraryAvailable {
             floating.append(isSavedToLibrary ? .saved : .save)
         }
         floating.append(contentsOf: [.viewOriginalPage, .settings])
 
+        var enabledActions = [ReaderChromeAction.back, .library] + floating
+        if canNavigatePrevious {
+            enabledActions.append(.previousChapter)
+        }
+        if canNavigateNext {
+            enabledActions.append(.nextChapter)
+        }
+
         return ReaderChromeLayout(
-            top: [.back, .home],
+            launchOrigin: launchOrigin,
+            top: [.back, .library],
             floating: floating,
-            bottom: []
+            bottom: [.previousChapter, .nextChapter],
+            enabledActions: enabledActions,
+            showsChapterContext: true,
+            showsProgress: true,
+            minimumActionSize: 44
         )
+    }
+
+    func isEnabled(_ action: ReaderChromeAction) -> Bool {
+        enabledActions.contains(action)
+    }
+
+    func identifier(for action: ReaderChromeAction) -> String {
+        switch action {
+        case .back: "reader.back"
+        case .download: "reader.retainChapter"
+        case .save, .saved: "reader.saveToLibrary"
+        case .library: "reader.library"
+        case .viewOriginalPage: "reader.viewOriginalPage"
+        case .settings: "reader.settings"
+        case .previousChapter: "reader.previousChapter"
+        case .nextChapter: "reader.nextChapter"
+        }
+    }
+}
+
+enum ReaderAdjacentRecoveryAction: Equatable {
+    case retry
+    case openOriginal
+}
+
+struct ReaderAdjacentRecoveryActionLayout: Equatable {
+    func minimumHitSize(for action: ReaderAdjacentRecoveryAction) -> CGFloat {
+        switch action {
+        case .retry, .openOriginal:
+            44
+        }
+    }
+}
+
+struct ReaderAdjacentFeedbackPresentation: Equatable {
+    let message: String
+    let systemImage: String
+    let actions: [ReaderAdjacentRecoveryAction]
+    let disablesNavigationControls: Bool
+    let isCompact = true
+    let keepsCurrentSessionVisible = true
+
+    init?(state: AdjacentChapterLoadState) {
+        switch state {
+        case .idle:
+            return nil
+        case .loading(let direction):
+            message = direction == .previous ? "Loading previous chapter…" : "Loading next chapter…"
+            systemImage = "arrow.trianglehead.2.clockwise"
+            actions = []
+            disablesNavigationControls = true
+        case .failed(let failure):
+            switch failure.reason {
+            case .timeout:
+                message = "Chapter timed out."
+            case .challengeOrRateLimit:
+                message = "Reader access is temporarily limited."
+            case .unavailable:
+                message = "Chapter unavailable in Reader."
+            case .lowConfidence:
+                message = "Chapter could not be verified."
+            case .nonViableImages:
+                message = "No usable chapter images found."
+            }
+            systemImage = "exclamationmark.circle"
+            actions = failure.targetURL == nil ? [.retry] : [.retry, .openOriginal]
+            disablesNavigationControls = false
+        }
+    }
+}
+
+struct ReaderAdjacentAnnouncementPolicy {
+    private var lastState: AdjacentChapterLoadState?
+
+    mutating func announcement(for state: AdjacentChapterLoadState) -> String? {
+        guard state != lastState else { return nil }
+        lastState = state
+        guard let presentation = ReaderAdjacentFeedbackPresentation(state: state) else {
+            return nil
+        }
+        return presentation.message.replacingOccurrences(of: "…", with: ".")
     }
 }
 
@@ -657,6 +860,7 @@ private extension Array {
 private struct ReaderIconButton: View {
     let systemImage: String
     let label: String
+    let identifier: String
     let action: () -> Void
 
     var body: some View {
@@ -664,10 +868,10 @@ private struct ReaderIconButton: View {
             Image(systemName: systemImage)
                 .font(.system(size: 16, weight: .semibold))
                 .frame(width: 44, height: 44)
-                .background(Color.black.opacity(0.34), in: Circle())
-                .overlay(Circle().stroke(Color.white.opacity(0.12)))
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+        .accessibilityIdentifier(identifier)
     }
 }

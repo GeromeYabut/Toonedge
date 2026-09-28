@@ -2,6 +2,42 @@ import XCTest
 
 @MainActor
 final class ToonEdgeSettingsUITests: XCTestCase {
+    func testReaderSettingsControlsAndDoneRemainReachableAtAccessibilityTextSize() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-uiTesting",
+            "-browserFixture", "medium",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL"
+        ]
+        app.launch()
+
+        let cleanMode = app.buttons["browser.cleanModeAction"]
+        XCTAssertTrue(cleanMode.waitForExistence(timeout: 5))
+        cleanMode.tap()
+
+        let reader = app.descendants(matching: .any)["reader.root"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 5))
+        reader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+
+        let settings = app.buttons["reader.settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 2))
+        settings.tap()
+
+        XCTAssertTrue(app.buttons["reader-settings.done"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.segmentedControls["reader-settings.fit"].exists)
+        XCTAssertTrue(app.switches["reader-settings.pageSpacing"].exists)
+
+        let canvas = app.buttons["reader-settings.canvas.paper"]
+        for _ in 0..<4 where !canvas.isHittable {
+            app.scrollViews["reader-settings.scroll"].swipeUp()
+        }
+        XCTAssertTrue(canvas.isHittable)
+        XCTAssertTrue(app.sliders["reader-settings.brightness"].exists)
+        app.buttons["reader-settings.done"].tap()
+        XCTAssertFalse(app.navigationBars["Reader Settings"].exists)
+    }
+
     func testUpdateCheckShowsSuccessNoUpdateAndFailureResults() {
         verifyUpdateResult(
             launchArgument: "-seedUpdateSuccess",

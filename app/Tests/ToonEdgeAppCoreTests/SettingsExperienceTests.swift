@@ -2,6 +2,27 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@Test func readerSettingsSupportsAccessibilityLayout() {
+    let layout = ReaderSettingsLayout(dynamicTypeIsAccessibility: true)
+
+    #expect(layout.usesScrollingContent)
+    #expect(layout.supportsMediumDetent)
+    #expect(layout.supportsLargeDetent)
+    #expect(layout.showsDoneAction)
+}
+
+@Test func readerCanvasRowsAreBorderlessAndExposeOneSelectionCheckmark() {
+    let selected = ReaderCanvasRowPresentation(canvas: .paper, selectedCanvas: .paper)
+    let unselected = ReaderCanvasRowPresentation(canvas: .charcoal, selectedCanvas: .paper)
+
+    #expect(!selected.usesBorder)
+    #expect(selected.showsCheckmark)
+    #expect(!unselected.showsCheckmark)
+    #expect(selected.minimumActionSize == 44)
+    #expect(selected.accessibilityValue == "Selected")
+    #expect(unselected.accessibilityValue == "Not selected")
+}
+
 @Test func readerSettingsPersistAcrossRepositoryReconstruction() async throws {
     let suiteName = "ToonEdgeSettingsTests-\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))

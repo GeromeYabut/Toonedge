@@ -96,6 +96,23 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["library.empty"].exists)
     }
 
+    func testReaderOnlyExposesContextuallyValidControlsAction() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-browserFixture", "medium"]
+        app.launch()
+
+        let cleanMode = app.buttons["browser.cleanModeAction"]
+        XCTAssertTrue(cleanMode.waitForExistence(timeout: 5))
+        cleanMode.tap()
+
+        let reader = app.descendants(matching: .any)["reader.root"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 5))
+        XCTAssertEqual(reader.value as? String, "Show Reader Controls")
+
+        reader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertEqual(reader.value as? String, "Hide Reader Controls")
+    }
+
     private func assertPrimaryTabsRemainHittable(appearance: String) {
         let app = launchApp(appearance: appearance)
         let tabs = [

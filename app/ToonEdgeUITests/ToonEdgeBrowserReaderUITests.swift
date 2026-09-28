@@ -18,6 +18,34 @@ final class ToonEdgeBrowserReaderUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForExistence(timeout: 5))
     }
 
+    func testReaderChromeOnlyTogglesFromReadingSurface() {
+        let app = launchBrowserFixture("medium")
+        let cleanMode = app.buttons["browser.cleanModeAction"]
+        XCTAssertTrue(cleanMode.waitForExistence(timeout: 5))
+        cleanMode.tap()
+
+        let reader = app.descendants(matching: .any)["reader.root"]
+        let chrome = app.descendants(matching: .any)["reader.chrome"]
+        let back = app.buttons["reader.back"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 5))
+        XCTAssertFalse(chrome.exists)
+        XCTAssertFalse(back.exists)
+
+        reader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(chrome.waitForExistence(timeout: 2))
+        XCTAssertTrue(back.waitForExistence(timeout: 2))
+
+        let retain = app.buttons["reader.retainChapter"]
+        XCTAssertTrue(retain.isHittable)
+        retain.tap()
+        XCTAssertTrue(chrome.exists)
+        XCTAssertTrue(back.exists)
+
+        reader.swipeUp()
+        XCTAssertTrue(chrome.exists)
+        XCTAssertTrue(back.exists)
+    }
+
     func testLowConfidenceFixtureDoesNotExposeCleanModeAction() {
         assertCleanModeIsUnavailable(for: "low")
     }
