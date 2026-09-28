@@ -71,7 +71,7 @@ final class ToonEdgeAdjacentFailureUITests: XCTestCase {
         XCTAssertTrue(app.buttons["reader.adjacent.openOriginal"].waitForExistence(timeout: 5))
         app.buttons["reader.adjacent.openOriginal"].tap()
 
-        XCTAssertTrue(app.staticTexts["Browser"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.otherElements["browser.root"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Close"].exists)
     }
 

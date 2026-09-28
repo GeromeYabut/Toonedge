@@ -8,6 +8,64 @@ public enum BrowserReaderPresentationState: Equatable, Sendable {
     case browserOwnedReaderVisible
 }
 
+public enum BrowserPresentationFixture: Sendable {
+    case mediumConfidence
+    case lowConfidence
+    case protected
+    case nonviable
+
+    public var detectionResult: DetectionResult {
+        let pageURL = URL(string: "https://fixture.toonedge.test/chapter-1")!
+        let session = MockReaderSession(
+            seriesTitle: "Browser Fixture",
+            chapterTitle: "Chapter 1",
+            sourceURL: pageURL,
+            imageURLs: [URL(string: "https://images.fixture.toonedge.test/chapter-1.jpg")!]
+        )
+
+        switch self {
+        case .mediumConfidence:
+            return DetectionResult(
+                pageURL: pageURL,
+                confidence: .medium,
+                score: 60,
+                candidates: [],
+                readerSession: session,
+                diagnostics: .init(confidence: .medium, score: 60, parserPath: .genericHeuristic)
+            )
+        case .lowConfidence:
+            return DetectionResult(
+                pageURL: pageURL,
+                confidence: .low,
+                score: 0,
+                candidates: [],
+                readerSession: nil,
+                diagnostics: .init(confidence: .low, score: 0, parserPath: .genericHeuristic)
+            )
+        case .protected:
+            return DetectionResult(
+                pageURL: pageURL,
+                confidence: .low,
+                score: 0,
+                candidates: [],
+                readerSession: nil,
+                diagnostics: .init(confidence: .low, score: 0, parserPath: .browserOnlyProfile)
+            )
+        case .nonviable:
+            var nonviableSession = session
+            nonviableSession.imageURLs = []
+            return DetectionResult(
+                pageURL: pageURL,
+                confidence: .medium,
+                score: 60,
+                candidates: [],
+                readerSession: nonviableSession,
+                diagnostics: .init(confidence: .medium, score: 60, parserPath: .genericHeuristic)
+            )
+        }
+    }
+}
+
 public protocol BrowserReaderPresentationLogging: Sendable {
     func log(_ state: BrowserReaderPresentationState)
 }

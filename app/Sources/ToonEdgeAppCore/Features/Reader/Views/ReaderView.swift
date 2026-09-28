@@ -121,6 +121,8 @@ public struct ReaderView: View {
                     .allowsHitTesting(false)
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("reader.root")
         .foregroundStyle(textColor)
         .animation(.easeInOut(duration: 0.16), value: viewModel.isChromeVisible)
         .sheet(isPresented: $viewModel.isSettingsPresented) {
