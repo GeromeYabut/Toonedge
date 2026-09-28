@@ -9,6 +9,11 @@ public struct BrowserChromeLayout: Equatable, Sendable {
     public let showsTopReload = false
     public let showsDecorativeBrowserStatus = false
     public let minimumActionSize: CGFloat = 44
+    public let cleanModeActionIdentifier = "browser.cleanModeAction"
+    public let closeActionIdentifier = "browser.close"
+    public let reloadActionIdentifier = "browser.reload"
+    public let backActionIdentifier = "browser.back"
+    public let forwardActionIdentifier = "browser.forward"
 
     public init() {}
 }
@@ -117,7 +122,11 @@ public struct BrowserView: View {
             topBar
 
             ZStack(alignment: .top) {
-                BrowserWebView(viewModel: viewModel, detector: dependencies.chapterDetector)
+                BrowserWebView(
+                    viewModel: viewModel,
+                    detector: dependencies.chapterDetector,
+                    presentationFixture: dependencies.browserPresentationFixture
+                )
                     .background(Color.white)
 
                 if viewModel.initialRequest == nil {
@@ -136,7 +145,7 @@ public struct BrowserView: View {
                         .padding(.horizontal, ToonEdgeSpacing.medium)
                         .padding(.top, ToonEdgeSpacing.medium)
                 } else if let message = viewModel.readerUnavailableMessage {
-                    TEBanner(title: "Original page available", message: message, systemImage: "globe")
+                    readerUnavailableFeedback(message)
                         .padding(.horizontal, ToonEdgeSpacing.medium)
                         .padding(.top, ToonEdgeSpacing.medium)
                 }
@@ -159,6 +168,7 @@ public struct BrowserView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(ToonEdgeColor.textPrimary)
+            .accessibilityIdentifier(chromeLayout.closeActionIdentifier)
 
             HStack(spacing: ToonEdgeSpacing.small) {
                 Image(systemName: viewModel.initialRequestIconName)
@@ -212,6 +222,7 @@ public struct BrowserView: View {
                     .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
             }
             .disabled(!viewModel.canGoBack)
+            .accessibilityIdentifier(chromeLayout.backActionIdentifier)
 
             Button {
                 viewModel.goForward()
@@ -221,6 +232,7 @@ public struct BrowserView: View {
                     .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
             }
             .disabled(!viewModel.canGoForward)
+            .accessibilityIdentifier(chromeLayout.forwardActionIdentifier)
 
             Spacer()
 
@@ -232,6 +244,7 @@ public struct BrowserView: View {
                         .font(.system(size: 18, weight: .semibold))
                         .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
                 }
+                .accessibilityIdentifier(chromeLayout.reloadActionIdentifier)
             }
         }
         .buttonStyle(.plain)
@@ -242,39 +255,61 @@ public struct BrowserView: View {
     }
 
     private var cleanModeBanner: some View {
-        HStack(spacing: ToonEdgeSpacing.medium) {
-            Image(systemName: "rectangle.portrait.on.rectangle.portrait")
-                .font(.system(size: 18, weight: .semibold))
+        Button {
+            viewModel.enterCleanModeManually()
+        } label: {
+            HStack(spacing: ToonEdgeSpacing.medium) {
+                Image(systemName: "rectangle.portrait.on.rectangle.portrait")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(ToonEdgeColor.accent)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Clean Mode available")
+                        .font(ToonEdgeTypography.body.weight(.semibold))
+                        .foregroundStyle(ToonEdgeColor.textPrimary)
+                    Text("A likely chapter page is ready to read.")
+                        .font(ToonEdgeTypography.caption)
+                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                HStack(spacing: ToonEdgeSpacing.xsmall) {
+                    Text("Read")
+                        .font(ToonEdgeTypography.body.weight(.semibold))
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                }
                 .foregroundStyle(ToonEdgeColor.accent)
+            }
+        }
+        .buttonStyle(.plain)
+        .padding(ToonEdgeSpacing.medium)
+        .background(ToonEdgeColor.elevated, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
+        .contentShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
+        .frame(minHeight: chromeLayout.minimumActionSize)
+        .accessibilityIdentifier(chromeLayout.cleanModeActionIdentifier)
+    }
+
+    private func readerUnavailableFeedback(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: ToonEdgeSpacing.small) {
+            Image(systemName: "globe")
+                .foregroundStyle(ToonEdgeColor.textSecondary)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Read in Clean Mode")
-                    .font(ToonEdgeTypography.caption)
+                Text("Continue on the original page")
+                    .font(ToonEdgeTypography.caption.weight(.semibold))
                     .foregroundStyle(ToonEdgeColor.textPrimary)
-                Text("ToonEdge found a likely chapter page.")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                Text(message)
+                    .font(ToonEdgeTypography.caption)
                     .foregroundStyle(ToonEdgeColor.textSecondary)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer()
-
-            Button {
-                viewModel.enterCleanModeManually()
-            } label: {
-                Image(systemName: "book")
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(width: 36, height: 36)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(ToonEdgeColor.textPrimary)
         }
         .padding(ToonEdgeSpacing.medium)
         .background(ToonEdgeColor.elevated, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: ToonEdgeRadius.medium)
-                .stroke(ToonEdgeColor.border)
-        )
+        .accessibilityElement(children: .combine)
     }
 
     private var invalidRequestView: some View {

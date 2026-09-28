@@ -5,14 +5,20 @@ import WebKit
 public struct BrowserWebView: UIViewRepresentable {
     @ObservedObject private var viewModel: BrowserViewModel
     private let detector: any ChapterPageDetecting
+    private let presentationFixture: BrowserPresentationFixture?
 
-    public init(viewModel: BrowserViewModel, detector: any ChapterPageDetecting) {
+    public init(
+        viewModel: BrowserViewModel,
+        detector: any ChapterPageDetecting,
+        presentationFixture: BrowserPresentationFixture? = nil
+    ) {
         self.viewModel = viewModel
         self.detector = detector
+        self.presentationFixture = presentationFixture
     }
 
     public func makeCoordinator() -> Coordinator {
-        Coordinator(viewModel: viewModel, detector: detector)
+        Coordinator(viewModel: viewModel, detector: detector, presentationFixture: presentationFixture)
     }
 
     public func makeUIView(context: Context) -> WKWebView {
@@ -41,14 +47,20 @@ public struct BrowserWebView: UIViewRepresentable {
 public struct BrowserWebView: NSViewRepresentable {
     @ObservedObject private var viewModel: BrowserViewModel
     private let detector: any ChapterPageDetecting
+    private let presentationFixture: BrowserPresentationFixture?
 
-    public init(viewModel: BrowserViewModel, detector: any ChapterPageDetecting) {
+    public init(
+        viewModel: BrowserViewModel,
+        detector: any ChapterPageDetecting,
+        presentationFixture: BrowserPresentationFixture? = nil
+    ) {
         self.viewModel = viewModel
         self.detector = detector
+        self.presentationFixture = presentationFixture
     }
 
     public func makeCoordinator() -> Coordinator {
-        Coordinator(viewModel: viewModel, detector: detector)
+        Coordinator(viewModel: viewModel, detector: detector, presentationFixture: presentationFixture)
     }
 
     public func makeNSView(context: Context) -> WKWebView {
@@ -197,6 +209,7 @@ public extension BrowserWebView {
         private weak var webView: WKWebView?
         private let viewModel: BrowserViewModel
         private let detector: any ChapterPageDetecting
+        private let presentationFixture: BrowserPresentationFixture?
         private var hasLoadedInitialRequest = false
         private var handledCommandID: UUID?
         private var urlObservation: NSKeyValueObservation?
@@ -205,9 +218,14 @@ public extension BrowserWebView {
         private var retryPolicy = BrowserDetectionRetryPolicy()
         private let popupPolicy = BrowserPopupPolicy()
 
-        init(viewModel: BrowserViewModel, detector: any ChapterPageDetecting) {
+        init(
+            viewModel: BrowserViewModel,
+            detector: any ChapterPageDetecting,
+            presentationFixture: BrowserPresentationFixture? = nil
+        ) {
             self.viewModel = viewModel
             self.detector = detector
+            self.presentationFixture = presentationFixture
         }
 
         func attach(_ webView: WKWebView) {
@@ -232,6 +250,11 @@ public extension BrowserWebView {
 
         @MainActor
         func loadInitialRequestIfNeeded() {
+            if let presentationFixture {
+                viewModel.handleDetectionResult(presentationFixture.detectionResult)
+                return
+            }
+
             guard !hasLoadedInitialRequest, let request = viewModel.initialRequest else {
                 return
             }

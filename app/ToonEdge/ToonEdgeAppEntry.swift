@@ -19,6 +19,21 @@ struct ToonEdgeAppEntry: App {
         }
 
         var dependencies = AppDependencies.mock()
+        if let marker = arguments.firstIndex(of: "-browserFixture"),
+           arguments.indices.contains(marker + 1) {
+            switch arguments[marker + 1] {
+            case "medium":
+                dependencies.browserPresentationFixture = .mediumConfidence
+            case "low":
+                dependencies.browserPresentationFixture = .lowConfidence
+            case "protected":
+                dependencies.browserPresentationFixture = .protected
+            case "nonviable":
+                dependencies.browserPresentationFixture = .nonviable
+            default:
+                break
+            }
+        }
         if arguments.contains("-resetSettings") {
             let defaults = UserDefaults.standard
             defaults.removeObject(forKey: UserDefaultsSettingsRepository.Key.readerCanvas)
@@ -78,6 +93,9 @@ struct ToonEdgeAppEntry: App {
            let marker = arguments.firstIndex(of: "-openURL"),
            arguments.indices.contains(marker + 1) {
             return AppRouter(presentedBrowser: .url(arguments[marker + 1]))
+        }
+        if arguments.contains("-uiTesting"), arguments.contains("-browserFixture") {
+            return AppRouter(presentedBrowser: .url("about:blank"))
         }
         if arguments.contains("-uiTesting"), arguments.contains("-seedAdjacentFailureReader") {
             return AppRouter(presentedReader: adjacentFailureFixtureSession)

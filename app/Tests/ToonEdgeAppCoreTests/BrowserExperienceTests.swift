@@ -11,6 +11,16 @@ import Testing
     #expect(layout.minimumActionSize == 44)
 }
 
+@Test func browserChromeLayoutExposesStableActionIdentifiers() {
+    let layout = BrowserChromeLayout()
+
+    #expect(layout.cleanModeActionIdentifier == "browser.cleanModeAction")
+    #expect(layout.closeActionIdentifier == "browser.close")
+    #expect(layout.reloadActionIdentifier == "browser.reload")
+    #expect(layout.backActionIdentifier == "browser.back")
+    #expect(layout.forwardActionIdentifier == "browser.forward")
+}
+
 @Test func routeObservationSchedulesSettledURLOnce() throws {
     let series = try #require(URL(string: "https://vortexscans.org/series/past-life-returner"))
     let chapter = try #require(URL(string: "https://vortexscans.org/series/past-life-returner/chapter-169"))

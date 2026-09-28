@@ -22,6 +22,7 @@ public struct AppDependencies: Sendable {
     public var readerProgressRepository: any ReaderProgressStoring
     public var chapterDetector: any ChapterPageDetecting
     public var seriesMetadataService: (any SeriesMetadataFetching)?
+    public var browserPresentationFixture: BrowserPresentationFixture?
 
     public init(
         persistenceContainer: ModelContainer? = nil,
@@ -43,7 +44,8 @@ public struct AppDependencies: Sendable {
         adjacentReaderSessionLoader: (any AdjacentReaderSessionLoading)? = nil,
         readerProgressRepository: any ReaderProgressStoring,
         chapterDetector: any ChapterPageDetecting,
-        seriesMetadataService: (any SeriesMetadataFetching)? = nil
+        seriesMetadataService: (any SeriesMetadataFetching)? = nil,
+        browserPresentationFixture: BrowserPresentationFixture? = nil
     ) {
         self.persistenceContainer = persistenceContainer
         self.libraryService = libraryService
@@ -65,6 +67,7 @@ public struct AppDependencies: Sendable {
         self.readerProgressRepository = readerProgressRepository
         self.chapterDetector = chapterDetector
         self.seriesMetadataService = seriesMetadataService
+        self.browserPresentationFixture = browserPresentationFixture
     }
 
     public static func mock() -> AppDependencies {
