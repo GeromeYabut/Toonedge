@@ -76,7 +76,9 @@ public struct LibraryView: View {
         NavigationStack(path: $navigationPath) {
             ScrollView {
                 VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
-                    LibraryFilterRow(selection: $selectedSegment)
+                    LibraryFilterRow(selection: $selectedSegment) { segment in
+                        selectSegment(segment)
+                    }
                     if hasLoadedSnapshot {
                         collectionControls
                     }
@@ -158,7 +160,11 @@ public struct LibraryView: View {
             isRefreshing: isRefreshingUpdates
         )
 
-        return LibraryCollectionControls(layout: layout, selection: $selectedViewMode) {
+        return LibraryCollectionControls(
+            layout: layout,
+            selection: $selectedViewMode,
+            selectViewMode: { mode in selectViewMode(mode) }
+        ) {
             Task {
                 await refreshUpdates()
             }
@@ -180,6 +186,25 @@ public struct LibraryView: View {
         await reloadSnapshot()
         isRefreshingUpdates = false
         showRefreshFeedback(result: result)
+        if let event = InteractionFeedbackOutcomePolicy.updateEvent(for: result, userInitiated: true) {
+            dependencies.interactionFeedback.emit(event)
+        }
+    }
+
+    private func selectSegment(_ segment: LibrarySegment) {
+        guard selectedSegment != segment else { return }
+        selectedSegment = segment
+        if let event = InteractionFeedbackOutcomePolicy.selectionEvent(valueChanged: true) {
+            dependencies.interactionFeedback.emit(event)
+        }
+    }
+
+    private func selectViewMode(_ mode: LibraryViewMode) {
+        guard selectedViewMode != mode else { return }
+        selectedViewMode = mode
+        if let event = InteractionFeedbackOutcomePolicy.selectionEvent(valueChanged: true) {
+            dependencies.interactionFeedback.emit(event)
+        }
     }
 
     @ViewBuilder
@@ -448,13 +473,14 @@ struct LibraryFilterChipLayout: Equatable, Sendable {
 
 private struct LibraryFilterRow: View {
     @Binding var selection: LibrarySegment
+    let select: (LibrarySegment) -> Void
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: ToonEdgeSpacing.small) {
                 ForEach(LibrarySegment.allCases) { segment in
                     Button {
-                        selection = segment
+                        select(segment)
                     } label: {
                         let layout = LibraryFilterChipLayout(isSelected: selection == segment)
 
@@ -483,12 +509,13 @@ private struct LibraryFilterRow: View {
 
 private struct LibraryViewModeControl: View {
     @Binding var selection: LibraryViewMode
+    let select: (LibraryViewMode) -> Void
 
     var body: some View {
         HStack(spacing: ToonEdgeSpacing.small) {
             ForEach(LibraryViewMode.allCases) { mode in
                 Button {
-                    selection = mode
+                    select(mode)
                 } label: {
                     Image(systemName: mode.systemImage)
                         .frame(width: 44, height: 44)
@@ -551,6 +578,7 @@ private struct LibraryRefreshFeedback: Equatable {
 private struct LibraryCollectionControls: View {
     let layout: LibraryCollectionControlsLayout
     @Binding var selection: LibraryViewMode
+    let selectViewMode: (LibraryViewMode) -> Void
     let refresh: () -> Void
 
     var body: some View {
@@ -562,7 +590,7 @@ private struct LibraryCollectionControls: View {
 
             Spacer(minLength: ToonEdgeSpacing.small)
 
-            LibraryViewModeControl(selection: $selection)
+            LibraryViewModeControl(selection: $selection, select: selectViewMode)
 
             if layout.refreshButtonIsVisible {
                 Button(action: refresh) {

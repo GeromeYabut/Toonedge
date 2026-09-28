@@ -18,6 +18,7 @@ public final class ReaderViewModel: ObservableObject {
     private let libraryLifecycleService: (any LibraryLifecycleManaging)?
     private let seriesMetadataService: (any SeriesMetadataFetching)?
     private let settingsManager: (any SettingsManaging)?
+    private let interactionFeedback: (any InteractionFeedbackProviding)?
     private var hasCompletedInitialRestore: Bool
     private var hasRecordedRecentCacheMetadataForSession: Bool
     private var loadedImageIndices: Set<Int>
@@ -35,6 +36,7 @@ public final class ReaderViewModel: ObservableObject {
         libraryLifecycleService: (any LibraryLifecycleManaging)? = nil,
         seriesMetadataService: (any SeriesMetadataFetching)? = nil,
         settingsManager: (any SettingsManaging)? = nil,
+        interactionFeedback: (any InteractionFeedbackProviding)? = nil,
         adjacentRetryDelayNanoseconds: UInt64 = 1_500_000_000
     ) {
         self.session = session
@@ -53,6 +55,7 @@ public final class ReaderViewModel: ObservableObject {
         self.libraryLifecycleService = libraryLifecycleService
         self.seriesMetadataService = seriesMetadataService
         self.settingsManager = settingsManager
+        self.interactionFeedback = interactionFeedback
         self.adjacentRetryDelayNanoseconds = adjacentRetryDelayNanoseconds
         self.hasCompletedInitialRestore = progressRepository == nil
         self.hasRecordedRecentCacheMetadataForSession = false
@@ -155,6 +158,7 @@ public final class ReaderViewModel: ObservableObject {
             guard isCurrentAdjacentOperation(operationID) else { return false }
             adjacentNavigationOperationID = nil
             adjacentLoadState = .idle
+            interactionFeedback?.emit(.chapterTransitioned)
             return true
         }
 
@@ -187,6 +191,7 @@ public final class ReaderViewModel: ObservableObject {
             guard isCurrentAdjacentOperation(operationID) else { return false }
             adjacentNavigationOperationID = nil
             adjacentLoadState = .idle
+            interactionFeedback?.emit(.chapterTransitioned)
             return true
         } catch {
             guard isCurrentAdjacentOperation(operationID) else { return false }
@@ -339,6 +344,9 @@ public final class ReaderViewModel: ObservableObject {
                 return
             }
             cacheFeedback = .success(result)
+            if let event = InteractionFeedbackOutcomePolicy.cacheEvent(for: result) {
+                interactionFeedback?.emit(event)
+            }
         } catch {
             cacheFeedback = .failure("Could not retain this chapter offline.")
         }
@@ -367,6 +375,7 @@ public final class ReaderViewModel: ObservableObject {
             try await libraryLifecycleService.addToLibrary(input, context: .reader)
             isSavedToLibrary = true
             libraryFeedback = CacheActionFeedback(result: nil, message: "Saved to Library.", isFailure: false)
+            interactionFeedback?.emit(.operationSucceeded)
         } catch {
             libraryFeedback = .failure("Could not save this series.")
         }

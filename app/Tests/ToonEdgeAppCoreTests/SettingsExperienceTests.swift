@@ -162,10 +162,12 @@ import Testing
 @MainActor
 @Test func settingsUpdateCheckSuppressesDuplicateRequests() async {
     let service = SuspendedSettingsUpdateRefreshService()
+    let feedback = RecordingInteractionFeedback()
     let viewModel = SettingsViewModel(
         settingsManager: MockSettingsService(),
         cacheMetadataManager: MockCacheMetadataService(),
         interactionPreferences: InMemoryInteractionPreferences(),
+        interactionFeedback: feedback,
         updateRefreshService: service
     )
 
@@ -180,6 +182,37 @@ import Testing
     await service.finish()
     await firstCheck.value
     #expect(viewModel.updateFeedback == .noChanges)
+    #expect(feedback.events.isEmpty)
+}
+
+@MainActor
+@Test func explicitSettingsUpdateFoundEmitsOnceWhileNoUpdateRemainsSilent() async {
+    let feedback = RecordingInteractionFeedback()
+    let updatedViewModel = SettingsViewModel(
+        settingsManager: MockSettingsService(),
+        cacheMetadataManager: MockCacheMetadataService(),
+        interactionPreferences: InMemoryInteractionPreferences(),
+        interactionFeedback: feedback,
+        updateRefreshService: MockLibraryUpdateRefreshService(
+            result: .init(checkedCount: 2, updatedCount: 1, failedCount: 0)
+        )
+    )
+
+    await updatedViewModel.refreshUpdates()
+    #expect(feedback.events == [.operationSucceeded])
+
+    feedback.reset()
+    let noUpdateViewModel = SettingsViewModel(
+        settingsManager: MockSettingsService(),
+        cacheMetadataManager: MockCacheMetadataService(),
+        interactionPreferences: InMemoryInteractionPreferences(),
+        interactionFeedback: feedback,
+        updateRefreshService: MockLibraryUpdateRefreshService(
+            result: .init(checkedCount: 2, updatedCount: 0, failedCount: 0)
+        )
+    )
+    await noUpdateViewModel.refreshUpdates()
+    #expect(feedback.events.isEmpty)
 }
 
 private actor SuspendedSettingsUpdateRefreshService: LibraryUpdateRefreshing {

@@ -34,6 +34,7 @@ public struct ReaderView: View {
         seriesMetadataService: (any SeriesMetadataFetching)? = nil,
         libraryLifecycleService: (any LibraryLifecycleManaging)? = nil,
         settingsManager: (any SettingsManaging)? = nil,
+        interactionFeedback: (any InteractionFeedbackProviding)? = nil,
         dismissAction: (() -> Void)? = nil,
         viewOriginalPageAction: (() -> Void)? = nil,
         backAction: (() -> Void)? = nil,
@@ -54,7 +55,8 @@ public struct ReaderView: View {
                 recentReadingRecorder: recentReadingRecorder,
                 libraryLifecycleService: libraryLifecycleService,
                 seriesMetadataService: seriesMetadataService,
-                settingsManager: settingsManager
+                settingsManager: settingsManager,
+                interactionFeedback: interactionFeedback
             )
         )
         self.readerService = readerService
@@ -509,12 +511,6 @@ public struct ReaderView: View {
             .map(String.init) ?? title
     }
 
-    private func emitSaveHaptic() {
-        #if os(iOS)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        #endif
-    }
-
     private func presentLibrarySave() {
         guard !viewModel.isSavedToLibrary else { return }
         saveState = AddToLibraryStatePickerModel.defaultState(for: .reader)
@@ -525,7 +521,6 @@ public struct ReaderView: View {
         isSaveStatePickerPresented = false
         Task {
             await viewModel.saveCurrentSessionToLibrary(libraryState: state)
-            emitSaveHaptic()
         }
     }
 }

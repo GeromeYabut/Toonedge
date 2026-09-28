@@ -266,15 +266,19 @@ import Testing
 @MainActor
 @Test func readerRetainActionPublishesCacheFeedback() async {
     let cacheMetadataService = MockCacheMetadataService()
+    let feedback = RecordingInteractionFeedback()
     let viewModel = ReaderViewModel(
         session: .sample,
-        cacheMetadataManager: cacheMetadataService
+        cacheMetadataManager: cacheMetadataService,
+        interactionFeedback: feedback
     )
 
     await viewModel.retainCurrentChapter()
+    await viewModel.retainCurrentChapter()
 
-    #expect(viewModel.cacheFeedback?.result == .retained)
+    #expect(viewModel.cacheFeedback?.result == .unchanged)
     #expect(viewModel.cacheFeedback?.isFailure == false)
+    #expect(feedback.events == [.operationSucceeded])
 }
 
 @MainActor
@@ -292,7 +296,12 @@ import Testing
 @MainActor
 @Test func readerViewModelReflectsSuccessfulSaveState() async {
     let library = RecordingLibraryLifecycleService()
-    let viewModel = ReaderViewModel(session: .sample, libraryLifecycleService: library)
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(
+        session: .sample,
+        libraryLifecycleService: library,
+        interactionFeedback: feedback
+    )
 
     await viewModel.refreshSavedState()
     #expect(!viewModel.isSavedToLibrary)
@@ -301,6 +310,7 @@ import Testing
 
     #expect(viewModel.isSavedToLibrary)
     #expect(viewModel.libraryFeedback?.message == "Saved to Library.")
+    #expect(feedback.events == [.operationSucceeded])
 }
 
 @MainActor
@@ -409,7 +419,8 @@ import Testing
     loaded.imageURLs = [URL(string: "https://img.example.com/13-1.webp")!]
 
     let hiddenLoader = RecordingAdjacentReaderSessionLoader(result: .success(loaded))
-    let viewModel = ReaderViewModel(session: current)
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(session: current, interactionFeedback: feedback)
 
     await viewModel.navigateAdjacentChapter(.next, libraryLifecycleService: nil, adjacentLoader: hiddenLoader)
 
@@ -418,6 +429,7 @@ import Testing
     #expect(viewModel.session.seriesID == current.seriesID)
     #expect(viewModel.adjacentLoadState == .idle)
     #expect(await hiddenLoader.requestedURLs == [next.sourceURL])
+    #expect(feedback.events == [.chapterTransitioned])
 }
 
 @MainActor
@@ -509,7 +521,8 @@ import Testing
     loaded.sourceURL = nextURL
     loaded.imageURLs = [try #require(URL(string: "https://img.example.com/13-1.webp"))]
     let loader = CancellationIgnoringAdjacentReaderSessionLoader(session: loaded)
-    let viewModel = ReaderViewModel(session: current)
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(session: current, interactionFeedback: feedback)
 
     let navigation = Task {
         await viewModel.navigateAdjacentChapter(.next, libraryLifecycleService: nil, adjacentLoader: loader)
@@ -522,6 +535,7 @@ import Testing
 
     #expect(viewModel.session.sourceURL == current.sourceURL)
     #expect(viewModel.adjacentLoadState == .idle)
+    #expect(feedback.events.isEmpty)
 }
 
 @MainActor

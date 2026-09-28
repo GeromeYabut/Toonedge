@@ -65,3 +65,22 @@ import Testing
         .userActionWarning
     ])
 }
+
+@Test func outcomePolicyEmitsOnlyForAuthoritativeUserVisibleChanges() {
+    #expect(InteractionFeedbackOutcomePolicy.cacheEvent(for: .retained) == .operationSucceeded)
+    #expect(InteractionFeedbackOutcomePolicy.cacheEvent(for: .removed) == .operationSucceeded)
+    #expect(InteractionFeedbackOutcomePolicy.cacheEvent(for: .recent) == nil)
+    #expect(InteractionFeedbackOutcomePolicy.cacheEvent(for: .unchanged) == nil)
+    #expect(InteractionFeedbackOutcomePolicy.cacheEvent(for: .notFound) == nil)
+
+    let updates = LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 1, failedCount: 0)
+    let noUpdates = LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 0, failedCount: 0)
+    #expect(InteractionFeedbackOutcomePolicy.updateEvent(for: updates, userInitiated: true) == .operationSucceeded)
+    #expect(InteractionFeedbackOutcomePolicy.updateEvent(for: updates, userInitiated: false) == nil)
+    #expect(InteractionFeedbackOutcomePolicy.updateEvent(for: noUpdates, userInitiated: true) == nil)
+
+    #expect(InteractionFeedbackOutcomePolicy.selectionEvent(valueChanged: true) == .selectionChanged)
+    #expect(InteractionFeedbackOutcomePolicy.selectionEvent(valueChanged: false) == nil)
+    #expect(InteractionFeedbackOutcomePolicy.invalidInputEvent(validationIsVisible: true) == .userActionWarning)
+    #expect(InteractionFeedbackOutcomePolicy.invalidInputEvent(validationIsVisible: false) == nil)
+}

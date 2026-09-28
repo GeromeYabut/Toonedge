@@ -55,6 +55,7 @@ public struct AppShellView: View {
             SearchOverlayView(
                 suggestionsProvider: dependencies.searchSuggestionProvider,
                 searchHistoryRecorder: dependencies.searchHistoryRecorder,
+                interactionFeedback: dependencies.interactionFeedback,
                 router: $router
             )
                 .presentationDetents([.large])
@@ -99,6 +100,7 @@ public struct AppShellView: View {
                 seriesMetadataService: dependencies.seriesMetadataService,
                 libraryLifecycleService: dependencies.libraryLifecycleService,
                 settingsManager: dependencies.settingsService,
+                interactionFeedback: dependencies.interactionFeedback,
                 router: $router
             )
             .id(router.presentedReader?.id)

@@ -22,6 +22,7 @@ public struct BrowserView: View {
     private let dependencies: AppDependencies
     @Binding private var router: AppRouter
     @StateObject private var viewModel: BrowserViewModel
+    @StateObject private var librarySaveOperation: BrowserLibrarySaveOperation
     private let chromeLayout = BrowserChromeLayout()
     @State private var pendingLibrarySaveSession: MockReaderSession?
     @State private var librarySaveState = AddToLibraryStatePickerModel.defaultState(for: .browser)
@@ -38,6 +39,11 @@ public struct BrowserView: View {
             wrappedValue: BrowserViewModel(
                 startPoint: startPoint,
                 readerLaunchOriginOverride: readerLaunchOriginOverride
+            )
+        )
+        self._librarySaveOperation = StateObject(
+            wrappedValue: BrowserLibrarySaveOperation(
+                interactionFeedback: dependencies.interactionFeedback
             )
         )
     }
@@ -59,6 +65,7 @@ public struct BrowserView: View {
                     seriesMetadataService: dependencies.seriesMetadataService,
                     libraryLifecycleService: dependencies.libraryLifecycleService,
                     settingsManager: dependencies.settingsService,
+                    interactionFeedback: dependencies.interactionFeedback,
                     dismissAction: {
                         viewModel.dismissBrowserOwnedReader()
                     },
@@ -88,6 +95,20 @@ public struct BrowserView: View {
                 .id(session.id)
                 .transition(.opacity)
                 .zIndex(1)
+            }
+
+            if let failureMessage = librarySaveOperation.failureMessage {
+                VStack {
+                    TEBanner(
+                        title: "Save failed",
+                        message: failureMessage,
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .padding(ToonEdgeSpacing.large)
+                    Spacer()
+                }
+                .accessibilityIdentifier("browser.librarySave.failure")
+                .zIndex(2)
             }
         }
         .animation(.easeInOut(duration: 0.18), value: viewModel.browserOwnedReaderSession?.id)
@@ -204,6 +225,7 @@ public struct BrowserView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(ToonEdgeColor.textPrimary)
+                .disabled(librarySaveOperation.isSaving)
                 .accessibilityLabel("Add detected series to library")
             }
         }
@@ -345,14 +367,41 @@ public struct BrowserView: View {
         }
 
         Task {
-            try? await lifecycleService.addToLibrary(
-                DetectedSessionLibraryInputBuilder.input(
-                    for: session,
-                    addressDisplay: viewModel.addressDisplay,
-                    libraryState: state
-                ),
-                context: .browser
+            let input = DetectedSessionLibraryInputBuilder.input(
+                for: session,
+                addressDisplay: viewModel.addressDisplay,
+                libraryState: state
             )
+            await librarySaveOperation.perform {
+                try await lifecycleService.addToLibrary(input, context: .browser)
+            }
+        }
+    }
+}
+
+@MainActor
+final class BrowserLibrarySaveOperation: ObservableObject {
+    @Published private(set) var failureMessage: String?
+    @Published private(set) var isSaving = false
+    private let interactionFeedback: any InteractionFeedbackProviding
+
+    init(interactionFeedback: any InteractionFeedbackProviding) {
+        self.interactionFeedback = interactionFeedback
+    }
+
+    @discardableResult
+    func perform(_ operation: () async throws -> Void) async -> Bool {
+        guard !isSaving else { return false }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            try await operation()
+            failureMessage = nil
+            interactionFeedback.emit(.operationSucceeded)
+            return true
+        } catch {
+            failureMessage = "Could not save this series."
+            return false
         }
     }
 }

@@ -30,6 +30,7 @@ public struct SearchOverlayFirstOpenLayout: Equatable, Sendable {
 public struct SearchOverlayView: View {
     private let suggestionsProvider: any SearchSuggestionProviding
     private let searchHistoryRecorder: (any SearchHistoryRecording)?
+    private let interactionFeedback: (any InteractionFeedbackProviding)?
     private let firstOpenLayout: SearchOverlayFirstOpenLayout
     @Binding private var router: AppRouter
     @State private var query = ""
@@ -40,11 +41,13 @@ public struct SearchOverlayView: View {
     public init(
         suggestionsProvider: any SearchSuggestionProviding = MockSearchSuggestionProvider(),
         searchHistoryRecorder: (any SearchHistoryRecording)? = nil,
+        interactionFeedback: (any InteractionFeedbackProviding)? = nil,
         firstOpenLayout: SearchOverlayFirstOpenLayout = .default,
         router: Binding<AppRouter>
     ) {
         self.suggestionsProvider = suggestionsProvider
         self.searchHistoryRecorder = searchHistoryRecorder
+        self.interactionFeedback = interactionFeedback
         self.firstOpenLayout = firstOpenLayout
         self._router = router
     }
@@ -214,6 +217,11 @@ public struct SearchOverlayView: View {
             return
         case .invalidURL:
             validationMessage = "Enter a complete web address or search phrase."
+            if let event = InteractionFeedbackOutcomePolicy.invalidInputEvent(
+                validationIsVisible: validationMessage != nil
+            ) {
+                interactionFeedback?.emit(event)
+            }
             isSearchFocused = true
             return
         case .valid(let validatedInput):

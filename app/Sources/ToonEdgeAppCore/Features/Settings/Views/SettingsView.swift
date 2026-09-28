@@ -52,6 +52,7 @@ public final class SettingsViewModel: ObservableObject {
 
     private let settingsManager: any SettingsManaging
     private let interactionPreferences: any InteractionPreferencesManaging
+    private let interactionFeedback: (any InteractionFeedbackProviding)?
     private let cacheMetadataManager: any CacheMetadataManaging
     private let storageMeasurementService: (any CacheStorageMeasuring)?
     private let updateRefreshService: (any LibraryUpdateRefreshing)?
@@ -60,11 +61,13 @@ public final class SettingsViewModel: ObservableObject {
         settingsManager: any SettingsManaging,
         cacheMetadataManager: any CacheMetadataManaging,
         interactionPreferences: any InteractionPreferencesManaging,
+        interactionFeedback: (any InteractionFeedbackProviding)? = nil,
         storageMeasurementService: (any CacheStorageMeasuring)? = nil,
         updateRefreshService: (any LibraryUpdateRefreshing)? = nil
     ) {
         self.settingsManager = settingsManager
         self.interactionPreferences = interactionPreferences
+        self.interactionFeedback = interactionFeedback
         self.cacheMetadataManager = cacheMetadataManager
         self.storageMeasurementService = storageMeasurementService
         self.updateRefreshService = updateRefreshService
@@ -117,6 +120,9 @@ public final class SettingsViewModel: ObservableObject {
         defer { isCheckingForUpdates = false }
         let result = await updateRefreshService.refreshUpdates()
         updateFeedback = SettingsUpdateFeedback(result: result)
+        if let event = InteractionFeedbackOutcomePolicy.updateEvent(for: result, userInitiated: true) {
+            interactionFeedback?.emit(event)
+        }
     }
 }
 
@@ -130,6 +136,7 @@ public struct SettingsView: View {
             settingsManager: dependencies.settingsService,
             cacheMetadataManager: dependencies.cacheMetadataService,
             interactionPreferences: dependencies.interactionPreferences,
+            interactionFeedback: dependencies.interactionFeedback,
             storageMeasurementService: dependencies.cacheStorageMeasurementService,
             updateRefreshService: dependencies.updateRefreshService
         ))
@@ -149,7 +156,7 @@ public struct SettingsView: View {
                     settingsSection("Interaction") {
                         TEEditorialGroup([SettingsInteraction.hapticFeedback]) { _ in
                             Toggle("Haptic Feedback", isOn: hapticFeedbackBinding)
-                                .accessibilityHint("Provides subtle feedback for selected completed actions")
+                                .accessibilityHint("Provides subtle feedback for selections and completed actions")
                                 .accessibilityIdentifier("settings.hapticFeedback")
                                 .modifier(TEEditorialRowStyle())
                         }

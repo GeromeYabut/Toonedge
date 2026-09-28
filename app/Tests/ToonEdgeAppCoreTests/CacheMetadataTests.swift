@@ -154,13 +154,18 @@ import Testing
     let sourceURL = URL(string: "https://example.com/downloads/chapter-1")!
     let service = MockCacheMetadataService()
     _ = try await service.recordCacheMetadata(.fixture(sourceURL: sourceURL, retentionState: .retained))
-    let viewModel = DownloadsViewModel(cacheMetadataManager: service)
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = DownloadsViewModel(cacheMetadataManager: service, interactionFeedback: feedback)
 
     await viewModel.load()
     await viewModel.remove(sourceURL: sourceURL)
 
     #expect(viewModel.summary.cachedItemCount == 0)
     #expect(viewModel.cacheFeedback?.result == .removed)
+    #expect(feedback.events == [.operationSucceeded])
+
+    await viewModel.remove(sourceURL: sourceURL)
+    #expect(feedback.events == [.operationSucceeded])
 }
 
 @MainActor

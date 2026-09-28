@@ -633,6 +633,9 @@ struct SeriesDetailView: View {
                     cachedAt: Date()
                 )
                 cacheFeedback = .success(result)
+                if let event = InteractionFeedbackOutcomePolicy.cacheEvent(for: result) {
+                    dependencies.interactionFeedback.emit(event)
+                }
                 publishDetail(await dependencies.libraryService.seriesDetail(for: seriesID))
             } catch {
                 cacheFeedback = .failure("Could not retain this chapter offline.")
