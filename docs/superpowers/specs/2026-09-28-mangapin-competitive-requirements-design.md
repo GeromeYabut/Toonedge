@@ -55,9 +55,24 @@ MangaPin was reviewed through iPhone Mirroring on an iPhone 16 Pro on 2026-09-28
 - Statistics, Notes, and Custom Lists
 - premium sync affordances
 
-The review intentionally did not purchase a subscription, create an account, delete user data, change reader defaults, or alter library membership. The session added `solo leveling` to recent search history and refreshed the last-read timestamp for an existing title.
+The initial review intentionally did not purchase a subscription, create an account, delete user data, change reader defaults, or alter library membership. It added `solo leveling` to recent search history and refreshed the last-read timestamp for an existing title. A later user-authorized validation added one Asura title to the Reading library, as documented below.
 
 One important observation requires qualification: manually invoking MangaPin reader mode on a Google results page produced a 15-image reader. Because the action was manually requested, this is not evidence that MangaPin would auto-open a false-positive result. It does demonstrate why ToonEdge's automatic hard blocks and a clearly labeled manual fallback should remain separate behaviors.
+
+#### End-to-end Asura flow validation
+
+A separate search-to-library flow was completed with the previously unsaved Asura title *The Hero Cannot Rest*:
+
+1. The Asura series page was inspected first to confirm that MangaPin showed `Add to library`, rather than an existing saved state.
+2. From MangaPin Home, the exact title was entered into universal search.
+3. Search offered Google, Asura-specific search, and the exact Asura page from local history. The exact result opened the source series page. The Asura-specific search row did not activate through taps or Return during the mirrored session, so that interaction remains unverified rather than being classified as defective.
+4. `First Chapter` opened Chapter 1. After the source page settled, MangaPin automatically entered Reader Mode with 36 detected images.
+5. Reader initially showed unloaded/broken-image placeholders briefly before the first image resolved. The chapter then rendered in long-strip mode with page progress and reader controls.
+6. The Reader add action opened a save form with lifecycle folder, translated language, current chapter, and start-date fields. Defaults were `Reading`, `English`, and `Ch.1`.
+7. Saving immediately created the entry. The item detail showed Asura as the source, Chapter 1, Reading state, English, and the current date.
+8. Home placed the cover first in its Library widget, and the Reading collection count increased from 48 to 49 with the title first in recent order.
+
+This validates that MangaPin's core acquisition loop is cohesive: web discovery, automatic conversion, progress-aware save defaults, and immediate collection feedback all share one browser session. ToonEdge already implements the same essential lifecycle with fewer metadata decisions: Reader-originated saves default to Reading, canonical series identity is retained, progress persists, and the saved series routes into native Library/Series Detail. The remaining ToonEdge opportunity is not a new save model; it is making saved titles discoverable from universal search and maintaining stronger loading stability during conversion.
 
 ### 2.2 Public evidence
 
@@ -114,8 +129,9 @@ Status meanings:
 | Reader layout modes | Long strip, single page, double page; vertical, left-to-right, right-to-left | **Absent by design:** fit-width and fit-screen only; product is manhwa-first | Keep paginated modes post-MVP |
 | Zoom | Pinch zoom, optional double-tap zoom, percentage control | **Absent:** fit modes only | Add bounded pinch zoom to MVP |
 | Reader personalization | Global defaults plus per-title preferences, gap sizes, progress thickness, auto-next, hide-controls policy, tap zones, autoplay speed | **Verified core only:** canvas, fit, spacing, brightness; global persistence | Keep current simplicity; evaluate per-series overrides post-MVP |
-| Reader loading stability | Hands-on sample loaded correctly; reviews report panel delays and flashes | **Partial:** aspect-ratio placeholders, retry, cache, and lazy loading exist; no bounded ahead-of-scroll prefetch coordinator | Add continuity/prefetch requirement before more reader modes |
+| Reader loading stability | Existing-title sample loaded correctly; the fresh Asura flow briefly showed broken-image placeholders before resolving, and reviews report panel delays and flashes | **Partial:** aspect-ratio placeholders, retry, cache, and lazy loading exist; no bounded ahead-of-scroll prefetch coordinator | Add continuity/prefetch requirement before more reader modes |
 | Progress and resume | Automatic chapter/page progress and recent reading | **Verified:** source-keyed progress, restoration, recent activity, throttled writes | Equivalent, with stronger repository tests in ToonEdge |
+| Save from Reader | Reader action opens a progress-aware form; the tested Asura title defaulted to Reading, English, and Chapter 1 and appeared immediately in Library | **Verified:** Reader save defaults to Reading, persists canonical series/progress data, and supports native Library/Series Detail routing | Equivalent core lifecycle; ToonEdge is intentionally simpler |
 | Adjacent chapters | Visible previous/next controls and chapter selector | **Verified:** explicit links, numeric fallback, hidden extraction, typed failure handling, preserved launch context | ToonEdge is stronger on safe fallback behavior |
 | Library states | Reading, Paused, Plan, Completed, Dropped | **Verified:** Recent, Reading, Planned, Dropped, Completed; persisted lifecycle states | Equivalent; `Paused` is not required separately for MVP |
 | Library density | Three-column grid and status tabs | **Verified:** comfortable, compact, and list modes | ToonEdge offers stronger native presentation flexibility |
