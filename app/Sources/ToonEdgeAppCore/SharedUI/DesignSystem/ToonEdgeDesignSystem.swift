@@ -187,11 +187,47 @@ public enum ToonEdgeRadius {
     public static let large: CGFloat = 18
 }
 
+public enum ToonEdgeTypographyMetrics {
+    public struct Role: Equatable, Sendable {
+        public enum Design: Equatable, Sendable {
+            case `default`
+        }
+
+        public enum Weight: Equatable, Sendable {
+            case regular
+            case semibold
+            case bold
+        }
+
+        public let design: Design
+        public let weight: Weight
+        public let usesMonospacedDigits: Bool
+
+        public init(design: Design, weight: Weight, usesMonospacedDigits: Bool = false) {
+            self.design = design
+            self.weight = weight
+            self.usesMonospacedDigits = usesMonospacedDigits
+        }
+    }
+
+    public static let title = Role(design: .default, weight: .bold)
+    public static let sectionTitle = Role(design: .default, weight: .semibold)
+    public static let body = Role(design: .default, weight: .regular)
+    public static let caption = Role(design: .default, weight: .regular)
+    public static let numericMetadata = Role(
+        design: .default,
+        weight: .regular,
+        usesMonospacedDigits: true
+    )
+}
+
 public enum ToonEdgeTypography {
-    public static let title = Font.system(.title2, design: .rounded, weight: .bold)
-    public static let sectionTitle = Font.system(.headline, design: .rounded, weight: .semibold)
-    public static let body = Font.system(.body, design: .rounded)
-    public static let caption = Font.system(.caption, design: .rounded, weight: .medium)
+    public static let title = Font.system(.title2, design: .default, weight: .bold)
+    public static let sectionTitle = Font.system(.headline, design: .default, weight: .semibold)
+    public static let body = Font.system(.body, design: .default, weight: .regular)
+    public static let caption = Font.system(.caption, design: .default, weight: .regular)
+    public static let numericMetadata = Font.system(.caption, design: .default, weight: .regular)
+        .monospacedDigit()
 }
 
 public struct ToonEdgeNavigationChrome: Equatable, Sendable {

@@ -6,6 +6,13 @@ import Testing
     #expect(ToonEdgeAppearancePolicy.default.readerCanvasIsIndependent)
 }
 
+@Test func editorialTypographyUsesSystemDesignAndRestrainedWeights() {
+    #expect(ToonEdgeTypographyMetrics.body.design == .default)
+    #expect(ToonEdgeTypographyMetrics.caption.design == .default)
+    #expect(ToonEdgeTypographyMetrics.body.weight == .regular)
+    #expect(ToonEdgeTypographyMetrics.numericMetadata.usesMonospacedDigits)
+}
+
 @Test func adaptivePalettesMaintainAbsoluteTextContrast() {
     for appearance in ToonEdgeAppearance.allCases {
         let palette = ToonEdgePaletteValues.resolve(appearance)
