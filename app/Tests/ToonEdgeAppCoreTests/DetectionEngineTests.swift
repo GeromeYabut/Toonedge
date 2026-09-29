@@ -16,6 +16,15 @@ import Testing
     #expect(!shape.description.contains("secret"))
 }
 
+@Test func detectionLogURLShapeDropsMixedRouteValues() throws {
+    let url = try #require(URL(string: "https://vortexscans.org/series/past-life-returner/chapter-private-169"))
+
+    let shape = DetectionLogURLShape(url: url)
+
+    #expect(shape.pathShape == "/series/:segment/:segment")
+    #expect(!shape.description.contains("private"))
+}
+
 @Test func detectorNormalizesLazyLoadedImageSources() throws {
     let pageURL = try #require(URL(string: "https://example.com/series/chapter-12"))
     let page = DetectionPageAnalysis(

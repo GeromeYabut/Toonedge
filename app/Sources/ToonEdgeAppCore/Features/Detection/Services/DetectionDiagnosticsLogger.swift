@@ -15,12 +15,15 @@ struct DetectionLogURLShape: Equatable, Sendable, CustomStringConvertible {
                 if structural.contains(lowercased) {
                     return lowercased
                 }
-                if component.range(of: #"[0-9]+"#, options: .regularExpression) != nil {
-                    return component.replacingOccurrences(
+                if lowercased.range(of: #"^chapter-[0-9]+$"#, options: .regularExpression) != nil {
+                    return lowercased.replacingOccurrences(
                         of: #"[0-9]+"#,
                         with: ":number",
                         options: .regularExpression
                     )
+                }
+                if component.range(of: #"^[0-9]+$"#, options: .regularExpression) != nil {
+                    return ":number"
                 }
                 return ":segment"
             }
