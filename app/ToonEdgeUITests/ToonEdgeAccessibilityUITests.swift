@@ -3,22 +3,23 @@ import XCTest
 @MainActor
 final class ToonEdgeAccessibilityUITests: XCTestCase {
     func testPrimaryTabsRemainHittableInLightAppearance() {
-        assertPrimaryTabsRemainHittable(appearance: "Light")
+        assertPrimaryTabsRemainHittable(appearance: .light)
     }
 
     func testPrimaryTabsRemainHittableInDarkAppearance() {
-        assertPrimaryTabsRemainHittable(appearance: "Dark")
+        assertPrimaryTabsRemainHittable(appearance: .dark)
     }
 
-    func testHomeSearchEntryIsAvailable() {
-        let app = launchApp()
+    func testHomeEditorialSearchEntryRemainsReachableAtAccessibilityTextSize() {
+        let app = launchApp(contentSizeCategory: .accessibilityXXXL)
         let searchEntry = app.buttons["home.searchEntry"]
         XCTAssertTrue(searchEntry.waitForExistence(timeout: 5))
+        XCTAssertTrue(searchEntry.isHittable)
         XCTAssertEqual(searchEntry.label, "Search the web or paste a chapter link")
     }
 
     func testPrimaryTabsRemainHittableAtAccessibilityTextSize() {
-        let app = launchApp(largeText: true)
+        let app = launchApp(contentSizeCategory: .accessibilityXXXL)
         for tab in [("tab.library", "Library"), ("tab.downloads", "Downloads"), ("tab.settings", "Settings")] {
             let button = tabButton(app, identifier: tab.0, label: tab.1)
             XCTAssertTrue(button.exists, "Missing \(tab.1)")
@@ -68,7 +69,10 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
     }
 
     func testDownloadsEditorialHeaderAndActionsRemainAccessibleAtLargeText() {
-        let app = launchApp(largeText: true, extraArguments: ["-seedDownloads20"])
+        let app = launchApp(
+            contentSizeCategory: .accessibilityXXXL,
+            extraArguments: ["-seedDownloads20"]
+        )
         tabButton(app, identifier: "tab.downloads", label: "Downloads").tap()
 
         let storageHeader = app.descendants(matching: .any)["downloads.storageHeader"]
@@ -113,7 +117,7 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
         XCTAssertEqual(reader.value as? String, "Hide Reader Controls")
     }
 
-    private func assertPrimaryTabsRemainHittable(appearance: String) {
+    private func assertPrimaryTabsRemainHittable(appearance: TestAppearance) {
         let app = launchApp(appearance: appearance)
         let tabs = [
             ("tab.home", "Home"),
@@ -123,25 +127,29 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
         ]
         for (identifier, label) in tabs {
             let button = tabButton(app, identifier: identifier, label: label)
-            XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing \(identifier) in \(appearance)")
-            XCTAssertTrue(button.isHittable, "Unhittable \(identifier) in \(appearance)")
+            XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing \(identifier) in \(appearance.rawValue)")
+            XCTAssertTrue(button.isHittable, "Unhittable \(identifier) in \(appearance.rawValue)")
             button.tap()
-            XCTAssertTrue(button.isSelected, "Unselected \(identifier) in \(appearance)")
+            XCTAssertTrue(button.isSelected, "Unselected \(identifier) in \(appearance.rawValue)")
             for (otherIdentifier, otherLabel) in tabs {
                 XCTAssertTrue(tabButton(app, identifier: otherIdentifier, label: otherLabel).isHittable,
-                              "Unhittable \(otherIdentifier) on \(identifier) in \(appearance)")
+                              "Unhittable \(otherIdentifier) on \(identifier) in \(appearance.rawValue)")
             }
         }
     }
 
-    private func launchApp(largeText: Bool = false, appearance: String? = nil, extraArguments: [String] = []) -> XCUIApplication {
+    private func launchApp(
+        appearance: TestAppearance? = nil,
+        contentSizeCategory: TestContentSizeCategory? = nil,
+        extraArguments: [String] = []
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-resetTestData"] + extraArguments
         if let appearance {
-            app.launchArguments += ["-AppleInterfaceStyle", appearance]
+            app.launchArguments += ["-AppleInterfaceStyle", appearance.rawValue]
         }
-        if largeText {
-            app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityExtraExtraExtraLarge"]
+        if let contentSizeCategory {
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName", contentSizeCategory.rawValue]
         }
         app.launch()
         return app
@@ -157,5 +165,14 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
     private func tabButton(_ app: XCUIApplication, identifier: String, label: String) -> XCUIElement {
         let identified = app.tabBars.buttons[identifier]
         return identified.exists ? identified : app.tabBars.buttons[label]
+    }
+
+    private enum TestAppearance: String {
+        case light = "Light"
+        case dark = "Dark"
+    }
+
+    private enum TestContentSizeCategory: String {
+        case accessibilityXXXL = "UICTContentSizeCategoryAccessibilityXXXL"
     }
 }
