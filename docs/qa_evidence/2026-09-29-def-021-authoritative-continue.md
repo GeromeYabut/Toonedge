@@ -52,7 +52,20 @@ Result: 3 passed, 0 failed, 0 skipped:
 
 Result bundle: `/private/tmp/toonedge-def021.xcresult`.
 
-The UI fixtures use only `fixture.example`, `images.example.test`, generated labels, and bundled fixture artwork. No live third-party page was loaded. The result bundle contains no screenshot attachments, and no standalone screenshot was created for this slice; this is recorded as an evidence limitation rather than presenting an absent screenshot as proof.
+The UI fixtures use only `fixture.example`, `images.example.test`, generated labels, and an inline sanitized 1×1 fixture image. No live third-party page was loaded. The result bundle contains no screenshot attachments; the separate sanitized screenshot below supplies a durable visual artifact.
+
+### Sanitized screenshot
+
+[DEF-021 Continue Chapter 3 screenshot](2026-09-29/def-021-authoritative-continue-chapter-3.png)
+
+Captured after relaunching the persisted adjacent-discovery fixture on the dedicated Pro Max. Commands were run from the isolated worktree:
+
+```sh
+xcrun simctl launch --terminate-running-process 29E33EEE-8A11-457F-8F7F-BDF2D44A9FE4 com.toonedge.app -uiTesting -readerHardeningFixture continue-adjacent-discovery
+xcrun simctl io 29E33EEE-8A11-457F-8F7F-BDF2D44A9FE4 screenshot docs/qa_evidence/2026-09-29/def-021-authoritative-continue-chapter-3.png
+```
+
+Visual inspection confirmed the screenshot shows only generated fixture content: the `Continue Journey Fixture` title, app-generated `CJ` placeholder cover, reserved `fixture.example` domain, and chapters 1–3. The exact `Continue Chapter 3` CTA is visible while chapter 1 remains unfinished at 9%; chapter 3 displays 64% progress at capture time. No third-party artwork, sensitive URL, or user data is present. This later visual capture is separate from the automated UI result bundle and does not claim to record the earlier test's exact progress percentage.
 
 ## Persistence boundary
 
@@ -92,9 +105,9 @@ From the primary checkout, the protected QA screenshots remained untracked and b
 49ae9b28d92dfb7bbbd5f69e27f77f5fe117724085163e22f210bc10d4175db5  webtoon-protected-reader-cta.png
 ```
 
-The shared iPhone 16 Pro (`04F65B71-EEB9-4085-BFBD-8B7406E480A2`) was not targeted by the recorded UI run and was not touched during this documentation task. No simulator commands were run during Task 4.
+The shared iPhone 16 Pro (`04F65B71-EEB9-4085-BFBD-8B7406E480A2`) was not targeted by the recorded UI run and was not touched during this documentation task. No simulator commands were run during Task 4. The later screenshot follow-up targeted only the dedicated Pro Max; it did not target the shared 16 Pro or 16e or modify the protected screenshots.
 
 Remaining limitations:
 
 - The result bundle and the failed helper-only bundle from test development are under `/private/tmp`; CI should upload successful `.xcresult` bundles and sanitized test logs as durable artifacts.
-- This slice does not claim a production disk-backed app relaunch, schema migration, live-site Continue journey, or screenshot artifact. Those are distinct from the verified repository and deterministic UI contracts.
+- This slice does not claim a production disk-backed app relaunch, schema migration, or live-site Continue journey. Those are distinct from the verified repository and deterministic UI contracts.
