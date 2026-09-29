@@ -209,9 +209,11 @@ struct ToonEdgeAppEntry: App {
             return AppRouter(selectedTab: .library)
         }
         if arguments.contains("-uiTesting"), hardeningFixture == .continueAdjacentDiscovery {
+            let hasDiscoveredChapterThree = !arguments.contains("-resetTestData")
+                && UITestContinueJourneyLibraryService.hasPersistedChapterThree(for: .continueAdjacentDiscovery)
             return AppRouter(
                 selectedTab: .library,
-                presentedReader: UITestContinueJourneyFixture.session(2),
+                presentedReader: hasDiscoveredChapterThree ? nil : UITestContinueJourneyFixture.session(2),
                 pendingLibrarySeriesID: UITestContinueJourneyFixture.seriesID
             )
         }
@@ -278,9 +280,20 @@ private actor UITestContinueJourneyLibraryService: LibraryLifecycleManaging, Rec
     private let stateKey: String
     private var state: State
 
+    // Launch routing reads fixture state without creating a Reader that would record a new visit.
+    static func hasPersistedChapterThree(for scenario: ReaderHardeningFixtureScenario) -> Bool {
+        guard let data = UserDefaults.standard.data(forKey: persistenceKey(for: scenario)),
+              let state = try? JSONDecoder().decode(State.self, from: data) else { return false }
+        return state.checkpoints[3] != nil
+    }
+
+    private static func persistenceKey(for scenario: ReaderHardeningFixtureScenario) -> String {
+        "ToonEdge.UITests.ReaderHardening.ContinueJourney.\(scenario.rawValue).v1"
+    }
+
     init(scenario: ReaderHardeningFixtureScenario, resetTestData: Bool) {
         let defaults = UserDefaults.standard
-        let key = "ToonEdge.UITests.ReaderHardening.ContinueJourney.\(scenario.rawValue).v1"
+        let key = Self.persistenceKey(for: scenario)
         if resetTestData {
             defaults.removeObject(forKey: key)
         }
