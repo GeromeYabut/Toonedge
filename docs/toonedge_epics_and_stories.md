@@ -1521,7 +1521,7 @@ Library cards currently risk mixing two different concepts: latest known chapter
 Replace repeated dashboard-like card styling with an adaptive, borderless, quiet-editorial system while preserving ToonEdge's search-first behavior, local-first data flow, conservative detection, and explicit Reader escape routes.
 
 ### Story 12.1 — Establish adaptive quiet-editorial foundations
-**Status:** planned
+**Status:** implemented
 
 **Acceptance criteria**
 - Utility screens follow system light/dark appearance; Reader canvas remains independent.
@@ -1533,7 +1533,7 @@ Replace repeated dashboard-like card styling with an adaptive, borderless, quiet
 - Four-tab navigation, identifiers, routing, detection, persistence, and Reader behavior remain unchanged.
 
 ### Story 12.2 — Refine Home and Search into a search-first editorial entry
-**Status:** planned
+**Status:** implemented
 
 **Acceptance criteria**
 - Home retains restrained product identity and makes universal search the first visual action.
@@ -1545,7 +1545,7 @@ Replace repeated dashboard-like card styling with an adaptive, borderless, quiet
 - Invalid input remains inline and recoverable; large text and VoiceOver preserve meaning and hit targets.
 
 ### Story 12.3 — Simplify Browser chrome and Clean Mode presentation
-**Status:** planned
+**Status:** implemented
 
 **Acceptance criteria**
 - Browser emphasizes domain/address context without an outlined dashboard card.
@@ -1556,7 +1556,7 @@ Replace repeated dashboard-like card styling with an adaptive, borderless, quiet
 - Browser history, live WebView ownership, detection scheduling, Reader promotion, and View Original Page remain unchanged.
 
 ### Story 12.4 — Refine Reader chrome, settings, and adjacent feedback
-**Status:** planned
+**Status:** implemented
 
 **Acceptance criteria**
 - Reader starts with chrome hidden and one reading-surface tap toggles it exactly once.
@@ -1568,7 +1568,7 @@ Replace repeated dashboard-like card styling with an adaptive, borderless, quiet
 - Adjacent loading/failure remains nonblocking and preserves typed Retry/Open Original behavior without retry loops.
 
 ### Story 12.5 — Refine Library and Series Detail as editorial collection surfaces
-**Status:** planned
+**Status:** implemented
 
 **Acceptance criteria**
 - Comfortable, Compact, and List modes preserve their density meaning and saved preference without enclosing item borders.
@@ -1580,7 +1580,7 @@ Replace repeated dashboard-like card styling with an adaptive, borderless, quiet
 - Seeded/cached entry, local-first hydration, background refresh, numeric resume semantics, and Library-origin Reader fallback remain unchanged.
 
 ### Story 12.6 — Refine Downloads and Settings as focused utility lists
-**Status:** planned
+**Status:** implemented
 
 **Acceptance criteria**
 - Downloads uses a compact storage header and borderless rows, not an introductory banner plus nested cards.
@@ -1591,7 +1591,7 @@ Replace repeated dashboard-like card styling with an adaptive, borderless, quiet
 - User-facing copy contains no scaffold/mock terminology and does not overpromise offline availability.
 
 ### Story 12.7 — Add optional semantic haptic feedback
-**Status:** planned
+**Status:** implemented
 
 **Acceptance criteria**
 - A dependency-injected semantic feedback service owns system feedback mapping.
@@ -1603,7 +1603,7 @@ Replace repeated dashboard-like card styling with an adaptive, borderless, quiet
 - No SwiftData migration is introduced.
 
 ### Story 12.8 — Complete editorial accessibility, appearance, motion, and device QA
-**Status:** planned
+**Status:** in progress — automated gates passed; manual/perceptual and live-site checks remain
 
 **Acceptance criteria**
 - Focused regressions for every Story 12.1–12.7 behavior and the full Swift suite pass.

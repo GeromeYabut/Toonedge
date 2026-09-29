@@ -76,6 +76,7 @@ final class ToonEdgeLibraryUITests: XCTestCase {
 
         let savedSeries = app.buttons["Saved series"]
         XCTAssertTrue(savedSeries.waitForExistence(timeout: 5))
+        XCTAssertEqual(savedSeries.value as? String, "Reading")
         savedSeries.tap()
         let markPlanned = app.buttons["Mark Planned"]
         XCTAssertTrue(markPlanned.waitForExistence(timeout: 5))
@@ -89,7 +90,7 @@ final class ToonEdgeLibraryUITests: XCTestCase {
 
         XCTAssertTrue(failureTitle.waitForNonExistence(timeout: 5))
         XCTAssertFalse(retry.exists)
-        XCTAssertTrue(app.buttons["Saved series"].exists)
+        XCTAssertEqual(app.buttons["Saved series"].value as? String, "Planned")
     }
 
     private func launchLibrary(extraArguments: [String] = []) -> XCUIApplication {

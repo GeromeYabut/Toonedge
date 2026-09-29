@@ -512,6 +512,7 @@ struct SeriesDetailView: View {
                 .buttonStyle(.plain)
                 .disabled(mutationModel.isMutating)
                 .accessibilityLabel(detail.isSaved ? "Saved series" : "Save series")
+                .accessibilityValue(detail.isSaved ? detail.libraryState.title : "Not saved")
             }
         }
     }
