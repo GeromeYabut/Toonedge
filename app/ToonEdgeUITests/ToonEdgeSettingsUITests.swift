@@ -116,7 +116,7 @@ final class ToonEdgeSettingsUITests: XCTestCase {
         let hapticFeedback = app.switches["settings.hapticFeedback"]
         XCTAssertTrue(hapticFeedback.waitForExistence(timeout: 5))
         XCTAssertEqual(hapticFeedback.value as? String, "1")
-        hapticFeedback.tap()
+        hapticFeedback.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
         XCTAssertEqual(hapticFeedback.value as? String, "0")
 
         app.terminate()
@@ -128,7 +128,7 @@ final class ToonEdgeSettingsUITests: XCTestCase {
         let persistedHapticFeedback = app.switches["settings.hapticFeedback"]
         XCTAssertTrue(persistedHapticFeedback.waitForExistence(timeout: 5))
         XCTAssertEqual(persistedHapticFeedback.value as? String, "0")
-        persistedHapticFeedback.tap()
+        persistedHapticFeedback.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
     }
 
     private func verifyUpdateResult(launchArgument: String, expected: String) {
