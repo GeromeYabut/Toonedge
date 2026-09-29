@@ -989,6 +989,13 @@ enum ChapterURLInference {
         return firstNumericToken(in: title).flatMap(Int.init)
     }
 
+    static func containsChapterNumber(_ number: Int, in sourceURL: URL) -> Bool {
+        let label = "\(number)"
+        return sourceURL.pathComponents.contains {
+            pathComponentContainsChapterNumber($0, knownLabel: label)
+        }
+    }
+
     static func inferredSourceURL(forChapter number: Int, knownChapters: [KnownChapter]) -> URL? {
         for knownChapter in knownChapters.sorted(by: { abs($0.number - number) < abs($1.number - number) }) {
             let knownLabel = "\(knownChapter.number)"

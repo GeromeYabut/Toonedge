@@ -521,6 +521,42 @@ import Testing
     #expect(secondSession.nextChapter?.title == "Chapter 3")
 }
 
+@Test func chapterURLInferenceValidatesOnlyTheRequestedNumericIdentity() throws {
+    let url = try #require(URL(string: "https://example.com/series/chapter-156"))
+    #expect(ChapterURLInference.containsChapterNumber(156, in: url))
+    #expect(!ChapterURLInference.containsChapterNumber(169, in: url))
+    #expect(!ChapterURLInference.containsChapterNumber(15, in: url))
+}
+
+@MainActor
+@Test func swiftDataRepositoryRejectsNonAdjacentExplicitLinkForNumericChapter() async throws {
+    let repository = try makeRepository()
+    let chapter169URL = URL(string: "https://example.com/series/chapter-169")!
+    var chapter155 = LibraryChapterInput.mock(
+        title: "Chapter 155",
+        chapterLabel: "155",
+        sourceURL: URL(string: "https://example.com/series/chapter-155")!,
+        imageURLs: [URL(string: "https://images.example.test/155.png")!]
+    )
+    chapter155.previousChapterURL = URL(string: "https://example.com/series/chapter-1")!
+    chapter155.nextChapterURL = chapter169URL
+    let input = LibrarySeriesInput.mock(
+        chapters: [
+            .mock(chapterLabel: "1", sourceURL: URL(string: "https://example.com/series/chapter-1")!),
+            chapter155,
+            .mock(chapterLabel: "169", sourceURL: chapter169URL)
+        ]
+    )
+
+    try await repository.addToLibrary(input, context: .reader)
+    let session = try #require(await repository.readerSession(forChapterID: chapter155.id))
+
+    #expect(session.previousChapter?.sourceURL == URL(string: "https://example.com/series/chapter-154"))
+    #expect(session.nextChapter?.sourceURL == URL(string: "https://example.com/series/chapter-156"))
+    #expect(session.previousChapter?.sourceURL != input.chapters[0].sourceURL)
+    #expect(session.nextChapter?.sourceURL != chapter169URL)
+}
+
 @MainActor
 @Test func swiftDataRepositoryDerivesNumericAdjacentReaderControlsForSparseChapterLists() async throws {
     let repository = try makeRepository()

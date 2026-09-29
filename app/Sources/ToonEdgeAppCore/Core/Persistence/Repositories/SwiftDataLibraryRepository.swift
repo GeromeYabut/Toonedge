@@ -290,12 +290,8 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
             chapterTitle: chapter.title,
             sourceURL: sourceURL,
             imageURLs: imageURLs,
-            previousChapter: chapter.previousChapterURLString.flatMap(URL.init(string:)).map {
-                MockChapter(title: "Previous Chapter", sourceURL: $0)
-            } ?? derivedAdjacent.previous,
-            nextChapter: chapter.nextChapterURLString.flatMap(URL.init(string:)).map {
-                MockChapter(title: "Next Chapter", sourceURL: $0)
-            } ?? derivedAdjacent.next
+            previousChapter: derivedAdjacent.previous,
+            nextChapter: derivedAdjacent.next
         )
     }
 
@@ -954,7 +950,15 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
     private func adjacentChapters(for chapter: StoredChapter, in seriesID: UUID) -> (previous: MockChapter?, next: MockChapter?) {
         let chapters = fetchChapters(seriesID: seriesID).sorted(by: chapterOrder)
         guard let currentNumber = integerChapterNumber(for: chapter) else {
-            return adjacentChaptersByStoredOrder(for: chapter, in: chapters)
+            let storedAdjacent = adjacentChaptersByStoredOrder(for: chapter, in: chapters)
+            return (
+                previous: chapter.previousChapterURLString.flatMap(URL.init(string:)).map {
+                    MockChapter(title: "Previous Chapter", sourceURL: $0)
+                } ?? storedAdjacent.previous,
+                next: chapter.nextChapterURLString.flatMap(URL.init(string:)).map {
+                    MockChapter(title: "Next Chapter", sourceURL: $0)
+                } ?? storedAdjacent.next
+            )
         }
 
         var chaptersByNumber: [Int: StoredChapter] = [:]
@@ -969,11 +973,13 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
         return (
             previous: numericAdjacentChapter(
                 targetNumber: currentNumber - 1,
+                explicitURLString: chapter.previousChapterURLString,
                 currentChapter: chapter,
                 chaptersByNumber: chaptersByNumber
             ),
             next: numericAdjacentChapter(
                 targetNumber: currentNumber + 1,
+                explicitURLString: chapter.nextChapterURLString,
                 currentChapter: chapter,
                 chaptersByNumber: chaptersByNumber
             )
@@ -996,10 +1002,11 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
 
     private func numericAdjacentChapter(
         targetNumber: Int,
+        explicitURLString: String?,
         currentChapter: StoredChapter,
         chaptersByNumber: [Int: StoredChapter]
     ) -> MockChapter? {
-        guard targetNumber >= 0 else {
+        guard targetNumber > 0 else {
             return nil
         }
 
@@ -1007,8 +1014,13 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
             return mockChapter(from: storedChapter)
         }
 
-        guard targetNumber > 0,
-              let currentNumber = integerChapterNumber(for: currentChapter),
+        if let explicitURLString,
+           let explicitURL = URL(string: explicitURLString),
+           ChapterURLInference.containsChapterNumber(targetNumber, in: explicitURL) {
+            return MockChapter(title: "Chapter \(targetNumber)", sourceURL: explicitURL)
+        }
+
+        guard let currentNumber = integerChapterNumber(for: currentChapter),
               let currentSourceURL = URL(string: currentChapter.sourceURLString),
               let inferredURL = ChapterURLInference.inferredSourceURL(
                 forChapter: targetNumber,
