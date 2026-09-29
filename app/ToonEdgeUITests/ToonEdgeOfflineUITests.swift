@@ -101,7 +101,11 @@ final class ToonEdgeAdjacentFailureUITests: XCTestCase {
 
     private func launchFixture() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-seedAdjacentFailureReader"]
+        app.launchArguments = [
+            "-uiTesting",
+            "-readerHardeningFixture",
+            "adjacent-challenge"
+        ]
         app.launch()
         return app
     }
