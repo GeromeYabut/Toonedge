@@ -458,7 +458,8 @@ import Testing
     let next = MockChapter(title: "Chapter 13", sourceURL: URL(string: "https://example.com/series/chapter-13")!)
     var current = MockReaderSession.sample
     current.nextChapter = next
-    let viewModel = ReaderViewModel(session: current)
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(session: current, interactionFeedback: feedback)
 
     await viewModel.navigateAdjacentChapter(
         .next,
@@ -469,6 +470,22 @@ import Testing
     #expect(viewModel.session.sourceURL == current.sourceURL)
     #expect(viewModel.adjacentLoadState.isFailure)
     #expect(viewModel.adjacentFailureMessage == "This chapter is unavailable in Reader Mode. Try again or open the original page.")
+    #expect(feedback.events == [.userActionWarning])
+}
+
+@MainActor
+@Test func adjacentUnavailableWithoutLoaderWarnsOnceAfterVisibleRecovery() async {
+    let next = MockChapter(title: "Chapter 13", sourceURL: URL(string: "https://example.com/series/chapter-13")!)
+    var current = MockReaderSession.sample
+    current.nextChapter = next
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(session: current, interactionFeedback: feedback)
+
+    await viewModel.navigateAdjacentChapter(.next, libraryLifecycleService: nil, adjacentLoader: nil)
+
+    #expect(viewModel.adjacentLoadState.isFailure)
+    #expect(viewModel.isChromeVisible)
+    #expect(feedback.events == [.userActionWarning])
 }
 
 @MainActor

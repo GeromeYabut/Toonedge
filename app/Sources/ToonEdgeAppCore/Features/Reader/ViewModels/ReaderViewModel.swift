@@ -174,6 +174,7 @@ public final class ReaderViewModel: ObservableObject {
                 )
             )
             isChromeVisible = true
+            interactionFeedback?.emit(.userActionWarning)
             return false
         }
 
@@ -206,6 +207,7 @@ public final class ReaderViewModel: ObservableObject {
                 )
             )
             isChromeVisible = true
+            interactionFeedback?.emit(.userActionWarning)
             return false
         }
     }
