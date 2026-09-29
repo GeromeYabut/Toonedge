@@ -19,6 +19,7 @@ enum SeriesDetailMutationOutcome: Equatable, Sendable {
 final class SeriesDetailMutationModel: ObservableObject {
     @Published private(set) var currentDetail: SeriesDetailSnapshot?
     @Published private(set) var failedOperation: SeriesDetailMutationOperation?
+    @Published private(set) var isMutating = false
 
     private enum Request: Sendable {
         case save(SeriesDetailSnapshot, LibraryCollectionState)
@@ -37,6 +38,8 @@ final class SeriesDetailMutationModel: ObservableObject {
     private let service: (any LibraryLifecycleManaging)?
     private let interactionFeedback: (any InteractionFeedbackProviding)?
     private var failedRequest: Request?
+    private var detailGeneration = 0
+    private var activeMutationID: UUID?
 
     init(
         service: (any LibraryLifecycleManaging)?,
@@ -48,7 +51,7 @@ final class SeriesDetailMutationModel: ObservableObject {
         self.interactionFeedback = interactionFeedback
     }
 
-    var canRetry: Bool { failedRequest != nil }
+    var canRetry: Bool { failedRequest != nil && !isMutating }
 
     var failureMessage: String? {
         switch failedOperation {
@@ -60,6 +63,9 @@ final class SeriesDetailMutationModel: ObservableObject {
     }
 
     func setCurrentDetail(_ detail: SeriesDetailSnapshot?) {
+        detailGeneration &+= 1
+        activeMutationID = nil
+        isMutating = false
         currentDetail = detail
     }
 
@@ -85,7 +91,18 @@ final class SeriesDetailMutationModel: ObservableObject {
     }
 
     private func perform(_ request: Request) async -> SeriesDetailMutationOutcome {
-        guard let service, let detail = currentDetail else { return .noOp }
+        guard !isMutating, let service, let detail = currentDetail else { return .noOp }
+
+        let mutationID = UUID()
+        let startingGeneration = detailGeneration
+        activeMutationID = mutationID
+        isMutating = true
+        defer {
+            if activeMutationID == mutationID {
+                activeMutationID = nil
+                isMutating = false
+            }
+        }
 
         do {
             let outcome: SeriesDetailMutationOutcome
@@ -94,14 +111,21 @@ final class SeriesDetailMutationModel: ObservableObject {
                 var input = snapshot.libraryInput
                 input.libraryState = state
                 try await service.addToLibrary(input, context: .seriesDetail)
-                currentDetail = await service.seriesDetail(for: snapshot.id) ?? savedSnapshot(snapshot, state: state)
+                guard isCurrentMutation(mutationID, generation: startingGeneration) else { return .noOp }
+                let refreshedDetail = await service.seriesDetail(for: snapshot.id)
+                guard isCurrentMutation(mutationID, generation: startingGeneration) else { return .noOp }
+                currentDetail = refreshedDetail ?? savedSnapshot(snapshot, state: state)
                 outcome = .saved
             case let .stateUpdate(state):
                 try await service.updateLibraryState(state, for: detail.id)
-                currentDetail = await service.seriesDetail(for: detail.id) ?? stateUpdatedSnapshot(detail, state: state)
+                guard isCurrentMutation(mutationID, generation: startingGeneration) else { return .noOp }
+                let refreshedDetail = await service.seriesDetail(for: detail.id)
+                guard isCurrentMutation(mutationID, generation: startingGeneration) else { return .noOp }
+                currentDetail = refreshedDetail ?? stateUpdatedSnapshot(detail, state: state)
                 outcome = .stateUpdated
             case .remove:
                 try await service.removeFromLibrary(seriesID: detail.id)
+                guard isCurrentMutation(mutationID, generation: startingGeneration) else { return .noOp }
                 currentDetail = nil
                 outcome = .removed
             }
@@ -112,10 +136,15 @@ final class SeriesDetailMutationModel: ObservableObject {
             }
             return outcome
         } catch {
+            guard isCurrentMutation(mutationID, generation: startingGeneration) else { return .noOp }
             failedRequest = request
             failedOperation = request.operation
             return .failed(request.operation)
         }
+    }
+
+    private func isCurrentMutation(_ mutationID: UUID, generation: Int) -> Bool {
+        activeMutationID == mutationID && detailGeneration == generation
     }
 
     private func savedSnapshot(_ detail: SeriesDetailSnapshot, state: LibraryCollectionState) -> SeriesDetailSnapshot {
@@ -322,8 +351,8 @@ struct SeriesDetailView: View {
                     if mutationModel.canRetry {
                         Button("Retry") {
                             Task {
-                                await mutationModel.retry()
-                                publishSuccessfulMutationIfAvailable()
+                                let outcome = await mutationModel.retry()
+                                publishSuccessfulMutationIfAvailable(outcome)
                             }
                         }
                         .buttonStyle(.bordered)
@@ -481,6 +510,7 @@ struct SeriesDetailView: View {
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
+                .disabled(mutationModel.isMutating)
                 .accessibilityLabel(detail.isSaved ? "Saved series" : "Save series")
             }
         }
@@ -620,8 +650,8 @@ struct SeriesDetailView: View {
 
         Task {
             if detail.isSaved {
-                await mutationModel.removeFromLibrary()
-                publishSuccessfulMutationIfAvailable()
+                let outcome = await mutationModel.removeFromLibrary()
+                publishSuccessfulMutationIfAvailable(outcome)
             } else {
                 saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
                 pendingSaveDetail = detail
@@ -633,8 +663,8 @@ struct SeriesDetailView: View {
         guard dependencies.libraryLifecycleService != nil else { return }
         pendingSaveDetail = nil
         Task {
-            await mutationModel.save(detail, state: state)
-            publishSuccessfulMutationIfAvailable()
+            let outcome = await mutationModel.save(detail, state: state)
+            publishSuccessfulMutationIfAvailable(outcome)
         }
     }
 
@@ -642,13 +672,13 @@ struct SeriesDetailView: View {
         guard dependencies.libraryLifecycleService != nil else { return }
 
         Task {
-            await mutationModel.updateCollectionState(state)
-            publishSuccessfulMutationIfAvailable()
+            let outcome = await mutationModel.updateCollectionState(state)
+            publishSuccessfulMutationIfAvailable(outcome)
         }
     }
 
-    private func publishSuccessfulMutationIfAvailable() {
-        guard mutationModel.failedOperation == nil else { return }
+    private func publishSuccessfulMutationIfAvailable(_ outcome: SeriesDetailMutationOutcome) {
+        guard outcome == .saved || outcome == .stateUpdated || outcome == .removed else { return }
         publishDetail(mutationModel.currentDetail)
     }
 
