@@ -109,6 +109,18 @@ public struct BrowserView: View {
                 }
                 .accessibilityIdentifier("browser.librarySave.failure")
                 .zIndex(2)
+            } else if let successMessage = librarySaveOperation.successMessage {
+                VStack {
+                    TEBanner(
+                        title: successMessage,
+                        message: "This series is now available in Library.",
+                        systemImage: "checkmark.circle"
+                    )
+                    .padding(ToonEdgeSpacing.large)
+                    Spacer()
+                }
+                .accessibilityIdentifier("browser.librarySave.success")
+                .zIndex(2)
             }
         }
         .animation(.easeInOut(duration: 0.18), value: viewModel.browserOwnedReaderSession?.id)
@@ -122,6 +134,9 @@ public struct BrowserView: View {
             if viewModel.browserOwnedReaderSession != nil {
                 router.clearPresentedBrowserReaderLaunchOrigin()
             }
+        }
+        .onChange(of: viewModel.detectionResult?.readerSession?.id) { _, _ in
+            librarySaveOperation.reset()
         }
         .sheet(item: $pendingLibrarySaveSession) { session in
             AddToLibraryStatePickerView(
@@ -219,14 +234,18 @@ public struct BrowserView: View {
                 Button {
                     presentDetectedSessionLibrarySave()
                 } label: {
-                    Image(systemName: "bookmark")
+                    Image(systemName: librarySaveOperation.isSaved ? "bookmark.fill" : "bookmark")
                         .font(.system(size: 15, weight: .semibold))
                         .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(ToonEdgeColor.textPrimary)
-                .disabled(librarySaveOperation.isSaving)
-                .accessibilityLabel("Add detected series to library")
+                .disabled(librarySaveOperation.isSaving || librarySaveOperation.isSaved)
+                .accessibilityLabel(
+                    librarySaveOperation.isSaved
+                        ? "Detected series saved to library"
+                        : "Add detected series to library"
+                )
             }
         }
         .padding(.horizontal, ToonEdgeSpacing.medium)
@@ -382,6 +401,7 @@ public struct BrowserView: View {
 @MainActor
 final class BrowserLibrarySaveOperation: ObservableObject {
     @Published private(set) var failureMessage: String?
+    @Published private(set) var successMessage: String?
     @Published private(set) var isSaving = false
     private let interactionFeedback: any InteractionFeedbackProviding
 
@@ -389,14 +409,23 @@ final class BrowserLibrarySaveOperation: ObservableObject {
         self.interactionFeedback = interactionFeedback
     }
 
+    var isSaved: Bool { successMessage != nil }
+
+    func reset() {
+        guard !isSaving else { return }
+        failureMessage = nil
+        successMessage = nil
+    }
+
     @discardableResult
     func perform(_ operation: () async throws -> Void) async -> Bool {
-        guard !isSaving else { return false }
+        guard !isSaving, !isSaved else { return false }
         isSaving = true
         defer { isSaving = false }
         do {
             try await operation()
             failureMessage = nil
+            successMessage = "Saved to Library"
             interactionFeedback.emit(.operationSucceeded)
             return true
         } catch {

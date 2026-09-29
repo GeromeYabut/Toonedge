@@ -509,9 +509,10 @@ import Testing
     #expect(operation.failureMessage == nil)
     #expect(feedback.events == [.operationSucceeded])
 
-    let failed = await operation.perform { throw URLError(.cannotWriteToFile) }
+    let failedOperation = BrowserLibrarySaveOperation(interactionFeedback: feedback)
+    let failed = await failedOperation.perform { throw URLError(.cannotWriteToFile) }
     #expect(!failed)
-    #expect(operation.failureMessage == "Could not save this series.")
+    #expect(failedOperation.failureMessage == "Could not save this series.")
     #expect(feedback.events == [.operationSucceeded])
 }
 
@@ -534,6 +535,19 @@ import Testing
 
     await gate.resume()
     #expect(await firstSave.value)
+    #expect(feedback.events == [.operationSucceeded])
+}
+
+@MainActor
+@Test func repeatedBrowserSaveAfterConfirmedSuccessIsVisibleAndSilent() async {
+    let feedback = RecordingInteractionFeedback()
+    let operation = BrowserLibrarySaveOperation(interactionFeedback: feedback)
+
+    #expect(await operation.perform { })
+    #expect(operation.isSaved)
+    #expect(operation.successMessage == "Saved to Library")
+
+    #expect(!(await operation.perform { }))
     #expect(feedback.events == [.operationSucceeded])
 }
 
