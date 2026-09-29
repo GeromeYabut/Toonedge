@@ -321,6 +321,7 @@ private actor UITestAdjacentSuccessLoader: AdjacentReaderSessionLoading {
     ) async throws -> MockReaderSession {
         let label = url.lastPathComponent.replacingOccurrences(of: "chapter-", with: "")
         var session = MockReaderSession(
+            id: context.currentSession.id,
             seriesID: context.currentSession.seriesID,
             seriesTitle: context.currentSession.seriesTitle,
             seriesURL: context.currentSession.seriesURL,

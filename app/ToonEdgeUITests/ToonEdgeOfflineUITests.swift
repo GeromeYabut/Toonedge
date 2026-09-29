@@ -116,3 +116,54 @@ final class ToonEdgeAdjacentFailureUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Next"].waitForExistence(timeout: 5))
     }
 }
+
+@MainActor
+final class ToonEdgeNumericAdjacencyUITests: XCTestCase {
+    func testSparseChapter155NextOpens156Never169() {
+        let app = launchFixture("numeric-adjacency")
+        revealChrome(in: app)
+
+        app.buttons["reader.nextChapter"].tap()
+
+        assertChapter("Chapter 156", in: app)
+        XCTAssertFalse(app.staticTexts["reader.chapter.label"].label.contains("169"))
+    }
+
+    func testSparseChapter155PreviousOpens154Never1() {
+        let app = launchFixture("numeric-adjacency")
+        revealChrome(in: app)
+
+        app.buttons["reader.previousChapter"].tap()
+
+        assertChapter("Chapter 154", in: app)
+        XCTAssertFalse(app.staticTexts["reader.chapter.label"].label.hasSuffix("Chapter 1"))
+    }
+
+    func testUnsafeNumericPatternDoesNotExposeSparseAdjacentTargets() {
+        let app = launchFixture("numeric-adjacency-unsafe")
+        revealChrome(in: app)
+
+        XCTAssertFalse(app.buttons["reader.previousChapter"].isEnabled)
+        XCTAssertFalse(app.buttons["reader.nextChapter"].isEnabled)
+    }
+
+    private func launchFixture(_ fixture: String) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-readerHardeningFixture", fixture]
+        app.launch()
+        return app
+    }
+
+    private func revealChrome(in app: XCUIApplication) {
+        let reader = app.descendants(matching: .any)["reader.root"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 5))
+        reader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(app.staticTexts["reader.chapter.label"].waitForExistence(timeout: 5))
+    }
+
+    private func assertChapter(_ expectedChapter: String, in app: XCUIApplication) {
+        let chapterLabel = app.staticTexts["reader.chapter.label"]
+        XCTAssertTrue(chapterLabel.waitForExistence(timeout: 5))
+        XCTAssertTrue(chapterLabel.label.contains(expectedChapter))
+    }
+}
