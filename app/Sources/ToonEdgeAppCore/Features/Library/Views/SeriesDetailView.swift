@@ -7,6 +7,14 @@ enum SeriesDetailMutationOperation: Equatable, Sendable {
     case remove
 }
 
+enum SeriesDetailMutationOutcome: Equatable, Sendable {
+    case saved
+    case stateUpdated
+    case removed
+    case failed(SeriesDetailMutationOperation)
+    case noOp
+}
+
 @MainActor
 final class SeriesDetailMutationModel: ObservableObject {
     @Published private(set) var currentDetail: SeriesDetailSnapshot?
@@ -27,11 +35,17 @@ final class SeriesDetailMutationModel: ObservableObject {
     }
 
     private let service: (any LibraryLifecycleManaging)?
+    private let interactionFeedback: (any InteractionFeedbackProviding)?
     private var failedRequest: Request?
 
-    init(service: (any LibraryLifecycleManaging)?, currentDetail: SeriesDetailSnapshot?) {
+    init(
+        service: (any LibraryLifecycleManaging)?,
+        currentDetail: SeriesDetailSnapshot?,
+        interactionFeedback: (any InteractionFeedbackProviding)? = nil
+    ) {
         self.service = service
         self.currentDetail = currentDetail
+        self.interactionFeedback = interactionFeedback
     }
 
     var canRetry: Bool { failedRequest != nil }
@@ -49,45 +63,58 @@ final class SeriesDetailMutationModel: ObservableObject {
         currentDetail = detail
     }
 
-    func save(_ detail: SeriesDetailSnapshot, state: LibraryCollectionState) async {
+    @discardableResult
+    func save(_ detail: SeriesDetailSnapshot, state: LibraryCollectionState) async -> SeriesDetailMutationOutcome {
         await perform(.save(detail, state))
     }
 
-    func updateCollectionState(_ state: LibraryCollectionState) async {
+    @discardableResult
+    func updateCollectionState(_ state: LibraryCollectionState) async -> SeriesDetailMutationOutcome {
         await perform(.stateUpdate(state))
     }
 
-    func removeFromLibrary() async {
+    @discardableResult
+    func removeFromLibrary() async -> SeriesDetailMutationOutcome {
         await perform(.remove)
     }
 
-    func retry() async {
-        guard let failedRequest else { return }
-        await perform(failedRequest)
+    @discardableResult
+    func retry() async -> SeriesDetailMutationOutcome {
+        guard let failedRequest else { return .noOp }
+        return await perform(failedRequest)
     }
 
-    private func perform(_ request: Request) async {
-        guard let service, let detail = currentDetail else { return }
+    private func perform(_ request: Request) async -> SeriesDetailMutationOutcome {
+        guard let service, let detail = currentDetail else { return .noOp }
 
         do {
+            let outcome: SeriesDetailMutationOutcome
             switch request {
             case let .save(snapshot, state):
                 var input = snapshot.libraryInput
                 input.libraryState = state
                 try await service.addToLibrary(input, context: .seriesDetail)
                 currentDetail = await service.seriesDetail(for: snapshot.id) ?? savedSnapshot(snapshot, state: state)
+                outcome = .saved
             case let .stateUpdate(state):
                 try await service.updateLibraryState(state, for: detail.id)
                 currentDetail = await service.seriesDetail(for: detail.id) ?? stateUpdatedSnapshot(detail, state: state)
+                outcome = .stateUpdated
             case .remove:
                 try await service.removeFromLibrary(seriesID: detail.id)
                 currentDetail = nil
+                outcome = .removed
             }
             failedRequest = nil
             failedOperation = nil
+            if outcome == .saved || outcome == .removed {
+                interactionFeedback?.emit(.operationSucceeded)
+            }
+            return outcome
         } catch {
             failedRequest = request
             failedOperation = request.operation
+            return .failed(request.operation)
         }
     }
 
@@ -184,7 +211,8 @@ struct SeriesDetailView: View {
         self._mutationModel = StateObject(
             wrappedValue: SeriesDetailMutationModel(
                 service: dependencies.libraryLifecycleService,
-                currentDetail: cachedDetail
+                currentDetail: cachedDetail,
+                interactionFeedback: dependencies.interactionFeedback
             )
         )
     }

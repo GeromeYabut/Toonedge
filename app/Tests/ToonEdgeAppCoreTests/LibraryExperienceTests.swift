@@ -727,13 +727,51 @@ import Testing
 @Test func failedSeriesSavePreservesDetailAndOffersRetry() async {
     let detail = SeriesDetailSnapshot.mock(chapters: [ChapterSummary.mock()])
     let service = FailingSeriesDetailLifecycleService(failing: .save)
-    let model = SeriesDetailMutationModel(service: service, currentDetail: detail)
+    let feedback = RecordingInteractionFeedback()
+    let model = SeriesDetailMutationModel(service: service, currentDetail: detail, interactionFeedback: feedback)
 
-    await model.save(detail, state: .planned)
+    let outcome = await model.save(detail, state: .planned)
 
+    #expect(outcome == .failed(.save))
     #expect(model.currentDetail == detail)
     #expect(model.failedOperation == .save)
     #expect(model.canRetry)
+    #expect(feedback.events.isEmpty)
+}
+
+@MainActor
+@Test func confirmedSeriesSaveAndRemovalEmitOnceFromTypedOutcomes() async {
+    let detail = SeriesDetailSnapshot.mock(chapters: [ChapterSummary.mock()])
+    let feedback = RecordingInteractionFeedback()
+    let service = FailingSeriesDetailLifecycleService(failing: .stateUpdate, failureCount: 0)
+    let saveModel = SeriesDetailMutationModel(
+        service: service,
+        currentDetail: detail,
+        interactionFeedback: feedback
+    )
+
+    #expect(await saveModel.save(detail, state: .planned) == .saved)
+    #expect(feedback.events == [.operationSucceeded])
+
+    feedback.reset()
+    let removeModel = SeriesDetailMutationModel(
+        service: service,
+        currentDetail: detail,
+        interactionFeedback: feedback
+    )
+    #expect(await removeModel.removeFromLibrary() == .removed)
+    #expect(feedback.events == [.operationSucceeded])
+}
+
+@MainActor
+@Test func seriesMutationNoOpHasTypedOutcomeAndRemainsSilent() async {
+    let detail = SeriesDetailSnapshot.mock(chapters: [ChapterSummary.mock()])
+    let feedback = RecordingInteractionFeedback()
+    let model = SeriesDetailMutationModel(service: nil, currentDetail: detail, interactionFeedback: feedback)
+
+    #expect(await model.save(detail, state: .planned) == .noOp)
+    #expect(await model.removeFromLibrary() == .noOp)
+    #expect(feedback.events.isEmpty)
 }
 
 @MainActor
