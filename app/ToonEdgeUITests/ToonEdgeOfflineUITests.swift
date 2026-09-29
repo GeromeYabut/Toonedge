@@ -163,7 +163,11 @@ final class ToonEdgeNumericAdjacencyUITests: XCTestCase {
 
     private func assertChapter(_ expectedChapter: String, in app: XCUIApplication) {
         let chapterLabel = app.staticTexts["reader.chapter.label"]
-        XCTAssertTrue(chapterLabel.waitForExistence(timeout: 5))
-        XCTAssertTrue(chapterLabel.label.contains(expectedChapter))
+        let expectedLabel = "Numeric Adjacency Fixture, \(expectedChapter)"
+        let matchingLabel = NSPredicate(format: "label == %@", expectedLabel)
+        let expectation = XCTNSPredicateExpectation(predicate: matchingLabel, object: chapterLabel)
+
+        XCTAssertEqual(XCTWaiter().wait(for: [expectation], timeout: 5), .completed)
+        XCTAssertEqual(chapterLabel.label, expectedLabel)
     }
 }
