@@ -503,16 +503,21 @@ import Testing
 @Test func browserSaveFeedbackRequiresAuthoritativeSuccessAndExposesFailure() async {
     let feedback = RecordingInteractionFeedback()
     let operation = BrowserLibrarySaveOperation(interactionFeedback: feedback)
+    let savedSessionID = UUID()
 
-    let saved = await operation.perform { }
+    let saved = await operation.perform(sessionID: savedSessionID) { }
     #expect(saved)
     #expect(operation.failureMessage == nil)
     #expect(feedback.events == [.operationSucceeded])
 
     let failedOperation = BrowserLibrarySaveOperation(interactionFeedback: feedback)
-    let failed = await failedOperation.perform { throw URLError(.cannotWriteToFile) }
+    let failedSessionID = UUID()
+    let failed = await failedOperation.perform(sessionID: failedSessionID) {
+        throw URLError(.cannotWriteToFile)
+    }
     #expect(!failed)
     #expect(failedOperation.failureMessage == "Could not save this series.")
+    #expect(!failedOperation.isSaving)
     #expect(feedback.events == [.operationSucceeded])
 }
 
@@ -535,6 +540,37 @@ import Testing
 
     await gate.resume()
     #expect(await firstSave.value)
+    #expect(feedback.events == [.operationSucceeded])
+}
+
+@MainActor
+@Test func browserSaveCompletionFromPreviousDetectedSessionIsStaleAndSilent() async {
+    let feedback = RecordingInteractionFeedback()
+    let operation = BrowserLibrarySaveOperation(interactionFeedback: feedback)
+    let previousSessionGate = SuspendedBrowserSaveGate()
+    let previousSessionID = UUID()
+    let currentSessionID = UUID()
+
+    let previousSessionSave = Task {
+        await operation.perform(sessionID: previousSessionID) {
+            await previousSessionGate.suspend()
+        }
+    }
+    await previousSessionGate.waitUntilSuspended()
+
+    operation.reset(for: currentSessionID)
+    #expect(!operation.isSaving)
+    #expect(operation.successMessage == nil)
+    #expect(operation.failureMessage == nil)
+
+    #expect(await operation.perform(sessionID: currentSessionID) { })
+    #expect(operation.successMessage == "Saved to Library")
+    #expect(feedback.events == [.operationSucceeded])
+
+    await previousSessionGate.resume()
+    #expect(!(await previousSessionSave.value))
+    #expect(operation.successMessage == "Saved to Library")
+    #expect(operation.failureMessage == nil)
     #expect(feedback.events == [.operationSucceeded])
 }
 

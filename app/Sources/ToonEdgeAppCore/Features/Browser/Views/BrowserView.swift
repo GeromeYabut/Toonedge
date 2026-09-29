@@ -135,8 +135,8 @@ public struct BrowserView: View {
                 router.clearPresentedBrowserReaderLaunchOrigin()
             }
         }
-        .onChange(of: viewModel.detectionResult?.readerSession?.id) { _, _ in
-            librarySaveOperation.reset()
+        .onChange(of: viewModel.detectionResult?.readerSession?.id) { _, sessionID in
+            librarySaveOperation.reset(for: sessionID)
         }
         .sheet(item: $pendingLibrarySaveSession) { session in
             AddToLibraryStatePickerView(
@@ -391,7 +391,7 @@ public struct BrowserView: View {
                 addressDisplay: viewModel.addressDisplay,
                 libraryState: state
             )
-            await librarySaveOperation.perform {
+            await librarySaveOperation.perform(sessionID: session.id) {
                 try await lifecycleService.addToLibrary(input, context: .browser)
             }
         }
@@ -404,6 +404,8 @@ final class BrowserLibrarySaveOperation: ObservableObject {
     @Published private(set) var successMessage: String?
     @Published private(set) var isSaving = false
     private let interactionFeedback: any InteractionFeedbackProviding
+    private var currentSessionID: UUID?
+    private var activeOperationID: UUID?
 
     init(interactionFeedback: any InteractionFeedbackProviding) {
         self.interactionFeedback = interactionFeedback
@@ -411,24 +413,46 @@ final class BrowserLibrarySaveOperation: ObservableObject {
 
     var isSaved: Bool { successMessage != nil }
 
-    func reset() {
-        guard !isSaving else { return }
+    func reset(for sessionID: UUID? = nil) {
+        currentSessionID = sessionID
+        activeOperationID = nil
+        isSaving = false
         failureMessage = nil
         successMessage = nil
     }
 
     @discardableResult
-    func perform(_ operation: () async throws -> Void) async -> Bool {
+    func perform(
+        sessionID: UUID? = nil,
+        _ operation: () async throws -> Void
+    ) async -> Bool {
+        if let sessionID {
+            if currentSessionID == nil {
+                currentSessionID = sessionID
+            }
+            guard currentSessionID == sessionID else { return false }
+        }
         guard !isSaving, !isSaved else { return false }
+        let operationID = UUID()
+        activeOperationID = operationID
         isSaving = true
-        defer { isSaving = false }
         do {
             try await operation()
+            guard activeOperationID == operationID, currentSessionID == sessionID else {
+                return false
+            }
+            activeOperationID = nil
+            isSaving = false
             failureMessage = nil
             successMessage = "Saved to Library"
             interactionFeedback.emit(.operationSucceeded)
             return true
         } catch {
+            guard activeOperationID == operationID, currentSessionID == sessionID else {
+                return false
+            }
+            activeOperationID = nil
+            isSaving = false
             failureMessage = "Could not save this series."
             return false
         }
