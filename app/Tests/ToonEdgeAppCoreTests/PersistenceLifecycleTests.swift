@@ -529,6 +529,45 @@ import Testing
 }
 
 @MainActor
+@Test func swiftDataRepositoryRejectsSeriesNumberAsExplicitAdjacentChapterIdentity() async throws {
+    let repository = try makeRepository()
+    let chapter155 = LibraryChapterInput.mock(
+        chapterLabel: "155",
+        sourceURL: URL(string: "https://example.com/series-156/chapter-155")!,
+        nextChapterURL: URL(string: "https://example.com/series-156/chapter-169")!,
+        imageURLs: [URL(string: "https://images.example.test/155.png")!]
+    )
+
+    try await repository.addToLibrary(.mock(chapters: [chapter155]), context: .reader)
+    let session = try #require(await repository.readerSession(forChapterID: chapter155.id))
+
+    #expect(session.nextChapter?.sourceURL == URL(string: "https://example.com/series-156/chapter-156"))
+}
+
+@Test func chapterURLInferenceRejectsSeriesNumberAsChapterIdentity() throws {
+    let url = try #require(URL(string: "https://example.com/series-156/chapter-169"))
+    #expect(!ChapterURLInference.containsChapterNumber(156, in: url))
+    #expect(ChapterURLInference.containsChapterNumber(169, in: url))
+}
+
+@MainActor
+@Test func swiftDataRepositoryUsesValidExplicitNumericNeighborWhenInferenceIsUnsafe() async throws {
+    let repository = try makeRepository()
+    let nextURL = URL(string: "https://example.com/series-169/chapter-156")!
+    let chapter155 = LibraryChapterInput.mock(
+        chapterLabel: "155",
+        sourceURL: URL(string: "https://example.com/series/latest")!,
+        nextChapterURL: nextURL,
+        imageURLs: [URL(string: "https://images.example.test/155.png")!]
+    )
+
+    try await repository.addToLibrary(.mock(chapters: [chapter155]), context: .reader)
+    let session = try #require(await repository.readerSession(forChapterID: chapter155.id))
+
+    #expect(session.nextChapter?.sourceURL == nextURL)
+}
+
+@MainActor
 @Test func swiftDataRepositoryRejectsNonAdjacentExplicitLinkForNumericChapter() async throws {
     let repository = try makeRepository()
     let chapter169URL = URL(string: "https://example.com/series/chapter-169")!

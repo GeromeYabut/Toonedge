@@ -990,10 +990,13 @@ enum ChapterURLInference {
     }
 
     static func containsChapterNumber(_ number: Int, in sourceURL: URL) -> Bool {
-        let label = "\(number)"
-        return sourceURL.pathComponents.contains {
-            pathComponentContainsChapterNumber($0, knownLabel: label)
-        }
+        let label = ChapterNumericLabelExtractor.canonicalLabel(
+            chapterNumber: nil,
+            chapterLabel: "",
+            title: "",
+            sourceURL: sourceURL
+        )
+        return Int(label) == number
     }
 
     static func inferredSourceURL(forChapter number: Int, knownChapters: [KnownChapter]) -> URL? {
