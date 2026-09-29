@@ -4,6 +4,7 @@ private enum ReaderHardeningFixtureScenario: String {
     case numericAdjacency = "numeric-adjacency"
     case numericAdjacencyUnsafe = "numeric-adjacency-unsafe"
     case continueTarget = "continue-target"
+    case continueAdjacentDiscovery = "continue-adjacent-discovery"
     case adjacentTimeout = "adjacent-timeout"
     case adjacentChallenge = "adjacent-challenge"
     case adjacentUnavailable = "adjacent-unavailable"
@@ -143,6 +144,31 @@ struct ToonEdgeAppEntry: App {
         } else if hardeningFixture == .adjacentChallenge {
             dependencies.adjacentReaderSessionLoader = UITestAdjacentFailureLoader()
         }
+        if let hardeningFixture,
+           hardeningFixture == .continueTarget || hardeningFixture == .continueAdjacentDiscovery {
+            let service = UITestContinueJourneyLibraryService(
+                scenario: hardeningFixture,
+                resetTestData: arguments.contains("-resetTestData")
+            )
+            dependencies.libraryService = service
+            dependencies.libraryLifecycleService = service
+            dependencies.recentReadingRecorder = service
+            dependencies.readerProgressRepository = service
+            dependencies.chapterIndexRefreshService = nil
+            if hardeningFixture == .continueAdjacentDiscovery {
+                dependencies.adjacentReaderSessionLoader = UITestContinueAdjacentDiscoveryLoader()
+            }
+            // Reserved domains never need a network response to exercise real Reader callbacks.
+            if let cache = dependencies.chapterAssetCache {
+                let data = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==")!
+                for number in 1...3 {
+                    let session = UITestContinueJourneyFixture.session(number)
+                    for imageURL in session.imageURLs {
+                        try? cache.store(data, for: imageURL, sourceURL: session.sourceURL)
+                    }
+                }
+            }
+        }
         if arguments.contains("-seedUpdateSuccess") {
             dependencies.updateRefreshService = MockLibraryUpdateRefreshService(
                 result: LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 1, failedCount: 0)
@@ -179,6 +205,16 @@ struct ToonEdgeAppEntry: App {
         if arguments.contains("-uiTesting"), hardeningFixture == .numericAdjacencyUnsafe {
             return AppRouter(presentedReader: numericAdjacencyUnsafeFixtureSession)
         }
+        if arguments.contains("-uiTesting"), hardeningFixture == .continueTarget {
+            return AppRouter(selectedTab: .library)
+        }
+        if arguments.contains("-uiTesting"), hardeningFixture == .continueAdjacentDiscovery {
+            return AppRouter(
+                selectedTab: .library,
+                presentedReader: UITestContinueJourneyFixture.session(2),
+                pendingLibrarySeriesID: UITestContinueJourneyFixture.seriesID
+            )
+        }
         guard arguments.contains("-seedOfflineReader") else {
             return AppRouter()
         }
@@ -186,6 +222,230 @@ struct ToonEdgeAppEntry: App {
             ? uncachedOfflineFixtureSession
             : offlineFixtureSession
         return AppRouter(presentedReader: session)
+    }
+}
+
+private enum UITestContinueJourneyFixture {
+    static let seriesID = UUID(uuidString: "DEF02100-0000-4000-8000-000000000001")!
+    static let title = "Continue Journey Fixture"
+    static let seriesURL = URL(string: "https://fixture.example/continue-journey")!
+    static let seedDate = Date(timeIntervalSince1970: 1_700_000_000)
+    static let imageCount = 12
+
+    static func chapterID(_ number: Int) -> UUID {
+        UUID(uuidString: "DEF02100-0000-4000-8000-00000000000\(number + 1)")!
+    }
+
+    static func sourceURL(_ number: Int) -> URL {
+        seriesURL.appendingPathComponent("chapter-\(number)")
+    }
+
+    static func session(_ number: Int) -> MockReaderSession {
+        MockReaderSession(
+            id: chapterID(number),
+            seriesID: seriesID,
+            seriesTitle: title,
+            seriesURL: seriesURL,
+            chapterTitle: "Chapter \(number)",
+            sourceURL: sourceURL(number),
+            imageURLs: (1...imageCount).map {
+                URL(string: "https://images.example.test/continue-journey/\(number)/\($0).png")!
+            },
+            pageMetadata: (1...imageCount).map { _ in ReaderPageMetadata(pixelWidth: 1, pixelHeight: 1) },
+            nextChapter: number == 2
+                ? MockChapter(id: chapterID(3), title: "Chapter 3", sourceURL: sourceURL(3))
+                : nil,
+            launchOrigin: .library(seriesID: seriesID)
+        )
+    }
+}
+
+/// UI-test transport only. UserDefaults here is not production repository persistence coverage.
+private actor UITestContinueJourneyLibraryService: LibraryLifecycleManaging, RecentReadingRecording, ReaderProgressStoring {
+    private typealias Fixture = UITestContinueJourneyFixture
+
+    private struct Checkpoint: Codable {
+        var progress: ReaderProgress
+        var readAt: Date
+    }
+
+    private struct State: Codable {
+        var activeChapter: Int
+        var checkpoints: [Int: Checkpoint]
+    }
+
+    private let defaults: UserDefaults
+    private let stateKey: String
+    private var state: State
+
+    init(scenario: ReaderHardeningFixtureScenario, resetTestData: Bool) {
+        let defaults = UserDefaults.standard
+        let key = "ToonEdge.UITests.ReaderHardening.ContinueJourney.\(scenario.rawValue).v1"
+        if resetTestData {
+            defaults.removeObject(forKey: key)
+        }
+        self.defaults = defaults
+        self.stateKey = key
+        let activeChapter = scenario == .continueAdjacentDiscovery ? 2 : 3
+        self.state = defaults.data(forKey: key).flatMap { try? JSONDecoder().decode(State.self, from: $0) }
+            ?? State(activeChapter: activeChapter, checkpoints: [
+                1: Checkpoint(
+                    progress: ReaderProgress(currentImageIndex: 1, totalImageCount: Fixture.imageCount),
+                    readAt: Fixture.seedDate
+                ),
+                activeChapter: Checkpoint(
+                    progress: ReaderProgress(currentImageIndex: 2, totalImageCount: Fixture.imageCount),
+                    readAt: Fixture.seedDate.addingTimeInterval(60)
+                )
+            ])
+    }
+
+    func homeSnapshot() async -> HomeSnapshot {
+        let summary = SeriesSummary(
+            id: Fixture.seriesID,
+            title: Fixture.title,
+            subtitle: "Continue Chapter \(state.activeChapter)",
+            progressPercent: activeCheckpoint.progress.fractionComplete,
+            hasUnreadUpdates: false
+        )
+        return HomeSnapshot(continueReading: [summary], recentlyUpdated: [], library: [summary])
+    }
+
+    func librarySnapshot() async -> LibrarySnapshot {
+        LibrarySnapshot(series: [LibrarySeriesSummary(
+            id: Fixture.seriesID,
+            title: Fixture.title,
+            sourceDomain: "fixture.example",
+            canonicalURL: Fixture.seriesURL,
+            coverImageURL: nil,
+            progressPercent: activeCheckpoint.progress.fractionComplete,
+            chaptersRead: 0,
+            totalKnownChapters: state.checkpoints.count,
+            lastReadAt: activeCheckpoint.readAt,
+            libraryState: .reading,
+            hasUnreadUpdates: false,
+            isCompleted: false,
+            latestChapterLabel: String(state.checkpoints.keys.max() ?? 1),
+            currentChapterLabel: String(state.activeChapter),
+            resumeTarget: LibraryResumeTarget(chapter: chapterSummary(state.activeChapter))
+        )])
+    }
+
+    func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
+        guard seriesID == Fixture.seriesID else { return nil }
+        return SeriesDetailSnapshot(
+            id: Fixture.seriesID,
+            title: Fixture.title,
+            status: "Ongoing",
+            synopsis: "Deterministic UI-test Continue journey.",
+            sourceDomain: "fixture.example",
+            coverImageURL: nil,
+            isSaved: true,
+            libraryState: .reading,
+            progressPercent: activeCheckpoint.progress.fractionComplete,
+            chaptersRead: 0,
+            totalKnownChapters: state.checkpoints.count,
+            hasUnreadUpdates: false,
+            chapters: state.checkpoints.keys.sorted().map(chapterSummary)
+        )
+    }
+
+    func continueReadingTarget(for seriesID: UUID) async -> ContinueReadingTarget? {
+        guard seriesID == Fixture.seriesID else { return nil }
+        return ContinueReadingTarget(
+            seriesID: seriesID,
+            chapterID: Fixture.chapterID(state.activeChapter),
+            sourceURL: Fixture.sourceURL(state.activeChapter),
+            progress: activeCheckpoint.progress
+        )
+    }
+
+    func readerSession(forChapterID chapterID: UUID) async -> MockReaderSession? {
+        guard let number = state.checkpoints.keys.first(where: { Fixture.chapterID($0) == chapterID }) else { return nil }
+        return Fixture.session(number)
+    }
+
+    func readerSession(forSourceURL sourceURL: URL) async -> MockReaderSession? {
+        guard let number = state.checkpoints.keys.first(where: { Fixture.sourceURL($0) == sourceURL }) else { return nil }
+        return Fixture.session(number)
+    }
+
+    func progress(for sourceURL: URL) async -> ReaderProgress? {
+        guard let number = (1...3).first(where: { Fixture.sourceURL($0) == sourceURL }) else { return nil }
+        return state.checkpoints[number]?.progress
+    }
+
+    func save(_ progress: ReaderProgress, for sourceURL: URL) async {
+        guard let number = (1...3).first(where: { Fixture.sourceURL($0) == sourceURL }) else { return }
+        try? await recordReadingProgress(progress, forChapterID: Fixture.chapterID(number), at: Date())
+    }
+
+    func recordReadingProgress(_ progress: ReaderProgress, forChapterID chapterID: UUID, at date: Date) async throws {
+        guard let number = (1...3).first(where: { Fixture.chapterID($0) == chapterID }),
+              progress.totalImageCount > 0,
+              date > (state.checkpoints[number]?.readAt ?? .distantPast) else { return }
+        let latestActiveDate = activeCheckpoint.readAt
+        state.checkpoints[number] = Checkpoint(progress: progress, readAt: date)
+        if progress.fractionComplete < 1, date > latestActiveDate {
+            state.activeChapter = number
+        }
+        defaults.set(try JSONEncoder().encode(state), forKey: stateKey)
+    }
+
+    func recordRecentReading(_ input: RecentReadingInput) async throws {
+        guard input.seriesID == Fixture.seriesID,
+              let number = (1...3).first(where: { Fixture.sourceURL($0) == input.sourceURL }),
+              input.chapterID == Fixture.chapterID(number) else { return }
+        try await recordReadingProgress(input.progress, forChapterID: input.chapterID, at: input.readAt)
+    }
+
+    func isSaved(canonicalURL: URL) async -> Bool { canonicalURL == Fixture.seriesURL }
+
+    func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {
+        throw URLError(.unsupportedURL)
+    }
+
+    func removeFromLibrary(seriesID: UUID) async throws { throw URLError(.unsupportedURL) }
+    func updateLibraryState(_ state: LibraryCollectionState, for seriesID: UUID) async throws {
+        throw URLError(.unsupportedURL)
+    }
+
+    func recordUpdateCheckResult(
+        seriesID: UUID, latestChapterLabel: String?, hasUnreadUpdates: Bool, checkedAt: Date
+    ) async throws {}
+
+    private var activeCheckpoint: Checkpoint { state.checkpoints[state.activeChapter]! }
+
+    private func chapterSummary(_ number: Int) -> ChapterSummary {
+        let checkpoint = state.checkpoints[number]!
+        return ChapterSummary(
+            id: Fixture.chapterID(number),
+            title: "Chapter \(number)",
+            chapterLabel: String(number),
+            chapterNumber: Double(number),
+            sourceURL: Fixture.sourceURL(number),
+            readState: checkpoint.progress.fractionComplete < 1
+                ? .inProgress(progressPercent: checkpoint.progress.fractionComplete) : .read,
+            isDownloaded: false,
+            publishedAt: nil,
+            lastReadAt: checkpoint.readAt
+        )
+    }
+}
+
+private struct UITestContinueAdjacentDiscoveryLoader: AdjacentReaderSessionLoading {
+    func loadAdjacentReaderSession(
+        from url: URL,
+        context: AdjacentReaderSessionLoadContext
+    ) async throws -> MockReaderSession {
+        guard context.currentSession.sourceURL == UITestContinueJourneyFixture.sourceURL(2),
+              context.direction == .next,
+              url == UITestContinueJourneyFixture.sourceURL(3) else {
+            throw URLError(.unsupportedURL)
+        }
+        var session = UITestContinueJourneyFixture.session(3)
+        session.launchOrigin = context.currentSession.launchOrigin
+        return session
     }
 }
 
