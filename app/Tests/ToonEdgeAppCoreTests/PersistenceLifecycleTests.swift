@@ -770,6 +770,99 @@ import Testing
 }
 
 @MainActor
+@Test func adjacentDiscoveredChapterBecomesAuthoritativeContinueTargetImmediatelyAndAfterReconstruction() async throws {
+    let schema = Schema([
+        StoredSeries.self,
+        StoredChapter.self,
+        StoredProgress.self,
+        StoredSearchHistory.self,
+        StoredRecentReading.self
+    ])
+    let container = try ModelContainer(
+        for: schema,
+        configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+    )
+    let repository = SwiftDataLibraryRepository(
+        modelContext: container.mainContext,
+        modelContainer: container
+    )
+    let seriesID = UUID()
+    let chapter2ID = UUID()
+    let chapter3ID = UUID()
+    let seriesURL = URL(string: "https://example.com/adjacent-discovery/")!
+    let chapter2URL = seriesURL.appendingPathComponent("chapter-2")
+    let chapter3URL = seriesURL.appendingPathComponent("chapter-3")
+    let discoveredProgress = ReaderProgress(currentImageIndex: 2, totalImageCount: 8)
+
+    try await repository.addToLibrary(
+        .mock(
+            id: seriesID,
+            title: "Adjacent Discovery",
+            canonicalURL: seriesURL,
+            chapters: [
+                .mock(chapterLabel: "1", sourceURL: seriesURL.appendingPathComponent("chapter-1")),
+                .mock(
+                    id: chapter2ID,
+                    chapterLabel: "2",
+                    sourceURL: chapter2URL,
+                    imageURLs: [URL(string: "https://img.example.com/chapter-2.jpg")!]
+                )
+            ]
+        ),
+        context: .reader
+    )
+    try await repository.recordReadingProgress(
+        ReaderProgress(currentImageIndex: 1, totalImageCount: 1),
+        forChapterID: chapter2ID,
+        at: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+    let chapter2Session = try #require(await repository.readerSession(forChapterID: chapter2ID))
+    let adjacentChapter = try #require(chapter2Session.nextChapter)
+    #expect(adjacentChapter.sourceURL == chapter3URL)
+    #expect(await repository.readerSession(forChapterID: chapter3ID) == nil)
+
+    // Reader records the newly loaded adjacent session and its progress through this write path.
+    try await repository.recordRecentReading(
+        RecentReadingInput(
+            seriesID: seriesID,
+            chapterID: chapter3ID,
+            seriesTitle: "Adjacent Discovery",
+            seriesURL: seriesURL,
+            sourceDomain: "example.com",
+            chapterTitle: "Adjacent Discovery Chapter 3 - Read Online | Example",
+            chapterLabel: "Example",
+            sourceURL: adjacentChapter.sourceURL,
+            imageURLs: (1...8).map { URL(string: "https://img.example.com/chapter-3-\($0).jpg")! },
+            progress: discoveredProgress,
+            readAt: Date(timeIntervalSince1970: 1_700_001_000)
+        )
+    )
+
+    // Resolve Continue before loading detail so a detail read cannot hide a missing write.
+    let target = try #require(await repository.continueReadingTarget(for: seriesID))
+    let detail = try #require(await repository.seriesDetail(for: seriesID))
+    #expect(detail.primaryActionTitle == "Continue Chapter 3")
+    #expect(detail.primaryChapter?.id == chapter3ID)
+    #expect(target.chapterID == chapter3ID)
+    #expect(target.sourceURL == chapter3URL)
+    #expect(target.progress == discoveredProgress)
+    #expect(detail.totalKnownChapters == 3)
+
+    let reconstructedRepository = SwiftDataLibraryRepository(
+        modelContext: ModelContext(container),
+        modelContainer: container
+    )
+    let reconstructedTarget = try #require(await reconstructedRepository.continueReadingTarget(for: seriesID))
+    let reconstructedDetail = try #require(await reconstructedRepository.seriesDetail(for: seriesID))
+    #expect(reconstructedDetail.primaryActionTitle == "Continue Chapter 3")
+    #expect(reconstructedDetail.primaryChapter?.id == chapter3ID)
+    #expect(reconstructedTarget.chapterID == chapter3ID)
+    #expect(reconstructedTarget.sourceURL == chapter3URL)
+    #expect(reconstructedTarget.progress == discoveredProgress)
+    #expect(reconstructedDetail.totalKnownChapters == 3)
+}
+
+@MainActor
 @Test func librarySummaryResumeTargetMatchesSeriesDetailPrimaryChapterWithoutDetailSnapshotConstruction() async throws {
     let repository = try makeRepository()
     let seriesID = UUID()
