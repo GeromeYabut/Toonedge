@@ -499,6 +499,94 @@ import Testing
     #expect(input.chapters.first?.chapterNumber == 3)
 }
 
+@MainActor
+@Test func browserSaveFeedbackRequiresAuthoritativeSuccessAndExposesFailure() async {
+    let feedback = RecordingInteractionFeedback()
+    let operation = BrowserLibrarySaveOperation(interactionFeedback: feedback)
+    let savedSessionID = UUID()
+
+    let saved = await operation.perform(sessionID: savedSessionID) { }
+    #expect(saved)
+    #expect(operation.failureMessage == nil)
+    #expect(feedback.events == [.operationSucceeded])
+
+    let failedOperation = BrowserLibrarySaveOperation(interactionFeedback: feedback)
+    let failedSessionID = UUID()
+    let failed = await failedOperation.perform(sessionID: failedSessionID) {
+        throw URLError(.cannotWriteToFile)
+    }
+    #expect(!failed)
+    #expect(failedOperation.failureMessage == "Could not save this series.")
+    #expect(!failedOperation.isSaving)
+    #expect(feedback.events == [.operationSucceeded])
+}
+
+@MainActor
+@Test func duplicateBrowserSaveWhileAuthoritativeSaveIsPendingRemainsSilent() async {
+    let feedback = RecordingInteractionFeedback()
+    let operation = BrowserLibrarySaveOperation(interactionFeedback: feedback)
+    let gate = SuspendedBrowserSaveGate()
+
+    let firstSave = Task {
+        await operation.perform {
+            await gate.suspend()
+        }
+    }
+    await gate.waitUntilSuspended()
+
+    let duplicateSave = await operation.perform { }
+    #expect(!duplicateSave)
+    #expect(feedback.events.isEmpty)
+
+    await gate.resume()
+    #expect(await firstSave.value)
+    #expect(feedback.events == [.operationSucceeded])
+}
+
+@MainActor
+@Test func browserSaveCompletionFromPreviousDetectedSessionIsStaleAndSilent() async {
+    let feedback = RecordingInteractionFeedback()
+    let operation = BrowserLibrarySaveOperation(interactionFeedback: feedback)
+    let previousSessionGate = SuspendedBrowserSaveGate()
+    let previousSessionID = UUID()
+    let currentSessionID = UUID()
+
+    let previousSessionSave = Task {
+        await operation.perform(sessionID: previousSessionID) {
+            await previousSessionGate.suspend()
+        }
+    }
+    await previousSessionGate.waitUntilSuspended()
+
+    operation.reset(for: currentSessionID)
+    #expect(!operation.isSaving)
+    #expect(operation.successMessage == nil)
+    #expect(operation.failureMessage == nil)
+
+    #expect(await operation.perform(sessionID: currentSessionID) { })
+    #expect(operation.successMessage == "Saved to Library")
+    #expect(feedback.events == [.operationSucceeded])
+
+    await previousSessionGate.resume()
+    #expect(!(await previousSessionSave.value))
+    #expect(operation.successMessage == "Saved to Library")
+    #expect(operation.failureMessage == nil)
+    #expect(feedback.events == [.operationSucceeded])
+}
+
+@MainActor
+@Test func repeatedBrowserSaveAfterConfirmedSuccessIsVisibleAndSilent() async {
+    let feedback = RecordingInteractionFeedback()
+    let operation = BrowserLibrarySaveOperation(interactionFeedback: feedback)
+
+    #expect(await operation.perform { })
+    #expect(operation.isSaved)
+    #expect(operation.successMessage == "Saved to Library")
+
+    #expect(!(await operation.perform { }))
+    #expect(feedback.events == [.operationSucceeded])
+}
+
 @Test func homeContinueReadingNavigationDoesNotFallbackToMockExampleDomain() throws {
     #expect(HomeContinueReadingNavigation.browserStartPoint(for: nil) == nil)
 
@@ -588,4 +676,29 @@ private final class RecordingBrowserReaderPresentationLogger: BrowserReaderPrese
     #expect(BrowserPageSanitizerScript.javaScript.contains("popup"))
     #expect(BrowserPageSanitizerScript.javaScript.contains("advert"))
     #expect(BrowserPageSanitizerScript.javaScript.contains("wp-manga"))
+}
+
+private actor SuspendedBrowserSaveGate {
+    private var operationContinuation: CheckedContinuation<Void, Never>?
+    private var waiterContinuation: CheckedContinuation<Void, Never>?
+
+    func suspend() async {
+        waiterContinuation?.resume()
+        waiterContinuation = nil
+        await withCheckedContinuation { continuation in
+            operationContinuation = continuation
+        }
+    }
+
+    func waitUntilSuspended() async {
+        if operationContinuation != nil { return }
+        await withCheckedContinuation { continuation in
+            waiterContinuation = continuation
+        }
+    }
+
+    func resume() {
+        operationContinuation?.resume()
+        operationContinuation = nil
+    }
 }

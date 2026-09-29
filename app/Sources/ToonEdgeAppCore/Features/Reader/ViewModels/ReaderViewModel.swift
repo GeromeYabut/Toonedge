@@ -10,6 +10,7 @@ public final class ReaderViewModel: ObservableObject {
     @Published public private(set) var cacheFeedback: CacheActionFeedback?
     @Published public private(set) var libraryFeedback: CacheActionFeedback?
     @Published public private(set) var isSavedToLibrary: Bool
+    @Published public private(set) var isSavingToLibrary: Bool
     @Published public private(set) var adjacentLoadState: AdjacentChapterLoadState
     private let progressRepository: (any ReaderProgressStoring)?
     private let cacheMetadataManager: (any CacheMetadataManaging)?
@@ -18,6 +19,7 @@ public final class ReaderViewModel: ObservableObject {
     private let libraryLifecycleService: (any LibraryLifecycleManaging)?
     private let seriesMetadataService: (any SeriesMetadataFetching)?
     private let settingsManager: (any SettingsManaging)?
+    private let interactionFeedback: (any InteractionFeedbackProviding)?
     private var hasCompletedInitialRestore: Bool
     private var hasRecordedRecentCacheMetadataForSession: Bool
     private var loadedImageIndices: Set<Int>
@@ -35,6 +37,7 @@ public final class ReaderViewModel: ObservableObject {
         libraryLifecycleService: (any LibraryLifecycleManaging)? = nil,
         seriesMetadataService: (any SeriesMetadataFetching)? = nil,
         settingsManager: (any SettingsManaging)? = nil,
+        interactionFeedback: (any InteractionFeedbackProviding)? = nil,
         adjacentRetryDelayNanoseconds: UInt64 = 1_500_000_000
     ) {
         self.session = session
@@ -45,6 +48,7 @@ public final class ReaderViewModel: ObservableObject {
         self.cacheFeedback = nil
         self.libraryFeedback = nil
         self.isSavedToLibrary = false
+        self.isSavingToLibrary = false
         self.adjacentLoadState = .idle
         self.progressRepository = progressRepository
         self.cacheMetadataManager = cacheMetadataManager
@@ -53,6 +57,7 @@ public final class ReaderViewModel: ObservableObject {
         self.libraryLifecycleService = libraryLifecycleService
         self.seriesMetadataService = seriesMetadataService
         self.settingsManager = settingsManager
+        self.interactionFeedback = interactionFeedback
         self.adjacentRetryDelayNanoseconds = adjacentRetryDelayNanoseconds
         self.hasCompletedInitialRestore = progressRepository == nil
         self.hasRecordedRecentCacheMetadataForSession = false
@@ -113,17 +118,21 @@ public final class ReaderViewModel: ObservableObject {
     }
 
     public func replaceSession(_ session: MockReaderSession) async {
+        let restoredProgress = await restoredProgress(for: session)
+        installSession(session, progress: restoredProgress)
+    }
+
+    private func installSession(_ session: MockReaderSession, progress: ReaderProgress) {
         self.session = session
         self.settings = session.settings
-        self.progress = ReaderProgress(currentImageIndex: 0, totalImageCount: session.imageURLs.count)
+        self.progress = progress
         self.isChromeVisible = true
         self.isSettingsPresented = false
-        self.hasCompletedInitialRestore = progressRepository == nil
+        self.hasCompletedInitialRestore = true
         self.hasRecordedRecentCacheMetadataForSession = false
         self.loadedImageIndices = []
         self.visibleImageIndex = nil
         self.adjacentLoadState = .idle
-        await restoreProgress()
     }
 
     @discardableResult
@@ -151,10 +160,12 @@ public final class ReaderViewModel: ObservableObject {
            !storedSession.imageURLs.isEmpty {
             guard isCurrentAdjacentOperation(operationID) else { return false }
             storedSession = preparedAdjacentSession(storedSession, preserving: originalSession)
-            await replaceSession(storedSession)
+            let restoredProgress = await restoredProgress(for: storedSession)
             guard isCurrentAdjacentOperation(operationID) else { return false }
+            installSession(storedSession, progress: restoredProgress)
             adjacentNavigationOperationID = nil
             adjacentLoadState = .idle
+            interactionFeedback?.emit(.chapterTransitioned)
             return true
         }
 
@@ -170,6 +181,7 @@ public final class ReaderViewModel: ObservableObject {
                 )
             )
             isChromeVisible = true
+            interactionFeedback?.emit(.userActionWarning)
             return false
         }
 
@@ -183,10 +195,12 @@ public final class ReaderViewModel: ObservableObject {
             }
             guard isCurrentAdjacentOperation(operationID) else { return false }
             loadedSession = preparedAdjacentSession(loadedSession, preserving: originalSession)
-            await replaceSession(loadedSession)
+            let restoredProgress = await restoredProgress(for: loadedSession)
             guard isCurrentAdjacentOperation(operationID) else { return false }
+            installSession(loadedSession, progress: restoredProgress)
             adjacentNavigationOperationID = nil
             adjacentLoadState = .idle
+            interactionFeedback?.emit(.chapterTransitioned)
             return true
         } catch {
             guard isCurrentAdjacentOperation(operationID) else { return false }
@@ -201,6 +215,7 @@ public final class ReaderViewModel: ObservableObject {
                 )
             )
             isChromeVisible = true
+            interactionFeedback?.emit(.userActionWarning)
             return false
         }
     }
@@ -264,6 +279,22 @@ public final class ReaderViewModel: ObservableObject {
         }
 
         hasCompletedInitialRestore = true
+    }
+
+    private func restoredProgress(for session: MockReaderSession) async -> ReaderProgress {
+        let imageCount = session.imageURLs.count
+        guard let progressRepository,
+              let restoredProgress = await progressRepository.progress(for: session.sourceURL) else {
+            return ReaderProgress(currentImageIndex: 0, totalImageCount: imageCount)
+        }
+
+        let clampedIndex: Int
+        if imageCount == 0 {
+            clampedIndex = 0
+        } else {
+            clampedIndex = min(max(0, restoredProgress.currentImageIndex), imageCount - 1)
+        }
+        return ReaderProgress(currentImageIndex: clampedIndex, totalImageCount: imageCount)
     }
 
     public func updateProgress(visibleImageIndex: Int) async {
@@ -339,6 +370,9 @@ public final class ReaderViewModel: ObservableObject {
                 return
             }
             cacheFeedback = .success(result)
+            if let event = InteractionFeedbackOutcomePolicy.cacheEvent(for: result) {
+                interactionFeedback?.emit(event)
+            }
         } catch {
             cacheFeedback = .failure("Could not retain this chapter offline.")
         }
@@ -359,7 +393,9 @@ public final class ReaderViewModel: ObservableObject {
     public func saveCurrentSessionToLibrary(
         libraryState: LibraryCollectionState = AddToLibraryStatePickerModel.defaultState(for: .reader)
     ) async {
-        guard let libraryLifecycleService else { return }
+        guard let libraryLifecycleService, !isSavingToLibrary, !isSavedToLibrary else { return }
+        isSavingToLibrary = true
+        defer { isSavingToLibrary = false }
         do {
             await enrichSessionMetadataIfNeeded()
             var input = session.libraryInput
@@ -367,6 +403,7 @@ public final class ReaderViewModel: ObservableObject {
             try await libraryLifecycleService.addToLibrary(input, context: .reader)
             isSavedToLibrary = true
             libraryFeedback = CacheActionFeedback(result: nil, message: "Saved to Library.", isFailure: false)
+            interactionFeedback?.emit(.operationSucceeded)
         } catch {
             libraryFeedback = .failure("Could not save this series.")
         }

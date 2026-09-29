@@ -48,8 +48,11 @@ public final class SettingsViewModel: ObservableObject {
     @Published public private(set) var storageSummary: DownloadSummary
     @Published public private(set) var isCheckingForUpdates = false
     @Published public private(set) var updateFeedback: SettingsUpdateFeedback?
+    @Published public private(set) var isHapticFeedbackEnabled: Bool
 
     private let settingsManager: any SettingsManaging
+    private let interactionPreferences: any InteractionPreferencesManaging
+    private let interactionFeedback: (any InteractionFeedbackProviding)?
     private let cacheMetadataManager: any CacheMetadataManaging
     private let storageMeasurementService: (any CacheStorageMeasuring)?
     private let updateRefreshService: (any LibraryUpdateRefreshing)?
@@ -57,14 +60,19 @@ public final class SettingsViewModel: ObservableObject {
     public init(
         settingsManager: any SettingsManaging,
         cacheMetadataManager: any CacheMetadataManaging,
+        interactionPreferences: any InteractionPreferencesManaging,
+        interactionFeedback: (any InteractionFeedbackProviding)? = nil,
         storageMeasurementService: (any CacheStorageMeasuring)? = nil,
         updateRefreshService: (any LibraryUpdateRefreshing)? = nil
     ) {
         self.settingsManager = settingsManager
+        self.interactionPreferences = interactionPreferences
+        self.interactionFeedback = interactionFeedback
         self.cacheMetadataManager = cacheMetadataManager
         self.storageMeasurementService = storageMeasurementService
         self.updateRefreshService = updateRefreshService
         self.settings = settingsManager.currentSettings()
+        self.isHapticFeedbackEnabled = interactionPreferences.isHapticFeedbackEnabled()
         self.storageSummary = DownloadSummary(cachedItemCount: 0, storageDescription: "Loading")
     }
 
@@ -97,6 +105,11 @@ public final class SettingsViewModel: ObservableObject {
         await settingsManager.updateSettings(settings)
     }
 
+    public func setHapticFeedbackEnabled(_ enabled: Bool) {
+        interactionPreferences.setHapticFeedbackEnabled(enabled)
+        isHapticFeedbackEnabled = interactionPreferences.isHapticFeedbackEnabled()
+    }
+
     public func refreshUpdates() async {
         guard !isCheckingForUpdates else { return }
         guard let updateRefreshService else {
@@ -107,6 +120,10 @@ public final class SettingsViewModel: ObservableObject {
         defer { isCheckingForUpdates = false }
         let result = await updateRefreshService.refreshUpdates()
         updateFeedback = SettingsUpdateFeedback(result: result)
+        if let interactionFeedback {
+            InteractionFeedbackOutcomeReporter(feedback: interactionFeedback)
+                .reportUserInitiatedUpdate(result)
+        }
     }
 }
 
@@ -119,6 +136,8 @@ public struct SettingsView: View {
         self._viewModel = StateObject(wrappedValue: SettingsViewModel(
             settingsManager: dependencies.settingsService,
             cacheMetadataManager: dependencies.cacheMetadataService,
+            interactionPreferences: dependencies.interactionPreferences,
+            interactionFeedback: dependencies.interactionFeedback,
             storageMeasurementService: dependencies.cacheStorageMeasurementService,
             updateRefreshService: dependencies.updateRefreshService
         ))
@@ -132,6 +151,15 @@ public struct SettingsView: View {
                     settingsSection("Reader Preferences") {
                         TEEditorialGroup(SettingsPreference.allCases, spacing: 0, separatorInset: 0) { preference in
                             preferenceRow(preference)
+                        }
+                    }
+
+                    settingsSection("Interaction") {
+                        TEEditorialGroup([SettingsInteraction.hapticFeedback]) { _ in
+                            Toggle("Haptic Feedback", isOn: hapticFeedbackBinding)
+                                .accessibilityHint("Provides subtle feedback for selections and completed actions")
+                                .accessibilityIdentifier("settings.hapticFeedback")
+                                .modifier(TEEditorialRowStyle())
                         }
                     }
 
@@ -352,6 +380,12 @@ public struct SettingsView: View {
         })
     }
 
+    private var hapticFeedbackBinding: Binding<Bool> {
+        Binding(get: { viewModel.isHapticFeedbackEnabled }, set: { enabled in
+            viewModel.setHapticFeedbackEnabled(enabled)
+        })
+    }
+
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
     }
@@ -365,6 +399,12 @@ private enum SettingsPreference: String, CaseIterable, Identifiable {
 
 private enum SettingsUtility: String, Identifiable {
     case storage, updateCheck, about
+
+    var id: String { rawValue }
+}
+
+private enum SettingsInteraction: String, Identifiable {
+    case hapticFeedback
 
     var id: String { rawValue }
 }

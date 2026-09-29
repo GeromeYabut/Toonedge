@@ -266,15 +266,19 @@ import Testing
 @MainActor
 @Test func readerRetainActionPublishesCacheFeedback() async {
     let cacheMetadataService = MockCacheMetadataService()
+    let feedback = RecordingInteractionFeedback()
     let viewModel = ReaderViewModel(
         session: .sample,
-        cacheMetadataManager: cacheMetadataService
+        cacheMetadataManager: cacheMetadataService,
+        interactionFeedback: feedback
     )
 
     await viewModel.retainCurrentChapter()
+    await viewModel.retainCurrentChapter()
 
-    #expect(viewModel.cacheFeedback?.result == .retained)
+    #expect(viewModel.cacheFeedback?.result == .unchanged)
     #expect(viewModel.cacheFeedback?.isFailure == false)
+    #expect(feedback.events == [.operationSucceeded])
 }
 
 @MainActor
@@ -292,7 +296,12 @@ import Testing
 @MainActor
 @Test func readerViewModelReflectsSuccessfulSaveState() async {
     let library = RecordingLibraryLifecycleService()
-    let viewModel = ReaderViewModel(session: .sample, libraryLifecycleService: library)
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(
+        session: .sample,
+        libraryLifecycleService: library,
+        interactionFeedback: feedback
+    )
 
     await viewModel.refreshSavedState()
     #expect(!viewModel.isSavedToLibrary)
@@ -301,6 +310,11 @@ import Testing
 
     #expect(viewModel.isSavedToLibrary)
     #expect(viewModel.libraryFeedback?.message == "Saved to Library.")
+    #expect(feedback.events == [.operationSucceeded])
+
+    await viewModel.saveCurrentSessionToLibrary()
+    #expect(await library.addToLibraryCallCount == 1)
+    #expect(feedback.events == [.operationSucceeded])
 }
 
 @MainActor
@@ -312,6 +326,36 @@ import Testing
 
     let recorded = await library.lastAddToLibraryInput
     #expect(recorded?.libraryState == .dropped)
+}
+
+@MainActor
+@Test func concurrentReaderLibrarySaveUsesAuthoritativeServiceOnceAndEmitsSuccessOnce() async {
+    let library = SuspendedLibraryLifecycleService()
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(
+        session: .sample,
+        libraryLifecycleService: library,
+        interactionFeedback: feedback
+    )
+
+    let firstSave = Task {
+        await viewModel.saveCurrentSessionToLibrary()
+    }
+    await library.waitUntilFirstSaveRequested()
+
+    #expect(viewModel.isSavingToLibrary)
+    await viewModel.saveCurrentSessionToLibrary()
+
+    #expect(await library.addToLibraryCallCount == 1)
+    #expect(feedback.events.isEmpty)
+
+    await library.releaseFirstSave()
+    await firstSave.value
+
+    #expect(viewModel.isSavedToLibrary)
+    #expect(!viewModel.isSavingToLibrary)
+    #expect(viewModel.libraryFeedback?.message == "Saved to Library.")
+    #expect(feedback.events == [.operationSucceeded])
 }
 
 @MainActor
@@ -409,7 +453,8 @@ import Testing
     loaded.imageURLs = [URL(string: "https://img.example.com/13-1.webp")!]
 
     let hiddenLoader = RecordingAdjacentReaderSessionLoader(result: .success(loaded))
-    let viewModel = ReaderViewModel(session: current)
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(session: current, interactionFeedback: feedback)
 
     await viewModel.navigateAdjacentChapter(.next, libraryLifecycleService: nil, adjacentLoader: hiddenLoader)
 
@@ -418,6 +463,7 @@ import Testing
     #expect(viewModel.session.seriesID == current.seriesID)
     #expect(viewModel.adjacentLoadState == .idle)
     #expect(await hiddenLoader.requestedURLs == [next.sourceURL])
+    #expect(feedback.events == [.chapterTransitioned])
 }
 
 @MainActor
@@ -446,7 +492,8 @@ import Testing
     let next = MockChapter(title: "Chapter 13", sourceURL: URL(string: "https://example.com/series/chapter-13")!)
     var current = MockReaderSession.sample
     current.nextChapter = next
-    let viewModel = ReaderViewModel(session: current)
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(session: current, interactionFeedback: feedback)
 
     await viewModel.navigateAdjacentChapter(
         .next,
@@ -457,6 +504,22 @@ import Testing
     #expect(viewModel.session.sourceURL == current.sourceURL)
     #expect(viewModel.adjacentLoadState.isFailure)
     #expect(viewModel.adjacentFailureMessage == "This chapter is unavailable in Reader Mode. Try again or open the original page.")
+    #expect(feedback.events == [.userActionWarning])
+}
+
+@MainActor
+@Test func adjacentUnavailableWithoutLoaderWarnsOnceAfterVisibleRecovery() async {
+    let next = MockChapter(title: "Chapter 13", sourceURL: URL(string: "https://example.com/series/chapter-13")!)
+    var current = MockReaderSession.sample
+    current.nextChapter = next
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(session: current, interactionFeedback: feedback)
+
+    await viewModel.navigateAdjacentChapter(.next, libraryLifecycleService: nil, adjacentLoader: nil)
+
+    #expect(viewModel.adjacentLoadState.isFailure)
+    #expect(viewModel.isChromeVisible)
+    #expect(feedback.events == [.userActionWarning])
 }
 
 @MainActor
@@ -509,7 +572,8 @@ import Testing
     loaded.sourceURL = nextURL
     loaded.imageURLs = [try #require(URL(string: "https://img.example.com/13-1.webp"))]
     let loader = CancellationIgnoringAdjacentReaderSessionLoader(session: loaded)
-    let viewModel = ReaderViewModel(session: current)
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(session: current, interactionFeedback: feedback)
 
     let navigation = Task {
         await viewModel.navigateAdjacentChapter(.next, libraryLifecycleService: nil, adjacentLoader: loader)
@@ -522,6 +586,47 @@ import Testing
 
     #expect(viewModel.session.sourceURL == current.sourceURL)
     #expect(viewModel.adjacentLoadState == .idle)
+    #expect(feedback.events.isEmpty)
+}
+
+@MainActor
+@Test func cancellingAdjacentNavigationDuringProgressRestoreKeepsCurrentSession() async throws {
+    let nextURL = try #require(URL(string: "https://example.com/series/chapter-13"))
+    var current = MockReaderSession.sample
+    current.nextChapter = MockChapter(title: "Chapter 13", sourceURL: nextURL)
+    var loaded = MockReaderSession.sample
+    loaded.chapterTitle = "Chapter 13"
+    loaded.sourceURL = nextURL
+    loaded.imageURLs = [
+        try #require(URL(string: "https://img.example.com/13-1.webp")),
+        try #require(URL(string: "https://img.example.com/13-2.webp"))
+    ]
+    let loader = RecordingAdjacentReaderSessionLoader(result: .success(loaded))
+    let progressRepository = SuspendedReaderProgressRepository(
+        suspendedURL: nextURL,
+        restoredProgress: ReaderProgress(currentImageIndex: 1, totalImageCount: 2)
+    )
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(
+        session: current,
+        progressRepository: progressRepository,
+        interactionFeedback: feedback
+    )
+
+    let navigation = Task {
+        await viewModel.navigateAdjacentChapter(.next, libraryLifecycleService: nil, adjacentLoader: loader)
+    }
+    await progressRepository.waitUntilRequested()
+    viewModel.cancelAdjacentNavigation()
+    navigation.cancel()
+    await progressRepository.release()
+    let didNavigate = await navigation.value
+
+    #expect(!didNavigate)
+    #expect(viewModel.session.sourceURL == current.sourceURL)
+    #expect(viewModel.progress.currentImageIndex == 0)
+    #expect(viewModel.adjacentLoadState == .idle)
+    #expect(feedback.events.isEmpty)
 }
 
 @MainActor
@@ -609,7 +714,8 @@ import Testing
 
 @MainActor
 @Test func readerSettingsMutationsUpdateSessionPreferences() {
-    let viewModel = ReaderViewModel(session: .sample)
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(session: .sample, interactionFeedback: feedback)
 
     viewModel.setDisplayMode(.fitScreen)
     viewModel.setPageSpacingEnabled(false)
@@ -620,6 +726,20 @@ import Testing
     #expect(!viewModel.settings.isPageSpacingEnabled)
     #expect(viewModel.settings.brightnessAid == 0.35)
     #expect(viewModel.settings.readerCanvas == .black)
+    #expect(feedback.events.isEmpty)
+}
+
+@MainActor
+@Test func passiveReaderProgressImageAndChromeCallbacksRemainSilent() async {
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(session: .sample, interactionFeedback: feedback)
+
+    await viewModel.updateProgress(visibleImageIndex: 1)
+    await viewModel.markImageVisible(index: 2)
+    await viewModel.markImageLoaded(index: 2)
+    viewModel.toggleChrome()
+
+    #expect(feedback.events.isEmpty)
 }
 
 @Test func readerPlaceholderHeightUsesDetectedAspectRatioWhenAvailable() {
@@ -864,11 +984,13 @@ private actor RecordingRecentReadingRecorder: RecentReadingRecording {
 private actor RecordingLibraryLifecycleService: LibraryLifecycleManaging {
     private var savedCanonicalURLs: Set<URL> = []
     private(set) var lastAddToLibraryInput: LibrarySeriesInput?
+    private(set) var addToLibraryCallCount = 0
 
     func homeSnapshot() async -> HomeSnapshot { .init(continueReading: [], recentlyUpdated: [], library: []) }
     func librarySnapshot() async -> LibrarySnapshot { .init(series: []) }
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? { nil }
     func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {
+        addToLibraryCallCount += 1
         lastAddToLibraryInput = input
         savedCanonicalURLs.insert(input.canonicalURL)
     }
@@ -880,6 +1002,43 @@ private actor RecordingLibraryLifecycleService: LibraryLifecycleManaging {
     func readerSession(forChapterID chapterID: UUID) async -> MockReaderSession? { nil }
     func readerSession(forSourceURL sourceURL: URL) async -> MockReaderSession? { nil }
     func isSaved(canonicalURL: URL) async -> Bool { savedCanonicalURLs.contains(canonicalURL) }
+}
+
+private actor SuspendedLibraryLifecycleService: LibraryLifecycleManaging {
+    private(set) var addToLibraryCallCount = 0
+    private var firstSaveRequested = false
+    private var firstSaveContinuation: CheckedContinuation<Void, Never>?
+
+    func homeSnapshot() async -> HomeSnapshot { .init(continueReading: [], recentlyUpdated: [], library: []) }
+    func librarySnapshot() async -> LibrarySnapshot { .init(series: []) }
+    func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? { nil }
+    func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {
+        addToLibraryCallCount += 1
+        guard addToLibraryCallCount == 1 else { return }
+        firstSaveRequested = true
+        await withCheckedContinuation { continuation in
+            firstSaveContinuation = continuation
+        }
+    }
+    func removeFromLibrary(seriesID: UUID) async throws {}
+    func updateLibraryState(_ state: LibraryCollectionState, for seriesID: UUID) async throws {}
+    func recordUpdateCheckResult(seriesID: UUID, latestChapterLabel: String?, hasUnreadUpdates: Bool, checkedAt: Date) async throws {}
+    func recordReadingProgress(_ progress: ReaderProgress, forChapterID chapterID: UUID, at date: Date) async throws {}
+    func continueReadingTarget(for seriesID: UUID) async -> ContinueReadingTarget? { nil }
+    func readerSession(forChapterID chapterID: UUID) async -> MockReaderSession? { nil }
+    func readerSession(forSourceURL sourceURL: URL) async -> MockReaderSession? { nil }
+    func isSaved(canonicalURL: URL) async -> Bool { false }
+
+    func waitUntilFirstSaveRequested() async {
+        while !firstSaveRequested {
+            await Task.yield()
+        }
+    }
+
+    func releaseFirstSave() {
+        firstSaveContinuation?.resume()
+        firstSaveContinuation = nil
+    }
 }
 
 private actor StoredAdjacentLibraryLifecycleService: LibraryLifecycleManaging {
@@ -979,6 +1138,40 @@ private actor CancellationIgnoringAdjacentReaderSessionLoader: AdjacentReaderSes
         }
         return session
     }
+
+    func waitUntilRequested() async {
+        while !requested {
+            await Task.yield()
+        }
+    }
+
+    func release() {
+        continuation?.resume()
+        continuation = nil
+    }
+}
+
+private actor SuspendedReaderProgressRepository: ReaderProgressStoring {
+    private let suspendedURL: URL
+    private let restoredProgress: ReaderProgress?
+    private var requested = false
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    init(suspendedURL: URL, restoredProgress: ReaderProgress?) {
+        self.suspendedURL = suspendedURL
+        self.restoredProgress = restoredProgress
+    }
+
+    func progress(for sourceURL: URL) async -> ReaderProgress? {
+        guard sourceURL == suspendedURL else { return nil }
+        requested = true
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+        return restoredProgress
+    }
+
+    func save(_ progress: ReaderProgress, for sourceURL: URL) async {}
 
     func waitUntilRequested() async {
         while !requested {

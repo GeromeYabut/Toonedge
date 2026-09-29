@@ -107,6 +107,30 @@ final class ToonEdgeSettingsUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Downloads"].waitForExistence(timeout: 5))
     }
 
+    func testHapticFeedbackDefaultsEnabledAndPersistsAcrossRelaunch() {
+        var app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-resetSettings"]
+        app.launch()
+        app.tabBars.buttons["tab.settings"].tap()
+
+        let hapticFeedback = app.switches["settings.hapticFeedback"]
+        XCTAssertTrue(hapticFeedback.waitForExistence(timeout: 5))
+        XCTAssertEqual(hapticFeedback.value as? String, "1")
+        hapticFeedback.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        XCTAssertEqual(hapticFeedback.value as? String, "0")
+
+        app.terminate()
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting"]
+        app.launch()
+        app.tabBars.buttons["tab.settings"].tap()
+
+        let persistedHapticFeedback = app.switches["settings.hapticFeedback"]
+        XCTAssertTrue(persistedHapticFeedback.waitForExistence(timeout: 5))
+        XCTAssertEqual(persistedHapticFeedback.value as? String, "0")
+        persistedHapticFeedback.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+    }
+
     private func verifyUpdateResult(launchArgument: String, expected: String) {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", launchArgument]

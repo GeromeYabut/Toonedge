@@ -1,5 +1,45 @@
 import Foundation
 
+@MainActor
+public final class InMemoryInteractionPreferences: InteractionPreferencesManaging {
+    private var isEnabled: Bool
+
+    public init(isHapticFeedbackEnabled: Bool = true) {
+        isEnabled = isHapticFeedbackEnabled
+    }
+
+    public func isHapticFeedbackEnabled() -> Bool {
+        isEnabled
+    }
+
+    public func setHapticFeedbackEnabled(_ enabled: Bool) {
+        isEnabled = enabled
+    }
+}
+
+@MainActor
+public final class RecordingInteractionFeedback: InteractionFeedbackProviding {
+    private let preferences: any InteractionPreferencesManaging
+    public private(set) var events: [InteractionFeedbackEvent] = []
+
+    public init(preferences: any InteractionPreferencesManaging) {
+        self.preferences = preferences
+    }
+
+    public convenience init(isEnabled: Bool = true) {
+        self.init(preferences: InMemoryInteractionPreferences(isHapticFeedbackEnabled: isEnabled))
+    }
+
+    public func emit(_ event: InteractionFeedbackEvent) {
+        guard preferences.isHapticFeedbackEnabled() else { return }
+        events.append(event)
+    }
+
+    public func reset() {
+        events.removeAll()
+    }
+}
+
 public struct MockLibraryService: LibraryProviding {
     public init() {}
 

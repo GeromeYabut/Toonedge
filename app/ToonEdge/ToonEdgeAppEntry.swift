@@ -40,8 +40,12 @@ struct ToonEdgeAppEntry: App {
             defaults.removeObject(forKey: UserDefaultsSettingsRepository.Key.displayMode)
             defaults.removeObject(forKey: UserDefaultsSettingsRepository.Key.pageSpacing)
             defaults.removeObject(forKey: UserDefaultsSettingsRepository.Key.brightnessAid)
+            defaults.removeObject(forKey: UserDefaultsInteractionPreferences.hapticFeedbackEnabledKey)
         }
         dependencies.settingsService = UserDefaultsSettingsRepository()
+        let interactionPreferences = UserDefaultsInteractionPreferences()
+        dependencies.interactionPreferences = interactionPreferences
+        dependencies.interactionFeedback = RecordingInteractionFeedback(preferences: interactionPreferences)
         if arguments.contains("-seedOfflineReader"), let cache = dependencies.chapterAssetCache {
             dependencies.chapterAssetRetainer = UITestFixtureAssetRetainer(assetCache: cache)
             if arguments.contains("-resetOfflineFixture") {

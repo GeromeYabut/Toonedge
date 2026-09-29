@@ -727,13 +727,51 @@ import Testing
 @Test func failedSeriesSavePreservesDetailAndOffersRetry() async {
     let detail = SeriesDetailSnapshot.mock(chapters: [ChapterSummary.mock()])
     let service = FailingSeriesDetailLifecycleService(failing: .save)
-    let model = SeriesDetailMutationModel(service: service, currentDetail: detail)
+    let feedback = RecordingInteractionFeedback()
+    let model = SeriesDetailMutationModel(service: service, currentDetail: detail, interactionFeedback: feedback)
 
-    await model.save(detail, state: .planned)
+    let outcome = await model.save(detail, state: .planned)
 
+    #expect(outcome == .failed(.save))
     #expect(model.currentDetail == detail)
     #expect(model.failedOperation == .save)
     #expect(model.canRetry)
+    #expect(feedback.events.isEmpty)
+}
+
+@MainActor
+@Test func confirmedSeriesSaveAndRemovalEmitOnceFromTypedOutcomes() async {
+    let detail = SeriesDetailSnapshot.mock(chapters: [ChapterSummary.mock()])
+    let feedback = RecordingInteractionFeedback()
+    let service = FailingSeriesDetailLifecycleService(failing: .stateUpdate, failureCount: 0)
+    let saveModel = SeriesDetailMutationModel(
+        service: service,
+        currentDetail: detail,
+        interactionFeedback: feedback
+    )
+
+    #expect(await saveModel.save(detail, state: .planned) == .saved)
+    #expect(feedback.events == [.operationSucceeded])
+
+    feedback.reset()
+    let removeModel = SeriesDetailMutationModel(
+        service: service,
+        currentDetail: detail,
+        interactionFeedback: feedback
+    )
+    #expect(await removeModel.removeFromLibrary() == .removed)
+    #expect(feedback.events == [.operationSucceeded])
+}
+
+@MainActor
+@Test func seriesMutationNoOpHasTypedOutcomeAndRemainsSilent() async {
+    let detail = SeriesDetailSnapshot.mock(chapters: [ChapterSummary.mock()])
+    let feedback = RecordingInteractionFeedback()
+    let model = SeriesDetailMutationModel(service: nil, currentDetail: detail, interactionFeedback: feedback)
+
+    #expect(await model.save(detail, state: .planned) == .noOp)
+    #expect(await model.removeFromLibrary() == .noOp)
+    #expect(feedback.events.isEmpty)
 }
 
 @MainActor
@@ -775,6 +813,115 @@ import Testing
     #expect(model.currentDetail == nil)
     #expect(model.failedOperation == nil)
     #expect(!model.canRetry)
+}
+
+@MainActor
+@Test func concurrentDuplicateSeriesSaveCallsServiceAndEmitsFeedbackOnce() async {
+    let detail = SeriesDetailSnapshot.mock(chapters: [ChapterSummary.mock()])
+    let service = SuspendedSeriesDetailLifecycleService()
+    let feedback = RecordingInteractionFeedback()
+    let model = SeriesDetailMutationModel(
+        service: service,
+        currentDetail: detail,
+        interactionFeedback: feedback
+    )
+
+    let firstSave = Task { @MainActor in
+        await model.save(detail, state: .planned)
+    }
+    await waitForSeriesMutationAttempt(service, operation: .save, count: 1)
+
+    #expect(model.isMutating)
+    #expect(await model.save(detail, state: .planned) == .noOp)
+    #expect(await service.attemptCount(for: .save) == 1)
+
+    await service.resumeNext(.save)
+
+    #expect(await firstSave.value == .saved)
+    #expect(feedback.events == [.operationSucceeded])
+    #expect(!model.isMutating)
+}
+
+@MainActor
+@Test func concurrentDuplicateSeriesRemovalCallsServiceAndEmitsFeedbackOnce() async {
+    let detail = SeriesDetailSnapshot.mock(chapters: [ChapterSummary.mock()])
+    let service = SuspendedSeriesDetailLifecycleService()
+    let feedback = RecordingInteractionFeedback()
+    let model = SeriesDetailMutationModel(
+        service: service,
+        currentDetail: detail,
+        interactionFeedback: feedback
+    )
+
+    let firstRemoval = Task { @MainActor in
+        await model.removeFromLibrary()
+    }
+    await waitForSeriesMutationAttempt(service, operation: .remove, count: 1)
+
+    #expect(model.isMutating)
+    #expect(await model.removeFromLibrary() == .noOp)
+    #expect(await service.attemptCount(for: .remove) == 1)
+
+    await service.resumeNext(.remove)
+
+    #expect(await firstRemoval.value == .removed)
+    #expect(feedback.events == [.operationSucceeded])
+    #expect(!model.isMutating)
+}
+
+@MainActor
+@Test func concurrentDuplicateSeriesRetryCallsServiceAndEmitsFeedbackOnce() async {
+    let detail = SeriesDetailSnapshot.mock(chapters: [ChapterSummary.mock()])
+    let service = SuspendedSeriesDetailLifecycleService(immediateFailures: [.remove: 1])
+    let feedback = RecordingInteractionFeedback()
+    let model = SeriesDetailMutationModel(
+        service: service,
+        currentDetail: detail,
+        interactionFeedback: feedback
+    )
+
+    #expect(await model.removeFromLibrary() == .failed(.remove))
+
+    let firstRetry = Task { @MainActor in
+        await model.retry()
+    }
+    await waitForSeriesMutationAttempt(service, operation: .remove, count: 2)
+
+    #expect(model.isMutating)
+    #expect(await model.retry() == .noOp)
+    #expect(await service.attemptCount(for: .remove) == 2)
+
+    await service.resumeNext(.remove)
+
+    #expect(await firstRetry.value == .removed)
+    #expect(feedback.events == [.operationSucceeded])
+    #expect(!model.isMutating)
+}
+
+@MainActor
+@Test func staleSeriesMutationCompletionCannotOverwriteNewerDetail() async {
+    let originalDetail = SeriesDetailSnapshot.mock(title: "Original", chapters: [ChapterSummary.mock()])
+    let newerDetail = SeriesDetailSnapshot.mock(title: "Newer", chapters: [ChapterSummary.mock(chapterLabel: "2")])
+    let service = SuspendedSeriesDetailLifecycleService()
+    let feedback = RecordingInteractionFeedback()
+    let model = SeriesDetailMutationModel(
+        service: service,
+        currentDetail: originalDetail,
+        interactionFeedback: feedback
+    )
+
+    let staleSave = Task { @MainActor in
+        await model.save(originalDetail, state: .planned)
+    }
+    await waitForSeriesMutationAttempt(service, operation: .save, count: 1)
+
+    model.setCurrentDetail(newerDetail)
+    await service.resumeNext(.save)
+
+    #expect(await staleSave.value == .noOp)
+    #expect(model.currentDetail == newerDetail)
+    #expect(feedback.events.isEmpty)
+    #expect(!model.isMutating)
 }
 
 @Test func libraryDetailPrewarmPolicyDoesNotAutomaticallyPrewarmVisibleRows() {
@@ -1591,5 +1738,77 @@ private actor FailingSeriesDetailLifecycleService: LibraryLifecycleManaging {
         guard operation == failingOperation, remainingFailures > 0 else { return }
         if remainingFailures != .max { remainingFailures -= 1 }
         throw URLError(.cannotWriteToFile)
+    }
+}
+
+private actor SuspendedSeriesDetailLifecycleService: LibraryLifecycleManaging {
+    enum Operation: Hashable, Sendable {
+        case save
+        case stateUpdate
+        case remove
+    }
+
+    private var remainingImmediateFailures: [Operation: Int]
+    private var attempts: [Operation: Int] = [:]
+    private var continuations: [Operation: [CheckedContinuation<Void, any Error>]] = [:]
+
+    init(immediateFailures: [Operation: Int] = [:]) {
+        self.remainingImmediateFailures = immediateFailures
+    }
+
+    func attemptCount(for operation: Operation) -> Int {
+        attempts[operation, default: 0]
+    }
+
+    func resumeNext(_ operation: Operation) {
+        guard var queued = continuations[operation], !queued.isEmpty else { return }
+        let continuation = queued.removeFirst()
+        continuations[operation] = queued
+        continuation.resume()
+    }
+
+    func homeSnapshot() async -> HomeSnapshot { HomeSnapshot(continueReading: [], recentlyUpdated: [], library: []) }
+    func librarySnapshot() async -> LibrarySnapshot { LibrarySnapshot(series: []) }
+    func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? { nil }
+
+    func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {
+        try await suspend(.save)
+    }
+
+    func removeFromLibrary(seriesID: UUID) async throws {
+        try await suspend(.remove)
+    }
+
+    func updateLibraryState(_ state: LibraryCollectionState, for seriesID: UUID) async throws {
+        try await suspend(.stateUpdate)
+    }
+
+    func recordUpdateCheckResult(seriesID: UUID, latestChapterLabel: String?, hasUnreadUpdates: Bool, checkedAt: Date) async throws {}
+    func recordReadingProgress(_ progress: ReaderProgress, forChapterID chapterID: UUID, at date: Date) async throws {}
+    func continueReadingTarget(for seriesID: UUID) async -> ContinueReadingTarget? { nil }
+    func readerSession(forChapterID chapterID: UUID) async -> MockReaderSession? { nil }
+    func readerSession(forSourceURL sourceURL: URL) async -> MockReaderSession? { nil }
+    func isSaved(canonicalURL: URL) async -> Bool { false }
+
+    private func suspend(_ operation: Operation) async throws {
+        attempts[operation, default: 0] += 1
+        if remainingImmediateFailures[operation, default: 0] > 0 {
+            remainingImmediateFailures[operation, default: 0] -= 1
+            throw URLError(.cannotWriteToFile)
+        }
+
+        try await withCheckedThrowingContinuation { continuation in
+            continuations[operation, default: []].append(continuation)
+        }
+    }
+}
+
+private func waitForSeriesMutationAttempt(
+    _ service: SuspendedSeriesDetailLifecycleService,
+    operation: SuspendedSeriesDetailLifecycleService.Operation,
+    count: Int
+) async {
+    while await service.attemptCount(for: operation) < count {
+        await Task.yield()
     }
 }

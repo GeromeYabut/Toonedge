@@ -49,12 +49,15 @@ public final class DownloadsViewModel: ObservableObject {
     @Published public private(set) var removalInProgressURLs: Set<URL>
     private let cacheMetadataManager: any CacheMetadataManaging
     private let storageMeasurementService: (any CacheStorageMeasuring)?
+    private let interactionFeedback: (any InteractionFeedbackProviding)?
 
     public init(
         cacheMetadataManager: any CacheMetadataManaging,
+        interactionFeedback: (any InteractionFeedbackProviding)? = nil,
         storageMeasurementService: (any CacheStorageMeasuring)? = nil
     ) {
         self.cacheMetadataManager = cacheMetadataManager
+        self.interactionFeedback = interactionFeedback
         self.storageMeasurementService = storageMeasurementService
         self.summary = DownloadSummary(cachedItemCount: 0, storageDescription: "Loading")
         self.entries = []
@@ -90,6 +93,9 @@ public final class DownloadsViewModel: ObservableObject {
         do {
             let result = try await cacheMetadataManager.removeCacheMetadata(for: sourceURL)
             cacheFeedback = .success(result)
+            if let event = InteractionFeedbackOutcomePolicy.cacheEvent(for: result) {
+                interactionFeedback?.emit(event)
+            }
             if failedRemovalURL == sourceURL {
                 failedRemovalURL = nil
             }
@@ -115,6 +121,7 @@ public struct DownloadsView: View {
         self._viewModel = StateObject(
             wrappedValue: DownloadsViewModel(
                 cacheMetadataManager: dependencies.cacheMetadataService,
+                interactionFeedback: dependencies.interactionFeedback,
                 storageMeasurementService: dependencies.cacheStorageMeasurementService
             )
         )

@@ -42,6 +42,47 @@ import Testing
     #expect(reader.currentSettings() == expected)
 }
 
+@MainActor
+@Test func staleReaderSettingsSnapshotCannotOverwriteDisabledHapticPreference() async throws {
+    let suiteName = "ToonEdgeIndependentInteractionSettings-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defaults.removePersistentDomain(forName: suiteName)
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let interactionPreferences = UserDefaultsInteractionPreferences(suiteName: suiteName)
+    let readerSettings = UserDefaultsSettingsRepository(userDefaults: defaults)
+    interactionPreferences.setHapticFeedbackEnabled(false)
+
+    var staleSnapshot = readerSettings.currentSettings()
+    staleSnapshot.displayMode = .fitScreen
+    await readerSettings.updateSettings(staleSnapshot)
+
+    let reconstructedInteractionPreferences = UserDefaultsInteractionPreferences(suiteName: suiteName)
+    let reconstructedReaderSettings = UserDefaultsSettingsRepository(userDefaults: defaults)
+    #expect(!reconstructedInteractionPreferences.isHapticFeedbackEnabled())
+    #expect(reconstructedReaderSettings.currentSettings().displayMode == .fitScreen)
+}
+
+@MainActor
+@Test func settingsHapticToggleUsesIndependentPreferenceAndDisablesFeedbackImmediately() {
+    let preferences = InMemoryInteractionPreferences(isHapticFeedbackEnabled: true)
+    let feedback = RecordingInteractionFeedback(preferences: preferences)
+    let viewModel = SettingsViewModel(
+        settingsManager: MockSettingsService(),
+        cacheMetadataManager: MockCacheMetadataService(),
+        interactionPreferences: preferences
+    )
+
+    #expect(viewModel.isHapticFeedbackEnabled)
+    viewModel.setHapticFeedbackEnabled(false)
+    feedback.emit(.selectionChanged)
+
+    #expect(!viewModel.isHapticFeedbackEnabled)
+    #expect(!preferences.isHapticFeedbackEnabled())
+    #expect(feedback.events.isEmpty)
+    #expect(viewModel.settings == .default)
+}
+
 @Test func readerSettingsFallBackFieldByFieldForInvalidStoredValues() throws {
     let suiteName = "ToonEdgeInvalidSettingsTests-\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
@@ -63,9 +104,12 @@ import Testing
 @MainActor
 @Test func settingsViewModelPersistsEveryReaderControl() async {
     let manager = MockSettingsService()
+    let feedback = RecordingInteractionFeedback()
     let viewModel = SettingsViewModel(
         settingsManager: manager,
-        cacheMetadataManager: MockCacheMetadataService()
+        cacheMetadataManager: MockCacheMetadataService(),
+        interactionPreferences: InMemoryInteractionPreferences(),
+        interactionFeedback: feedback
     )
 
     await viewModel.setCanvas(.black)
@@ -79,6 +123,7 @@ import Testing
         isPageSpacingEnabled: true,
         brightnessAid: 0.3
     ))
+    #expect(feedback.events.isEmpty)
 }
 
 @Test func settingsUpdateFeedbackDistinguishesAllOutcomes() {
@@ -107,7 +152,8 @@ import Testing
 @Test func settingsUpdateFeedbackReportsUnavailableService() async {
     let viewModel = SettingsViewModel(
         settingsManager: MockSettingsService(),
-        cacheMetadataManager: MockCacheMetadataService()
+        cacheMetadataManager: MockCacheMetadataService(),
+        interactionPreferences: InMemoryInteractionPreferences()
     )
 
     await viewModel.refreshUpdates()
@@ -119,9 +165,12 @@ import Testing
 @MainActor
 @Test func settingsUpdateCheckSuppressesDuplicateRequests() async {
     let service = SuspendedSettingsUpdateRefreshService()
+    let feedback = RecordingInteractionFeedback()
     let viewModel = SettingsViewModel(
         settingsManager: MockSettingsService(),
         cacheMetadataManager: MockCacheMetadataService(),
+        interactionPreferences: InMemoryInteractionPreferences(),
+        interactionFeedback: feedback,
         updateRefreshService: service
     )
 
@@ -136,6 +185,37 @@ import Testing
     await service.finish()
     await firstCheck.value
     #expect(viewModel.updateFeedback == .noChanges)
+    #expect(feedback.events.isEmpty)
+}
+
+@MainActor
+@Test func explicitSettingsUpdateFoundEmitsOnceWhileNoUpdateRemainsSilent() async {
+    let feedback = RecordingInteractionFeedback()
+    let updatedViewModel = SettingsViewModel(
+        settingsManager: MockSettingsService(),
+        cacheMetadataManager: MockCacheMetadataService(),
+        interactionPreferences: InMemoryInteractionPreferences(),
+        interactionFeedback: feedback,
+        updateRefreshService: MockLibraryUpdateRefreshService(
+            result: .init(checkedCount: 2, updatedCount: 1, failedCount: 0)
+        )
+    )
+
+    await updatedViewModel.refreshUpdates()
+    #expect(feedback.events == [.operationSucceeded])
+
+    feedback.reset()
+    let noUpdateViewModel = SettingsViewModel(
+        settingsManager: MockSettingsService(),
+        cacheMetadataManager: MockCacheMetadataService(),
+        interactionPreferences: InMemoryInteractionPreferences(),
+        interactionFeedback: feedback,
+        updateRefreshService: MockLibraryUpdateRefreshService(
+            result: .init(checkedCount: 2, updatedCount: 0, failedCount: 0)
+        )
+    )
+    await noUpdateViewModel.refreshUpdates()
+    #expect(feedback.events.isEmpty)
 }
 
 private actor SuspendedSettingsUpdateRefreshService: LibraryUpdateRefreshing {
