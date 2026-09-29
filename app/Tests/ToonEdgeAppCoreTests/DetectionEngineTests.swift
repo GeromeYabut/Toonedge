@@ -2,6 +2,20 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@Test func detectionLogURLShapeDropsQueryCredentialsAndSpecificRouteValues() throws {
+    let url = try #require(URL(string:
+        "https://user:secret@vortexscans.org/series/past-life-returner/chapter-169?token=private"
+    ))
+
+    let shape = DetectionLogURLShape(url: url)
+
+    #expect(shape.host == "vortexscans.org")
+    #expect(shape.pathShape == "/series/:segment/chapter-:number")
+    #expect(!shape.description.contains("past-life-returner"))
+    #expect(!shape.description.contains("token"))
+    #expect(!shape.description.contains("secret"))
+}
+
 @Test func detectorNormalizesLazyLoadedImageSources() throws {
     let pageURL = try #require(URL(string: "https://example.com/series/chapter-12"))
     let page = DetectionPageAnalysis(
