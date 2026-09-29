@@ -138,7 +138,9 @@ struct ToonEdgeAppEntry: App {
             dependencies.cacheMetadataService = service
             dependencies.cacheStorageMeasurementService = nil
         }
-        if hardeningFixture == .adjacentChallenge {
+        if hardeningFixture == .numericAdjacency {
+            dependencies.adjacentReaderSessionLoader = UITestAdjacentSuccessLoader()
+        } else if hardeningFixture == .adjacentChallenge {
             dependencies.adjacentReaderSessionLoader = UITestAdjacentFailureLoader()
         }
         if arguments.contains("-seedUpdateSuccess") {
@@ -170,6 +172,12 @@ struct ToonEdgeAppEntry: App {
         }
         if arguments.contains("-uiTesting"), hardeningFixture == .adjacentChallenge {
             return AppRouter(presentedReader: adjacentFailureFixtureSession)
+        }
+        if arguments.contains("-uiTesting"), hardeningFixture == .numericAdjacency {
+            return AppRouter(presentedReader: numericAdjacencyFixtureSession)
+        }
+        if arguments.contains("-uiTesting"), hardeningFixture == .numericAdjacencyUnsafe {
+            return AppRouter(presentedReader: numericAdjacencyUnsafeFixtureSession)
         }
         guard arguments.contains("-seedOfflineReader") else {
             return AppRouter()
@@ -280,6 +288,50 @@ private let adjacentFailureFixtureSession: MockReaderSession = {
     session.nextChapter = MockChapter(title: "Chapter 2", sourceURL: adjacentFailureFixtureTargetURL)
     return session
 }()
+
+private let numericAdjacencyFixtureSession: MockReaderSession = {
+    var session = MockReaderSession(
+        seriesTitle: "Numeric Adjacency Fixture",
+        chapterTitle: "Chapter 155",
+        sourceURL: URL(string: "https://fixture.example/series/chapter-155")!,
+        imageURLs: [URL(string: "https://images.example.test/numeric/155.png")!]
+    )
+    session.previousChapter = MockChapter(
+        title: "Chapter 154",
+        sourceURL: URL(string: "https://fixture.example/series/chapter-154")!
+    )
+    session.nextChapter = MockChapter(
+        title: "Chapter 156",
+        sourceURL: URL(string: "https://fixture.example/series/chapter-156")!
+    )
+    return session
+}()
+
+private let numericAdjacencyUnsafeFixtureSession = MockReaderSession(
+    seriesTitle: "Numeric Adjacency Fixture",
+    chapterTitle: "Chapter 155",
+    sourceURL: URL(string: "https://fixture.example/series/latest")!,
+    imageURLs: [URL(string: "https://images.example.test/numeric/155.png")!]
+)
+
+private actor UITestAdjacentSuccessLoader: AdjacentReaderSessionLoading {
+    func loadAdjacentReaderSession(
+        from url: URL,
+        context: AdjacentReaderSessionLoadContext
+    ) async throws -> MockReaderSession {
+        let label = url.lastPathComponent.replacingOccurrences(of: "chapter-", with: "")
+        var session = MockReaderSession(
+            seriesID: context.currentSession.seriesID,
+            seriesTitle: context.currentSession.seriesTitle,
+            seriesURL: context.currentSession.seriesURL,
+            chapterTitle: "Chapter \(label)",
+            sourceURL: url,
+            imageURLs: [URL(string: "https://images.example.test/numeric/\(label).png")!]
+        )
+        session.launchOrigin = context.currentSession.launchOrigin
+        return session
+    }
+}
 
 private actor UITestAdjacentFailureLoader: AdjacentReaderSessionLoading {
     private var attemptCount = 0
