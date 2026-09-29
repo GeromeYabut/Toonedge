@@ -959,7 +959,7 @@ After reading multiple chapters in a series and returning from Reader to Series 
 
 ## DEF-020 — Reader Next can jump to the next recent chapter instead of the next numeric chapter
 
-**Status:** Implemented (verified 2026-09-26)
+**Status:** Resolved (verified 2026-09-29)
 **Severity:** High  
 **Reported:** 2026-05-28  
 **Area:** Reader adjacent chapter navigation, Series Detail recent ordering, generated chapter range routing
@@ -1008,10 +1008,10 @@ On the test toon `Past Life Returner`, Reader `Next` can jump from chapter 155 t
 
 ### Resolution
 
-- The checkpoint implementation already resolves numeric adjacency in `SwiftDataLibraryRepository` from the canonical numeric chapter identity instead of Recent ordering.
-- An exact stored chapter at `current ± 1` is preferred. Otherwise `ChapterURLInference` supplies a target only when the current source URL has a supported numeric pattern.
-- Sparse stored chapters 1, 155, and 169 now produce previous 154 and next 156 for chapter 155. Unsafe URL shapes produce no adjacent target instead of falling through to 1 or 169.
-- Generated chapter rows and Reader adjacency reuse the same conservative URL-inference rules.
+- `SwiftDataLibraryRepository` resolves numeric adjacency from canonical numeric chapter identity rather than Recent ordering. An exact stored `current ± 1` payload is preferred.
+- Numeric explicit links are accepted only when their canonical URL chapter identity is the requested neighbor; stale links to chapters 1 or 169 cannot override chapter 154 or 156. If no exact stored or valid explicit target exists, `ChapterURLInference` supplies only a safely inferable target.
+- Sparse stored chapters 1, 155, and 169 resolve chapter 155 to previous 154 and next 156. Unsafe URL shapes expose neither control rather than falling through to 1 or 169.
+- Dedicated iPhone 16 Pro Max fixture UI coverage verifies the visible Chapter 155 → 154 and Chapter 155 → 156 journeys with exact labels, plus the disabled unsafe state. The fixture transport preserves its session identity after a successful adjacent load; that test-only presentation detail is distinct from repository adjacency resolution.
 
 ## DEF-019 — Same source series can appear twice in Library Recent
 
