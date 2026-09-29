@@ -1,5 +1,25 @@
 import SwiftUI
 
+private enum ReaderHardeningFixtureScenario: String {
+    case numericAdjacency = "numeric-adjacency"
+    case numericAdjacencyUnsafe = "numeric-adjacency-unsafe"
+    case continueTarget = "continue-target"
+    case adjacentTimeout = "adjacent-timeout"
+    case adjacentChallenge = "adjacent-challenge"
+    case adjacentUnavailable = "adjacent-unavailable"
+    case adjacentLowConfidence = "adjacent-low-confidence"
+    case adjacentNonviable = "adjacent-nonviable"
+    case adjacentSuccess = "adjacent-success"
+
+    static func from(arguments: [String]) -> Self? {
+        guard let marker = arguments.firstIndex(of: "-readerHardeningFixture"),
+              arguments.indices.contains(marker + 1) else {
+            return arguments.contains("-seedAdjacentFailureReader") ? .adjacentChallenge : nil
+        }
+        return Self(rawValue: arguments[marker + 1])
+    }
+}
+
 @main
 struct ToonEdgeAppEntry: App {
     var body: some Scene {
@@ -14,6 +34,7 @@ struct ToonEdgeAppEntry: App {
     @MainActor
     private func launchDependencies() -> AppDependencies {
         let arguments = ProcessInfo.processInfo.arguments
+        let hardeningFixture = ReaderHardeningFixtureScenario.from(arguments: arguments)
         guard arguments.contains("-uiTesting") else {
             return (try? AppDependencies.persistent()) ?? .mock()
         }
@@ -117,7 +138,7 @@ struct ToonEdgeAppEntry: App {
             dependencies.cacheMetadataService = service
             dependencies.cacheStorageMeasurementService = nil
         }
-        if arguments.contains("-seedAdjacentFailureReader") {
+        if hardeningFixture == .adjacentChallenge {
             dependencies.adjacentReaderSessionLoader = UITestAdjacentFailureLoader()
         }
         if arguments.contains("-seedUpdateSuccess") {
@@ -138,6 +159,7 @@ struct ToonEdgeAppEntry: App {
 
     private func launchRouter() -> AppRouter {
         let arguments = ProcessInfo.processInfo.arguments
+        let hardeningFixture = ReaderHardeningFixtureScenario.from(arguments: arguments)
         if arguments.contains("-uiTesting"),
            let marker = arguments.firstIndex(of: "-openURL"),
            arguments.indices.contains(marker + 1) {
@@ -146,7 +168,7 @@ struct ToonEdgeAppEntry: App {
         if arguments.contains("-uiTesting"), arguments.contains("-browserFixture") {
             return AppRouter(presentedBrowser: .url("about:blank"))
         }
-        if arguments.contains("-uiTesting"), arguments.contains("-seedAdjacentFailureReader") {
+        if arguments.contains("-uiTesting"), hardeningFixture == .adjacentChallenge {
             return AppRouter(presentedReader: adjacentFailureFixtureSession)
         }
         guard arguments.contains("-seedOfflineReader") else {
