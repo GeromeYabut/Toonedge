@@ -906,7 +906,7 @@ Hidden adjacent chapter loading is likely being intermittently blocked by site-s
 
 ## DEF-021 — Series Detail Continue can reopen chapter 1 after reading later chapters
 
-**Status:** Implemented (verified 2026-09-26)
+**Status:** Resolved (verified 2026-09-29)
 **Severity:** High  
 **Reported:** 2026-06-05  
 **Area:** Series Detail continue action, Reader progress persistence, recent chapter selection
@@ -956,6 +956,8 @@ After reading multiple chapters in a series and returning from Reader to Series 
 - Recent-reading reconciliation persists a newly discovered adjacent chapter into the saved series, carries its Reader payload and progress, and updates the authoritative last-opened chapter.
 - The chapter label continues to use `ChapterNumericLabelExtractor`; no parallel parser was introduced.
 - Regression coverage proves a newer chapter 3 wins over unfinished chapter 1 immediately, remains authoritative after repository reconstruction, and is persisted when discovered through adjacent Reader navigation.
+- Deterministic UI coverage proves Reader Back immediately refreshes Series Detail progress, `Continue Chapter 3` opens chapter 3, and an adjacent-discovered chapter remains the fixture target across relaunch. Production repository reconstruction is covered separately through SwiftData repository tests.
+- Verification evidence: `docs/qa_evidence/2026-09-29-def-021-authoritative-continue.md`.
 
 ## DEF-020 — Reader Next can jump to the next recent chapter instead of the next numeric chapter
 
