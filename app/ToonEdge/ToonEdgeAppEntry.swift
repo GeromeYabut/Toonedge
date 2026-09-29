@@ -22,6 +22,8 @@ struct ToonEdgeAppEntry: App {
         if let marker = arguments.firstIndex(of: "-browserFixture"),
            arguments.indices.contains(marker + 1) {
             switch arguments[marker + 1] {
+            case "high":
+                dependencies.browserPresentationFixture = .highConfidence
             case "medium":
                 dependencies.browserPresentationFixture = .mediumConfidence
             case "low":
@@ -55,6 +57,11 @@ struct ToonEdgeAppEntry: App {
         }
         if arguments.contains("-seedDelayedLibrary") {
             dependencies.libraryService = DelayedUITestLibraryService()
+        }
+        if arguments.contains("-seedSeriesMutationRetry") {
+            let service = RetrySeriesMutationUITestLibraryService()
+            dependencies.libraryService = service
+            dependencies.libraryLifecycleService = service
         }
         if arguments.contains("-seedDownloads20") {
             let entries = (1...20).map { number in
@@ -320,4 +327,60 @@ private struct DelayedUITestLibraryService: LibraryProviding {
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
         await MockLibraryService().seriesDetail(for: seriesID)
     }
+}
+
+private actor RetrySeriesMutationUITestLibraryService: LibraryLifecycleManaging {
+    private let base = MockLibraryService()
+    private var updateAttempts = 0
+    private var updatedStates: [UUID: LibraryCollectionState] = [:]
+
+    func homeSnapshot() async -> HomeSnapshot {
+        await base.homeSnapshot()
+    }
+
+    func librarySnapshot() async -> LibrarySnapshot {
+        await base.librarySnapshot()
+    }
+
+    func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
+        guard var detail = await base.seriesDetail(for: seriesID) else { return nil }
+        if let updatedState = updatedStates[seriesID] {
+            detail.libraryState = updatedState
+        }
+        return detail
+    }
+
+    func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {
+        throw URLError(.unsupportedURL)
+    }
+
+    func removeFromLibrary(seriesID: UUID) async throws {
+        throw URLError(.unsupportedURL)
+    }
+
+    func updateLibraryState(_ state: LibraryCollectionState, for seriesID: UUID) async throws {
+        updateAttempts += 1
+        guard updateAttempts > 1 else {
+            throw URLError(.cannotWriteToFile)
+        }
+        updatedStates[seriesID] = state
+    }
+
+    func recordUpdateCheckResult(
+        seriesID: UUID,
+        latestChapterLabel: String?,
+        hasUnreadUpdates: Bool,
+        checkedAt: Date
+    ) async throws {}
+
+    func recordReadingProgress(
+        _ progress: ReaderProgress,
+        forChapterID chapterID: UUID,
+        at date: Date
+    ) async throws {}
+
+    func continueReadingTarget(for seriesID: UUID) async -> ContinueReadingTarget? { nil }
+    func readerSession(forChapterID chapterID: UUID) async -> MockReaderSession? { nil }
+    func readerSession(forSourceURL sourceURL: URL) async -> MockReaderSession? { nil }
+    func isSaved(canonicalURL: URL) async -> Bool { true }
 }
