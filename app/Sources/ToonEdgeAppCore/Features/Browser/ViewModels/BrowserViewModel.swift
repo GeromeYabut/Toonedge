@@ -9,6 +9,7 @@ public enum BrowserReaderPresentationState: Equatable, Sendable {
 }
 
 public enum BrowserPresentationFixture: Sendable {
+    case highConfidence
     case mediumConfidence
     case lowConfidence
     case protected
@@ -20,10 +21,20 @@ public enum BrowserPresentationFixture: Sendable {
             seriesTitle: "Browser Fixture",
             chapterTitle: "Chapter 1",
             sourceURL: pageURL,
-            imageURLs: [URL(string: "https://images.fixture.toonedge.test/chapter-1.jpg")!]
+            imageURLs: [URL(string: "https://images.fixture.toonedge.test/chapter-1.jpg")!],
+            launchOrigin: .browser
         )
 
         switch self {
+        case .highConfidence:
+            return DetectionResult(
+                pageURL: pageURL,
+                confidence: .high,
+                score: 100,
+                candidates: [],
+                readerSession: session,
+                diagnostics: .init(confidence: .high, score: 100, parserPath: .genericHeuristic)
+            )
         case .mediumConfidence:
             return DetectionResult(
                 pageURL: pageURL,

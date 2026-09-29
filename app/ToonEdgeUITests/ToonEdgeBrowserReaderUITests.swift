@@ -2,6 +2,13 @@ import XCTest
 
 @MainActor
 final class ToonEdgeBrowserReaderUITests: XCTestCase {
+    func testHighConfidenceFixtureAutomaticallyOpensReader() {
+        let app = launchBrowserFixture("high")
+
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["browser.cleanModeAction"].exists)
+    }
+
     func testMediumConfidenceFixtureShowsWholeCleanModeActionAndOpensReader() {
         let app = launchBrowserFixture("medium")
         let action = app.buttons["browser.cleanModeAction"]
@@ -16,6 +23,33 @@ final class ToonEdgeBrowserReaderUITests: XCTestCase {
         action.tap()
 
         XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForExistence(timeout: 5))
+    }
+
+    func testViewOriginalFromBrowserOwnedReaderReturnsToOriginatingBrowser() {
+        let app = launchBrowserFixture("medium")
+        openMediumConfidenceReader(in: app)
+        revealReaderChrome(in: app)
+
+        let viewOriginal = app.buttons["reader.viewOriginalPage"]
+        XCTAssertTrue(viewOriginal.waitForExistence(timeout: 2))
+        viewOriginal.tap()
+
+        XCTAssertTrue(app.otherElements["browser.root"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForNonExistence(timeout: 2))
+    }
+
+    func testBackFromAutoOpenedBrowserReaderReturnsToBrowser() {
+        let app = launchBrowserFixture("high")
+        let reader = app.descendants(matching: .any)["reader.root"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 5))
+        revealReaderChrome(in: app)
+
+        let back = app.buttons["reader.back"]
+        XCTAssertTrue(back.waitForExistence(timeout: 2))
+        back.tap()
+
+        XCTAssertTrue(app.otherElements["browser.root"].waitForExistence(timeout: 5))
+        XCTAssertTrue(reader.waitForNonExistence(timeout: 2))
     }
 
     func testReaderChromeOnlyTogglesFromReadingSurface() {
@@ -62,6 +96,20 @@ final class ToonEdgeBrowserReaderUITests: XCTestCase {
         let app = launchBrowserFixture(fixture)
         XCTAssertTrue(app.otherElements["browser.root"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["browser.cleanModeAction"].exists)
+    }
+
+    private func openMediumConfidenceReader(in app: XCUIApplication) {
+        let cleanMode = app.buttons["browser.cleanModeAction"]
+        XCTAssertTrue(cleanMode.waitForExistence(timeout: 5))
+        cleanMode.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForExistence(timeout: 5))
+    }
+
+    private func revealReaderChrome(in app: XCUIApplication) {
+        let reader = app.descendants(matching: .any)["reader.root"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 5))
+        reader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(app.descendants(matching: .any)["reader.chrome"].waitForExistence(timeout: 2))
     }
 
     private func launchBrowserFixture(_ fixture: String) -> XCUIApplication {
