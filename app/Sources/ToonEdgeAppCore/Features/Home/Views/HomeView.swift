@@ -218,9 +218,8 @@ public struct HomeView: View {
         let result = await updateRefreshService.refreshUpdates()
         await reloadSnapshot()
         refreshMessage = refreshMessage(for: result)
-        if let event = InteractionFeedbackOutcomePolicy.updateEvent(for: result, userInitiated: true) {
-            dependencies.interactionFeedback.emit(event)
-        }
+        InteractionFeedbackOutcomeReporter(feedback: dependencies.interactionFeedback)
+            .reportUserInitiatedUpdate(result)
     }
 
     private func refreshMessage(for result: LibraryUpdateRefreshResult) -> String {

@@ -84,3 +84,26 @@ import Testing
     #expect(InteractionFeedbackOutcomePolicy.invalidInputEvent(validationIsVisible: true) == .userActionWarning)
     #expect(InteractionFeedbackOutcomePolicy.invalidInputEvent(validationIsVisible: false) == nil)
 }
+
+@MainActor
+@Test func featureOutcomeReporterEmitsOnlyForChangedUserVisibleOutcomes() {
+    let feedback = RecordingInteractionFeedback()
+    let reporter = InteractionFeedbackOutcomeReporter(feedback: feedback)
+
+    reporter.reportUserInitiatedUpdate(.init(checkedCount: 2, updatedCount: 1, failedCount: 0))
+    reporter.reportSelectionChange(from: LibrarySegment.recent, to: .recent)
+    reporter.reportSelectionChange(from: LibrarySegment.recent, to: .reading)
+    reporter.reportInvalidInput(validationIsVisible: true)
+
+    #expect(feedback.events == [
+        .operationSucceeded,
+        .selectionChanged,
+        .userActionWarning
+    ])
+
+    feedback.reset()
+    reporter.reportBackgroundUpdate(.init(checkedCount: 2, updatedCount: 1, failedCount: 0))
+    reporter.reportUserInitiatedUpdate(.init(checkedCount: 2, updatedCount: 0, failedCount: 0))
+    reporter.reportInvalidInput(validationIsVisible: false)
+    #expect(feedback.events.isEmpty)
+}

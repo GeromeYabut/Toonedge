@@ -104,10 +104,12 @@ import Testing
 @MainActor
 @Test func settingsViewModelPersistsEveryReaderControl() async {
     let manager = MockSettingsService()
+    let feedback = RecordingInteractionFeedback()
     let viewModel = SettingsViewModel(
         settingsManager: manager,
         cacheMetadataManager: MockCacheMetadataService(),
-        interactionPreferences: InMemoryInteractionPreferences()
+        interactionPreferences: InMemoryInteractionPreferences(),
+        interactionFeedback: feedback
     )
 
     await viewModel.setCanvas(.black)
@@ -121,6 +123,7 @@ import Testing
         isPageSpacingEnabled: true,
         brightnessAid: 0.3
     ))
+    #expect(feedback.events.isEmpty)
 }
 
 @Test func settingsUpdateFeedbackDistinguishesAllOutcomes() {

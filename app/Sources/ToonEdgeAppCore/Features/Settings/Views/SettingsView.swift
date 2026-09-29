@@ -120,8 +120,9 @@ public final class SettingsViewModel: ObservableObject {
         defer { isCheckingForUpdates = false }
         let result = await updateRefreshService.refreshUpdates()
         updateFeedback = SettingsUpdateFeedback(result: result)
-        if let event = InteractionFeedbackOutcomePolicy.updateEvent(for: result, userInitiated: true) {
-            interactionFeedback?.emit(event)
+        if let interactionFeedback {
+            InteractionFeedbackOutcomeReporter(feedback: interactionFeedback)
+                .reportUserInitiatedUpdate(result)
         }
     }
 }

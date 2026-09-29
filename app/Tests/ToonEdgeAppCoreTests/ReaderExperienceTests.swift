@@ -640,7 +640,8 @@ import Testing
 
 @MainActor
 @Test func readerSettingsMutationsUpdateSessionPreferences() {
-    let viewModel = ReaderViewModel(session: .sample)
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(session: .sample, interactionFeedback: feedback)
 
     viewModel.setDisplayMode(.fitScreen)
     viewModel.setPageSpacingEnabled(false)
@@ -651,6 +652,20 @@ import Testing
     #expect(!viewModel.settings.isPageSpacingEnabled)
     #expect(viewModel.settings.brightnessAid == 0.35)
     #expect(viewModel.settings.readerCanvas == .black)
+    #expect(feedback.events.isEmpty)
+}
+
+@MainActor
+@Test func passiveReaderProgressImageAndChromeCallbacksRemainSilent() async {
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = ReaderViewModel(session: .sample, interactionFeedback: feedback)
+
+    await viewModel.updateProgress(visibleImageIndex: 1)
+    await viewModel.markImageVisible(index: 2)
+    await viewModel.markImageLoaded(index: 2)
+    viewModel.toggleChrome()
+
+    #expect(feedback.events.isEmpty)
 }
 
 @Test func readerPlaceholderHeightUsesDetectedAspectRatioWhenAvailable() {

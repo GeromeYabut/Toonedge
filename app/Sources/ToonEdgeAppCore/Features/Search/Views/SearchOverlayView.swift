@@ -217,10 +217,9 @@ public struct SearchOverlayView: View {
             return
         case .invalidURL:
             validationMessage = "Enter a complete web address or search phrase."
-            if let event = InteractionFeedbackOutcomePolicy.invalidInputEvent(
-                validationIsVisible: validationMessage != nil
-            ) {
-                interactionFeedback?.emit(event)
+            if let interactionFeedback {
+                InteractionFeedbackOutcomeReporter(feedback: interactionFeedback)
+                    .reportInvalidInput(validationIsVisible: validationMessage != nil)
             }
             isSearchFocused = true
             return

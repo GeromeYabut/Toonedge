@@ -41,3 +41,33 @@ public protocol InteractionPreferencesManaging: AnyObject, Sendable {
     func isHapticFeedbackEnabled() -> Bool
     func setHapticFeedbackEnabled(_ enabled: Bool)
 }
+
+@MainActor
+public final class InteractionFeedbackOutcomeReporter {
+    private let feedback: any InteractionFeedbackProviding
+
+    public init(feedback: any InteractionFeedbackProviding) {
+        self.feedback = feedback
+    }
+
+    public func reportUserInitiatedUpdate(_ result: LibraryUpdateRefreshResult) {
+        emit(InteractionFeedbackOutcomePolicy.updateEvent(for: result, userInitiated: true))
+    }
+
+    public func reportBackgroundUpdate(_ result: LibraryUpdateRefreshResult) {
+        emit(InteractionFeedbackOutcomePolicy.updateEvent(for: result, userInitiated: false))
+    }
+
+    public func reportSelectionChange<Value: Equatable>(from previous: Value, to current: Value) {
+        emit(InteractionFeedbackOutcomePolicy.selectionEvent(valueChanged: previous != current))
+    }
+
+    public func reportInvalidInput(validationIsVisible: Bool) {
+        emit(InteractionFeedbackOutcomePolicy.invalidInputEvent(validationIsVisible: validationIsVisible))
+    }
+
+    private func emit(_ event: InteractionFeedbackEvent?) {
+        guard let event else { return }
+        feedback.emit(event)
+    }
+}

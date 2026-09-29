@@ -186,25 +186,22 @@ public struct LibraryView: View {
         await reloadSnapshot()
         isRefreshingUpdates = false
         showRefreshFeedback(result: result)
-        if let event = InteractionFeedbackOutcomePolicy.updateEvent(for: result, userInitiated: true) {
-            dependencies.interactionFeedback.emit(event)
-        }
+        InteractionFeedbackOutcomeReporter(feedback: dependencies.interactionFeedback)
+            .reportUserInitiatedUpdate(result)
     }
 
     private func selectSegment(_ segment: LibrarySegment) {
         guard selectedSegment != segment else { return }
+        InteractionFeedbackOutcomeReporter(feedback: dependencies.interactionFeedback)
+            .reportSelectionChange(from: selectedSegment, to: segment)
         selectedSegment = segment
-        if let event = InteractionFeedbackOutcomePolicy.selectionEvent(valueChanged: true) {
-            dependencies.interactionFeedback.emit(event)
-        }
     }
 
     private func selectViewMode(_ mode: LibraryViewMode) {
         guard selectedViewMode != mode else { return }
+        InteractionFeedbackOutcomeReporter(feedback: dependencies.interactionFeedback)
+            .reportSelectionChange(from: selectedViewMode, to: mode)
         selectedViewMode = mode
-        if let event = InteractionFeedbackOutcomePolicy.selectionEvent(valueChanged: true) {
-            dependencies.interactionFeedback.emit(event)
-        }
     }
 
     @ViewBuilder
