@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-Initial baseline only, recorded **2026-09-30 08:03:29 PDT**. The filename retains the approved 2026-09-29 plan date. Final release verification is **pending**; this ledger does not close any defect or claim that the final gates have passed.
+Initial baseline recorded **2026-09-30 08:03:29 PDT**, followed by the Task 2 long-chapter results below. The filename retains the approved 2026-09-29 plan date. Final release verification is **pending**; this ledger does not close any defect or claim that the final gates have passed.
 
 Sources: [release-verification plan](../superpowers/plans/2026-09-29-high-priority-release-verification.md) and [master execution plan](../superpowers/plans/2026-09-29-high-priority-defect-execution.md). Task 1 performed read-only environment and repository checks and created this ledger. It did not run tests, build the app, launch or change a simulator, inspect screenshot contents, or modify app code, tests, defect statuses, or protected screenshots.
 
@@ -81,7 +81,31 @@ swift test --package-path app --jobs 1
 
 ## Focused UI and journey gates
 
-**Pending.** Record each acceptance criterion, fixture/live classification, device, tested HEAD, command, test count, result bundle, and any defect or limitation. Required coverage includes long-chapter traversal/transient recovery, retained-cache deletion with measured recalculation and relaunch, Settings update outcomes, adjacent routing, and protected-site browser-only policy. Run new focused regressions before complete UI gates. Record VoiceOver and appearance findings separately below.
+**Partially verified.** Task 2 long-chapter traversal and explicit image recovery passed on both dedicated devices as recorded below. Retained-cache deletion with measured recalculation and relaunch, Settings update outcomes, adjacent routing, and protected-site browser-only final gates remain pending. Run new focused regressions before complete UI gates. Record VoiceOver and appearance findings separately below.
+
+### Task 2 — long-chapter traversal and explicit recovery
+
+Implementation commit: `6c932967f594357da609ce250fc4a5c640d444cd` (`test: verify long chapter traversal recovery`). It changes only fixture plumbing in `app/ToonEdge/ToonEdgeAppEntry.swift` and the focused journey in `app/ToonEdgeUITests/ToonEdgeOfflineUITests.swift`. No production Reader implementation, schema, or production interface changed.
+
+The focused test is `ToonEdgeUITests/ToonEdgeLongChapterUITests/testLongChapterTraversesFortyPanelsAndRecoversTransientImageFailure`, launched with `-uiTesting -resetTestData -readerHardeningFixture long-chapter`.
+
+| Attempt | Device | Result | Elapsed test time | Result bundle |
+|---|---|---|---|---|
+| Initial RED | Dedicated iPhone 16e | Failed; development baseline | Not recorded here | `/private/tmp/toonedge-long-16e-red.xcresult` |
+| Final attempt 12 | Dedicated iPhone 16e, `4582CDE9-27DB-4669-86AC-0631C1D7F2ED` | 1/1 passed, 0 failures | 165.134 seconds | `/private/tmp/toonedge-long-16e-attempt12.xcresult` |
+| Final Pro Max | Dedicated iPhone 16 Pro Max, `29E33EEE-8A11-457F-8F7F-BDF2D44A9FE4` | 1/1 passed, 0 failures | 176.122 seconds | `/private/tmp/toonedge-long-promax.xcresult` |
+
+Diagnostic attempts between RED and final success exposed malformed PNG bytes, stale restored fixture progress, and a scroll query selecting the wrong surface. The final fixture validates its replacement PNG with `UIImage`, supplies a fresh mock progress repository, and the test uses `reader.root` after asserting that it is the Reader scroll view. Page 1 is checked while stationary before traversal. These were fixture/test corrections, not evidence of a production Reader defect.
+
+Fixture semantics and observed coverage:
+
+- Forty ordered panel URLs use decodable, sanitized 1×1 PNG content from an injected fixture cache. Metadata is empty, and each cache lookup has an 80 ms synchronous delay, exercising fallback layout before the decoded image becomes available.
+- Panel 20's first cache lookup deliberately misses. Its loopback URL (`127.0.0.1:1`) cannot supply the image, so the normal transport attempts produce one visible first-load failure. The test taps the visible **Retry** action; that explicit reload obtains the cached PNG and clears the failure. This is not a single failed HTTP request followed by automatic success.
+- The test traverses all forty panels through the lazy Reader surface, checks loaded images and nonzero frames for panels 2–40, confirms the panel 20 failure clears, and finishes with displayed progress of **100%**. It does not instrument lazy-load allocation counts or measure performance/layout-shift bounds.
+
+Classification: **deterministic fixture UI evidence only**. This does not validate live image transport, real delayed image metadata, remote-server recovery, or the memory/performance behavior of full-resolution chapter artwork. The loopback failure is intentional fixture transport; no live content is needed. No safe screenshot was captured for Task 2, so there is no standalone screenshot artifact to claim.
+
+The recorded Task 2 runs targeted only the dedicated 16e and Pro Max; the shared iPhone 16 Pro was not targeted and protected screenshots were not modified. This ledger-only update runs no simulator commands or tests and does not re-hash protected files; their final integrity recheck remains required by the final audit.
 
 Prior slice ledgers are context, not substitutes for these final gates:
 
@@ -136,7 +160,7 @@ xcodebuild \
 
 ## Live versus fixture results
 
-**Pending final audit.** Label every result as live, deterministic fixture, package/repository, or manual inspection. Fixture evidence cannot close a live-only criterion. Reconcile DEF-036 with its focused ledger and keep it open if live in-site parity remains unavailable or nonviable. WEBTOON and protected GlobalComix must remain browser-only; do not authenticate, bypass protection, record protected content, or capture live protected screenshots.
+**Pending final audit.** Task 2 is deterministic fixture evidence only, with the transport and image-size limitations recorded above. Label every other result as live, deterministic fixture, package/repository, or manual inspection. Fixture evidence cannot close a live-only criterion. Reconcile DEF-036 with its focused ledger and keep it open if live in-site parity remains unavailable or nonviable. WEBTOON and protected GlobalComix must remain browser-only; do not authenticate, bypass protection, record protected content, or capture live protected screenshots.
 
 ## Accessibility and appearance review
 
@@ -154,7 +178,7 @@ Recommend a CI artifact set keyed by tested commit SHA and run ID containing bot
 
 ## Limitations and outstanding work
 
-- Task 1 provides only baseline and integrity observations. Package, focused UI, complete UI, exact build, accessibility/appearance, live-site, and final defect gates remain unverified in this ledger.
+- Task 1 provides baseline and integrity observations; Task 2 adds the focused long-chapter journey on both dedicated devices. Package, remaining focused UI, complete UI, exact build, accessibility/appearance, live-site, and final defect gates remain unverified in this ledger.
 - Local runtime/device inventory is a point-in-time observation, not proof of app behavior or simulator mutation history outside Task 1.
 - No live content or protected screenshot contents were viewed or captured in this task.
 - The final release claim requires fresh gates after review fixes and durable artifact publication; neither occurred in Task 1.
