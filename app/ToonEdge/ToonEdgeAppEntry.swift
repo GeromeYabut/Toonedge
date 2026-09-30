@@ -19,6 +19,16 @@ private enum ReaderHardeningFixtureScenario: String {
         }
         return Self(rawValue: arguments[marker + 1])
     }
+
+    var usesAdjacentOutcomeFixture: Bool {
+        switch self {
+        case .adjacentTimeout, .adjacentChallenge, .adjacentUnavailable,
+             .adjacentLowConfidence, .adjacentNonviable, .adjacentSuccess:
+            true
+        default:
+            false
+        }
+    }
 }
 
 @main
@@ -139,10 +149,10 @@ struct ToonEdgeAppEntry: App {
             dependencies.cacheMetadataService = service
             dependencies.cacheStorageMeasurementService = nil
         }
-        if hardeningFixture == .numericAdjacency {
+        if let hardeningFixture, hardeningFixture.usesAdjacentOutcomeFixture {
+            dependencies.adjacentReaderSessionLoader = UITestAdjacentOutcomeLoader(scenario: hardeningFixture)
+        } else if hardeningFixture == .numericAdjacency {
             dependencies.adjacentReaderSessionLoader = UITestAdjacentSuccessLoader()
-        } else if hardeningFixture == .adjacentChallenge {
-            dependencies.adjacentReaderSessionLoader = UITestAdjacentFailureLoader()
         }
         if let hardeningFixture,
            hardeningFixture == .continueTarget || hardeningFixture == .continueAdjacentDiscovery {
@@ -196,8 +206,8 @@ struct ToonEdgeAppEntry: App {
         if arguments.contains("-uiTesting"), arguments.contains("-browserFixture") {
             return AppRouter(presentedBrowser: .url("about:blank"))
         }
-        if arguments.contains("-uiTesting"), hardeningFixture == .adjacentChallenge {
-            return AppRouter(presentedReader: adjacentFailureFixtureSession)
+        if arguments.contains("-uiTesting"), hardeningFixture?.usesAdjacentOutcomeFixture == true {
+            return AppRouter(presentedReader: adjacentOutcomeFixtureSession)
         }
         if arguments.contains("-uiTesting"), hardeningFixture == .numericAdjacency {
             return AppRouter(presentedReader: numericAdjacencyFixtureSession)
@@ -549,16 +559,18 @@ private func summary(for entries: [CacheMetadataEntry]) -> DownloadSummary {
     )
 }
 
-private let adjacentFailureFixtureTargetURL = URL(string: "https://fixture.example/series/chapter-2")!
+private let adjacentOutcomeFixtureTargetURL = URL(string: "https://fixture.example/series/chapter-2")!
 
-private let adjacentFailureFixtureSession: MockReaderSession = {
+private let adjacentOutcomeFixtureSession: MockReaderSession = {
     var session = MockReaderSession(
-        seriesTitle: "Adjacent Failure Fixture",
+        seriesTitle: "Adjacent Outcome Fixture",
+        seriesURL: URL(string: "https://fixture.example/series")!,
         chapterTitle: "Chapter 1",
         sourceURL: URL(string: "https://fixture.example/series/chapter-1")!,
-        imageURLs: [URL(string: "https://images.example.test/adjacent/001.png")!]
+        imageURLs: [URL(string: "https://images.example.test/adjacent/001.png")!],
+        launchOrigin: .homeContinueReading
     )
-    session.nextChapter = MockChapter(title: "Chapter 2", sourceURL: adjacentFailureFixtureTargetURL)
+    session.nextChapter = MockChapter(title: "Chapter 2", sourceURL: adjacentOutcomeFixtureTargetURL)
     return session
 }()
 
@@ -607,32 +619,67 @@ private actor UITestAdjacentSuccessLoader: AdjacentReaderSessionLoading {
     }
 }
 
-private actor UITestAdjacentFailureLoader: AdjacentReaderSessionLoading {
-    private var attemptCount = 0
+private actor UITestAdjacentOutcomeLoader: AdjacentReaderSessionLoading {
+    let scenario: ReaderHardeningFixtureScenario
+    private var attempts = 0
 
     func loadAdjacentReaderSession(
         from url: URL,
         context: AdjacentReaderSessionLoadContext
     ) async throws -> MockReaderSession {
-        attemptCount += 1
-        if attemptCount == 1 {
+        attempts += 1
+        if scenario == .adjacentSuccess || (scenario == .adjacentChallenge && attempts > 1) {
+            var session = MockReaderSession(
+                seriesID: context.currentSession.seriesID,
+                seriesTitle: context.currentSession.seriesTitle,
+                seriesURL: context.currentSession.seriesURL,
+                chapterTitle: "Chapter 2",
+                sourceURL: adjacentOutcomeFixtureTargetURL,
+                imageURLs: [URL(string: "https://images.example.test/adjacent/002.png")!]
+            )
+            session.launchOrigin = context.currentSession.launchOrigin
+            return session
+        }
+
+        switch scenario {
+        case .adjacentTimeout:
+            throw AdjacentReaderSessionLoadError(
+                reason: .timeout,
+                targetURL: adjacentOutcomeFixtureTargetURL
+            )
+        case .adjacentChallenge:
             throw AdjacentReaderSessionLoadError(
                 reason: .challengeOrRateLimit,
-                targetURL: url,
+                targetURL: adjacentOutcomeFixtureTargetURL,
                 confidence: .low,
                 parserPath: .browserSessionProfile,
                 challengeSignals: ["http-status:429"]
             )
+        case .adjacentUnavailable:
+            throw AdjacentReaderSessionLoadError(
+                reason: .unavailable,
+                targetURL: adjacentOutcomeFixtureTargetURL
+            )
+        case .adjacentLowConfidence:
+            throw AdjacentReaderSessionLoadError(
+                reason: .lowConfidence,
+                targetURL: adjacentOutcomeFixtureTargetURL,
+                confidence: .medium,
+                parserPath: .genericHeuristic
+            )
+        case .adjacentNonviable:
+            throw AdjacentReaderSessionLoadError(
+                reason: .nonViableImages,
+                targetURL: adjacentOutcomeFixtureTargetURL,
+                confidence: .high,
+                parserPath: .genericHeuristic
+            )
+        default:
+            throw AdjacentReaderSessionLoadError(
+                reason: .unavailable,
+                targetURL: adjacentOutcomeFixtureTargetURL
+            )
         }
-
-        var session = MockReaderSession(
-            seriesTitle: context.currentSession.seriesTitle,
-            chapterTitle: "Chapter 2",
-            sourceURL: url,
-            imageURLs: [URL(string: "https://images.example.test/adjacent/002.png")!]
-        )
-        session.launchOrigin = context.currentSession.launchOrigin
-        return session
     }
 }
 
