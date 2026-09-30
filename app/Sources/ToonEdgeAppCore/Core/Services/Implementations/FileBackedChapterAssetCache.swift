@@ -2,10 +2,20 @@ import Foundation
 
 public struct FileBackedChapterAssetCache: ChapterAssetCaching, ChapterAssetRemoving {
     public let rootDirectory: URL
+    private let fileManager: FileManager & Sendable
+    // A reference shared by value-type copies injected into Reader, retention and removal.
+    // A store owns the lock through directory creation AND atomic write, so removal
+    // cannot finish while that store can still recreate its chapter directory.
+    private let lifecycleLock = NSLock()
 
     public init(rootDirectory: URL) throws {
+        try self.init(rootDirectory: rootDirectory, fileManager: CacheFileManager())
+    }
+
+    init(rootDirectory: URL, fileManager: FileManager & Sendable) throws {
         self.rootDirectory = rootDirectory
-        try FileManager.default.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
+        self.fileManager = fileManager
+        try fileManager.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
     }
 
     public func chapterDirectory(for sourceURL: URL) -> URL {
@@ -13,8 +23,10 @@ public struct FileBackedChapterAssetCache: ChapterAssetCaching, ChapterAssetRemo
     }
 
     public func cachedAssetURL(for assetURL: URL, sourceURL: URL) -> URL? {
+        lifecycleLock.lock()
+        defer { lifecycleLock.unlock() }
         let fileURL = chapterDirectory(for: sourceURL).appendingPathComponent(assetFilename(for: assetURL))
-        return FileManager.default.fileExists(atPath: fileURL.path) ? fileURL : nil
+        return fileManager.fileExists(atPath: fileURL.path) ? fileURL : nil
     }
 
     public func intendedAssetURL(for assetURL: URL, sourceURL: URL) -> URL {
@@ -22,8 +34,10 @@ public struct FileBackedChapterAssetCache: ChapterAssetCaching, ChapterAssetRemo
     }
 
     public func store(_ data: Data, for assetURL: URL, sourceURL: URL) throws {
+        lifecycleLock.lock()
+        defer { lifecycleLock.unlock() }
         let destination = intendedAssetURL(for: assetURL, sourceURL: sourceURL)
-        try FileManager.default.createDirectory(
+        try fileManager.createDirectory(
             at: destination.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
@@ -39,8 +53,10 @@ public struct FileBackedChapterAssetCache: ChapterAssetCaching, ChapterAssetRemo
     }
 
     public func removeAssets(for sourceURL: URL) throws {
+        lifecycleLock.lock()
+        defer { lifecycleLock.unlock() }
         do {
-            try FileManager.default.removeItem(at: chapterDirectory(for: sourceURL))
+            try fileManager.removeItem(at: chapterDirectory(for: sourceURL))
         } catch CocoaError.fileNoSuchFile {
             // Metadata-only entries and retries after metadata failures are safe to remove.
         }
@@ -70,3 +86,6 @@ public struct FileBackedChapterAssetCache: ChapterAssetCaching, ChapterAssetRemo
         .trimmingCharacters(in: CharacterSet(charactersIn: "-."))
     }
 }
+
+// Only FileManager's thread-safe file operations are used; no delegate or mutable configuration.
+private final class CacheFileManager: FileManager, @unchecked Sendable {}

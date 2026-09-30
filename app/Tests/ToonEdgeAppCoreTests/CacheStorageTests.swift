@@ -92,6 +92,104 @@ import Testing
     #expect(try Data(contentsOf: preservedURL) == Data([2]))
 }
 
+@Test func chapterRemovalWaitsForInFlightStoreAcrossCacheCopies() async throws {
+    let root = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let sourceURL = URL(string: "https://fixture.example/chapter-1")!
+    let neighborURL = URL(string: "https://fixture.example/chapter-2")!
+    let assetURL = URL(string: "https://fixture.example/panel.png")!
+    let directory = try FileBackedChapterAssetCache(rootDirectory: root).chapterDirectory(for: sourceURL)
+    let files = PausingChapterDirectoryFileManager(pausedDirectory: directory)
+    let cache = try FileBackedChapterAssetCache(rootDirectory: root, fileManager: files)
+    let removalCopy = cache
+    try cache.store(Data([2]), for: assetURL, sourceURL: neighborURL)
+
+    // Stop a real store inside createDirectory, before it can publish any files.
+    let store = Task.detached { try cache.store(Data([1]), for: assetURL, sourceURL: sourceURL) }
+    defer { files.resumeStore.signal() }
+    try #require(await waitForCacheSignal(files.storeEntered) == .success)
+    let removalStarted = DispatchSemaphore(value: 0)
+    let removalFinished = DispatchSemaphore(value: 0)
+    let removal = Task.detached {
+        removalStarted.signal()
+        defer { removalFinished.signal() }
+        try removalCopy.removeAssets(for: sourceURL)
+    }
+    try #require(await waitForCacheSignal(removalStarted) == .success)
+    let prematureRemoval = await waitForCacheSignal(removalFinished, timeout: 0.25)
+    files.resumeStore.signal()
+    try await store.value
+    try await removal.value
+
+    #expect(prematureRemoval == .timedOut, "Removal must wait for the active store's complete file transaction")
+    #expect(!FileManager.default.fileExists(atPath: directory.path), "The old store must not recreate a removed directory")
+    #expect(removalCopy.cachedAssetURL(for: assetURL, sourceURL: sourceURL) == nil)
+    let neighbor = try #require(cache.cachedAssetURL(for: assetURL, sourceURL: neighborURL))
+    #expect(try Data(contentsOf: neighbor) == Data([2]))
+}
+
+@Test func cachedAssetLookupWaitsForInFlightStoreAcrossCacheCopies() async throws {
+    let root = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let sourceURL = URL(string: "https://fixture.example/chapter-1")!
+    let assetURL = URL(string: "https://fixture.example/panel.png")!
+    let directory = try FileBackedChapterAssetCache(rootDirectory: root).chapterDirectory(for: sourceURL)
+    let files = PausingChapterDirectoryFileManager(pausedDirectory: directory)
+    let cache = try FileBackedChapterAssetCache(rootDirectory: root, fileManager: files)
+    let lookupCopy = cache
+    let store = Task.detached { try cache.store(Data([1]), for: assetURL, sourceURL: sourceURL) }
+    defer { files.resumeStore.signal() }
+    try #require(await waitForCacheSignal(files.storeEntered) == .success)
+    let lookupStarted = DispatchSemaphore(value: 0)
+    let lookupFinished = DispatchSemaphore(value: 0)
+    let lookup = Task.detached {
+        lookupStarted.signal()
+        defer { lookupFinished.signal() }
+        return lookupCopy.cachedAssetURL(for: assetURL, sourceURL: sourceURL)
+    }
+    try #require(await waitForCacheSignal(lookupStarted) == .success)
+    let prematureLookup = await waitForCacheSignal(lookupFinished, timeout: 0.25)
+    files.resumeStore.signal()
+    try await store.value
+    let cachedURL = await lookup.value
+
+    #expect(prematureLookup == .timedOut, "Lookup must not observe a partial store")
+    #expect(cachedURL != nil)
+    if let cachedURL { #expect(try Data(contentsOf: cachedURL) == Data([1])) }
+}
+
+private func waitForCacheSignal(_ signal: DispatchSemaphore, timeout: Double = 5) async -> DispatchTimeoutResult {
+    await withCheckedContinuation { continuation in
+        DispatchQueue.global().async {
+            continuation.resume(returning: signal.wait(timeout: .now() + timeout))
+        }
+    }
+}
+
+private final class PausingChapterDirectoryFileManager: FileManager, @unchecked Sendable {
+    let pausedDirectory: URL
+    let storeEntered = DispatchSemaphore(value: 0)
+    let resumeStore = DispatchSemaphore(value: 0)
+
+    init(pausedDirectory: URL) {
+        self.pausedDirectory = pausedDirectory
+        super.init()
+    }
+
+    override func createDirectory(
+        at url: URL, withIntermediateDirectories createIntermediates: Bool,
+        attributes: [FileAttributeKey: Any]? = nil
+    ) throws {
+        if url == pausedDirectory {
+            storeEntered.signal()
+            guard resumeStore.wait(timeout: .now() + 5) == .success else {
+                throw URLError(.timedOut)
+            }
+        }
+        try super.createDirectory(at: url, withIntermediateDirectories: createIntermediates, attributes: attributes)
+    }
+}
+
 private struct FailingAssetRemoval: ChapterAssetRemoving {
     func removeAssets(for sourceURL: URL) throws { throw URLError(.cannotRemoveFile) }
 }
