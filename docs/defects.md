@@ -844,7 +844,7 @@ The comfortable grid card chip read `latestChapterLabel` directly from `LibraryS
 
 ## DEF-022 — Reader adjacent navigation masks transient rate-limit/challenge failures
 
-**Status:** Implemented (verified 2026-09-26)
+**Status:** Resolved (verified 2026-09-29)
 **Severity:** High  
 **Reported:** 2026-06-05  
 **Area:** Reader adjacent chapter navigation, hidden WebView loading, site challenge/rate-limit handling, failure UX
@@ -903,6 +903,7 @@ Hidden adjacent chapter loading is likely being intermittently blocked by site-s
 - Dynamic and static analysis recognize rate-limit copy, and HTTP 403/503 challenge bodies are inspected before being classified as generic unavailability.
 - Sanitized diagnostics record direction, elapsed milliseconds, host only, confidence, parser path, and challenge signal names. Query strings, cookies, session data, and full URLs are not logged.
 - Normal stored and hidden adjacent navigation continue to preserve Reader launch context.
+- The complete deterministic outcome matrix passed on the dedicated iPhone 16e: five typed failures retained Chapter 1 and exposed Retry/Open Original for the known Chapter 2 target, while the success path replaced the session normally. Package diagnostics and recovery regressions passed, including proof that no retry occurs without explicit user action. See `docs/qa_evidence/2026-09-29-def-022-adjacent-outcomes.md` for commands, counts, sanitized logging review, result-bundle paths, and the fixture-only limitation.
 
 ## DEF-021 — Series Detail Continue can reopen chapter 1 after reading later chapters
 
