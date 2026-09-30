@@ -623,6 +623,10 @@ private actor UITestAdjacentOutcomeLoader: AdjacentReaderSessionLoading {
     let scenario: ReaderHardeningFixtureScenario
     private var attempts = 0
 
+    init(scenario: ReaderHardeningFixtureScenario) {
+        self.scenario = scenario
+    }
+
     func loadAdjacentReaderSession(
         from url: URL,
         context: AdjacentReaderSessionLoadContext
