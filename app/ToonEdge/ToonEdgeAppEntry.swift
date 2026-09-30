@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private enum ReaderHardeningFixtureScenario: String {
     case numericAdjacency = "numeric-adjacency"
@@ -11,6 +12,7 @@ private enum ReaderHardeningFixtureScenario: String {
     case adjacentLowConfidence = "adjacent-low-confidence"
     case adjacentNonviable = "adjacent-nonviable"
     case adjacentSuccess = "adjacent-success"
+    case longChapter = "long-chapter"
 
     static func from(arguments: [String]) -> Self? {
         guard let marker = arguments.firstIndex(of: "-readerHardeningFixture"),
@@ -179,6 +181,10 @@ struct ToonEdgeAppEntry: App {
                 }
             }
         }
+        if hardeningFixture == .longChapter {
+            dependencies.chapterAssetCache = try! UITestLongChapterAssetCache()
+            dependencies.readerProgressRepository = MockReaderProgressRepository()
+        }
         if arguments.contains("-seedUpdateSuccess") {
             dependencies.updateRefreshService = MockLibraryUpdateRefreshService(
                 result: LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 1, failedCount: 0)
@@ -215,6 +221,9 @@ struct ToonEdgeAppEntry: App {
         if arguments.contains("-uiTesting"), hardeningFixture == .numericAdjacencyUnsafe {
             return AppRouter(presentedReader: numericAdjacencyUnsafeFixtureSession)
         }
+        if arguments.contains("-uiTesting"), hardeningFixture == .longChapter {
+            return AppRouter(presentedReader: longChapterFixtureSession)
+        }
         if arguments.contains("-uiTesting"), hardeningFixture == .continueTarget {
             return AppRouter(selectedTab: .library)
         }
@@ -234,6 +243,62 @@ struct ToonEdgeAppEntry: App {
             ? uncachedOfflineFixtureSession
             : offlineFixtureSession
         return AppRouter(presentedReader: session)
+    }
+}
+
+private let longChapterFixtureSession: MockReaderSession = {
+    var session = MockReaderSession(
+        seriesTitle: "Long Chapter Fixture",
+        chapterTitle: "Chapter 40",
+        sourceURL: URL(string: "https://fixture.example/long-chapter/chapter-40")!,
+        imageURLs: (1...40).map { page in
+            URL(string: "http://127.0.0.1:1/long-chapter/\(String(format: "%03d", page)).png")!
+        },
+        pageMetadata: []
+    )
+    session.launchOrigin = .homeContinueReading
+    return session
+}()
+
+private final class UITestLongChapterAssetCache: ChapterAssetCaching, @unchecked Sendable {
+    private let rootDirectory: URL
+    private let fixtureURL: URL
+    private let attemptsLock = NSLock()
+    private var attemptsByAsset: [URL: Int] = [:]
+    private static let fixturePNG = Data(
+        base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAAaADAAQAAAABAAAAAQAAAADa6r/EAAAADUlEQVQIHWMw9k37DwADgwHmSmnOZQAAAABJRU5ErkJggg=="
+    )!
+
+    init() throws {
+        guard let decodedImage = UIImage(data: Self.fixturePNG),
+              decodedImage.size == CGSize(width: 1, height: 1) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        rootDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ToonEdgeLongChapterFixture", isDirectory: true)
+        fixtureURL = rootDirectory.appendingPathComponent("fixture.png")
+        try FileManager.default.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
+        try Self.fixturePNG.write(to: fixtureURL, options: .atomic)
+    }
+
+    func chapterDirectory(for sourceURL: URL) -> URL {
+        rootDirectory
+    }
+
+    func cachedAssetURL(for assetURL: URL, sourceURL: URL) -> URL? {
+        Thread.sleep(forTimeInterval: 0.08)
+        attemptsLock.lock()
+        let attempt = attemptsByAsset[assetURL, default: 0] + 1
+        attemptsByAsset[assetURL] = attempt
+        attemptsLock.unlock()
+        if assetURL.lastPathComponent == "020.png", attempt == 1 {
+            return nil
+        }
+        return fixtureURL
+    }
+
+    func store(_ data: Data, for assetURL: URL, sourceURL: URL) throws {
+        try data.write(to: fixtureURL, options: .atomic)
     }
 }
 

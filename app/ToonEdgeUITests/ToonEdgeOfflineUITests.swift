@@ -60,6 +60,66 @@ final class ToonEdgeOfflineUITests: XCTestCase {
 }
 
 @MainActor
+final class ToonEdgeLongChapterUITests: XCTestCase {
+    func testLongChapterTraversesFortyPanelsAndRecoversTransientImageFailure() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-resetTestData", "-readerHardeningFixture", "long-chapter"]
+        app.launch()
+
+        let reader = app.descendants(matching: .any)["reader.root"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 5))
+        XCTAssertEqual(reader.elementType, .scrollView)
+        let surface = reader
+
+        let firstImage = loadedImage(page: 1, in: app)
+        let firstFailure = app.descendants(matching: .any)["reader.page.failed.1"]
+        let firstPlaceholder = app.staticTexts["Page 1"]
+        if firstFailure.waitForExistence(timeout: 1) {
+            XCTFail("Panel 1 rendered failure UI instead of its decoded image")
+        } else {
+            XCTAssertTrue(firstImage.waitForExistence(timeout: 5), "Panel 1 did not load while stationary")
+            XCTAssertFalse(firstPlaceholder.exists, "Panel 1 remained in its loading placeholder state")
+        }
+
+        for page in 2...40 {
+            let image = loadedImage(page: page, in: app)
+            let failure = app.descendants(matching: .any)["reader.page.failed.\(page)"]
+            for _ in 0..<5 {
+                if image.waitForExistence(timeout: 1) || failure.exists {
+                    break
+                }
+                surface.swipeUp()
+            }
+            if page == 20 {
+                XCTAssertTrue(failure.waitForExistence(timeout: 3), "Panel 20 did not expose its one transient failure")
+                app.buttons["Retry"].tap()
+            }
+            XCTAssertTrue(image.waitForExistence(timeout: 3), "Panel \(page) never loaded in sequence")
+            XCTAssertGreaterThan(image.frame.width, 0)
+            XCTAssertGreaterThan(image.frame.height, 0)
+            XCTAssertFalse(
+                failure.exists,
+                "Panel \(page) remained blank after its explicit retry opportunity"
+            )
+        }
+
+        if !app.buttons["reader.back"].exists {
+            reader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        let progress = app.staticTexts["reader.progress.value"]
+        XCTAssertTrue(progress.waitForExistence(timeout: 5))
+        XCTAssertEqual(progress.label, "100%")
+    }
+
+    private func loadedImage(page: Int, in app: XCUIApplication) -> XCUIElement {
+        app.images.matching(
+            NSPredicate(format: "label == %@", "Reader image \(page)")
+        ).firstMatch
+    }
+}
+
+@MainActor
 final class ToonEdgeAuthoritativeContinueUITests: XCTestCase {
     func testImmediateReaderReturnKeepsChapterThreeAndRefreshesProgress() {
         let app = launchFixture("continue-target")
