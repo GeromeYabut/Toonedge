@@ -43,6 +43,7 @@
 		A10000000000000000000021 /* HTMLLatestChapterFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000021 /* HTMLLatestChapterFetcher.swift */; };
 		A10000000000000000000022 /* LibraryUpdateRefreshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000022 /* LibraryUpdateRefreshService.swift */; };
 		A10000000000000000000023 /* FileBackedChapterAssetCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000023 /* FileBackedChapterAssetCache.swift */; };
+		A1000000000000000000003F /* CacheLifecycleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000003F /* CacheLifecycleService.swift */; };
 		A10000000000000000000024 /* CacheStorageMeasurementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000024 /* CacheStorageMeasurementService.swift */; };
 		A10000000000000000000025 /* UpdateCacheDiagnosticsLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000025 /* UpdateCacheDiagnosticsLogger.swift */; };
 		A10000000000000000000026 /* ReaderPageImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000026 /* ReaderPageImageLoader.swift */; };
@@ -102,6 +103,7 @@
 		A20000000000000000000021 /* HTMLLatestChapterFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/HTMLLatestChapterFetcher.swift; sourceTree = "<group>"; };
 		A20000000000000000000022 /* LibraryUpdateRefreshService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/LibraryUpdateRefreshService.swift; sourceTree = "<group>"; };
 		A20000000000000000000023 /* FileBackedChapterAssetCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/FileBackedChapterAssetCache.swift; sourceTree = "<group>"; };
+		A2000000000000000000003F /* CacheLifecycleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/CacheLifecycleService.swift; sourceTree = "<group>"; };
 		A20000000000000000000024 /* CacheStorageMeasurementService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/CacheStorageMeasurementService.swift; sourceTree = "<group>"; };
 		A20000000000000000000025 /* UpdateCacheDiagnosticsLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/UpdateCacheDiagnosticsLogger.swift; sourceTree = "<group>"; };
 		A20000000000000000000026 /* ReaderPageImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderPageImageLoader.swift; sourceTree = "<group>"; };
@@ -164,6 +166,7 @@
 				A20000000000000000000022 /* LibraryUpdateRefreshService.swift */,
 				A2000000000000000000002B /* SeriesChapterIndexRefreshService.swift */,
 				A20000000000000000000023 /* FileBackedChapterAssetCache.swift */,
+				A2000000000000000000003F /* CacheLifecycleService.swift */,
 				A20000000000000000000024 /* CacheStorageMeasurementService.swift */,
 				A20000000000000000000025 /* UpdateCacheDiagnosticsLogger.swift */,
 				A2000000000000000000001F /* ToonEdgePersistentModels.swift */,
@@ -381,6 +384,7 @@
 				A10000000000000000000022 /* LibraryUpdateRefreshService.swift in Sources */,
 				A1000000000000000000002B /* SeriesChapterIndexRefreshService.swift in Sources */,
 				A10000000000000000000023 /* FileBackedChapterAssetCache.swift in Sources */,
+				A1000000000000000000003F /* CacheLifecycleService.swift in Sources */,
 				A10000000000000000000024 /* CacheStorageMeasurementService.swift in Sources */,
 				A10000000000000000000025 /* UpdateCacheDiagnosticsLogger.swift in Sources */,
 				A1000000000000000000001F /* ToonEdgePersistentModels.swift in Sources */,

@@ -39,8 +39,8 @@ import Testing
 @Test func persistentDependenciesUseCacheBackedDownloadSummary() throws {
     let dependencies = try AppDependencies.persistent(inMemory: true, usesModelContextIO: false)
 
-    #expect(dependencies.downloadService is SwiftDataLibraryRepository)
-    #expect(dependencies.cacheMetadataService is SwiftDataLibraryRepository)
+    #expect(dependencies.downloadService is CacheLifecycleService)
+    #expect(dependencies.cacheMetadataService is CacheLifecycleService)
 }
 
 @MainActor

@@ -1,6 +1,6 @@
 import Foundation
 
-public struct FileBackedChapterAssetCache: ChapterAssetCaching {
+public struct FileBackedChapterAssetCache: ChapterAssetCaching, ChapterAssetRemoving {
     public let rootDirectory: URL
 
     public init(rootDirectory: URL) throws {
@@ -36,6 +36,14 @@ public struct FileBackedChapterAssetCache: ChapterAssetCaching {
             hash = ((hash << 5) &+ hash) &+ UInt64(byte)
         }
         return String(hash, radix: 16)
+    }
+
+    public func removeAssets(for sourceURL: URL) throws {
+        do {
+            try FileManager.default.removeItem(at: chapterDirectory(for: sourceURL))
+        } catch CocoaError.fileNoSuchFile {
+            // Metadata-only entries and retries after metadata failures are safe to remove.
+        }
     }
 
     private func namespace(for sourceURL: URL) -> String {

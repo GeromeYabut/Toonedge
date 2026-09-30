@@ -79,6 +79,10 @@ public protocol ChapterAssetRetaining: Sendable {
     func retainAssets(for session: MockReaderSession) async throws -> Int64
 }
 
+public protocol ChapterAssetRemoving: Sendable {
+    func removeAssets(for sourceURL: URL) throws
+}
+
 public protocol CacheStorageMeasuring: Sendable {
     func summary(for entries: [CacheMetadataEntry]) -> DownloadSummary
 }

@@ -84,14 +84,17 @@ public struct AppDependencies: Sendable {
     ) -> AppDependencies {
         let cacheMetadataService = MockCacheMetadataService()
         let assetCache = try? FileBackedChapterAssetCache(rootDirectory: defaultCacheDirectory())
+        let cacheService: any CacheMetadataManaging = assetCache.map { cache -> any CacheMetadataManaging in
+            CacheLifecycleService(metadata: cacheMetadataService, assets: cache)
+        } ?? cacheMetadataService
         let resolvedInteractionPreferences = interactionPreferences ?? InMemoryInteractionPreferences()
         let resolvedInteractionFeedback = interactionFeedback
             ?? RecordingInteractionFeedback(preferences: resolvedInteractionPreferences)
         return AppDependencies(
             libraryService: MockLibraryService(),
             searchSuggestionProvider: MockSearchSuggestionProvider(),
-            downloadService: cacheMetadataService,
-            cacheMetadataService: cacheMetadataService,
+            downloadService: cacheService,
+            cacheMetadataService: cacheService,
             cacheStorageMeasurementService: assetCache.map(CacheStorageMeasurementService.init(assetCache:)),
             chapterAssetCache: assetCache,
             chapterAssetRetainer: assetCache.map { ChapterAssetRetentionService(assetCache: $0) },
@@ -121,6 +124,9 @@ public struct AppDependencies: Sendable {
             usesModelContextIO: usesModelContextIO
         )
         let assetCache = try? FileBackedChapterAssetCache(rootDirectory: defaultCacheDirectory())
+        let cacheService: any CacheMetadataManaging = assetCache.map { cache -> any CacheMetadataManaging in
+            CacheLifecycleService(metadata: repository, assets: cache)
+        } ?? repository
         let diagnosticsLogger = UpdateCacheDiagnosticsLogger()
         let chapterIndexRefreshService = SeriesChapterIndexRefreshService(
             library: repository,
@@ -143,8 +149,8 @@ public struct AppDependencies: Sendable {
             searchSuggestionProvider: MockSearchSuggestionProvider(),
             searchHistoryRecorder: repository,
             recentReadingRecorder: repository,
-            downloadService: repository,
-            cacheMetadataService: repository,
+            downloadService: cacheService,
+            cacheMetadataService: cacheService,
             cacheStorageMeasurementService: assetCache.map(CacheStorageMeasurementService.init(assetCache:)),
             chapterAssetCache: assetCache,
             chapterAssetRetainer: assetCache.map { ChapterAssetRetentionService(assetCache: $0) },

@@ -2,10 +2,124 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@MainActor
+@Test func persistentDownloadsRemovalDeletesChapterFilesAndRecalculatesStorage() async throws {
+    let dependencies = try AppDependencies.persistent(inMemory: true, usesModelContextIO: false)
+    let cache = try #require(dependencies.chapterAssetCache)
+    let sourceURL = URL(string: "https://fixture.example/cache-removal/\(UUID().uuidString)")!
+    let assetURL = URL(string: "https://fixture.example/panel.png")!
+    let directory = cache.chapterDirectory(for: sourceURL)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    try cache.store(Data([1, 2, 3, 4]), for: assetURL, sourceURL: sourceURL)
+    _ = try await dependencies.cacheMetadataService.recordCacheMetadata(CacheMetadataInput(
+        sourceURL: sourceURL, seriesTitle: "Removal Fixture", chapterTitle: "Chapter 1",
+        chapterLabel: "1", imageCount: 1, estimatedStorageBytes: 99_999,
+        retentionState: .retained, cachedAt: Date()
+    ))
+    let model = DownloadsViewModel(
+        cacheMetadataManager: dependencies.cacheMetadataService,
+        storageMeasurementService: dependencies.cacheStorageMeasurementService
+    )
+    await model.load()
+    #expect(model.summary.cachedItemCount == 1)
+    #expect(model.summary.totalMeasuredBytes == 4)
+
+    await model.remove(sourceURL: sourceURL)
+
+    #expect(!FileManager.default.fileExists(atPath: directory.path))
+    #expect(await dependencies.cacheMetadataService.cacheMetadataEntries().isEmpty)
+    #expect(model.entries.isEmpty)
+    #expect(model.summary.cachedItemCount == 0)
+    #expect(model.summary.totalMeasuredBytes == 0)
+    #expect(model.summary.storageDescription == "No local storage tracked")
+}
+
 @Test func downloadsDoNotShowEmptyBeforeLoadCompletes() {
     #expect(DownloadsContentPhase(hasLoaded: false, entryCount: 0) == .loading)
     #expect(DownloadsContentPhase(hasLoaded: true, entryCount: 0) == .empty)
     #expect(DownloadsContentPhase(hasLoaded: true, entryCount: 1) == .content)
+}
+
+@MainActor
+@Test func cacheFileRemovalFailureKeepsMetadataVisibleAndRetryable() async throws {
+    let sourceURL = URL(string: "https://fixture.example/chapter-1")!
+    let metadata = MockCacheMetadataService(entries: [cacheEntry(sourceURL: sourceURL, estimatedStorageBytes: 4)])
+    let service = CacheLifecycleService(metadata: metadata, assets: FailingAssetRemoval())
+    let model = DownloadsViewModel(cacheMetadataManager: service)
+    await model.load()
+
+    await model.remove(sourceURL: sourceURL)
+
+    #expect(await metadata.cacheMetadataEntries().count == 1)
+    #expect(model.entries.count == 1)
+    #expect(model.failedRemovalURL == sourceURL)
+    #expect(model.cacheFeedback == .failure("Could not remove cached chapter."))
+}
+
+@Test func cacheMetadataRemovalFailureCanRetryAfterFilesHaveBeenDeleted() async throws {
+    let root = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let cache = try FileBackedChapterAssetCache(rootDirectory: root)
+    let sourceURL = URL(string: "https://fixture.example/chapter-1")!
+    let assetURL = URL(string: "https://fixture.example/panel.png")!
+    try cache.store(Data([1, 2, 3, 4]), for: assetURL, sourceURL: sourceURL)
+    let metadata = FailingOnceRemovalMetadata(entry: cacheEntry(sourceURL: sourceURL, estimatedStorageBytes: 4))
+    let service = CacheLifecycleService(metadata: metadata, assets: cache)
+
+    await #expect(throws: URLError.self) { try await service.removeCacheMetadata(for: sourceURL) }
+    #expect(!FileManager.default.fileExists(atPath: cache.chapterDirectory(for: sourceURL).path))
+    #expect(await service.cacheMetadataEntries().count == 1)
+
+    #expect(try await service.removeCacheMetadata(for: sourceURL) == .removed)
+    #expect(await service.cacheMetadataEntries().isEmpty)
+    #expect(try await service.removeCacheMetadata(for: sourceURL) == .notFound)
+}
+
+@Test func chapterRemovalPreservesOtherChapterDirectories() throws {
+    let root = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let cache = try FileBackedChapterAssetCache(rootDirectory: root)
+    let removed = URL(string: "https://fixture.example/chapter-1")!
+    let preserved = URL(string: "https://fixture.example/chapter-2")!
+    let assetURL = URL(string: "https://fixture.example/panel.png")!
+    try cache.store(Data([1]), for: assetURL, sourceURL: removed)
+    try cache.store(Data([2]), for: assetURL, sourceURL: preserved)
+
+    try cache.removeAssets(for: removed)
+
+    #expect(cache.cachedAssetURL(for: assetURL, sourceURL: removed) == nil)
+    let preservedURL = try #require(cache.cachedAssetURL(for: assetURL, sourceURL: preserved))
+    #expect(try Data(contentsOf: preservedURL) == Data([2]))
+}
+
+private struct FailingAssetRemoval: ChapterAssetRemoving {
+    func removeAssets(for sourceURL: URL) throws { throw URLError(.cannotRemoveFile) }
+}
+
+private actor FailingOnceRemovalMetadata: CacheMetadataManaging {
+    private let metadata: MockCacheMetadataService
+    private var shouldFail = true
+
+    init(entry: CacheMetadataEntry) { metadata = MockCacheMetadataService(entries: [entry]) }
+
+    func removeCacheMetadata(for sourceURL: URL) async throws -> CacheActionResult {
+        if shouldFail {
+            shouldFail = false
+            throw URLError(.cannotWriteToFile)
+        }
+        return try await metadata.removeCacheMetadata(for: sourceURL)
+    }
+
+    func recordCacheMetadata(_ input: CacheMetadataInput) async throws -> CacheActionResult {
+        try await metadata.recordCacheMetadata(input)
+    }
+
+    func updateCacheRetention(for sourceURL: URL, retentionState: CacheRetentionState, cachedAt: Date) async throws -> CacheActionResult {
+        try await metadata.updateCacheRetention(for: sourceURL, retentionState: retentionState, cachedAt: cachedAt)
+    }
+
+    func cacheMetadataEntries() async -> [CacheMetadataEntry] { await metadata.cacheMetadataEntries() }
+    func downloadSummary() async -> DownloadSummary { await metadata.downloadSummary() }
 }
 
 @Test func fileBackedCacheMapsSourceURLToDeterministicChapterDirectory() throws {
