@@ -523,6 +523,52 @@ import Testing
 }
 
 @MainActor
+@Test(arguments: [
+    AdjacentReaderSessionLoadFailureReason.timeout,
+    .challengeOrRateLimit,
+    .unavailable,
+    .lowConfidence,
+    .nonViableImages
+])
+func adjacentFailureWaitsForExplicitRetry(reason: AdjacentReaderSessionLoadFailureReason) async throws {
+    let nextURL = try #require(URL(string: "https://fixture.example/series/chapter-2"))
+    var current = MockReaderSession.sample
+    current.launchOrigin = .homeContinueReading
+    current.nextChapter = MockChapter(title: "Chapter 2", sourceURL: nextURL)
+    let loader = RecordingAdjacentReaderSessionLoader(
+        result: .failure(AdjacentReaderSessionLoadError(reason: reason, targetURL: nextURL))
+    )
+    let viewModel = ReaderViewModel(session: current)
+    let expectedFailure = AdjacentChapterLoadState.failed(
+        AdjacentChapterLoadFailure(direction: .next, reason: reason, targetURL: nextURL)
+    )
+
+    let navigated = await viewModel.navigateAdjacentChapter(
+        .next, libraryLifecycleService: nil, adjacentLoader: loader
+    )
+
+    #expect(!navigated)
+    #expect(await loader.requestedURLs == [nextURL])
+    #expect(viewModel.adjacentLoadState == expectedFailure)
+    // Observe beyond the default 1.5-second backoff without any user action.
+    try await Task.sleep(for: .milliseconds(1_600))
+    #expect(await loader.requestedURLs == [nextURL])
+    #expect(viewModel.adjacentLoadState == expectedFailure)
+    #expect(viewModel.session == current)
+
+    let retryStarted = ContinuousClock.now
+    let retried = await viewModel.retryAdjacentChapter(
+        libraryLifecycleService: nil, adjacentLoader: loader
+    )
+
+    #expect(retryStarted.duration(to: .now) >= .milliseconds(1_500))
+    #expect(!retried)
+    #expect(await loader.requestedURLs == [nextURL, nextURL])
+    #expect(viewModel.adjacentLoadState == expectedFailure)
+    #expect(viewModel.session == current)
+}
+
+@MainActor
 @Test func adjacentChallengeFailurePreservesTargetAndRetriesOnlyAfterUserAction() async throws {
     let nextURL = URL(string: "https://example.com/series/chapter-13")!
     let next = MockChapter(title: "Chapter 13", sourceURL: nextURL)
