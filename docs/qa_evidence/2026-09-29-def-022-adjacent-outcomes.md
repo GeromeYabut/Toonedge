@@ -103,6 +103,6 @@ The three protected local screenshots in the primary checkout remained untracked
 49ae9b28d92dfb7bbbd5f69e27f77f5fe117724085163e22f210bc10d4175db5  webtoon-protected-reader-cta.png
 ```
 
-The shared iPhone 16 Pro (`04F65B71-EEB9-4085-BFBD-8B7406E480A2`) was not targeted. Task 4 ran no simulator command and changed no simulator state. The recorded UI run used only the dedicated iPhone 16e.
+The shared iPhone 16 Pro (`04F65B71-EEB9-4085-BFBD-8B7406E480A2`) was not targeted. The recorded UI run and later screenshot follow-up launched and captured only on the dedicated iPhone 16e; no other simulator was targeted.
 
 Remaining limitation: live-site Next/Previous behavior and a naturally occurring rate-limit/challenge were not exercised in this slice. The deterministic fixtures are the release evidence for typed outcomes; live-site availability remains a separate environmental check.
