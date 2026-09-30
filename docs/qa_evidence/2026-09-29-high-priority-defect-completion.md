@@ -92,10 +92,13 @@ The focused test is `ToonEdgeUITests/ToonEdgeLongChapterUITests/testLongChapterT
 | Attempt | Device | Result | Elapsed test time | Result bundle |
 |---|---|---|---|---|
 | Initial RED | Dedicated iPhone 16e | Failed; development baseline | Not recorded here | `/private/tmp/toonedge-long-16e-red.xcresult` |
+| Attempts 2–5 | Dedicated iPhone 16e | 0 passed, 1 failed each; panel 1 was not observed | Not retained | `/private/tmp/toonedge-long-16e-attempt2.xcresult` through `/private/tmp/toonedge-long-16e-attempt5.xcresult` |
+| Attempts 6–10 | Dedicated iPhone 16e | 0 passed, 1 failed each; stationary panel-1 expectation failed | Not retained | `/private/tmp/toonedge-long-16e-attempt6.xcresult` through `/private/tmp/toonedge-long-16e-attempt10.xcresult` |
+| Attempt 11 | Dedicated iPhone 16e | 0 passed, 1 failed; stationary panel-1 expectation exposed stale restored position and wrong scroll query | Not retained | `/private/tmp/toonedge-long-16e-attempt11.xcresult` |
 | Final attempt 12 | Dedicated iPhone 16e, `4582CDE9-27DB-4669-86AC-0631C1D7F2ED` | 1/1 passed, 0 failures | 165.134 seconds | `/private/tmp/toonedge-long-16e-attempt12.xcresult` |
 | Final Pro Max | Dedicated iPhone 16 Pro Max, `29E33EEE-8A11-457F-8F7F-BDF2D44A9FE4` | 1/1 passed, 0 failures | 176.122 seconds | `/private/tmp/toonedge-long-promax.xcresult` |
 
-Diagnostic attempts between RED and final success exposed malformed PNG bytes, stale restored fixture progress, and a scroll query selecting the wrong surface. The final fixture validates its replacement PNG with `UIImage`, supplies a fresh mock progress repository, and the test uses `reader.root` after asserting that it is the Reader scroll view. Page 1 is checked while stationary before traversal. These were fixture/test corrections, not evidence of a production Reader defect.
+Read-only `xcresulttool` inspection confirmed that attempts 2–11 each contain one failed focused test. Attempts 2–5 span the discarded URL-protocol, localhost-listener, and initial cache-transport experiments; the exact experiment-to-bundle mapping was not retained, so this ledger does not invent one. Attempts 6–10 used the stationary page-1 assertion while the fixture bytes, decoding guard, and accessibility query were corrected. Attempt 11's safe hierarchy showed loaded/labeled images 27–33 with positive frames, proving that stale restored progress had opened near panel 30 and that `.scrollViews.firstMatch` selected Home behind Reader. The final fixture validates its replacement PNG with `UIImage`, supplies a fresh mock progress repository, and the test uses `reader.root` after asserting that it is the Reader scroll view. Page 1 is checked while stationary before traversal. These were fixture/test corrections, not evidence of a production Reader defect.
 
 Fixture semantics and observed coverage:
 
