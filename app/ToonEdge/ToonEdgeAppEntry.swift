@@ -630,6 +630,7 @@ private actor UITestAdjacentOutcomeLoader: AdjacentReaderSessionLoading {
         attempts += 1
         if scenario == .adjacentSuccess || (scenario == .adjacentChallenge && attempts > 1) {
             var session = MockReaderSession(
+                id: context.currentSession.id,
                 seriesID: context.currentSession.seriesID,
                 seriesTitle: context.currentSession.seriesTitle,
                 seriesURL: context.currentSession.seriesURL,
