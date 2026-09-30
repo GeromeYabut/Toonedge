@@ -204,58 +204,136 @@ final class ToonEdgeAuthoritativeContinueUITests: XCTestCase {
 @MainActor
 final class ToonEdgeAdjacentFailureUITests: XCTestCase {
     func testChallengeFailureOffersExplicitRetryAndRecoversAfterUserAction() {
-        let app = launchFixture()
-        revealReaderChrome(in: app)
+        let app = launchFixture("adjacent-challenge")
+        assertFailureRemainsUntilUserAction("Reader access is temporarily limited.", in: app)
 
-        app.buttons["Next"].tap()
+        app.buttons["reader.adjacent.retry"].tap()
 
-        XCTAssertTrue(app.staticTexts["Reader access is temporarily limited."].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.otherElements["reader.adjacent.feedback"].exists)
-        XCTAssertTrue(app.staticTexts["reader.chapter.label"].label.contains("Chapter 1"))
-        XCTAssertTrue(app.scrollViews.firstMatch.exists, "The current Reader session should remain visible")
-        XCTAssertTrue(app.buttons["reader.adjacent.retry"].exists)
-        XCTAssertTrue(app.buttons["reader.adjacent.openOriginal"].exists)
-        let retry = app.buttons["reader.adjacent.retry"]
-        retry.tap()
-        XCTAssertTrue(retry.waitForNonExistence(timeout: 6))
-        RunLoop.current.run(until: Date().addingTimeInterval(2))
-        XCTAssertFalse(retry.exists)
-        XCTAssertTrue(app.scrollViews.firstMatch.exists)
-        if !app.staticTexts["reader.chapter.label"].exists {
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        assertReaderChapter(2, in: app)
+        assertNoFailureFeedback(in: app)
+    }
+
+    func testTypedFailuresKeepCurrentChapterAndOpenKnownOriginalTarget() {
+        let failures = [
+            ("adjacent-timeout", "Chapter timed out."),
+            ("adjacent-challenge", "Reader access is temporarily limited."),
+            ("adjacent-unavailable", "Chapter unavailable in Reader."),
+            ("adjacent-low-confidence", "Chapter could not be verified."),
+            ("adjacent-nonviable", "No usable chapter images found.")
+        ]
+
+        for (fixture, message) in failures {
+            XCTContext.runActivity(named: fixture) { _ in
+                let app = launchFixture(fixture)
+                assertFailureRemainsUntilUserAction(message, in: app)
+                app.buttons["reader.adjacent.openOriginal"].tap()
+                assertChapterTwoOriginalPage(in: app)
+                app.terminate()
+            }
         }
-        let chapterLabel = app.staticTexts["reader.chapter.label"]
-        XCTAssertTrue(chapterLabel.waitForExistence(timeout: 5))
-        XCTAssertTrue(chapterLabel.label.contains("Chapter 2"))
     }
 
-    func testChallengeFailureCanOpenKnownOriginalTarget() {
-        let app = launchFixture()
-        revealReaderChrome(in: app)
+    func testAdjacentSuccessViewsOriginalForChapterTwoWithoutStaleFailure() {
+        let app = launchFixture("adjacent-success")
+        assertReaderChapter(1, in: app)
+        app.buttons["reader.nextChapter"].tap()
 
-        app.buttons["Next"].tap()
-        XCTAssertTrue(app.buttons["reader.adjacent.openOriginal"].waitForExistence(timeout: 5))
-        app.buttons["reader.adjacent.openOriginal"].tap()
+        assertReaderChapter(2, in: app)
+        assertNoFailureFeedback(in: app)
+        let original = app.buttons["reader.viewOriginalPage"]
+        XCTAssertEqual(original.label, "View Original Page")
+        original.tap()
 
+        assertChapterTwoOriginalPage(in: app)
+    }
+
+    func testAdjacentSuccessBackReturnsToHomeWithoutStaleFailure() {
+        let app = launchFixture("adjacent-success")
+        assertReaderChapter(1, in: app)
+        app.buttons["reader.nextChapter"].tap()
+
+        assertReaderChapter(2, in: app)
+        assertNoFailureFeedback(in: app)
+        app.buttons["reader.back"].tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home.searchEntry"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.otherElements["browser.root"].exists)
+        assertNoFailureFeedback(in: app)
+    }
+
+    private func assertChapterTwoOriginalPage(in app: XCUIApplication) {
         XCTAssertTrue(app.otherElements["browser.root"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Close"].exists)
+        XCTAssertTrue(app.buttons["browser.close"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForNonExistence(timeout: 5))
+        // This exact reserved URL is fixture content, never a live browsing address.
+        XCTAssertTrue(app.staticTexts["https://fixture.example/series/chapter-2"].waitForExistence(timeout: 5))
     }
 
-    private func launchFixture() -> XCUIApplication {
+    private func launchFixture(_ fixture: String) -> XCUIApplication {
+        continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = [
             "-uiTesting",
+            "-resetTestData",
             "-readerHardeningFixture",
-            "adjacent-challenge"
+            fixture
         ]
         app.launch()
         return app
     }
 
+    private func assertFailureRemainsUntilUserAction(_ message: String, in app: XCUIApplication) {
+        assertReaderChapter(1, in: app)
+        app.buttons["reader.nextChapter"].tap()
+        assertFailure(message, in: app)
+
+        // UI stability evidence; the package request-count test proves no hidden retry.
+        RunLoop.current.run(until: Date().addingTimeInterval(2))
+
+        assertFailure(message, in: app)
+    }
+
+    private func assertFailure(_ message: String, in app: XCUIApplication) {
+        let feedback = app.descendants(matching: .any)["reader.adjacent.feedback"]
+        XCTAssertTrue(feedback.waitForExistence(timeout: 5))
+        let text = app.staticTexts[message]
+        XCTAssertTrue(text.waitForExistence(timeout: 5))
+        XCTAssertEqual(text.label, message)
+        assertReaderChapter(1, in: app)
+        XCTAssertTrue(app.scrollViews["reader.readingSurface"].exists)
+        let retry = app.buttons["reader.adjacent.retry"]
+        let original = app.buttons["reader.adjacent.openOriginal"]
+        XCTAssertEqual(retry.label, "Retry")
+        XCTAssertEqual(original.label, "Open Original")
+        XCTAssertTrue(retry.isEnabled)
+        XCTAssertTrue(original.isEnabled)
+    }
+
+    private func assertNoFailureFeedback(in app: XCUIApplication) {
+        XCTAssertFalse(app.descendants(matching: .any)["reader.adjacent.feedback"].exists)
+        XCTAssertFalse(app.buttons["reader.adjacent.retry"].exists)
+        XCTAssertFalse(app.buttons["reader.adjacent.openOriginal"].exists)
+    }
+
+    private func assertReaderChapter(_ number: Int, in app: XCUIApplication) {
+        revealReaderChrome(in: app)
+        let chapter = app.staticTexts["reader.chapter.label"]
+        let expected = "Adjacent Outcome Fixture, Chapter \(number)"
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", expected), object: chapter
+        )
+        XCTAssertEqual(XCTWaiter().wait(for: [expectation], timeout: 6), .completed)
+        XCTAssertEqual(chapter.label, expected)
+    }
+
     private func revealReaderChrome(in app: XCUIApplication) {
-        XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 5))
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        XCTAssertTrue(app.buttons["Next"].waitForExistence(timeout: 5))
+        let reader = app.descendants(matching: .any)["reader.root"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 5))
+        if !app.buttons["reader.back"].exists {
+            reader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        XCTAssertTrue(app.buttons["reader.back"].waitForExistence(timeout: 5))
     }
 }
 
