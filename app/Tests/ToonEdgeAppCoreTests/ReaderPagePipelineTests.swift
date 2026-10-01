@@ -221,6 +221,9 @@ private actor SpyHTTPDataLoader: HTTPDataLoading {
     pipeline.updateVisibleIndex(0)
     try await loader.waitForCancellationCount(2)
     pipeline.updateVisibleIndex(3)
+    try await waitForPipelineState {
+        pipeline.states[3]?.status == .queued && pipeline.states[4]?.status == .queued
+    }
     await loader.complete(url: session.imageURLs[4])
     try await loader.waitForRequestCount(3)
     #expect(await loader.requestedURLs.filter { $0 == session.imageURLs[3] }.count == 1)
