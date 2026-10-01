@@ -1,7 +1,9 @@
 # ToonEdge Branch and CI Workflow Design
 
-**Date:** 2026-10-01  
-**Status:** Approved for implementation planning  
+**Date:** 2026-10-01
+
+**Status:** Approved for implementation planning
+
 **Current verified revision:** `0b15960655262072850ebe7e7ac791688f996975`
 
 ## Goal
