@@ -191,6 +191,44 @@ Prior slice ledgers are context, not substitutes for these final gates:
 - [DEF-022 typed adjacent outcomes](2026-09-29-def-022-adjacent-outcomes.md)
 - [DEF-036 Vortex parity](2026-09-29-def-036-vortex-parity.md)
 
+### Task 6 — adjacent routing and protected browser-only profiles
+
+Existing adjacent-routing UI coverage was rerun rather than rewritten. The four-test `ToonEdgeAdjacentFailureUITests` suite verifies both successful Chapter 2 exits and every deterministic typed failure row. Success retains an explicit **View Original Page** route to the safe Chapter 2 fixture URL and a working Reader **Back** route to Home. Timeout, challenge/rate-limit, unavailable, low-confidence, and non-viable-image outcomes each keep Chapter 1 visible, retain **Back**, expose enabled **Retry** and **Open Original**, and open the known safe Chapter 2 URL only after the user chooses **Open Original**. The challenge fixture additionally verifies explicit user retry recovery to Chapter 2 without automatic looping.
+
+```sh
+xcodebuild \
+  -project app/ToonEdge.xcodeproj \
+  -scheme ToonEdge \
+  -destination 'platform=iOS Simulator,id=4582CDE9-27DB-4669-86AC-0631C1D7F2ED' \
+  -derivedDataPath /private/tmp/toonedge-release-task6-derived \
+  test \
+  -only-testing:ToonEdgeUITests/ToonEdgeAdjacentFailureUITests \
+  -resultBundlePath /private/tmp/toonedge-task6-adjacent-routing.xcresult \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+Result: **4/4 passed**, 0 failures, in **175.769 seconds**; suite completed 2026-09-30 22:24:09 PDT. Result bundle: `/private/tmp/toonedge-task6-adjacent-routing.xcresult`.
+
+The prior generic `protected` fixture supplied a hand-authored low-confidence result and did not independently demonstrate the WEBTOON and GlobalComix registry profiles. Two RED-first UI regressions now launch separate sanitized, profile-realistic URLs and require the corresponding address to remain in Browser while both **Read in Clean Mode** and Reader remain absent across a settle interval. Minimal fixture plumbing feeds sanitized page analysis through the existing `ProfileAwareChapterDetector`; it does not copy or reimplement protected-site policy. Candidate bytes are never fetched, and the only candidate host is `images.example.test`.
+
+| Stage | Device | Result | Test time | Result bundle |
+|---|---|---|---|---|
+| Protected-profile RED | Dedicated iPhone 16e, `4582CDE9-27DB-4669-86AC-0631C1D7F2ED`, iOS 18.6 | 0/2 passed; both exact profile URL assertions failed because the named fixtures were not mapped. Clean Mode and Reader were absent. | 21.230 seconds | `/private/tmp/toonedge-task6-protected-red.xcresult` |
+| Protected-profile GREEN | Dedicated iPhone 16e, `4582CDE9-27DB-4669-86AC-0631C1D7F2ED`, iOS 18.6 | 2/2 passed, 0 failures; WEBTOON and GlobalComix remained independently browser-only | 12.484 seconds | `/private/tmp/toonedge-task6-protected-green.xcresult` |
+
+The RED and GREEN command selected `testWebtoonBrowserOnlyProfileNeverExposesCleanModeOrReader` and `testGlobalComixBrowserOnlyProfileNeverExposesCleanModeOrReader`, used the same scoped DerivedData path above, and differed only in result-bundle path. The canonical policy regressions were also rerun:
+
+```sh
+swift test --package-path app --jobs 1 \
+  --filter 'defaultSiteProfileRegistryIncludesInitialSupportTiers|protectedReaderImagesCannotProduceReaderPresentation'
+```
+
+Result: **2/2 passed**, 0 failures, in **0.003 seconds**. This confirms the registry still identifies both domains as browser-only and cannot produce a Reader presentation. No production policy, authentication, challenge handling, cookies, or protected content changed. These are deterministic fixture/package results, not live protected-site checks.
+
+DEF-036 remains **Open**. The prior sanitized live Vortex observations showed the same chapter identity, one initial detection, no follow-up, and one Reader presentation for both in-site and direct flows. They did not establish equivalent final page lists or stable Reader payload identity; the score and candidate counts also differed. Task 6 did not repeat live Vortex access, so fixture evidence does not close that live parity criterion.
+
+Safety: Task 6 targeted only the dedicated iPhone 16e. It did not target the shared iPhone 16 Pro, use live protected pages, capture protected artwork, or access the three protected local screenshots. The local `.xcresult` bundles should be retained as CI artifacts keyed by commit SHA/run ID for at least 30 days alongside sanitized logs and this ledger.
+
 ## Complete UI suite — iPhone 16e
 
 **Pending — planned command, not executed by Task 1.** Record tested HEAD, count, failures/skips, elapsed time, and log path.
