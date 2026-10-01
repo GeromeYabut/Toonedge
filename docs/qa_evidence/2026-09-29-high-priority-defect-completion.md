@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-Initial baseline recorded **2026-09-30 08:03:29 PDT**, followed by the Task 2 long-chapter and Task 3 retained-cache results below. The filename retains the approved 2026-09-29 plan date. Final release verification is **pending**; this ledger does not close any defect or claim that the final gates have passed.
+Initial baseline recorded **2026-09-30 08:03:29 PDT**, followed by the Task 2 long-chapter, Task 3 retained-cache, and Task 4 Settings update-check results below. The filename retains the approved 2026-09-29 plan date. Final release verification is **pending**; this ledger does not close any defect or claim that the final gates have passed.
 
 Sources: [release-verification plan](../superpowers/plans/2026-09-29-high-priority-release-verification.md) and [master execution plan](../superpowers/plans/2026-09-29-high-priority-defect-execution.md). Task 1 performed read-only environment and repository checks and created this ledger. It did not run tests, build the app, launch or change a simulator, inspect screenshot contents, or modify app code, tests, defect statuses, or protected screenshots.
 
@@ -81,7 +81,7 @@ swift test --package-path app --jobs 1
 
 ## Focused UI and journey gates
 
-**Partially verified.** Task 2 long-chapter traversal and explicit image recovery passed on both dedicated devices; Task 3 retained-cache deletion, measured recalculation, and relaunch passed on the dedicated 16e. Settings update outcomes, adjacent routing, and protected-site browser-only final gates remain pending. Run new focused regressions before complete UI gates. Record VoiceOver and appearance findings separately below.
+**Partially verified.** Task 2 long-chapter traversal and explicit image recovery passed on both dedicated devices; Task 3 retained-cache deletion, measured recalculation, and relaunch passed on the dedicated 16e; Task 4 Settings update outcomes passed on the dedicated 16e. Adjacent routing and protected-site browser-only final gates remain pending. Run new focused regressions before complete UI gates. Record VoiceOver and appearance findings separately below.
 
 ### Task 2 — long-chapter traversal and explicit recovery
 
@@ -148,6 +148,42 @@ The test taps the visible **Remove Retained Cache Fixture, Retained Cache Chapte
 
 Classification: **deterministic fixture UI plus package/filesystem evidence**, not live transport or offline Reader decoding evidence. The synthetic byte payload is not chapter artwork and is not intended as a decodable PNG despite the fixture asset URL's suffix. No network response is required, and no safe screenshot was captured. Task 3 targeted only the dedicated 16e; the shared iPhone 16 Pro and protected screenshots were untouched. This ledger-only update runs no tests or simulator commands; the final protected-file hash audit remains pending.
 
+### Task 4 — Settings update-check outcomes
+
+The pre-existing Settings UI journey asserted the final success-with-update, no-update, and partial-failure messages, but its immediate mocks completed before UI automation could observe the loading state. It also had no fixture for a true total refresh failure: `-seedUpdateFailure` is intentionally partial (`checkedCount: 3`, `failedCount: 2`). No production Settings defect was observed. Package coverage already verifies that `SettingsViewModel` suppresses concurrent duplicate refresh calls while one request is suspended.
+
+Fixture/test commit: `8161767` (`test: verify Settings update outcomes`). `app/ToonEdge/ToonEdgeAppEntry.swift` gives all four update fixtures a deterministic three-second service delay and adds `-seedUpdateTotalFailure` with `checkedCount: 3`, `updatedCount: 0`, and `failedCount: 3`. `app/ToonEdgeUITests/ToonEdgeSettingsUITests.swift` verifies the disabled **Checking…** state, distinct final copy, re-enabled update action, and continued tab navigation. No production Settings implementation changed.
+
+Focused command, run from the recorded worktree with the same scoped DerivedData path for RED and GREEN:
+
+```sh
+xcodebuild \
+  -project app/ToonEdge.xcodeproj \
+  -scheme ToonEdge \
+  -destination 'platform=iOS Simulator,id=4582CDE9-27DB-4669-86AC-0631C1D7F2ED' \
+  -derivedDataPath /private/tmp/toonedge-release-settings-derived \
+  test \
+  -only-testing:ToonEdgeUITests/ToonEdgeSettingsUITests/testUpdateCheckDisablesDuplicateSubmissionAndShowsDistinctUsableResults \
+  -resultBundlePath RESULT_PATH \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+| Stage | Device and timestamp | Result | Elapsed test time | Result bundle |
+|---|---|---|---|---|
+| UI RED | Dedicated iPhone 16e, `4582CDE9-27DB-4669-86AC-0631C1D7F2ED`, iOS 18.6; suite completed 2026-09-30 19:36:15 PDT | 0/1 passed; 5 expected assertion failures. Immediate fixtures did not expose the disabled loading state, and the absent total-failure fixture fell back to `No saved series to check.` | 36.070 seconds | `/private/tmp/toonedge-settings-updates-red.xcresult` |
+| UI GREEN | Dedicated iPhone 16e, `4582CDE9-27DB-4669-86AC-0631C1D7F2ED`, iOS 18.6; suite completed 2026-09-30 19:38:05 PDT | 1/1 passed, 0 failures | 34.942 seconds | `/private/tmp/toonedge-settings-updates-green.xcresult` |
+
+Observed deterministic outcomes:
+
+- Success with update: **Found updates for 1 series.**
+- Successful no-update: **No new chapters found.**
+- Partial refresh failure: **No updates found; 2 series could not be refreshed.**
+- Total refresh failure: **Could not refresh 3 series.**
+
+For every fixture, the identified update button changed to disabled **Checking…**, preventing a second UI submission; after completion it returned to enabled **Check for New Chapters**, making retry available. The Home tab remained hittable, demonstrating that Settings navigation stayed usable after each result. The focused package regression `settingsUpdateCheckSuppressesDuplicateRequests` remains the direct service-call-count proof that a concurrent second invocation is ignored.
+
+Classification: **deterministic fixture UI plus package concurrency evidence**. It does not contact live series sites, validate network timing, or prove how a specific site failure will be classified. The fixture returns aggregate refresh results through the production Settings view model and feedback mapping. No screenshot was necessary or captured. The run targeted only the dedicated 16e; the shared iPhone 16 Pro and protected screenshots were not touched. Swift parse and `git diff --check` passed before GREEN; complete UI and final build gates remain pending.
+
 Prior slice ledgers are context, not substitutes for these final gates:
 
 - [DEF-020 numeric adjacency](2026-09-29-def-020-numeric-adjacency.md)
@@ -201,7 +237,7 @@ xcodebuild \
 
 ## Live versus fixture results
 
-**Pending final audit.** Task 2 is deterministic fixture evidence only, with the transport and image-size limitations recorded above. Task 3 combines deterministic fixture UI with real local cache/persistence and package/filesystem evidence; it does not exercise live transport. Label every other result as live, deterministic fixture, package/repository, or manual inspection. Fixture evidence cannot close a live-only criterion. Reconcile DEF-036 with its focused ledger and keep it open if live in-site parity remains unavailable or nonviable. WEBTOON and protected GlobalComix must remain browser-only; do not authenticate, bypass protection, record protected content, or capture live protected screenshots.
+**Pending final audit.** Task 2 is deterministic fixture evidence only, with the transport and image-size limitations recorded above. Task 3 combines deterministic fixture UI with real local cache/persistence and package/filesystem evidence; it does not exercise live transport. Task 4 combines deterministic Settings UI fixtures with package concurrency evidence; it does not contact live series sites. Label every other result as live, deterministic fixture, package/repository, or manual inspection. Fixture evidence cannot close a live-only criterion. Reconcile DEF-036 with its focused ledger and keep it open if live in-site parity remains unavailable or nonviable. WEBTOON and protected GlobalComix must remain browser-only; do not authenticate, bypass protection, record protected content, or capture live protected screenshots.
 
 ## Accessibility and appearance review
 
@@ -219,7 +255,7 @@ Recommend a CI artifact set keyed by tested commit SHA and run ID containing bot
 
 ## Limitations and outstanding work
 
-- Task 1 provides baseline and integrity observations; Task 2 adds the focused long-chapter journey on both dedicated devices; Task 3 adds package regressions and the retained-cache journey on the dedicated 16e. Fresh final package, remaining focused UI, complete UI, exact build, accessibility/appearance, live-site, and final defect gates remain pending.
+- Task 1 provides baseline and integrity observations; Task 2 adds the focused long-chapter journey on both dedicated devices; Task 3 adds package regressions and the retained-cache journey on the dedicated 16e; Task 4 adds focused Settings update-check outcomes on the dedicated 16e. Fresh final package, remaining focused UI, complete UI, exact build, accessibility/appearance, live-site, and final defect gates remain pending.
 - Local runtime/device inventory is a point-in-time observation, not proof of app behavior or simulator mutation history outside Task 1.
 - No live content or protected screenshot contents were viewed or captured in this task.
 - The final release claim requires fresh gates after review fixes and durable artifact publication; neither occurred in Task 1.
