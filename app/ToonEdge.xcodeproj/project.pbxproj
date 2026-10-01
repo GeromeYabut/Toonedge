@@ -63,6 +63,10 @@
 		A10000000000000000000036 /* InteractionFeedbackProviding.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000036 /* InteractionFeedbackProviding.swift */; };
 		A10000000000000000000037 /* UserDefaultsInteractionPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000037 /* UserDefaultsInteractionPreferences.swift */; };
 		A10000000000000000000038 /* SystemInteractionFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000038 /* SystemInteractionFeedback.swift */; };
+		A10000000000000000000040 /* ReaderPagePipelineModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000040 /* ReaderPagePipelineModels.swift */; };
+		A10000000000000000000041 /* ReaderPageAssetLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000041 /* ReaderPageAssetLoader.swift */; };
+		A10000000000000000000042 /* ReaderImageDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000042 /* ReaderImageDecoder.swift */; };
+		A10000000000000000000043 /* ReaderPagePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000043 /* ReaderPagePipeline.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -124,6 +128,10 @@
 		A20000000000000000000036 /* InteractionFeedbackProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Protocols/InteractionFeedbackProviding.swift; sourceTree = "<group>"; };
 		A20000000000000000000037 /* UserDefaultsInteractionPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/UserDefaultsInteractionPreferences.swift; sourceTree = "<group>"; };
 		A20000000000000000000038 /* SystemInteractionFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Implementations/SystemInteractionFeedback.swift; sourceTree = "<group>"; };
+		A20000000000000000000040 /* ReaderPagePipelineModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderPagePipelineModels.swift; sourceTree = "<group>"; };
+		A20000000000000000000041 /* ReaderPageAssetLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderPageAssetLoader.swift; sourceTree = "<group>"; };
+		A20000000000000000000042 /* ReaderImageDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderImageDecoder.swift; sourceTree = "<group>"; };
+		A20000000000000000000043 /* ReaderPagePipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderPagePipeline.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -189,6 +197,10 @@
 				A20000000000000000000015 /* ReaderView.swift */,
 				A20000000000000000000032 /* ReaderCanvasPalette.swift */,
 				A20000000000000000000026 /* ReaderPageImageLoader.swift */,
+				A20000000000000000000040 /* ReaderPagePipelineModels.swift */,
+				A20000000000000000000041 /* ReaderPageAssetLoader.swift */,
+				A20000000000000000000042 /* ReaderImageDecoder.swift */,
+				A20000000000000000000043 /* ReaderPagePipeline.swift */,
 				A20000000000000000000028 /* AdjacentReaderSessionLoader.swift */,
 				A20000000000000000000016 /* ReaderViewModel.swift */,
 				A20000000000000000000017 /* ReaderSettingsView.swift */,
@@ -407,6 +419,10 @@
 				A10000000000000000000015 /* ReaderView.swift in Sources */,
 				A10000000000000000000032 /* ReaderCanvasPalette.swift in Sources */,
 				A10000000000000000000026 /* ReaderPageImageLoader.swift in Sources */,
+				A10000000000000000000040 /* ReaderPagePipelineModels.swift in Sources */,
+				A10000000000000000000041 /* ReaderPageAssetLoader.swift in Sources */,
+				A10000000000000000000042 /* ReaderImageDecoder.swift in Sources */,
+				A10000000000000000000043 /* ReaderPagePipeline.swift in Sources */,
 				A10000000000000000000028 /* AdjacentReaderSessionLoader.swift in Sources */,
 				A10000000000000000000016 /* ReaderViewModel.swift in Sources */,
 				A10000000000000000000017 /* ReaderSettingsView.swift in Sources */,

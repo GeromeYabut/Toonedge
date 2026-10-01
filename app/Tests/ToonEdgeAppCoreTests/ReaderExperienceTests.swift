@@ -139,21 +139,75 @@ import Testing
 }
 
 @MainActor
-@Test func readerVisiblePlaceholderDoesNotAdvanceProgressUntilImageLoads() async {
+@Test func visiblePageAdvancesOnlyAfterPipelineReportsReady() async {
     let repository = MockReaderProgressRepository()
     let session = MockReaderSession.sample
     let viewModel = ReaderViewModel(session: session, progressRepository: repository)
 
     await viewModel.restoreProgress()
-    await viewModel.markImageVisible(index: 2)
+    await viewModel.markImageVisible(index: 2, isReady: false)
 
     #expect(viewModel.progress.currentImageIndex == 0)
     #expect(await repository.progress(for: session.sourceURL) == nil)
 
-    await viewModel.markImageLoaded(index: 2)
+    await viewModel.markImageVisible(index: 2, isReady: true)
 
     #expect(viewModel.progress.currentImageIndex == 2)
     #expect(await repository.progress(for: session.sourceURL)?.currentImageIndex == 2)
+}
+
+@MainActor
+@Test func lateReadyTransitionCannotRegressProgressFromNewerVisiblePage() async {
+    let viewModel = ReaderViewModel(session: .sample)
+
+    await viewModel.markImageVisible(index: 2, isReady: false)
+    await viewModel.markImageVisible(index: 3, isReady: true)
+    await viewModel.markImageReady(index: 2)
+
+    #expect(viewModel.progress.currentImageIndex == 3)
+}
+
+@MainActor
+@Test func stalePipelineVisibilityCannotAdvanceReplacementChapterProgress() async {
+    let viewModel = ReaderViewModel(session: .sample)
+    let stalePipelineID = ObjectIdentifier(viewModel.pagePipeline)
+    let replacement = MockReaderSession(
+        seriesTitle: "Replacement",
+        chapterTitle: "Chapter 2",
+        sourceURL: URL(string: "https://example.com/series/chapter-2")!,
+        imageURLs: (0..<4).map { URL(string: "https://example.com/replacement-\($0).png")! }
+    )
+    await viewModel.replaceSession(replacement)
+
+    await viewModel.markImageVisible(index: 3, isReady: true, pipelineID: stalePipelineID)
+
+    #expect(viewModel.progress.currentImageIndex == 0)
+}
+
+@MainActor
+@Test func readerPagePipelineIsRecreatedAfterDisappearanceAndForReplacementSession() async {
+    let viewModel = ReaderViewModel(session: .sample)
+    let initialPipeline = viewModel.pagePipeline
+
+    viewModel.readerDidAppear()
+    #expect(viewModel.pagePipeline === initialPipeline)
+
+    viewModel.readerDidDisappear()
+    viewModel.readerDidAppear()
+    let reappearedPipeline = viewModel.pagePipeline
+    #expect(reappearedPipeline !== initialPipeline)
+    #expect(reappearedPipeline.sessionID == viewModel.session.id)
+
+    let replacement = MockReaderSession(
+        seriesTitle: "Replacement",
+        chapterTitle: "Chapter 2",
+        sourceURL: URL(string: "https://example.com/series/chapter-2")!,
+        imageURLs: [URL(string: "https://example.com/page-2.png")!]
+    )
+    await viewModel.replaceSession(replacement)
+
+    #expect(viewModel.pagePipeline !== reappearedPipeline)
+    #expect(viewModel.pagePipeline.sessionID == replacement.id)
 }
 
 @MainActor
@@ -781,8 +835,8 @@ func adjacentFailureWaitsForExplicitRetry(reason: AdjacentReaderSessionLoadFailu
     let viewModel = ReaderViewModel(session: .sample, interactionFeedback: feedback)
 
     await viewModel.updateProgress(visibleImageIndex: 1)
-    await viewModel.markImageVisible(index: 2)
-    await viewModel.markImageLoaded(index: 2)
+    await viewModel.markImageVisible(index: 2, isReady: false)
+    await viewModel.markImageVisible(index: 2, isReady: true)
     viewModel.toggleChrome()
 
     #expect(feedback.events.isEmpty)

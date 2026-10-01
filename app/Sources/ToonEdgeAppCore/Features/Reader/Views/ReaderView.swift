@@ -20,7 +20,6 @@ public struct ReaderView: View {
     private let backAction: (() -> Void)?
     private let adjacentSessionDidChange: ((MockReaderSession) -> Void)?
     private let openAdjacentOriginalPageAction: ((URL) -> Void)?
-    private let chapterAssetCache: (any ChapterAssetCaching)?
 
     public init(
         session: MockReaderSession,
@@ -56,7 +55,13 @@ public struct ReaderView: View {
                 libraryLifecycleService: libraryLifecycleService,
                 seriesMetadataService: seriesMetadataService,
                 settingsManager: settingsManager,
-                interactionFeedback: interactionFeedback
+                interactionFeedback: interactionFeedback,
+                pagePipelineFactory: { session in
+                    ReaderPagePipeline(
+                        session: session,
+                        assetLoader: DefaultReaderPageAssetLoader(cache: chapterAssetCache)
+                    )
+                }
             )
         )
         self.readerService = readerService
@@ -67,7 +72,6 @@ public struct ReaderView: View {
         self.backAction = backAction
         self.adjacentSessionDidChange = adjacentSessionDidChange
         self.openAdjacentOriginalPageAction = openAdjacentOriginalPageAction
-        self.chapterAssetCache = chapterAssetCache
         self._router = router
     }
 
@@ -132,6 +136,12 @@ public struct ReaderView: View {
         }
         .foregroundStyle(textColor)
         .animation(.easeInOut(duration: 0.16), value: viewModel.isChromeVisible)
+        .onAppear {
+            viewModel.readerDidAppear()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: readerMemoryPressureNotification)) { _ in
+            viewModel.handleReaderMemoryPressure()
+        }
         .onChange(of: viewModel.adjacentLoadState) { _, state in
             guard let announcement = adjacentAnnouncementPolicy.announcement(for: state) else {
                 return
@@ -159,6 +169,7 @@ public struct ReaderView: View {
             )
         }
         .onDisappear {
+            viewModel.readerDidDisappear()
             adjacentNavigationTask?.cancel()
             adjacentNavigationTask = nil
             viewModel.cancelAdjacentNavigation()
@@ -170,31 +181,33 @@ public struct ReaderView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: viewModel.settings.isPageSpacingEnabled ? ToonEdgeSpacing.small : 0) {
-                        ForEach(Array(viewModel.session.imageURLs.enumerated()), id: \.offset) { index, imageURL in
+                        ForEach(Array(viewModel.session.imageURLs.enumerated()), id: \.offset) { index, _ in
                             ReaderImagePanel(
-                                imageURL: imageURL,
                                 index: index,
                                 displayMode: viewModel.settings.displayMode,
                                 availableWidth: geometry.size.width,
                                 metadata: viewModel.session.pageMetadata[safe: index],
-                                sourceURL: viewModel.session.sourceURL,
-                                assetCache: chapterAssetCache,
                                 palette: canvasPalette,
-                                requestContext: viewModel.session.imageRequestContext,
-                                onImageLoaded: {
+                                pipeline: viewModel.pagePipeline,
+                                onBecameVisible: { pipelineID, isReady in
                                     Task {
-                                        await viewModel.markImageLoaded(index: index)
+                                        await viewModel.markImageVisible(
+                                            index: index,
+                                            isReady: isReady,
+                                            pipelineID: pipelineID
+                                        )
+                                    }
+                                },
+                                onBecameReady: { pipelineID in
+                                    Task {
+                                        await viewModel.markImageReady(index: index, pipelineID: pipelineID)
                                     }
                                 }
                             )
                             .id(index)
-                            .onAppear {
-                                Task {
-                                    await viewModel.markImageVisible(index: index)
-                                }
-                            }
                         }
                     }
+                    .id(ObjectIdentifier(viewModel.pagePipeline))
                     .padding(.vertical, viewModel.settings.isPageSpacingEnabled ? ToonEdgeSpacing.small : 0)
                 }
                 .scrollIndicators(.hidden)
@@ -474,6 +487,14 @@ public struct ReaderView: View {
         viewModel.isChromeVisible ? "Hide Reader Controls" : "Show Reader Controls"
     }
 
+    private var readerMemoryPressureNotification: Notification.Name {
+        #if os(iOS)
+        UIApplication.didReceiveMemoryWarningNotification
+        #else
+        Notification.Name("ToonEdge.readerMemoryPressure")
+        #endif
+    }
+
     private func handleInteraction(_ source: ReaderInteractionSource) {
         guard ReaderGesturePolicy().togglesChrome(for: source) else { return }
         viewModel.toggleChrome()
@@ -679,58 +700,28 @@ struct ReaderAdjacentAnnouncementPolicy {
 }
 
 private struct ReaderImagePanel: View {
-    let imageURL: URL
     let index: Int
     let displayMode: ReaderDisplayMode
     let availableWidth: CGFloat
     let metadata: ReaderPageMetadata?
-    let sourceURL: URL
-    let assetCache: (any ChapterAssetCaching)?
     let palette: ReaderCanvasPaletteValues
-    let onImageLoaded: () -> Void
-    @StateObject private var loader: ReaderPageImageLoader
-
-    init(
-        imageURL: URL,
-        index: Int,
-        displayMode: ReaderDisplayMode,
-        availableWidth: CGFloat,
-        metadata: ReaderPageMetadata?,
-        sourceURL: URL,
-        assetCache: (any ChapterAssetCaching)?,
-        palette: ReaderCanvasPaletteValues,
-        requestContext: ReaderImageRequestContext?,
-        onImageLoaded: @escaping () -> Void
-    ) {
-        self.imageURL = imageURL
-        self.index = index
-        self.displayMode = displayMode
-        self.availableWidth = availableWidth
-        self.metadata = metadata
-        self.sourceURL = sourceURL
-        self.assetCache = assetCache
-        self.palette = palette
-        self.onImageLoaded = onImageLoaded
-        self._loader = StateObject(wrappedValue: ReaderPageImageLoader(
-            imageURL: imageURL,
-            sourceURL: sourceURL,
-            assetCache: assetCache,
-            requestContext: requestContext
-        ))
-    }
+    @ObservedObject var pipeline: ReaderPagePipeline
+    let onBecameVisible: (ObjectIdentifier, Bool) -> Void
+    let onBecameReady: (ObjectIdentifier) -> Void
+    @State private var isVisible = false
 
     var body: some View {
         Group {
-            switch loader.state {
-            case .idle, .loading:
+            switch state.status {
+            case .idle, .queued, .loading:
                 placeholder
                     .overlay {
                         ProgressView()
                             .tint(palette.foreground.color)
                     }
-            case .loaded(let data):
-                if let image = image(from: data) {
-                    image
+            case .ready:
+                if let decoded = state.image {
+                    Image(decorative: decoded.cgImage, scale: 1)
                         .resizable()
                         .scaledToFit()
                         .frame(maxWidth: imageWidth)
@@ -743,15 +734,17 @@ private struct ReaderImagePanel: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .task(id: imageURL) {
-            await loader.load()
+        .onAppear {
+            isVisible = true
+            pipeline.updateVisibleIndex(index)
+            onBecameVisible(ObjectIdentifier(pipeline), state.status == .ready)
         }
-        .onChange(of: loader.state) { _, state in
-            guard case .loaded(let data) = state, image(from: data) != nil else {
-                return
-            }
-
-            onImageLoaded()
+        .onDisappear {
+            isVisible = false
+        }
+        .onChange(of: state.status) { _, status in
+            guard isVisible, status == .ready else { return }
+            onBecameReady(ObjectIdentifier(pipeline))
         }
     }
 
@@ -767,29 +760,15 @@ private struct ReaderImagePanel: View {
                         .foregroundStyle(palette.foreground.color)
                         .accessibilityIdentifier("reader.page.failed.\(index + 1)")
                     Button("Retry") {
-                        Task {
-                            await loader.retry()
-                        }
+                        pipeline.retry(index: index)
                     }
                     .font(ToonEdgeTypography.caption)
                 }
             }
     }
 
-    private func image(from data: Data) -> Image? {
-        #if canImport(UIKit)
-        guard let platformImage = UIImage(data: data) else {
-            return nil
-        }
-        return Image(uiImage: platformImage)
-        #elseif canImport(AppKit)
-        guard let platformImage = NSImage(data: data) else {
-            return nil
-        }
-        return Image(nsImage: platformImage)
-        #else
-        return nil
-        #endif
+    private var state: ReaderPageState {
+        pipeline.states[index] ?? ReaderPageState(status: .idle, image: nil, failure: nil)
     }
 
     private var imageWidth: CGFloat {
