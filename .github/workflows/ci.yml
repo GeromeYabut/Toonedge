@@ -15,20 +15,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  package-tests:
-    name: Package Tests
-    runs-on: macos-15
-    timeout-minutes: 15
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Report toolchain
-        run: |
-          swift --version
-          xcodebuild -version
-      - name: Run package tests
-        run: swift test --package-path app --jobs 1
-
   simulator-build:
     name: Simulator Build
     runs-on: macos-15

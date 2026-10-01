@@ -30,11 +30,11 @@ xcodebuild \
 git diff --check
 ```
 
-Use the complete two-device UI workflow for release candidates and high-risk Reader, Browser, persistence, cache, or accessibility changes.
+Run the complete two-device UI suite locally for release candidates and high-risk Reader, Browser, persistence, cache, or accessibility changes. Use only the dedicated iPhone 16e and iPhone 16 Pro Max simulators documented in the project instructions.
 
 ## Pull Requests
 
-Push only with authorization. Target `main`, keep the branch current, resolve review conversations, and require `Package Tests` plus `Simulator Build` before merge.
+Push only with authorization. Target `main`, keep the branch current, resolve review conversations, and require `Simulator Build` before merge. Package, integration, and simulator UI tests remain local verification gates for now; record their commands and results in the pull request or QA evidence.
 
 ## Release Evidence
 

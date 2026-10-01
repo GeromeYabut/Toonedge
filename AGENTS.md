@@ -286,7 +286,8 @@ A story is done when:
 - Preserve unrelated user work and all untracked evidence. Never reset, clean, stash, or discard it without explicit authorization.
 - Use test-driven development for behavior changes. Run focused tests, then `swift test --package-path app --jobs 1`, and proportionate build/UI gates.
 - Keep commits independently reviewable and do not combine unrelated refactors.
-- Push only with user authorization. Open pull requests into `main` and wait for required `Package Tests` and `Simulator Build` checks.
+- Push only with user authorization. Open pull requests into `main` and wait for the required `Simulator Build` check.
+- Keep package, integration, and simulator UI tests local for now. Record the local commands and results in the pull request or QA evidence.
 - Merge, alter GitHub settings, or delete remote branches only with explicit user authorization.
 - After a confirmed merge, remove only worktrees and branches proven merged and free of unique changes.
 - Never stage, move, modify, or delete the protected local files `docs/qa_evidence/2026-09-22/manhuatop-chapter-label-top.png`, `docs/qa_evidence/2026-09-22/manhuatop-original-page.png`, or `docs/qa_evidence/2026-09-22/webtoon-protected-reader-cta.png`.

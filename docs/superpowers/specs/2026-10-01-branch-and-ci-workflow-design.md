@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-01
 
-**Status:** Approved for implementation planning
+**Status:** Approved; testing scope simplified during implementation
 
 **Current verified revision:** `0b15960655262072850ebe7e7ac791688f996975`
 
@@ -23,13 +23,14 @@ The workflow must preserve the existing verified history and protected local QA 
 
 ## Chosen Approach
 
-Use a protected-trunk workflow with short-lived branches and a balanced required CI set.
+Use a protected-trunk workflow with short-lived branches and one lightweight required build check. Keep package, integration, and simulator UI verification local for now.
 
 Alternatives considered:
 
 1. Keep the existing story branch as the default. This avoids migration work but preserves misleading branch semantics and encourages continued direct accumulation.
 2. Require the complete two-device UI suite on every pull request. This maximizes automated coverage but adds roughly 25–30 minutes of simulator time, consumes substantially more CI capacity, and increases exposure to hosted-simulator instability.
-3. **Chosen:** require package tests and an unsigned simulator build on every pull request, while keeping the complete UI matrix as a manual release workflow with retained result bundles.
+3. Initially chosen: require package tests and an unsigned simulator build on every pull request, while keeping the complete UI matrix as a manual release workflow.
+4. **Final:** require only the unsigned generic simulator build on pull requests. Continue running package and exact-device simulator tests locally, where the established deterministic process and dedicated devices are available.
 
 ## Branch Model
 
@@ -78,13 +79,6 @@ Create `.github/workflows/ci.yml` with stable job names that can be referenced b
 - Grant read-only repository contents permission.
 - Use concurrency keyed by workflow and ref, cancelling superseded runs on the same pull request.
 
-### `Package Tests`
-
-- Run on a GitHub-hosted macOS runner.
-- Execute `swift test --package-path app --jobs 1`.
-- Preserve the serial job setting used by local release verification.
-- Fail the required check on any nonzero exit.
-
 ### `Simulator Build`
 
 - Run on a GitHub-hosted macOS runner.
@@ -93,26 +87,21 @@ Create `.github/workflows/ci.yml` with stable job names that can be referenced b
 - Store DerivedData under the runner's temporary directory.
 - Fail the required check unless `xcodebuild` exits successfully.
 
-The CI workflow should use GitHub-maintained checkout and artifact actions only. Third-party Xcode-selection actions are out of scope; the workflow uses the runner's supported default Xcode toolchain and reports it in logs.
+The CI workflow should use GitHub-maintained checkout only. Third-party Xcode-selection actions are out of scope; the workflow uses the runner's supported default Xcode toolchain and reports it in logs.
 
-## Manual Release UI Workflow
+## Local Test Verification
 
-Create `.github/workflows/release-ui.yml` as a manually dispatched workflow rather than a required pull-request check.
-
-- Run the complete `ToonEdgeUITests` suite on an iPhone 16e and iPhone 16 Pro Max matrix when those simulator device types are available on the selected runner.
-- Generate a distinct `.xcresult` bundle for each device.
-- Upload result bundles and sanitized logs with 30-day retention, even when a test job fails.
-- Never upload screenshots or attachments until they have been reviewed for protected artwork, credentials, cookies, session data, and sensitive URLs.
-- Document hosted-runner device/runtime availability failures as environment limitations; do not silently substitute a different device while claiming exact-device coverage.
-
-Local release verification remains authoritative when hosted runners cannot supply the required device/runtime combination.
+- Run `swift test --package-path app --jobs 1` locally after focused regressions.
+- Run the complete `ToonEdgeUITests` suite locally on the dedicated iPhone 16e and iPhone 16 Pro Max for release candidates and proportionate high-risk changes.
+- Retain local `.xcresult` bundles, sanitized logs, and safe screenshots according to the QA evidence policy.
+- Never target the shared iPhone 16 Pro or upload protected artwork, credentials, cookies, session data, or sensitive URLs.
 
 ## GitHub Protection
 
-After both workflow files are merged into `main`, configure protection for `main`:
+After the workflow file is merged into `main`, configure protection for `main`:
 
 - Require a pull request before merging.
-- Require the `Package Tests` and `Simulator Build` status checks to pass and require branches to be current with `main`.
+- Require the `Simulator Build` status check to pass and require branches to be current with `main`.
 - Require conversation resolution.
 - Block force pushes and branch deletion.
 - Keep administrator bypass available for repository recovery; bypass must not be used for routine product work.
@@ -144,7 +133,7 @@ Add a contributor-facing guide at `docs/branching_and_release_workflow.md` with 
 3. Confirm remote `main` resolves to the expected revision.
 4. Change GitHub's default branch to `main`.
 5. Create `chore/branch-pipeline` from `origin/main` in an isolated worktree.
-6. Add `AGENTS.md`, the workflow guide, required CI, and manual release UI workflow.
+6. Add `AGENTS.md`, the workflow guide, and the required build workflow.
 7. Validate YAML structure, shell commands, package tests, and a local unsigned simulator build.
 8. Push the chore branch, open a pull request into `main`, and merge it after available checks pass.
 9. Apply and verify `main` protection using the workflow's exact status-check names.
@@ -168,8 +157,8 @@ The migration is complete only when all of the following are observed:
 - Local and remote `main` exist at the intended verified ancestry.
 - GitHub reports `main` as the default branch.
 - `AGENTS.md` and the workflow guide describe the same branch lifecycle and authority boundaries.
-- Pull requests into `main` run stable `Package Tests` and `Simulator Build` checks.
-- The manual release workflow defines the two-device UI matrix and 30-day artifact retention.
+- Pull requests into `main` run the stable `Simulator Build` check.
+- Package, integration, and exact-device simulator UI tests remain documented local gates.
 - GitHub reports the supported protection rules as enabled for `main`.
 - A repository status check confirms the three protected screenshots remain untracked and hash-identical.
 - No shared simulator was targeted and no protected artwork entered Git history or CI configuration.

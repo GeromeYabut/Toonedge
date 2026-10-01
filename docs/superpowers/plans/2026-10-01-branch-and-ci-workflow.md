@@ -1,5 +1,7 @@
 # ToonEdge Branch and CI Workflow Implementation Plan
 
+> **Execution adjustment (2026-10-01):** At the user's direction, GitHub verification was simplified to the unsigned `Simulator Build` check. Package, integration, and exact-device simulator UI tests remain local gates; the hosted release UI workflow described below was removed.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Establish `main` as ToonEdge's protected default branch, add balanced required pull-request CI plus a manual two-device release UI workflow, and make the branch lifecycle mandatory for future agents.
