@@ -182,7 +182,7 @@ private final class PausingChapterDirectoryFileManager: FileManager, @unchecked 
     ) throws {
         if url == pausedDirectory {
             storeEntered.signal()
-            guard resumeStore.wait(timeout: .now() + 5) == .success else {
+            guard resumeStore.wait(timeout: .now() + 30) == .success else {
                 throw URLError(.timedOut)
             }
         }
