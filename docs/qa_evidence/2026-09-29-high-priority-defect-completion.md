@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-Initial baseline recorded **2026-09-30 08:03:29 PDT**, followed by the Task 2 long-chapter results below. The filename retains the approved 2026-09-29 plan date. Final release verification is **pending**; this ledger does not close any defect or claim that the final gates have passed.
+Initial baseline recorded **2026-09-30 08:03:29 PDT**, followed by the Task 2 long-chapter and Task 3 retained-cache results below. The filename retains the approved 2026-09-29 plan date. Final release verification is **pending**; this ledger does not close any defect or claim that the final gates have passed.
 
 Sources: [release-verification plan](../superpowers/plans/2026-09-29-high-priority-release-verification.md) and [master execution plan](../superpowers/plans/2026-09-29-high-priority-defect-execution.md). Task 1 performed read-only environment and repository checks and created this ledger. It did not run tests, build the app, launch or change a simulator, inspect screenshot contents, or modify app code, tests, defect statuses, or protected screenshots.
 
@@ -73,7 +73,7 @@ Repeat this comparison during the final audit. Do not stage these files.
 
 ## Package gate
 
-**Pending — not executed by Task 1.** Record tested HEAD, exact command, exit code, Swift Testing count, failures/skips, and sanitized log location.
+**Final gate pending.** Task 3 development package runs passed 431/431 after the initial deletion fix and 433/433 after the concurrency follow-up, as detailed below. These do not replace a fresh final gate after all implementation/review changes. Task 1 did not execute this gate. Record final tested HEAD, exit code, Swift Testing count, failures/skips, and sanitized log location.
 
 ```sh
 swift test --package-path app --jobs 1
@@ -81,7 +81,7 @@ swift test --package-path app --jobs 1
 
 ## Focused UI and journey gates
 
-**Partially verified.** Task 2 long-chapter traversal and explicit image recovery passed on both dedicated devices as recorded below. Retained-cache deletion with measured recalculation and relaunch, Settings update outcomes, adjacent routing, and protected-site browser-only final gates remain pending. Run new focused regressions before complete UI gates. Record VoiceOver and appearance findings separately below.
+**Partially verified.** Task 2 long-chapter traversal and explicit image recovery passed on both dedicated devices; Task 3 retained-cache deletion, measured recalculation, and relaunch passed on the dedicated 16e. Settings update outcomes, adjacent routing, and protected-site browser-only final gates remain pending. Run new focused regressions before complete UI gates. Record VoiceOver and appearance findings separately below.
 
 ### Task 2 — long-chapter traversal and explicit recovery
 
@@ -109,6 +109,44 @@ Fixture semantics and observed coverage:
 Classification: **deterministic fixture UI evidence only**. This does not validate live image transport, real delayed image metadata, remote-server recovery, or the memory/performance behavior of full-resolution chapter artwork. The loopback failure is intentional fixture transport; no live content is needed. No safe screenshot was captured for Task 2, so there is no standalone screenshot artifact to claim.
 
 The recorded Task 2 runs targeted only the dedicated 16e and Pro Max; the shared iPhone 16 Pro was not targeted and protected screenshots were not modified. This ledger-only update runs no simulator commands or tests and does not re-hash protected files; their final integrity recheck remains required by the final audit.
+
+### Task 3 — retained-cache deletion, measured recalculation, and relaunch
+
+Production root cause: Downloads called `CacheMetadataManaging.removeCacheMetadata`, but persistent composition supplied the SwiftData repository directly. Removing the entry deleted metadata without deleting chapter files. Because measurement aggregates tracked entries, the UI could show no tracked storage while the chapter directory remained orphaned.
+
+Separate production fixes:
+
+- `c94f3d1d0c97626949eb9a85db0fad5d938cbbb5` (`fix: delete retained chapter files with metadata`) adds `CacheLifecycleService` and the narrow synchronous `ChapterAssetRemoving` interface, implements chapter-directory removal in `FileBackedChapterAssetCache`, and wires the wrapper through persistent/mock composition. DownloadsViewModel retains its existing abstraction; SwiftUI and the SwiftData repository do not own filesystem deletion. No schema migration is required.
+- `5858d20c1ece9cdaa575bfb872d3a92e4091b60d` (`fix: serialize chapter cache file lifecycle`) adds a reference lock shared across copies of the same file cache. Lookup, directory creation plus atomic store, and removal are serialized. Deterministic tests pause real directory creation, overlap a copied cache's removal/lookup, and verify that the active store cannot recreate an orphan after removal completes; neighboring chapter bytes remain intact.
+
+Deletion errors remain retryable: file deletion happens before metadata deletion, so a filesystem failure preserves the visible entry. If metadata deletion fails after files are removed, a retry tolerates the missing directory and can finish metadata removal. Coordination does **not** cancel downloads that have not called `store`; later stores remain allowed. The lock is shared by copies of an instance, not a cross-process or global per-path transaction, and a returned cache URL is not a lifetime read lease.
+
+Package TDD evidence (commands run from the recorded worktree):
+
+| Stage | Command | Observed result |
+|---|---|---|
+| Existing baseline | `swift test --package-path app --jobs 1 --filter CacheStorageTests` | 12/12 passed |
+| Deletion RED | `swift test --package-path app --jobs 1 --filter persistentDownloadsRemovalDeletesChapterFilesAndRecalculatesStorage` | 0/1 passed; chapter directory survived removal although metadata/zero-summary assertions passed |
+| Initial fix focused GREEN | `swift test --package-path app --jobs 1 --filter 'CacheStorageTests\|AppDependenciesTests'` | 27/27 passed |
+| Initial fix full package | `swift test --package-path app --jobs 1` | 431/431 passed, 4.384 seconds |
+| Concurrency RED | `swift test --package-path app --jobs 1 --filter 'chapterRemovalWaitsForInFlightStoreAcrossCacheCopies\|cachedAssetLookupWaitsForInFlightStoreAcrossCacheCopies'` | 0/2 passed; premature removal, recreated directory, and partial-store lookup observed |
+| Concurrency focused GREEN | `swift test --package-path app --jobs 1 --filter 'CacheStorageTests\|AppDependenciesTests'` | 29/29 passed |
+| Concurrency full package | `swift test --package-path app --jobs 1` | 433/433 passed, 4.140 seconds |
+
+Fixture/UI commit: `75c48cb9dd4625a15c733bb63e594fbc286f8262` (`test: verify retained cache deletion lifecycle`). The focused test is `ToonEdgeUITests/ToonEdgeRetainedCacheLifecycleUITests/testMeasuredRetainedChapterRemovalPersistsAcrossRelaunch`. It launches `-uiTesting -resetTestData -cacheLifecycleFixture <UUID>`, then relaunches with the same UUID and without reset.
+
+| Attempt | Device | Result | Elapsed test time | Result bundle |
+|---|---|---|---|---|
+| True UI RED | Dedicated iPhone 16e | 0/1 passed; expected retained row absent before fixture implementation | Not recorded here | `/private/tmp/toonedge-cache-lifecycle-red.xcresult` |
+| UI GREEN | Dedicated iPhone 16e, `4582CDE9-27DB-4669-86AC-0631C1D7F2ED` | 1/1 passed, 0 failures | Approximately 15.091 seconds | `/private/tmp/toonedge-cache-lifecycle-green.xcresult` |
+
+An earlier disk-space failure occurred before a valid test run and produced invalid/incomplete evidence; it is not counted as RED or a product failure. Recovery cleaned only disposable DerivedData. It did not erase a simulator or delete protected screenshots or retained result evidence.
+
+The fixture uses UUID-isolated persistent SwiftData metadata and a real `FileBackedChapterAssetCache`, composed through the production lifecycle wrapper and `CacheStorageMeasurementService`. It writes **2,048 sanitized synthetic bytes** through `ChapterAssetCaching` and records one retained chapter with an intentionally different 99,999-byte estimate. Downloads displays **1 chapter · 2 KB measured** and **1 retained references · 0 recent references**, demonstrating real measured storage rather than an estimated-only mock.
+
+The test taps the visible **Remove Retained Cache Fixture, Retained Cache Chapter 7 from cache** action and requires the row to disappear, success feedback, the empty state, **0 chapters · No local storage tracked**, and zero retained/recent references. A fixture service delegates the actual removal to production code and then checks the real chapter directory with `FileManager`; if it still exists, the service throws instead of permitting UI success. This is an in-app filesystem assertion, not direct filesystem access from the UI runner. Relaunch reopens the same isolated store without reseeding and verifies that the row remains absent and the zero summary persists.
+
+Classification: **deterministic fixture UI plus package/filesystem evidence**, not live transport or offline Reader decoding evidence. The synthetic byte payload is not chapter artwork and is not intended as a decodable PNG despite the fixture asset URL's suffix. No network response is required, and no safe screenshot was captured. Task 3 targeted only the dedicated 16e; the shared iPhone 16 Pro and protected screenshots were untouched. This ledger-only update runs no tests or simulator commands; the final protected-file hash audit remains pending.
 
 Prior slice ledgers are context, not substitutes for these final gates:
 
@@ -163,7 +201,7 @@ xcodebuild \
 
 ## Live versus fixture results
 
-**Pending final audit.** Task 2 is deterministic fixture evidence only, with the transport and image-size limitations recorded above. Label every other result as live, deterministic fixture, package/repository, or manual inspection. Fixture evidence cannot close a live-only criterion. Reconcile DEF-036 with its focused ledger and keep it open if live in-site parity remains unavailable or nonviable. WEBTOON and protected GlobalComix must remain browser-only; do not authenticate, bypass protection, record protected content, or capture live protected screenshots.
+**Pending final audit.** Task 2 is deterministic fixture evidence only, with the transport and image-size limitations recorded above. Task 3 combines deterministic fixture UI with real local cache/persistence and package/filesystem evidence; it does not exercise live transport. Label every other result as live, deterministic fixture, package/repository, or manual inspection. Fixture evidence cannot close a live-only criterion. Reconcile DEF-036 with its focused ledger and keep it open if live in-site parity remains unavailable or nonviable. WEBTOON and protected GlobalComix must remain browser-only; do not authenticate, bypass protection, record protected content, or capture live protected screenshots.
 
 ## Accessibility and appearance review
 
@@ -181,7 +219,7 @@ Recommend a CI artifact set keyed by tested commit SHA and run ID containing bot
 
 ## Limitations and outstanding work
 
-- Task 1 provides baseline and integrity observations; Task 2 adds the focused long-chapter journey on both dedicated devices. Package, remaining focused UI, complete UI, exact build, accessibility/appearance, live-site, and final defect gates remain unverified in this ledger.
+- Task 1 provides baseline and integrity observations; Task 2 adds the focused long-chapter journey on both dedicated devices; Task 3 adds package regressions and the retained-cache journey on the dedicated 16e. Fresh final package, remaining focused UI, complete UI, exact build, accessibility/appearance, live-site, and final defect gates remain pending.
 - Local runtime/device inventory is a point-in-time observation, not proof of app behavior or simulator mutation history outside Task 1.
 - No live content or protected screenshot contents were viewed or captured in this task.
 - The final release claim requires fresh gates after review fixes and durable artifact publication; neither occurred in Task 1.
