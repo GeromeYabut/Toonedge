@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-Initial baseline recorded **2026-09-30 08:03:29 PDT**, followed by the Task 2 long-chapter, Task 3 retained-cache, Task 4 Settings update-check, and Task 5 accessibility/appearance results below. The filename retains the approved 2026-09-29 plan date. Final release verification is **pending**; this ledger does not close any defect or claim that the final gates have passed.
+Initial baseline recorded **2026-09-30 08:03:29 PDT**, followed by the Task 2 long-chapter, Task 3 retained-cache, Task 4 Settings update-check, Task 5 accessibility/appearance, Task 6 routing, and Task 7 final automated-gate results below. The filename retains the approved 2026-09-29 plan date. This ledger records automated gate completion but does not by itself close a defect or replace the remaining live/manual limitations.
 
 Sources: [release-verification plan](../superpowers/plans/2026-09-29-high-priority-release-verification.md) and [master execution plan](../superpowers/plans/2026-09-29-high-priority-defect-execution.md). Task 1 performed read-only environment and repository checks and created this ledger. It did not run tests, build the app, launch or change a simulator, inspect screenshot contents, or modify app code, tests, defect statuses, or protected screenshots.
 
@@ -73,15 +73,17 @@ Repeat this comparison during the final audit. Do not stage these files.
 
 ## Package gate
 
-**Final gate pending.** Task 3 development package runs passed 431/431 after the initial deletion fix and 433/433 after the concurrency follow-up, as detailed below. These do not replace a fresh final gate after all implementation/review changes. Task 1 did not execute this gate. Record final tested HEAD, exit code, Swift Testing count, failures/skips, and sanitized log location.
+**Final gate passed** on HEAD `35b9a0a41c4c8335797cff861e5d0a2534a143aa`.
 
 ```sh
 swift test --package-path app --jobs 1
 ```
 
+Result: exit 0, **433/433 passed**, 0 failures, no skips reported, in **4.457 seconds**. The command output was observed directly; no separate package text log was created.
+
 ## Focused UI and journey gates
 
-**Partially verified.** Task 2 long-chapter traversal and explicit image recovery passed on both dedicated devices; Task 3 retained-cache deletion, measured recalculation, and relaunch passed on the dedicated 16e; Task 4 Settings update outcomes passed on the dedicated 16e. Adjacent routing and protected-site browser-only final gates remain pending. Run new focused regressions before complete UI gates. Record VoiceOver and appearance findings separately below.
+**Automated journeys verified with the manual/live limitations recorded below.** Task 2 long-chapter traversal and explicit image recovery passed on both dedicated devices; Task 3 retained-cache deletion, measured recalculation, and relaunch passed on the dedicated 16e; Task 4 Settings update outcomes passed on the dedicated 16e; Task 6 adjacent routing and the separate WEBTOON/GlobalComix browser-only profiles passed on the dedicated 16e. The complete Task 7 UI gates below reran all 48 UI tests on both dedicated device sizes.
 
 ### Task 2 — long-chapter traversal and explicit recovery
 
@@ -231,7 +233,7 @@ Safety: Task 6 targeted only the dedicated iPhone 16e. It did not target the sha
 
 ## Complete UI suite — iPhone 16e
 
-**Pending — planned command, not executed by Task 1.** Record tested HEAD, count, failures/skips, elapsed time, and log path.
+**Passed** on HEAD `35b9a0a41c4c8335797cff861e5d0a2534a143aa` using the dedicated iPhone 16e, iOS 18.6.
 
 ```sh
 xcodebuild \
@@ -244,9 +246,11 @@ xcodebuild \
   CODE_SIGNING_ALLOWED=NO
 ```
 
+Result: exit 0, **48/48 passed**, 0 failures, 0 unexpected failures, and no skips reported. Test execution was **822.838 seconds**; Xcode's test-operation observer reported **824.961 seconds**. Suite completed 2026-09-30 22:41:43 PDT. Result bundle: `/private/tmp/toonedge-final-16e.xcresult`. Xcode warned that the arm64 and x86_64 representations matched the named simulator and selected the first; the executed destination ID was the required dedicated 16e. No separate text log was captured.
+
 ## Complete UI suite — iPhone 16 Pro Max
 
-**Pending — planned command, not executed by Task 1.** Run after the 16e gate. Record tested HEAD, count, failures/skips, elapsed time, and log path.
+**Passed** on the same HEAD using the dedicated iPhone 16 Pro Max, iOS 18.6, after the 16e gate completed.
 
 ```sh
 xcodebuild \
@@ -259,9 +263,11 @@ xcodebuild \
   CODE_SIGNING_ALLOWED=NO
 ```
 
+Result: exit 0, **48/48 passed**, 0 failures, 0 unexpected failures, and no skips reported. Test execution was **829.470 seconds**; Xcode's test-operation observer reported **837.226 seconds**. Suite completed 2026-09-30 22:56:03 PDT. Result bundle: `/private/tmp/toonedge-final-16promax.xcresult`. The same harmless dual-architecture destination warning appeared, and Xcode selected the required Pro Max device ID. No separate text log was captured.
+
 ## Exact required build
 
-**Pending — planned command, not executed by Task 1.** Record tested HEAD, exit code, build summary, warnings, and sanitized log path. Expected success marker is `** BUILD SUCCEEDED **`.
+**Passed** on the same HEAD. The exact unwrapped command below exited 0 and emitted `** BUILD SUCCEEDED **`.
 
 ```sh
 xcodebuild \
@@ -272,6 +278,10 @@ xcodebuild \
   -derivedDataPath /private/tmp/toonedge-next-hardening-derived \
   build CODE_SIGNING_ALLOWED=NO
 ```
+
+The successful build used the required dedicated iPhone 16e destination and `/private/tmp/toonedge-next-hardening-derived`. Warnings were limited to Xcode choosing the first of the arm64/x86_64 representations of the same simulator, App Intents metadata extraction being skipped because the target has no AppIntents dependency, and `--strip-bitcode` being ignored because signing was disabled. No compiler error occurred. Successful output was observed directly and has no separate text-log artifact.
+
+One earlier wrapped attempt (`xcodebuild ... 2>&1 | tee /private/tmp/toonedge-next-hardening-build.log`) exited 70 before compilation when CoreSimulatorService became unavailable inside the wrapped invocation. It reported no matching destination and produced `/var/folders/l6/flfsspp57yn86vr7xy6gyz6m0000gn/T/ResultBundle_2026-30-09_22-57-0022.xcresult`. The log and error bundle were preserved. This is classified as an invocation/environment failure, not a product build failure; the exact unwrapped command immediately resolved the destination and succeeded without code or simulator changes.
 
 ## Live versus fixture results
 
@@ -351,16 +361,16 @@ Safety: all fixtures were sanitized and deterministic; no live or protected page
 
 ## Artifact locations and durable retention
 
-The prescribed local result paths are `/private/tmp/toonedge-final-16e.xcresult` and `/private/tmp/toonedge-final-16promax.xcresult`; the exact build uses `/private/tmp/toonedge-next-hardening-derived`. These are planned local working paths, **not durable CI artifacts**, and Task 1 does not assert that these future outputs exist.
+The completed local result paths are `/private/tmp/toonedge-final-16e.xcresult` and `/private/tmp/toonedge-final-16promax.xcresult`; the successful exact build uses `/private/tmp/toonedge-next-hardening-derived`. The initial build invocation failure log is `/private/tmp/toonedge-next-hardening-build.log`. These are local working artifacts, **not durable CI artifacts**.
 
 Recommend a CI artifact set keyed by tested commit SHA and run ID containing both `.xcresult` bundles, sanitized screenshots, package/UI/build text logs, and a copy of this ledger, with **at least 30-day retention**. Record durable artifact URLs here after upload. Review exported attachments/logs for protected art, cookies, credentials, and sensitive full URLs before upload. Preserve prior failed results when rerunning; do not overwrite or delete evidence silently. Record each attempt and its actual path.
 
 ## Limitations and outstanding work
 
-- Task 1 provides baseline and integrity observations; Task 2 adds the focused long-chapter journey on both dedicated devices; Task 3 adds package regressions and the retained-cache journey on the dedicated 16e; Task 4 adds focused Settings update-check outcomes on the dedicated 16e; Task 5 adds two-device automated accessibility reachability, a dedicated-16e Increased Contrast smoke, and limited safe screenshot inspection. Spoken VoiceOver/focus/rotor/announcement review, subjective Increased Contrast appearance review, Series Detail appearance, fresh final package, remaining focused UI, complete UI, exact build, live-site, and final defect gates remain pending.
+- Task 1 provides baseline and integrity observations; Tasks 2–6 add the focused release journeys; Task 7 passes the fresh 433-test package gate, both complete 48-test UI gates, and the exact required build. Spoken VoiceOver/focus/rotor/announcement review, subjective Increased Contrast appearance review, Series Detail appearance, live Vortex payload parity, final protected-file hash recheck, and final defect audit remain pending.
 - Local runtime/device inventory is a point-in-time observation, not proof of app behavior or simulator mutation history outside Task 1.
 - No live content or protected screenshot contents were viewed or captured in this task.
-- The final release claim requires fresh gates after review fixes and durable artifact publication; neither occurred in Task 1.
+- The fresh automated gates occurred on HEAD `35b9a0a41c4c8335797cff861e5d0a2534a143aa`. Durable artifact publication has not occurred, so local `/private/tmp` evidence still requires CI upload/retention before cleanup.
 
 ## Ledger validation
 
