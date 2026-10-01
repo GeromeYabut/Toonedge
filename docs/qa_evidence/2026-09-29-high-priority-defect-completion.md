@@ -289,12 +289,12 @@ Automated **Pass** observations:
 - **Browser Clean Mode CTA:** the sanitized medium-confidence fixture exposes a reachable CTA that transitions to Reader.
 - **Reader chrome:** the sanitized fixture exposes the Reader surface and changes its accessibility value from **Show Reader Controls** to **Hide Reader Controls** after revealing chrome.
 - **Downloads:** loading transitions correctly to empty/content; the twentieth sanitized row and its labeled removal action remain reachable; the storage header and actions remain reachable at accessibility XXXL.
-- **Settings and tab shell:** Home, Library, Downloads, and Settings tabs remain reachable and selectable in light and dark launch appearances and at accessibility XXXL. The Settings large-text journey remains scrollable.
+- **Settings and tab shell:** Home, Library, Downloads, and Settings tabs remain reachable and selectable in light and dark launch appearances and at accessibility XXXL. Settings opened at accessibility XXXL, and its visible content rendered while the tab bar remained reachable.
 - Source inspection found explicit 44-point minimums for Browser, Reader, and Downloads actions plus identified Reader adjacent **Retry** and **Open Original** controls. This is structural evidence, not a runtime measurement or spoken review.
 
 The existing UI tests launched both **Light** and **Dark** appearances on the 16e and Pro Max. They assert reachability and selection, but this automated coverage is **not** a complete subjective appearance signoff for color, contrast, visual hierarchy, truncation, safe areas, or readable widths.
 
-Four sanitized attachments were exported read-only under `/private/tmp/toonedge-task5-attachments.nEEp02` and visually inspected; they were not copied into the repository. On both device sizes, Settings at accessibility XXXL remained scrollable and reachable, and the Downloads rows/actions remained reachable. The Downloads summary visually rendered as **`19.5 KBestimated`** at accessibility XXXL on both sizes. This is a readability issue and remaining release risk, although the focused functional assertions passed and no Task 5 product fix was made.
+Four sanitized attachments were exported read-only under `/private/tmp/toonedge-task5-attachments.nEEp02` and visually inspected; they were not copied into the repository. On both device sizes, Settings opened at accessibility XXXL, its visible content rendered, and the tab bar remained reachable; the Downloads rows/actions also remained reachable. The Downloads summary visually rendered as **`19.5 KBestimated`** at accessibility XXXL on both sizes. This is a readability issue and remaining release risk, although the focused functional assertions passed and no Task 5 product fix was made.
 
 **Limitations — not performed and not claimed:**
 
