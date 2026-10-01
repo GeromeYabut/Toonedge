@@ -156,6 +156,51 @@ import Testing
     #expect(await repository.progress(for: session.sourceURL)?.currentImageIndex == 2)
 }
 
+@Test func readerViewportSelectionTracksBackwardScrollAndIgnoresEdgeOnlyFrames() {
+    let viewportHeight: CGFloat = 500
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [1: CGRect(x: 0, y: 0, width: 320, height: 500),
+                 2: CGRect(x: 0, y: 500, width: 320, height: 500)],
+        viewportHeight: viewportHeight
+    ) == 1)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [0: CGRect(x: 0, y: -300, width: 320, height: 400),
+                 1: CGRect(x: 0, y: 100, width: 320, height: 500)],
+        viewportHeight: viewportHeight
+    ) == 0)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [0: CGRect(x: 0, y: -300, width: 320, height: 300),
+                 1: CGRect(x: 0, y: 20, width: 320, height: 500)],
+        viewportHeight: viewportHeight
+    ) == 1)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [0: CGRect(x: 0, y: -300, width: 320, height: 250),
+                 1: CGRect(x: 0, y: 500, width: 320, height: 500)],
+        viewportHeight: viewportHeight
+    ) == nil)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [0: CGRect(x: 0, y: -300, width: 320, height: 250),
+                 1: CGRect(x: 0, y: 500, width: 320, height: 500)],
+        viewportHeight: 600
+    ) == 1)
+}
+
+@MainActor
+@Test func revisitedMountedPageWaitsForReadinessBeforeProgressMovesBackward() async {
+    let viewModel = ReaderViewModel(session: .sample)
+    await viewModel.markImageVisible(index: 3, isReady: true)
+    let revisit = ReaderViewportPageSelector.visibleIndex(
+        frames: [1: CGRect(x: 0, y: -120, width: 320, height: 420),
+                 3: CGRect(x: 0, y: 800, width: 320, height: 500)],
+        viewportHeight: 500
+    )
+    #expect(revisit == 1)
+    await viewModel.markImageVisible(index: 1, isReady: false)
+    #expect(viewModel.progress.currentImageIndex == 3)
+    await viewModel.markImageReady(index: 1)
+    #expect(viewModel.progress.currentImageIndex == 1)
+}
+
 @MainActor
 @Test func lateReadyTransitionCannotRegressProgressFromNewerVisiblePage() async {
     let viewModel = ReaderViewModel(session: .sample)

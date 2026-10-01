@@ -12,6 +12,8 @@ public struct ReaderView: View {
     @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .reader)
     @State private var adjacentNavigationTask: Task<Void, Never>?
     @State private var adjacentAnnouncementPolicy = ReaderAdjacentAnnouncementPolicy()
+    @State private var viewportVisibleIndex: Int?
+    @State private var pageFrames: [Int: CGRect] = [:]
     private let readerService: any ReaderSessionProviding
     private let adjacentLoader: (any AdjacentReaderSessionLoading)?
     private let libraryLifecycleService: (any LibraryLifecycleManaging)?
@@ -138,6 +140,9 @@ public struct ReaderView: View {
         .animation(.easeInOut(duration: 0.16), value: viewModel.isChromeVisible)
         .onAppear {
             viewModel.readerDidAppear()
+            if let viewportVisibleIndex {
+                viewModel.pagePipeline.updateVisibleIndex(viewportVisibleIndex)
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: readerMemoryPressureNotification)) { _ in
             viewModel.handleReaderMemoryPressure()
@@ -188,21 +193,7 @@ public struct ReaderView: View {
                                 availableWidth: geometry.size.width,
                                 metadata: viewModel.session.pageMetadata[safe: index],
                                 palette: canvasPalette,
-                                pipeline: viewModel.pagePipeline,
-                                onBecameVisible: { pipelineID, isReady in
-                                    Task {
-                                        await viewModel.markImageVisible(
-                                            index: index,
-                                            isReady: isReady,
-                                            pipelineID: pipelineID
-                                        )
-                                    }
-                                },
-                                onBecameReady: { pipelineID in
-                                    Task {
-                                        await viewModel.markImageReady(index: index, pipelineID: pipelineID)
-                                    }
-                                }
+                                pipeline: viewModel.pagePipeline
                             )
                             .id(index)
                         }
@@ -216,11 +207,53 @@ public struct ReaderView: View {
                 .onTapGesture {
                     handleInteraction(.readingSurfaceTap)
                 }
+                .coordinateSpace(name: "readerViewport")
+                .onPreferenceChange(ReaderPageFramePreferenceKey.self) { frames in
+                    pageFrames = frames
+                    selectVisiblePage(frames: frames, viewportHeight: geometry.size.height)
+                }
+                .onChange(of: geometry.size.height) { _, height in
+                    selectVisiblePage(frames: pageFrames, viewportHeight: height)
+                }
+                .onChange(of: ObjectIdentifier(viewModel.pagePipeline)) { _, _ in
+                    if let viewportVisibleIndex {
+                        viewModel.pagePipeline.updateVisibleIndex(viewportVisibleIndex)
+                    }
+                }
+                .onChange(of: viewModel.pagePipeline.states[viewportVisibleIndex ?? -1]?.status) { _, status in
+                    guard status == .ready, let viewportVisibleIndex else { return }
+                    let pipeline = viewModel.pagePipeline
+                    Task {
+                        await viewModel.markImageReady(
+                            index: viewportVisibleIndex,
+                            pipelineID: ObjectIdentifier(pipeline)
+                        )
+                    }
+                }
                 .task(id: viewModel.session.id) {
                     await viewModel.restoreProgress()
                     proxy.scrollTo(viewModel.progress.currentImageIndex, anchor: .top)
                 }
             }
+        }
+    }
+
+    private func selectVisiblePage(frames: [Int: CGRect], viewportHeight: CGFloat) {
+        let selectedIndex = ReaderViewportPageSelector.visibleIndex(
+            frames: frames,
+            viewportHeight: viewportHeight
+        )
+        guard selectedIndex != viewportVisibleIndex else { return }
+        viewportVisibleIndex = selectedIndex
+        guard let selectedIndex else { return }
+        let pipeline = viewModel.pagePipeline
+        pipeline.updateVisibleIndex(selectedIndex)
+        Task {
+            await viewModel.markImageVisible(
+                index: selectedIndex,
+                isReady: pipeline.states[selectedIndex]?.status == .ready,
+                pipelineID: ObjectIdentifier(pipeline)
+            )
         }
     }
 
@@ -706,9 +739,6 @@ private struct ReaderImagePanel: View {
     let metadata: ReaderPageMetadata?
     let palette: ReaderCanvasPaletteValues
     @ObservedObject var pipeline: ReaderPagePipeline
-    let onBecameVisible: (ObjectIdentifier, Bool) -> Void
-    let onBecameReady: (ObjectIdentifier) -> Void
-    @State private var isVisible = false
 
     var body: some View {
         Group {
@@ -721,11 +751,10 @@ private struct ReaderImagePanel: View {
                     }
             case .ready:
                 if let decoded = state.image {
-                    Image(decorative: decoded.cgImage, scale: 1)
+                    Image(decoded.cgImage, scale: 1, label: Text("Reader image \(index + 1)"))
                         .resizable()
                         .scaledToFit()
                         .frame(maxWidth: imageWidth)
-                        .accessibilityLabel("Reader image \(index + 1)")
                 } else {
                     failurePlaceholder
                 }
@@ -734,17 +763,13 @@ private struct ReaderImagePanel: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .onAppear {
-            isVisible = true
-            pipeline.updateVisibleIndex(index)
-            onBecameVisible(ObjectIdentifier(pipeline), state.status == .ready)
-        }
-        .onDisappear {
-            isVisible = false
-        }
-        .onChange(of: state.status) { _, status in
-            guard isVisible, status == .ready else { return }
-            onBecameReady(ObjectIdentifier(pipeline))
+        .background {
+            GeometryReader { geometry in
+                Color.clear.preference(
+                    key: ReaderPageFramePreferenceKey.self,
+                    value: [index: geometry.frame(in: .named("readerViewport"))]
+                )
+            }
         }
     }
 
@@ -796,6 +821,26 @@ private struct ReaderImagePanel: View {
                     .font(ToonEdgeTypography.caption)
                     .foregroundStyle(palette.foreground.color)
             }
+    }
+}
+
+struct ReaderViewportPageSelector {
+    static func visibleIndex(frames: [Int: CGRect], viewportHeight: CGFloat) -> Int? {
+        guard viewportHeight > 0 else { return nil }
+        return frames
+            .filter { _, frame in frame.maxY > 0 && frame.minY < viewportHeight }
+            .min { left, right in
+                if left.value.minY == right.value.minY { return left.key < right.key }
+                return left.value.minY < right.value.minY
+            }?.key
+    }
+}
+
+private struct ReaderPageFramePreferenceKey: PreferenceKey {
+    static let defaultValue: [Int: CGRect] = [:]
+
+    static func reduce(value: inout [Int: CGRect], nextValue: () -> [Int: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
     }
 }
 
