@@ -274,3 +274,21 @@ A story is done when:
 - logic is placed in the correct layer
 - tests are present for non-trivial logic
 - known limitations are stated explicitly
+
+---
+
+## Branch and Delivery Workflow
+
+- Treat `main` as the stable integration branch. Fetch and verify `origin/main` before starting new work.
+- Never implement product work directly on `main` and never use a story branch as a rolling integration branch.
+- Create one short-lived branch per reviewable outcome using `feature/`, `fix/`, `chore/`, or `docs/`.
+- Use an isolated worktree based on current `origin/main`; record branch, HEAD, and `git status --short --untracked-files=all` before editing.
+- Preserve unrelated user work and all untracked evidence. Never reset, clean, stash, or discard it without explicit authorization.
+- Use test-driven development for behavior changes. Run focused tests, then `swift test --package-path app --jobs 1`, and proportionate build/UI gates.
+- Keep commits independently reviewable and do not combine unrelated refactors.
+- Push only with user authorization. Open pull requests into `main` and wait for required `Package Tests` and `Simulator Build` checks.
+- Merge, alter GitHub settings, or delete remote branches only with explicit user authorization.
+- After a confirmed merge, remove only worktrees and branches proven merged and free of unique changes.
+- Never stage, move, modify, or delete the protected local files `docs/qa_evidence/2026-09-22/manhuatop-chapter-label-top.png`, `docs/qa_evidence/2026-09-22/manhuatop-original-page.png`, or `docs/qa_evidence/2026-09-22/webtoon-protected-reader-cta.png`.
+- Never target shared iPhone 16 Pro simulator `04F65B71-EEB9-4085-BFBD-8B7406E480A2`.
+- Follow `docs/branching_and_release_workflow.md` for commands, CI, release evidence, and recovery.
