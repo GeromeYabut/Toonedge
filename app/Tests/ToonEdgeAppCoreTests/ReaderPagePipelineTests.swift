@@ -41,6 +41,25 @@ import Testing
     }
 }
 
+@Test func imageDecoderRechecksCancellationAfterDetachedTaskCompletes() async throws {
+    let data = try #require(validPNGData)
+    let gate = ReaderImageDecoderReturnGate()
+    let decoder = ImageIOReaderImageDecoder(beforeReturning: {
+        await gate.waitForRelease()
+    })
+    let task = Task {
+        try await decoder.decode(data)
+    }
+
+    await gate.waitUntilDecoderIsReadyToReturn()
+    task.cancel()
+    await gate.release()
+
+    await #expect(throws: CancellationError.self) {
+        _ = try await task.value
+    }
+}
+
 @Test func imageDecoderDecodesValidImageWithPixelDimensions() async throws {
     let data = try #require(validPNGData)
 
@@ -51,6 +70,33 @@ import Testing
 }
 
 private let validPNGData = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==")
+
+private actor ReaderImageDecoderReturnGate {
+    private var isDecoderReadyToReturn = false
+    private var readyContinuation: CheckedContinuation<Void, Never>?
+    private var releaseContinuation: CheckedContinuation<Void, Never>?
+
+    func waitUntilDecoderIsReadyToReturn() async {
+        guard !isDecoderReadyToReturn else { return }
+        await withCheckedContinuation { continuation in
+            readyContinuation = continuation
+        }
+    }
+
+    func waitForRelease() async {
+        isDecoderReadyToReturn = true
+        readyContinuation?.resume()
+        readyContinuation = nil
+        await withCheckedContinuation { continuation in
+            releaseContinuation = continuation
+        }
+    }
+
+    func release() {
+        releaseContinuation?.resume()
+        releaseContinuation = nil
+    }
+}
 
 private struct SpyChapterAssetCache: ChapterAssetCaching {
     let data: Data

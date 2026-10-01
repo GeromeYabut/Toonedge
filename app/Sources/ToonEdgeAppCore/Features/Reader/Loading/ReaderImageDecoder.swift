@@ -10,7 +10,15 @@ public protocol ReaderImageDecoding: Sendable {
 }
 
 public struct ImageIOReaderImageDecoder: ReaderImageDecoding {
-    public init() {}
+    private let beforeReturning: @Sendable () async -> Void
+
+    public init() {
+        self.beforeReturning = {}
+    }
+
+    init(beforeReturning: @escaping @Sendable () async -> Void) {
+        self.beforeReturning = beforeReturning
+    }
 
     public func decode(_ data: Data) async throws -> ReaderDecodedImage {
         try Task.checkCancellation()
@@ -34,8 +42,10 @@ public struct ImageIOReaderImageDecoder: ReaderImageDecoding {
         }
 
         return try await withTaskCancellationHandler {
+            let image = try await decodingTask.value
+            await beforeReturning()
             try Task.checkCancellation()
-            return try await decodingTask.value
+            return image
         } onCancel: {
             decodingTask.cancel()
         }
