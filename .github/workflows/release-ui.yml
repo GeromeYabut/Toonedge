@@ -1,0 +1,55 @@
+name: Release UI
+
+"on":
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-ui-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ui-tests:
+    name: UI Tests — ${{ matrix.device_name }}
+    runs-on: macos-15
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device_name: iPhone 16e
+            artifact_name: iphone-16e
+          - device_name: iPhone 16 Pro Max
+            artifact_name: iphone-16-pro-max
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Report available simulator inventory
+        run: |
+          xcodebuild -version
+          xcrun simctl list devices available
+      - name: Run complete UI suite
+        run: |
+          set -o pipefail
+          result="$RUNNER_TEMP/toonedge-${{ matrix.artifact_name }}.xcresult"
+          log="$RUNNER_TEMP/toonedge-${{ matrix.artifact_name }}.log"
+          xcodebuild \
+            -project app/ToonEdge.xcodeproj \
+            -scheme ToonEdge \
+            -destination "platform=iOS Simulator,name=${{ matrix.device_name }}" \
+            -derivedDataPath "$RUNNER_TEMP/toonedge-${{ matrix.artifact_name }}-derived" \
+            test -only-testing:ToonEdgeUITests \
+            -resultBundlePath "$result" \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$log"
+      - name: Upload sanitized release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: toonedge-ui-${{ matrix.artifact_name }}
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/toonedge-${{ matrix.artifact_name }}.xcresult
+            ${{ runner.temp }}/toonedge-${{ matrix.artifact_name }}.log
