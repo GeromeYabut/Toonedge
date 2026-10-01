@@ -113,17 +113,26 @@ public struct AppDependencies: Sendable {
     @MainActor
     public static func persistent(
         inMemory: Bool = false,
-        usesModelContextIO: Bool = true
+        usesModelContextIO: Bool = true,
+        modelStoreURL: URL? = nil,
+        cacheRootDirectory: URL? = nil
     ) throws -> AppDependencies {
         let schema = Schema(ToonEdgePersistenceModels.all)
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
+        let configuration: ModelConfiguration
+        if let modelStoreURL {
+            configuration = ModelConfiguration(schema: schema, url: modelStoreURL)
+        } else {
+            configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
+        }
         let container = try ModelContainer(for: schema, configurations: configuration)
         let repository = SwiftDataLibraryRepository(
             modelContext: container.mainContext,
             modelContainer: container,
             usesModelContextIO: usesModelContextIO
         )
-        let assetCache = try? FileBackedChapterAssetCache(rootDirectory: defaultCacheDirectory())
+        let assetCache = try? FileBackedChapterAssetCache(
+            rootDirectory: cacheRootDirectory ?? defaultCacheDirectory()
+        )
         let cacheService: any CacheMetadataManaging = assetCache.map { cache -> any CacheMetadataManaging in
             CacheLifecycleService(metadata: repository, assets: cache)
         } ?? repository

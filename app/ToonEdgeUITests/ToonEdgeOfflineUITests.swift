@@ -60,6 +60,52 @@ final class ToonEdgeOfflineUITests: XCTestCase {
 }
 
 @MainActor
+final class ToonEdgeRetainedCacheLifecycleUITests: XCTestCase {
+    func testMeasuredRetainedChapterRemovalPersistsAcrossRelaunch() {
+        continueAfterFailure = false
+        let fixtureID = UUID().uuidString
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-uiTesting", "-resetTestData", "-cacheLifecycleFixture", fixtureID,
+        ]
+        app.launch()
+
+        let chapter = app.staticTexts["Retained Cache Chapter 7"]
+        XCTAssertTrue(chapter.waitForExistence(timeout: 8))
+        assertMeasuredRetainedSummary(in: app)
+
+        app.buttons["Remove Retained Cache Fixture, Retained Cache Chapter 7 from cache"].tap()
+
+        XCTAssertTrue(chapter.waitForNonExistence(timeout: 8))
+        XCTAssertTrue(app.descendants(matching: .any)["downloads.feedback.success"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["downloads.empty"].waitForExistence(timeout: 5))
+        assertEmptyStorageSummary(in: app)
+
+        app.terminate()
+        app.launchArguments = ["-uiTesting", "-cacheLifecycleFixture", fixtureID]
+        app.launch()
+
+        XCTAssertTrue(app.descendants(matching: .any)["downloads.empty"].waitForExistence(timeout: 8))
+        XCTAssertFalse(chapter.exists)
+        assertEmptyStorageSummary(in: app)
+    }
+
+    private func assertMeasuredRetainedSummary(in app: XCUIApplication) {
+        let header = app.descendants(matching: .any)["downloads.storageHeader"]
+        XCTAssertTrue(header.waitForExistence(timeout: 5))
+        XCTAssertTrue(header.label.contains("1 chapter · 2 KB measured"), header.label)
+        XCTAssertTrue(header.label.contains("1 retained references · 0 recent references"), header.label)
+    }
+
+    private func assertEmptyStorageSummary(in app: XCUIApplication) {
+        let header = app.descendants(matching: .any)["downloads.storageHeader"]
+        XCTAssertTrue(header.waitForExistence(timeout: 5))
+        XCTAssertTrue(header.label.contains("0 chapters · No local storage tracked"), header.label)
+        XCTAssertTrue(header.label.contains("0 retained references · 0 recent references"), header.label)
+    }
+}
+
+@MainActor
 final class ToonEdgeLongChapterUITests: XCTestCase {
     func testLongChapterTraversesFortyPanelsAndRecoversTransientImageFailure() {
         continueAfterFailure = false

@@ -52,6 +52,10 @@ struct ToonEdgeAppEntry: App {
             return (try? AppDependencies.persistent()) ?? .mock()
         }
 
+        if let fixture = UITestCacheLifecycleFixture(arguments: arguments) {
+            return try! fixture.dependencies(reset: arguments.contains("-resetTestData"))
+        }
+
         var dependencies = AppDependencies.mock()
         if let marker = arguments.firstIndex(of: "-browserFixture"),
            arguments.indices.contains(marker + 1) {
@@ -204,6 +208,9 @@ struct ToonEdgeAppEntry: App {
     private func launchRouter() -> AppRouter {
         let arguments = ProcessInfo.processInfo.arguments
         let hardeningFixture = ReaderHardeningFixtureScenario.from(arguments: arguments)
+        if UITestCacheLifecycleFixture(arguments: arguments) != nil {
+            return AppRouter(selectedTab: .downloads)
+        }
         if arguments.contains("-uiTesting"),
            let marker = arguments.firstIndex(of: "-openURL"),
            arguments.indices.contains(marker + 1) {
@@ -243,6 +250,127 @@ struct ToonEdgeAppEntry: App {
             ? uncachedOfflineFixtureSession
             : offlineFixtureSession
         return AppRouter(presentedReader: session)
+    }
+}
+
+private struct UITestCacheLifecycleFixture {
+    private static let marker = "-cacheLifecycleFixture"
+    private static let sourceURL = URL(string: "https://fixture.example/cache-lifecycle/chapter-7")!
+    private static let assetURL = URL(string: "https://images.example.test/cache-lifecycle/panel-1.png")!
+    private let id: UUID
+
+    init?(arguments: [String]) {
+        guard let markerIndex = arguments.firstIndex(of: Self.marker),
+              arguments.indices.contains(markerIndex + 1),
+              let id = UUID(uuidString: arguments[markerIndex + 1]) else {
+            return nil
+        }
+        self.id = id
+    }
+
+    @MainActor
+    func dependencies(reset: Bool) throws -> AppDependencies {
+        let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        let root = base
+            .appendingPathComponent("ToonEdgeCacheLifecycleUITests", isDirectory: true)
+            .appendingPathComponent(id.uuidString, isDirectory: true)
+        if reset {
+            try? FileManager.default.removeItem(at: root)
+        }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+        var dependencies = try AppDependencies.persistent(
+            modelStoreURL: root.appendingPathComponent("metadata.store"),
+            cacheRootDirectory: root.appendingPathComponent("assets", isDirectory: true)
+        )
+        let cache = dependencies.chapterAssetCache!
+        if reset {
+            try cache.store(
+                Data(repeating: 0x54, count: 2_048),
+                for: Self.assetURL,
+                sourceURL: Self.sourceURL
+            )
+        }
+        let fixtureService = UITestRetainedCacheFixtureService(
+            base: dependencies.cacheMetadataService,
+            cache: cache,
+            seedOnFirstLoad: reset,
+            input: CacheMetadataInput(
+                sourceURL: Self.sourceURL,
+                seriesTitle: "Retained Cache Fixture",
+                chapterTitle: "Retained Cache Chapter 7",
+                chapterLabel: "7",
+                imageCount: 1,
+                estimatedStorageBytes: 99_999,
+                retentionState: .retained,
+                cachedAt: Date(timeIntervalSince1970: 7)
+            )
+        )
+        dependencies.cacheMetadataService = fixtureService
+        dependencies.downloadService = fixtureService
+        return dependencies
+    }
+}
+
+@MainActor
+private final class UITestRetainedCacheFixtureService: CacheMetadataManaging {
+    private let base: any CacheMetadataManaging
+    private let cache: any ChapterAssetCaching
+    private let input: CacheMetadataInput
+    private var needsSeed: Bool
+
+    init(
+        base: any CacheMetadataManaging,
+        cache: any ChapterAssetCaching,
+        seedOnFirstLoad: Bool,
+        input: CacheMetadataInput
+    ) {
+        self.base = base
+        self.cache = cache
+        self.needsSeed = seedOnFirstLoad
+        self.input = input
+    }
+
+    func recordCacheMetadata(_ input: CacheMetadataInput) async throws -> CacheActionResult {
+        try await base.recordCacheMetadata(input)
+    }
+
+    func removeCacheMetadata(for sourceURL: URL) async throws -> CacheActionResult {
+        try await seedIfNeeded()
+        let result = try await base.removeCacheMetadata(for: sourceURL)
+        guard !FileManager.default.fileExists(atPath: cache.chapterDirectory(for: sourceURL).path) else {
+            throw CocoaError(.fileWriteUnknown)
+        }
+        return result
+    }
+
+    func updateCacheRetention(
+        for sourceURL: URL,
+        retentionState: CacheRetentionState,
+        cachedAt: Date
+    ) async throws -> CacheActionResult {
+        try await base.updateCacheRetention(
+            for: sourceURL,
+            retentionState: retentionState,
+            cachedAt: cachedAt
+        )
+    }
+
+    func cacheMetadataEntries() async -> [CacheMetadataEntry] {
+        try? await seedIfNeeded()
+        return await base.cacheMetadataEntries()
+    }
+
+    func downloadSummary() async -> DownloadSummary {
+        try? await seedIfNeeded()
+        return await base.downloadSummary()
+    }
+
+    private func seedIfNeeded() async throws {
+        guard needsSeed else { return }
+        needsSeed = false
+        _ = try await base.recordCacheMetadata(input)
     }
 }
 
