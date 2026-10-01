@@ -190,16 +190,20 @@ struct ToonEdgeAppEntry: App {
             dependencies.readerProgressRepository = MockReaderProgressRepository()
         }
         if arguments.contains("-seedUpdateSuccess") {
-            dependencies.updateRefreshService = MockLibraryUpdateRefreshService(
+            dependencies.updateRefreshService = DelayedUITestUpdateRefreshService(
                 result: LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 1, failedCount: 0)
             )
         } else if arguments.contains("-seedUpdateFailure") {
-            dependencies.updateRefreshService = MockLibraryUpdateRefreshService(
+            dependencies.updateRefreshService = DelayedUITestUpdateRefreshService(
                 result: LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 0, failedCount: 2)
             )
         } else if arguments.contains("-seedUpdateNoChange") {
-            dependencies.updateRefreshService = MockLibraryUpdateRefreshService(
+            dependencies.updateRefreshService = DelayedUITestUpdateRefreshService(
                 result: LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 0, failedCount: 0)
+            )
+        } else if arguments.contains("-seedUpdateTotalFailure") {
+            dependencies.updateRefreshService = DelayedUITestUpdateRefreshService(
+                result: LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 0, failedCount: 3)
             )
         }
         return dependencies
@@ -250,6 +254,15 @@ struct ToonEdgeAppEntry: App {
             ? uncachedOfflineFixtureSession
             : offlineFixtureSession
         return AppRouter(presentedReader: session)
+    }
+}
+
+private struct DelayedUITestUpdateRefreshService: LibraryUpdateRefreshing {
+    let result: LibraryUpdateRefreshResult
+
+    func refreshUpdates() async -> LibraryUpdateRefreshResult {
+        try? await Task.sleep(for: .seconds(3))
+        return result
     }
 }
 

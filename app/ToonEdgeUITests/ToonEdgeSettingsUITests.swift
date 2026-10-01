@@ -38,7 +38,7 @@ final class ToonEdgeSettingsUITests: XCTestCase {
         XCTAssertFalse(app.navigationBars["Reader Settings"].exists)
     }
 
-    func testUpdateCheckShowsSuccessNoUpdateAndFailureResults() {
+    func testUpdateCheckDisablesDuplicateSubmissionAndShowsDistinctUsableResults() {
         verifyUpdateResult(
             launchArgument: "-seedUpdateSuccess",
             expected: "Found updates for 1 series."
@@ -50,6 +50,10 @@ final class ToonEdgeSettingsUITests: XCTestCase {
         verifyUpdateResult(
             launchArgument: "-seedUpdateFailure",
             expected: "No updates found; 2 series could not be refreshed."
+        )
+        verifyUpdateResult(
+            launchArgument: "-seedUpdateTotalFailure",
+            expected: "Could not refresh 3 series."
         )
     }
 
@@ -144,9 +148,18 @@ final class ToonEdgeSettingsUITests: XCTestCase {
         XCTAssertTrue(checkUpdates.isHittable)
         checkUpdates.tap()
 
+        let loading = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@ AND enabled == false", "Checking…"),
+            object: checkUpdates
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [loading], timeout: 2), .completed)
+
         let result = app.staticTexts["settings.updateResult"]
         XCTAssertTrue(result.waitForExistence(timeout: 5))
         XCTAssertEqual(result.label, expected)
+        XCTAssertTrue(checkUpdates.isEnabled, "Update checking must remain retryable after a final result")
+        XCTAssertEqual(checkUpdates.label, "Check for New Chapters")
+        XCTAssertTrue(app.tabBars.buttons["tab.home"].isHittable, "Settings must remain navigable after checking")
         app.terminate()
     }
 }
