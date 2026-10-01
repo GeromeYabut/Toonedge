@@ -136,8 +136,32 @@ private actor SpyHTTPDataLoader: HTTPDataLoading {
     try await loader.waitForRequestCount(3)
     #expect(await loader.maximumConcurrentRequests == 3)
     pipeline.cancel()
+    try await loader.waitForCancellationCount(3)
     await loader.completeAll()
-    try await waitForPipelineState { pipeline.states.values.allSatisfy { $0.status != .ready } }
+    try await loader.waitForNoActiveRequests()
+    let didDrain = await pipeline.waitForWorkToDrain()
+    #expect(didDrain)
+    #expect(pipeline.states.values.allSatisfy { $0.status == .idle })
+}
+
+@Test @MainActor func pipelineEnforcesGlobalConcurrencyCapWhenPolicyRequestsMore() async throws {
+    let loader = SuspendedReaderAssetLoader()
+    let pipeline = ReaderPagePipeline(
+        session: .pipelineFixture(pageCount: 8),
+        assetLoader: loader,
+        policy: .init(behind: 2, ahead: 4, maximumConcurrentLoads: 7)
+    )
+
+    pipeline.updateVisibleIndex(3)
+    try await loader.waitForRequestCount(3)
+    #expect(await loader.requestCount == 3)
+    #expect(await loader.maximumConcurrentRequests == 3)
+    pipeline.cancel()
+    try await loader.waitForCancellationCount(3)
+    await loader.completeAll()
+    try await loader.waitForNoActiveRequests()
+    let didDrain = await pipeline.waitForWorkToDrain()
+    #expect(didDrain)
 }
 
 @Test @MainActor func pipelineDeduplicatesRepeatedURLsWithinTheWorkingWindow() async throws {
@@ -170,14 +194,18 @@ private actor SpyHTTPDataLoader: HTTPDataLoading {
     pipeline.updateVisibleIndex(3)
     try await loader.waitForRequestCount(1)
     pipeline.updateVisibleIndex(0)
-    try await Task.sleep(for: .milliseconds(30))
+    try await loader.waitForCancellationCount(1)
     #expect(await loader.requestedURLs == [session.imageURLs[3]])
     await loader.complete(url: session.imageURLs[3])
     try await loader.waitForRequestCount(2)
     #expect(await loader.requestedURLs[1] == session.imageURLs[0])
     #expect(await loader.maximumConcurrentRequests == 1)
     pipeline.cancel()
+    try await loader.waitForCancellationCount(2)
     await loader.completeAll()
+    try await loader.waitForNoActiveRequests()
+    let didDrain = await pipeline.waitForWorkToDrain()
+    #expect(didDrain)
 }
 
 @Test @MainActor func revisitedCancelledURLDoesNotStartDuplicateWhileOldFetchRuns() async throws {
@@ -191,12 +219,17 @@ private actor SpyHTTPDataLoader: HTTPDataLoading {
     pipeline.updateVisibleIndex(3)
     try await loader.waitForRequestCount(2)
     pipeline.updateVisibleIndex(0)
+    try await loader.waitForCancellationCount(2)
     pipeline.updateVisibleIndex(3)
     await loader.complete(url: session.imageURLs[4])
-    try await Task.sleep(for: .milliseconds(30))
+    try await loader.waitForRequestCount(3)
     #expect(await loader.requestedURLs.filter { $0 == session.imageURLs[3] }.count == 1)
     pipeline.cancel()
+    try await loader.waitForCancellationCount(3)
     await loader.completeAll()
+    try await loader.waitForNoActiveRequests()
+    let didDrain = await pipeline.waitForWorkToDrain()
+    #expect(didDrain)
 }
 
 @Test @MainActor func memoryPressureKeepsOnlyVisibleDecodedImage() async throws {
@@ -253,8 +286,9 @@ private extension MockReaderSession {
 
 private actor SuspendedReaderAssetLoader: ReaderPageAssetLoading {
     private var continuations: [URL: [CheckedContinuation<Data, Error>]] = [:]
-    private var requestCount = 0
+    private(set) var requestCount = 0
     private var concurrentRequests = 0
+    private var cancellationCount = 0
     private(set) var maximumConcurrentRequests = 0
     private(set) var requestedURLs: [URL] = []
 
@@ -264,8 +298,12 @@ private actor SuspendedReaderAssetLoader: ReaderPageAssetLoading {
         concurrentRequests += 1
         maximumConcurrentRequests = max(maximumConcurrentRequests, concurrentRequests)
         defer { concurrentRequests -= 1 }
-        return try await withCheckedThrowingContinuation { continuation in
-            continuations[imageURL, default: []].append(continuation)
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                continuations[imageURL, default: []].append(continuation)
+            }
+        } onCancel: {
+            Task { await self.recordCancellation() }
         }
     }
 
@@ -275,6 +313,22 @@ private actor SuspendedReaderAssetLoader: ReaderPageAssetLoading {
             try await Task.sleep(for: .milliseconds(10))
         }
         #expect(requestCount >= count)
+    }
+
+    func waitForCancellationCount(_ count: Int) async throws {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while cancellationCount < count && ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(cancellationCount >= count)
+    }
+
+    func waitForNoActiveRequests() async throws {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while concurrentRequests > 0 && ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(concurrentRequests == 0)
     }
 
     func completeAll() {
@@ -291,6 +345,10 @@ private actor SuspendedReaderAssetLoader: ReaderPageAssetLoading {
 
     func fail(url: URL, error: Error) {
         continuations.removeValue(forKey: url)?.forEach { $0.resume(throwing: error) }
+    }
+
+    private func recordCancellation() {
+        cancellationCount += 1
     }
 }
 

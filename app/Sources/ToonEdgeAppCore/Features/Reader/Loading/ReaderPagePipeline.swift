@@ -80,6 +80,15 @@ public final class ReaderPagePipeline: ObservableObject {
         Task { await coordinator.cancelAll(newGeneration: generation) }
     }
 
+    func waitForWorkToDrain() async -> Bool {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: .seconds(2))
+        while await coordinator.hasActiveWork(), clock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return !(await coordinator.hasActiveWork())
+    }
+
     private func apply(index: Int, state: ReaderPageState, generation: UUID, revision: Int) {
         guard !isCancelled, generation == self.generation,
               revision > lastRevisionByIndex[index, default: 0] else { return }
@@ -169,6 +178,10 @@ private actor ReaderPageWorkCoordinator {
         states.removeAll()
     }
 
+    func hasActiveWork() -> Bool {
+        !activeByURL.isEmpty
+    }
+
     private func setTargets(_ indexes: [Int]) {
         targetIndexes = indexes
         let targetSet = Set(indexes)
@@ -206,7 +219,8 @@ private actor ReaderPageWorkCoordinator {
         }
         queuedIndexes = targetIndexes.filter { state(at: $0).status == .queued }
 
-        while activeByURL.count < max(1, policy.maximumConcurrentLoads),
+        let concurrencyLimit = min(3, max(1, policy.maximumConcurrentLoads))
+        while activeByURL.count < concurrencyLimit,
               let index = queuedIndexes.first(where: { activeByURL[imageURLs[$0]] == nil }) {
             let url = imageURLs[index]
             let duplicateIndexes = queuedIndexes.filter { imageURLs[$0] == url }
