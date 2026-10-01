@@ -202,6 +202,33 @@ import Testing
 }
 
 @MainActor
+@Test func replacementPipelineRearmsSameVisiblePageForReadyProgress() async {
+    let viewModel = ReaderViewModel(session: .sample)
+    let frames = [1: CGRect(x: 0, y: 0, width: 320, height: 500)]
+    let initialSelection = ReaderViewportPageSelector.selection(
+        frames: frames, viewportHeight: 500, pipelineID: ObjectIdentifier(viewModel.pagePipeline)
+    )
+    await viewModel.markImageVisible(index: 1, isReady: false)
+
+    let replacement = MockReaderSession(
+        seriesTitle: "Replacement",
+        chapterTitle: "Chapter 2",
+        sourceURL: URL(string: "https://example.com/series/chapter-2")!,
+        imageURLs: (0..<3).map { URL(string: "https://example.com/new-\($0).png")! }
+    )
+    await viewModel.replaceSession(replacement)
+    let replacementSelection = ReaderViewportPageSelector.selection(
+        frames: frames, viewportHeight: 500, pipelineID: ObjectIdentifier(viewModel.pagePipeline)
+    )
+
+    #expect(replacementSelection?.index == 1)
+    #expect(replacementSelection != initialSelection)
+    await viewModel.markImageVisible(index: 1, isReady: false)
+    await viewModel.markImageReady(index: 1)
+    #expect(viewModel.progress.currentImageIndex == 1)
+}
+
+@MainActor
 @Test func lateReadyTransitionCannotRegressProgressFromNewerVisiblePage() async {
     let viewModel = ReaderViewModel(session: .sample)
 

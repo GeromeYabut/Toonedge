@@ -13,6 +13,7 @@ public struct ReaderView: View {
     @State private var adjacentNavigationTask: Task<Void, Never>?
     @State private var adjacentAnnouncementPolicy = ReaderAdjacentAnnouncementPolicy()
     @State private var viewportVisibleIndex: Int?
+    @State private var reportedViewportSelection: ReaderViewportSelection?
     @State private var pageFrames: [Int: CGRect] = [:]
     private let readerService: any ReaderSessionProviding
     private let adjacentLoader: (any AdjacentReaderSessionLoading)?
@@ -216,9 +217,7 @@ public struct ReaderView: View {
                     selectVisiblePage(frames: pageFrames, viewportHeight: height)
                 }
                 .onChange(of: ObjectIdentifier(viewModel.pagePipeline)) { _, _ in
-                    if let viewportVisibleIndex {
-                        viewModel.pagePipeline.updateVisibleIndex(viewportVisibleIndex)
-                    }
+                    selectVisiblePage(frames: pageFrames, viewportHeight: geometry.size.height)
                 }
                 .onChange(of: viewModel.pagePipeline.states[viewportVisibleIndex ?? -1]?.status) { _, status in
                     guard status == .ready, let viewportVisibleIndex else { return }
@@ -239,20 +238,22 @@ public struct ReaderView: View {
     }
 
     private func selectVisiblePage(frames: [Int: CGRect], viewportHeight: CGFloat) {
-        let selectedIndex = ReaderViewportPageSelector.visibleIndex(
+        let selection = ReaderViewportPageSelector.selection(
             frames: frames,
-            viewportHeight: viewportHeight
+            viewportHeight: viewportHeight,
+            pipelineID: ObjectIdentifier(viewModel.pagePipeline)
         )
-        guard selectedIndex != viewportVisibleIndex else { return }
-        viewportVisibleIndex = selectedIndex
-        guard let selectedIndex else { return }
+        guard selection != reportedViewportSelection else { return }
+        reportedViewportSelection = selection
+        viewportVisibleIndex = selection?.index
+        guard let selection else { return }
         let pipeline = viewModel.pagePipeline
-        pipeline.updateVisibleIndex(selectedIndex)
+        pipeline.updateVisibleIndex(selection.index)
         Task {
             await viewModel.markImageVisible(
-                index: selectedIndex,
-                isReady: pipeline.states[selectedIndex]?.status == .ready,
-                pipelineID: ObjectIdentifier(pipeline)
+                index: selection.index,
+                isReady: pipeline.states[selection.index]?.status == .ready,
+                pipelineID: selection.pipelineID
             )
         }
     }
@@ -824,7 +825,19 @@ private struct ReaderImagePanel: View {
     }
 }
 
+struct ReaderViewportSelection: Equatable {
+    let index: Int
+    let pipelineID: ObjectIdentifier
+}
+
 struct ReaderViewportPageSelector {
+    static func selection(
+        frames: [Int: CGRect], viewportHeight: CGFloat, pipelineID: ObjectIdentifier
+    ) -> ReaderViewportSelection? {
+        guard let index = visibleIndex(frames: frames, viewportHeight: viewportHeight) else { return nil }
+        return ReaderViewportSelection(index: index, pipelineID: pipelineID)
+    }
+
     static func visibleIndex(frames: [Int: CGRect], viewportHeight: CGFloat) -> Int? {
         guard viewportHeight > 0 else { return nil }
         return frames
