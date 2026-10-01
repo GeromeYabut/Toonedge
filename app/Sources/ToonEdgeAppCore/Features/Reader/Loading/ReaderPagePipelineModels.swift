@@ -19,6 +19,19 @@ public struct ReaderPageState: Sendable {
     public var status: ReaderPageStatus
     public var image: ReaderDecodedImage?
     public var failure: ReaderPageFailure?
+    public var learnedMetadata: ReaderPageMetadata?
+
+    public init(
+        status: ReaderPageStatus,
+        image: ReaderDecodedImage?,
+        failure: ReaderPageFailure?,
+        learnedMetadata: ReaderPageMetadata? = nil
+    ) {
+        self.status = status
+        self.image = image
+        self.failure = failure
+        self.learnedMetadata = learnedMetadata
+    }
 }
 
 public enum ReaderPageFailure: String, Error, Equatable, Sendable {

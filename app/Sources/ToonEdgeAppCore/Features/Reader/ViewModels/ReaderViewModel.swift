@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 @MainActor
@@ -29,6 +30,8 @@ public final class ReaderViewModel: ObservableObject {
     private var adjacentNavigationOperationID: UUID?
     private let pagePipelineFactory: @MainActor (MockReaderSession) -> ReaderPagePipeline
     private var isPagePipelineCancelled: Bool
+    private var pageReadinessSubscription: AnyCancellable?
+    private var lastRecordedReadySelection: (pipelineID: ObjectIdentifier, index: Int)?
 
     public init(
         session: MockReaderSession,
@@ -71,6 +74,7 @@ public final class ReaderViewModel: ObservableObject {
         self.hasAttemptedMetadataRefresh = false
         self.adjacentNavigationOperationID = nil
         self.isPagePipelineCancelled = false
+        observePagePipelineReadiness()
     }
 
     public var progressDisplay: String {
@@ -140,16 +144,21 @@ public final class ReaderViewModel: ObservableObject {
         self.hasCompletedInitialRestore = true
         self.hasRecordedRecentCacheMetadataForSession = false
         self.visibleImageIndex = nil
+        self.lastRecordedReadySelection = nil
         self.adjacentLoadState = .idle
+        observePagePipelineReadiness()
     }
 
     public func readerDidAppear() {
         guard isPagePipelineCancelled || pagePipeline.sessionID != session.id else { return }
         pagePipeline = pagePipelineFactory(session)
         isPagePipelineCancelled = false
+        lastRecordedReadySelection = nil
+        observePagePipelineReadiness()
     }
 
     public func readerDidDisappear() {
+        pageReadinessSubscription = nil
         pagePipeline.cancel()
         isPagePipelineCancelled = true
     }
@@ -365,13 +374,32 @@ public final class ReaderViewModel: ObservableObject {
     ) async {
         guard matchesCurrentPipeline(pipelineID) else { return }
         visibleImageIndex = index
-        guard isReady else { return }
-        await updateProgress(visibleImageIndex: index)
+        guard isReady || pagePipeline.states[index]?.status == .ready else { return }
+        await markImageReady(index: index, pipelineID: pipelineID)
     }
 
     public func markImageReady(index: Int, pipelineID: ObjectIdentifier? = nil) async {
         guard matchesCurrentPipeline(pipelineID), visibleImageIndex == index else { return }
+        let currentPipelineID = ObjectIdentifier(pagePipeline)
+        if let lastRecordedReadySelection,
+           lastRecordedReadySelection.pipelineID == currentPipelineID,
+           lastRecordedReadySelection.index == index {
+            return
+        }
+        lastRecordedReadySelection = (currentPipelineID, index)
         await updateProgress(visibleImageIndex: index)
+    }
+
+    private func observePagePipelineReadiness() {
+        let pipeline = pagePipeline
+        pageReadinessSubscription = pipeline.$states.sink { [weak self, weak pipeline] _ in
+            Task { @MainActor [weak self, weak pipeline] in
+                guard let self, let pipeline, self.pagePipeline === pipeline,
+                      let visibleIndex = self.visibleImageIndex,
+                      pipeline.states[visibleIndex]?.status == .ready else { return }
+                await self.markImageReady(index: visibleIndex, pipelineID: ObjectIdentifier(pipeline))
+            }
+        }
     }
 
     private func matchesCurrentPipeline(_ pipelineID: ObjectIdentifier?) -> Bool {

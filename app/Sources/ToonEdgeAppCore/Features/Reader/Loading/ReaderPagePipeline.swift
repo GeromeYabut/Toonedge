@@ -188,7 +188,9 @@ private actor ReaderPageWorkCoordinator {
         let targetURLs = Set(indexes.map { imageURLs[$0] })
 
         for index in states.keys where !targetSet.contains(index) {
-            setState(.idle, at: index)
+            if state(at: index).status != .failed {
+                setState(.idle, at: index)
+            }
         }
         decodedByURL = decodedByURL.filter { targetURLs.contains($0.key) }
 
@@ -295,7 +297,12 @@ private actor ReaderPageWorkCoordinator {
     ) {
         let prior = state(at: index)
         if prior.status == status && prior.image == nil && image == nil && prior.failure == failure { return }
-        let state = ReaderPageState(status: status, image: image, failure: failure)
+        let learnedMetadata = image.map {
+            ReaderPageMetadata(pixelWidth: Double($0.pixelWidth), pixelHeight: Double($0.pixelHeight))
+        } ?? prior.learnedMetadata
+        let state = ReaderPageState(
+            status: status, image: image, failure: failure, learnedMetadata: learnedMetadata
+        )
         states[index] = state
         revision += 1
         let revision = revision

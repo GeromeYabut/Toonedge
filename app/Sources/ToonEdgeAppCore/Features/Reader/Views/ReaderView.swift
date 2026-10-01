@@ -219,16 +219,6 @@ public struct ReaderView: View {
                 .onChange(of: ObjectIdentifier(viewModel.pagePipeline)) { _, _ in
                     selectVisiblePage(frames: pageFrames, viewportHeight: geometry.size.height)
                 }
-                .onChange(of: viewModel.pagePipeline.states[viewportVisibleIndex ?? -1]?.status) { _, status in
-                    guard status == .ready, let viewportVisibleIndex else { return }
-                    let pipeline = viewModel.pagePipeline
-                    Task {
-                        await viewModel.markImageReady(
-                            index: viewportVisibleIndex,
-                            pipelineID: ObjectIdentifier(pipeline)
-                        )
-                    }
-                }
                 .task(id: viewModel.session.id) {
                     await viewModel.restoreProgress()
                     proxy.scrollTo(viewModel.progress.currentImageIndex, anchor: .top)
@@ -814,7 +804,7 @@ private struct ReaderImagePanel: View {
                 height: ReaderPageLayout.placeholderHeight(
                     availableWidth: availableWidth,
                     displayMode: displayMode,
-                    metadata: metadata
+                    metadata: state.learnedMetadata ?? metadata
                 )
             )
             .overlay {

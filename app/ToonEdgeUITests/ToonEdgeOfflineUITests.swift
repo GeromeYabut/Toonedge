@@ -28,8 +28,9 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         app.launchArguments = ["-uiTesting", "-seedOfflineReader", "-resetOfflineFixture"]
         app.launch()
 
-        XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 5))
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let initialReader = app.descendants(matching: .any)["reader.root"]
+        XCTAssertTrue(initialReader.waitForExistence(timeout: 5))
+        initialReader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         let retain = app.buttons["Retain Chapter Offline"]
         XCTAssertTrue(retain.waitForExistence(timeout: 5))
         retain.tap()
@@ -40,7 +41,8 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         app.launchArguments = ["-uiTesting", "-seedOfflineReader"]
         app.launch()
 
-        let reader = app.scrollViews.firstMatch
+        let reader = app.descendants(matching: .any)["reader.root"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 5))
         for page in 1...3 {
             let image = app.images["Reader image \(page)"]
             for _ in 0..<4 where !image.exists {
@@ -53,6 +55,7 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-seedOfflineReader", "-uncachedOfflineFixture"]
         app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForExistence(timeout: 5))
         XCTAssertTrue(
             app.staticTexts["Page 1 unavailable. Connect to the internet and retry."].waitForExistence(timeout: 8)
         )
