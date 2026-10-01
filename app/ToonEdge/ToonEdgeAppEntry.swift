@@ -68,6 +68,10 @@ struct ToonEdgeAppEntry: App {
                 dependencies.browserPresentationFixture = .lowConfidence
             case "protected":
                 dependencies.browserPresentationFixture = .protected
+            case "protected-webtoon":
+                dependencies.browserPresentationFixture = .protectedWebtoon
+            case "protected-globalcomix":
+                dependencies.browserPresentationFixture = .protectedGlobalComix
             case "nonviable":
                 dependencies.browserPresentationFixture = .nonviable
             default:
@@ -220,8 +224,19 @@ struct ToonEdgeAppEntry: App {
            arguments.indices.contains(marker + 1) {
             return AppRouter(presentedBrowser: .url(arguments[marker + 1]))
         }
-        if arguments.contains("-uiTesting"), arguments.contains("-browserFixture") {
-            return AppRouter(presentedBrowser: .url("about:blank"))
+        if arguments.contains("-uiTesting"),
+           let marker = arguments.firstIndex(of: "-browserFixture"),
+           arguments.indices.contains(marker + 1) {
+            let fixtureURL: String
+            switch arguments[marker + 1] {
+            case "protected-webtoon":
+                fixtureURL = "https://m.webtoons.com/en/action/toonedge-fixture/viewer"
+            case "protected-globalcomix":
+                fixtureURL = "https://www.globalcomix.com/c/toonedge-fixture/chapters/en/1"
+            default:
+                fixtureURL = "about:blank"
+            }
+            return AppRouter(presentedBrowser: .url(fixtureURL))
         }
         if arguments.contains("-uiTesting"), hardeningFixture?.usesAdjacentOutcomeFixture == true {
             return AppRouter(presentedReader: adjacentOutcomeFixtureSession)

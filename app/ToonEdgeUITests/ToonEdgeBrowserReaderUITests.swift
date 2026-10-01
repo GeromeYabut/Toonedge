@@ -88,6 +88,20 @@ final class ToonEdgeBrowserReaderUITests: XCTestCase {
         assertCleanModeIsUnavailable(for: "protected")
     }
 
+    func testWebtoonBrowserOnlyProfileNeverExposesCleanModeOrReader() {
+        assertBrowserOnlyProfile(
+            fixture: "protected-webtoon",
+            displayedURL: "https://m.webtoons.com/en/action/toonedge-fixture/viewer"
+        )
+    }
+
+    func testGlobalComixBrowserOnlyProfileNeverExposesCleanModeOrReader() {
+        assertBrowserOnlyProfile(
+            fixture: "protected-globalcomix",
+            displayedURL: "https://www.globalcomix.com/c/toonedge-fixture/chapters/en/1"
+        )
+    }
+
     func testNonviableFixtureDoesNotExposeCleanModeAction() {
         assertCleanModeIsUnavailable(for: "nonviable")
     }
@@ -96,6 +110,19 @@ final class ToonEdgeBrowserReaderUITests: XCTestCase {
         let app = launchBrowserFixture(fixture)
         XCTAssertTrue(app.otherElements["browser.root"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["browser.cleanModeAction"].exists)
+    }
+
+    private func assertBrowserOnlyProfile(fixture: String, displayedURL: String) {
+        let app = launchBrowserFixture(fixture)
+        XCTAssertTrue(app.otherElements["browser.root"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts[displayedURL].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["browser.cleanModeAction"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["reader.root"].exists)
+
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+
+        XCTAssertFalse(app.buttons["browser.cleanModeAction"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["reader.root"].exists)
     }
 
     private func openMediumConfidenceReader(in app: XCUIApplication) {

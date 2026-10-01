@@ -13,6 +13,8 @@ public enum BrowserPresentationFixture: Sendable {
     case mediumConfidence
     case lowConfidence
     case protected
+    case protectedWebtoon
+    case protectedGlobalComix
     case nonviable
 
     public var detectionResult: DetectionResult {
@@ -62,6 +64,14 @@ public enum BrowserPresentationFixture: Sendable {
                 readerSession: nil,
                 diagnostics: .init(confidence: .low, score: 0, parserPath: .browserOnlyProfile)
             )
+        case .protectedWebtoon:
+            return Self.browserOnlyDetectionResult(
+                pageURL: URL(string: "https://m.webtoons.com/en/action/toonedge-fixture/viewer")!
+            )
+        case .protectedGlobalComix:
+            return Self.browserOnlyDetectionResult(
+                pageURL: URL(string: "https://www.globalcomix.com/c/toonedge-fixture/chapters/en/1")!
+            )
         case .nonviable:
             var nonviableSession = session
             nonviableSession.imageURLs = []
@@ -74,6 +84,32 @@ public enum BrowserPresentationFixture: Sendable {
                 diagnostics: .init(confidence: .medium, score: 60, parserPath: .genericHeuristic)
             )
         }
+    }
+
+    private static func browserOnlyDetectionResult(pageURL: URL) -> DetectionResult {
+        ProfileAwareChapterDetector().detect(
+            page: DetectionPageAnalysis(
+                pageURL: pageURL,
+                title: "Protected Browser Fixture",
+                documentHeight: 20_000,
+                viewportWidth: 390,
+                images: [
+                    DetectionImageCandidate(
+                        src: "https://images.example.test/protected/001.jpg",
+                        lazySources: [],
+                        srcset: nil,
+                        width: 780,
+                        height: 1_200,
+                        top: 0,
+                        left: 0,
+                        className: "reader-image",
+                        id: nil,
+                        alt: "Sanitized protected fixture",
+                        parentSignature: "viewer"
+                    )
+                ]
+            )
+        )
     }
 }
 
