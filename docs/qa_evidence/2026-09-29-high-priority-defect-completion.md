@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-Initial baseline recorded **2026-09-30 08:03:29 PDT**, followed by the Task 2 long-chapter, Task 3 retained-cache, and Task 4 Settings update-check results below. The filename retains the approved 2026-09-29 plan date. Final release verification is **pending**; this ledger does not close any defect or claim that the final gates have passed.
+Initial baseline recorded **2026-09-30 08:03:29 PDT**, followed by the Task 2 long-chapter, Task 3 retained-cache, Task 4 Settings update-check, and Task 5 accessibility/appearance results below. The filename retains the approved 2026-09-29 plan date. Final release verification is **pending**; this ledger does not close any defect or claim that the final gates have passed.
 
 Sources: [release-verification plan](../superpowers/plans/2026-09-29-high-priority-release-verification.md) and [master execution plan](../superpowers/plans/2026-09-29-high-priority-defect-execution.md). Task 1 performed read-only environment and repository checks and created this ledger. It did not run tests, build the app, launch or change a simulator, inspect screenshot contents, or modify app code, tests, defect statuses, or protected screenshots.
 
@@ -241,7 +241,71 @@ xcodebuild \
 
 ## Accessibility and appearance review
 
-**Pending.** Record Pass, Defect, or Limitation with device and setting for Home, Browser Clean Mode CTA, Reader chrome, Series Detail, Downloads, and Settings. Cover spoken VoiceOver order/labels/values/hints, headings and rotor usefulness, focus restoration, hidden chrome, once-only failure announcements, reachable Retry/Open Original, 44-point targets, increased contrast, and light/dark appearance on both dedicated device sizes. Accessibility-tree or package assertions alone are not spoken VoiceOver evidence.
+**Partially verified with explicit limitations.** The complete focused `ToonEdgeAccessibilityUITests` class ran on both dedicated device sizes from HEAD `4461cd7bbf1dc156d224a3a2a5920ce54980db3e`. No source or test change was made for Task 5.
+
+```sh
+xcodebuild \
+  -project app/ToonEdge.xcodeproj \
+  -scheme ToonEdge \
+  -destination 'platform=iOS Simulator,id=DEVICE_ID' \
+  -derivedDataPath /private/tmp/toonedge-release-settings-derived \
+  test -only-testing:ToonEdgeUITests/ToonEdgeAccessibilityUITests \
+  -resultBundlePath RESULT_PATH \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+| Device | Result | Test time | Suite completion | Result bundle |
+|---|---|---|---|---|
+| Dedicated iPhone 16e, `4582CDE9-27DB-4669-86AC-0631C1D7F2ED`, iOS 18.6 | 10/10 passed, 0 failures | 73.992 seconds | 2026-09-30 19:59:20 PDT | `/private/tmp/toonedge-task5-accessibility-16e.xcresult` |
+| Dedicated iPhone 16 Pro Max, `29E33EEE-8A11-457F-8F7F-BDF2D44A9FE4`, iOS 18.6 | 10/10 passed, 0 failures | 71.953 seconds | 2026-09-30 20:00:47 PDT | `/private/tmp/toonedge-task5-accessibility-promax.xcresult` |
+
+An initial 16e invocation exited 64 before build or test execution because `/private/tmp/toonedge-accessibility-16e.xcresult` already existed. The existing bundle was preserved, and the run was repeated at the unique Task 5 path above. This was an invocation/setup error, not an app or test failure.
+
+The dedicated 16e initially reported Increased Contrast as `disabled`. It was enabled for one bounded sanitized smoke, then restored and queried again as `disabled`:
+
+```sh
+xcrun simctl ui 4582CDE9-27DB-4669-86AC-0631C1D7F2ED increase_contrast
+xcrun simctl ui 4582CDE9-27DB-4669-86AC-0631C1D7F2ED increase_contrast enabled
+xcodebuild \
+  -project app/ToonEdge.xcodeproj \
+  -scheme ToonEdge \
+  -destination 'platform=iOS Simulator,id=4582CDE9-27DB-4669-86AC-0631C1D7F2ED' \
+  -derivedDataPath /private/tmp/toonedge-release-settings-derived \
+  test \
+  -only-testing:ToonEdgeUITests/ToonEdgeAccessibilityUITests/testHomeEditorialSearchEntryRemainsReachableAtAccessibilityTextSize \
+  -only-testing:ToonEdgeUITests/ToonEdgeAccessibilityUITests/testPrimaryTabsRemainHittableInLightAppearance \
+  -only-testing:ToonEdgeUITests/ToonEdgeAccessibilityUITests/testReaderOnlyExposesContextuallyValidControlsAction \
+  -resultBundlePath /private/tmp/toonedge-task5-increased-contrast-16e.xcresult \
+  CODE_SIGNING_ALLOWED=NO
+xcrun simctl ui 4582CDE9-27DB-4669-86AC-0631C1D7F2ED increase_contrast disabled
+xcrun simctl ui 4582CDE9-27DB-4669-86AC-0631C1D7F2ED increase_contrast
+```
+
+The Increased Contrast smoke passed **3/3**, 0 failures, in **21.080 seconds**; the suite completed 2026-09-30 20:15:28 PDT. It verified accessibility-size Home search, light-appearance primary tabs, the sanitized Browser Clean Mode CTA, and Reader chrome semantics. The result bundle is `/private/tmp/toonedge-task5-increased-contrast-16e.xcresult`.
+
+Automated **Pass** observations:
+
+- **Home:** the editorial search entry exists, remains hittable at accessibility XXXL, and exposes the expected descriptive label.
+- **Browser Clean Mode CTA:** the sanitized medium-confidence fixture exposes a reachable CTA that transitions to Reader.
+- **Reader chrome:** the sanitized fixture exposes the Reader surface and changes its accessibility value from **Show Reader Controls** to **Hide Reader Controls** after revealing chrome.
+- **Downloads:** loading transitions correctly to empty/content; the twentieth sanitized row and its labeled removal action remain reachable; the storage header and actions remain reachable at accessibility XXXL.
+- **Settings and tab shell:** Home, Library, Downloads, and Settings tabs remain reachable and selectable in light and dark launch appearances and at accessibility XXXL. The Settings large-text journey remains scrollable.
+- Source inspection found explicit 44-point minimums for Browser, Reader, and Downloads actions plus identified Reader adjacent **Retry** and **Open Original** controls. This is structural evidence, not a runtime measurement or spoken review.
+
+The existing UI tests launched both **Light** and **Dark** appearances on the 16e and Pro Max. They assert reachability and selection, but this automated coverage is **not** a complete subjective appearance signoff for color, contrast, visual hierarchy, truncation, safe areas, or readable widths.
+
+Four sanitized attachments were exported read-only under `/private/tmp/toonedge-task5-attachments.nEEp02` and visually inspected; they were not copied into the repository. On both device sizes, Settings at accessibility XXXL remained scrollable and reachable, and the Downloads rows/actions remained reachable. The Downloads summary visually rendered as **`19.5 KBestimated`** at accessibility XXXL on both sizes. This is a readability issue and remaining release risk, although the focused functional assertions passed and no Task 5 product fix was made.
+
+**Limitations — not performed and not claimed:**
+
+- Spoken VoiceOver audio/order, labels as actually spoken, values/hints, heading navigation, and rotor usefulness were not exercised.
+- Focus restoration after sheets or Reader dismissal, focus behavior when Reader chrome is hidden, and focus movement after adjacent-load feedback were not exercised.
+- The once-only spoken Reader failure announcement was not verified. Retry/Open Original identifiers exist, but their spoken reachability was not manually reviewed here.
+- Increased Contrast received the automated 16e reachability smoke above, but no subjective visual contrast review, spoken review, dark-appearance contrast review, or Pro Max contrast review was performed.
+- Series Detail was not included in the focused class or the four exported screenshots, so its appearance and spoken behavior remain unverified in Task 5.
+- The four screenshots cover Settings and Downloads, not all six requested surfaces. Browser, Reader, Home, and Series Detail received automated reachability/semantic coverage only where listed above.
+
+Safety: all fixtures were sanitized and deterministic; no live or protected page content was used or captured. Only the dedicated 16e and Pro Max were targeted. The shared iPhone 16 Pro `04F65B71-EEB9-4085-BFBD-8B7406E480A2` was never targeted, and the three protected local screenshots were not accessed, modified, staged, or committed.
 
 ## Final defect audit and compatibility
 
@@ -255,7 +319,7 @@ Recommend a CI artifact set keyed by tested commit SHA and run ID containing bot
 
 ## Limitations and outstanding work
 
-- Task 1 provides baseline and integrity observations; Task 2 adds the focused long-chapter journey on both dedicated devices; Task 3 adds package regressions and the retained-cache journey on the dedicated 16e; Task 4 adds focused Settings update-check outcomes on the dedicated 16e. Fresh final package, remaining focused UI, complete UI, exact build, accessibility/appearance, live-site, and final defect gates remain pending.
+- Task 1 provides baseline and integrity observations; Task 2 adds the focused long-chapter journey on both dedicated devices; Task 3 adds package regressions and the retained-cache journey on the dedicated 16e; Task 4 adds focused Settings update-check outcomes on the dedicated 16e; Task 5 adds two-device automated accessibility reachability, a dedicated-16e Increased Contrast smoke, and limited safe screenshot inspection. Spoken VoiceOver/focus/rotor/announcement review, subjective Increased Contrast appearance review, Series Detail appearance, fresh final package, remaining focused UI, complete UI, exact build, live-site, and final defect gates remain pending.
 - Local runtime/device inventory is a point-in-time observation, not proof of app behavior or simulator mutation history outside Task 1.
 - No live content or protected screenshot contents were viewed or captured in this task.
 - The final release claim requires fresh gates after review fixes and durable artifact publication; neither occurred in Task 1.
