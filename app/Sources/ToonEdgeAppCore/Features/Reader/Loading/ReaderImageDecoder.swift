@@ -13,16 +13,31 @@ public struct ImageIOReaderImageDecoder: ReaderImageDecoding {
     public init() {}
 
     public func decode(_ data: Data) async throws -> ReaderDecodedImage {
-        try await Task.detached(priority: .userInitiated) {
+        try Task.checkCancellation()
+
+        let decodingTask = Task.detached(priority: .userInitiated) {
+            try Task.checkCancellation()
+            let options: CFDictionary = [
+                kCGImageSourceShouldCache: true,
+                kCGImageSourceShouldCacheImmediately: true
+            ] as CFDictionary
             guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-                  let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+                  let image = CGImageSourceCreateImageAtIndex(source, 0, options) else {
                 throw ReaderImageDecodeError.invalidImage
             }
+            try Task.checkCancellation()
             return ReaderDecodedImage(
                 cgImage: image,
                 pixelWidth: image.width,
                 pixelHeight: image.height
             )
-        }.value
+        }
+
+        return try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            return try await decodingTask.value
+        } onCancel: {
+            decodingTask.cancel()
+        }
     }
 }

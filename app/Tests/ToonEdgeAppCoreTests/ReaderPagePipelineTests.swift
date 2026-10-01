@@ -29,6 +29,29 @@ import Testing
     }
 }
 
+@Test func imageDecoderCancelsBeforeReturningDecodedImage() async throws {
+    let data = try #require(validPNGData)
+    let task = Task {
+        try await ImageIOReaderImageDecoder().decode(data)
+    }
+    task.cancel()
+
+    await #expect(throws: CancellationError.self) {
+        _ = try await task.value
+    }
+}
+
+@Test func imageDecoderDecodesValidImageWithPixelDimensions() async throws {
+    let data = try #require(validPNGData)
+
+    let image = try await ImageIOReaderImageDecoder().decode(data)
+
+    #expect(image.pixelWidth == 1)
+    #expect(image.pixelHeight == 1)
+}
+
+private let validPNGData = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==")
+
 private struct SpyChapterAssetCache: ChapterAssetCaching {
     let data: Data
 
