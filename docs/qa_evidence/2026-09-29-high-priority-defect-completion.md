@@ -69,7 +69,7 @@ Both commands exited 0. Git reported `??` for each exact path. All hashes match 
 | `manhuatop-original-page.png` | `56ec7f3cadc27e13cfe6525ec805b6321c64d6e283c60345cd41757df71e000a` | Match |
 | `webtoon-protected-reader-cta.png` | `49ae9b28d92dfb7bbbd5f69e27f77f5fe117724085163e22f210bc10d4175db5` | Match |
 
-Repeat this comparison during the final audit. Do not stage these files.
+Final Task 8 recheck from the primary checkout on its own HEAD `560d74d3ed656647ea1078530eb4e2ccbd52276a` again reported all three exact paths as `??` and reproduced the hashes above byte-for-byte. The release audit worktree was separately on HEAD `21c36b213a4207e9c2fd3628480d4603775a1f4a`. The files were not opened, modified, relocated, staged, or committed.
 
 ## Package gate
 
@@ -110,7 +110,7 @@ Fixture semantics and observed coverage:
 
 Classification: **deterministic fixture UI evidence only**. This does not validate live image transport, real delayed image metadata, remote-server recovery, or the memory/performance behavior of full-resolution chapter artwork. The loopback failure is intentional fixture transport; no live content is needed. No safe screenshot was captured for Task 2, so there is no standalone screenshot artifact to claim.
 
-The recorded Task 2 runs targeted only the dedicated 16e and Pro Max; the shared iPhone 16 Pro was not targeted and protected screenshots were not modified. This ledger-only update runs no simulator commands or tests and does not re-hash protected files; their final integrity recheck remains required by the final audit.
+The recorded Task 2 runs targeted only the dedicated 16e and Pro Max; the shared iPhone 16 Pro was not targeted and protected screenshots were not modified. That ledger-only update ran no simulator commands or tests and did not re-hash protected files; Task 8 completed the final integrity recheck above.
 
 ### Task 3 — retained-cache deletion, measured recalculation, and relaunch
 
@@ -148,7 +148,7 @@ The fixture uses UUID-isolated persistent SwiftData metadata and a real `FileBac
 
 The test taps the visible **Remove Retained Cache Fixture, Retained Cache Chapter 7 from cache** action and requires the row to disappear, success feedback, the empty state, **0 chapters · No local storage tracked**, and zero retained/recent references. A fixture service delegates the actual removal to production code and then checks the real chapter directory with `FileManager`; if it still exists, the service throws instead of permitting UI success. This is an in-app filesystem assertion, not direct filesystem access from the UI runner. Relaunch reopens the same isolated store without reseeding and verifies that the row remains absent and the zero summary persists.
 
-Classification: **deterministic fixture UI plus package/filesystem evidence**, not live transport or offline Reader decoding evidence. The synthetic byte payload is not chapter artwork and is not intended as a decodable PNG despite the fixture asset URL's suffix. No network response is required, and no safe screenshot was captured. Task 3 targeted only the dedicated 16e; the shared iPhone 16 Pro and protected screenshots were untouched. This ledger-only update runs no tests or simulator commands; the final protected-file hash audit remains pending.
+Classification: **deterministic fixture UI plus package/filesystem evidence**, not live transport or offline Reader decoding evidence. The synthetic byte payload is not chapter artwork and is not intended as a decodable PNG despite the fixture asset URL's suffix. No network response is required, and no safe screenshot was captured. Task 3 targeted only the dedicated 16e; the shared iPhone 16 Pro and protected screenshots were untouched. The later ledger-only update ran no tests or simulator commands; Task 8 completed the final protected-file hash audit above.
 
 ### Task 4 — Settings update-check outcomes
 
@@ -184,7 +184,7 @@ Observed deterministic outcomes:
 
 For every fixture, the identified update button changed to disabled **Checking…**, preventing a second UI submission; after completion it returned to enabled **Check for New Chapters**, making retry available. The Home tab remained hittable, demonstrating that Settings navigation stayed usable after each result. The focused package regression `settingsUpdateCheckSuppressesDuplicateRequests` remains the direct service-call-count proof that a concurrent second invocation is ignored.
 
-Classification: **deterministic fixture UI plus package concurrency evidence**. It does not contact live series sites, validate network timing, or prove how a specific site failure will be classified. The fixture returns aggregate refresh results through the production Settings view model and feedback mapping. No screenshot was necessary or captured. The run targeted only the dedicated 16e; the shared iPhone 16 Pro and protected screenshots were not touched. Swift parse and `git diff --check` passed before GREEN; complete UI and final build gates remain pending.
+Classification: **deterministic fixture UI plus package concurrency evidence**. It does not contact live series sites, validate network timing, or prove how a specific site failure will be classified. The fixture returns aggregate refresh results through the production Settings view model and feedback mapping. No screenshot was necessary or captured. The run targeted only the dedicated 16e; the shared iPhone 16 Pro and protected screenshots were not touched. Swift parse and `git diff --check` passed before GREEN; Task 7 subsequently passed both complete UI suites and the exact build.
 
 Prior slice ledgers are context, not substitutes for these final gates:
 
@@ -285,7 +285,9 @@ One earlier wrapped attempt (`xcodebuild ... 2>&1 | tee /private/tmp/toonedge-ne
 
 ## Live versus fixture results
 
-**Pending final audit.** Task 2 is deterministic fixture evidence only, with the transport and image-size limitations recorded above. Task 3 combines deterministic fixture UI with real local cache/persistence and package/filesystem evidence; it does not exercise live transport. Task 4 combines deterministic Settings UI fixtures with package concurrency evidence; it does not contact live series sites. Label every other result as live, deterministic fixture, package/repository, or manual inspection. Fixture evidence cannot close a live-only criterion. Reconcile DEF-036 with its focused ledger and keep it open if live in-site parity remains unavailable or nonviable. WEBTOON and protected GlobalComix must remain browser-only; do not authenticate, bypass protection, record protected content, or capture live protected screenshots.
+DEF-020, DEF-021, and DEF-022 are supported by package/repository tests plus sanitized deterministic UI fixtures. Their UI journeys use reserved fixture domains and generated imagery; they are not live-site claims. The naturally occurring challenge/rate-limit path for DEF-022 was not deliberately triggered live. The named WEBTOON and GlobalComix release checks are also deterministic profile-policy fixtures, not live protected-page access.
+
+DEF-036 is the only live-site parity audit in this completion set. Both Vortex flows reached the same visible chapter and Reader, with one initial detection, no follow-up, one pending presentation, and one visible presentation. The in-site result scored 114 with 40 candidates; direct scored 168 with 39 candidates. The evidence does not prove equivalent final Reader page lists or stable payload identity, so DEF-036 remains **Open**. No live page art, HTML, cookies, credentials, or complete sensitive URLs were committed.
 
 ## Accessibility and appearance review
 
@@ -357,7 +359,90 @@ Safety: all fixtures were sanitized and deterministic; no live or protected page
 
 ## Final defect audit and compatibility
 
-**Pending.** Map every DEF-020, DEF-021, DEF-022, and DEF-036 acceptance criterion to evidence; list completed and still-open defects, root causes, commits, files/interfaces, test results, and remaining release risks. No schema or production interface changed in Task 1. Audit migration/compatibility risk against later implementation changes before release claims. Recheck protected hashes and confirm the shared 16 Pro was never targeted.
+Final audit performed from documentation HEAD `21c36b213a4207e9c2fd3628480d4603775a1f4a`. The final automated gates were executed against app HEAD `35b9a0a41c4c8335797cff861e5d0a2534a143aa`; the intervening commit records those results and changes no app code.
+
+### Defect disposition and root causes
+
+| Defect | Final status | Root cause | Implementation and verification commits |
+|---|---|---|---|
+| DEF-020 | **Resolved** | Sparse Reader adjacency could accept stale explicit chapter 1/169 links before enforcing numeric `current ± 1`. | Domain: `cd4ddd5`, `c62981b`. Fixture/UI: `3383d6a`, `6df4832`, `63e2e24`. Final full-gate record: `21c36b2`. |
+| DEF-021 | **Resolved** | Older unfinished stored state could remain primary unless progress recency and newly discovered adjacent chapters were reconciled into the authoritative saved-series target. | Production selector/reconciliation integrated in checkpoint `4a021184`; repository evidence `9271a6c`; fixtures `26a6f15`, `e19f7ea`; UI `feab4da`. |
+| DEF-022 | **Resolved** | Hidden adjacent-load outcomes were collapsed into one generic error, discarding safe target and diagnostics and leaving no controlled recovery. | Typed production flow `d32df30`, visible-failure hardening `8b4380e`, editorial recovery UI `8e0c159`; explicit-retry regression `b2b67f8`; fixtures/fixes `168e65e`, `eb56752`, `dba917f`; UI/evidence `f93f023`, `b6cec01`. |
+| DEF-036 | **Open** | Same-WebView SPA route/content settlement originally did not reliably schedule a bounded post-route detection. The bounded follow-up fixed the deterministic scheduling gap, but live payload equivalence remains unproven. | Route fix `90159fa`; focused live ledger [DEF-036 Vortex parity](2026-09-29-def-036-vortex-parity.md); Task 6 fixture/policy records `71b98b1`, `35b9a0a`. |
+
+`docs/defects.md` already states these three resolved statuses and the honest DEF-036 live limitation; Task 8 therefore makes no defect-registry change.
+
+### Acceptance-criterion mapping
+
+#### DEF-020 — numeric Reader adjacency
+
+| Acceptance criterion | Result and evidence |
+|---|---|
+| Chapter 155 Next attempts 156, never 169. | **Pass.** Exact-label Pro Max UI journey opens Chapter 156. |
+| Chapter 155 Previous attempts 154 when resolvable. | **Pass.** Exact-label Pro Max UI journey opens Chapter 154, never chapter 1. |
+| Recent activity order does not define adjacency. | **Pass.** Sparse repository regressions use stored chapters 1, 155, and 169 and still resolve only 154/156. |
+| Generated All rows and Reader controls share conservative numeric inference. | **Pass.** `ChapterNumericLabelExtractor` and `ChapterURLInference` are canonical; stored payload is preferred, explicit links must identify the requested neighbor, and unsafe patterns expose no target. |
+| Sparse recent chapters cannot become adjacent Reader targets. | **Pass.** Nine focused package regressions and 3/3 `ToonEdgeNumericAdjacencyUITests` passed; the final 433-test package and both 48-test UI suites retained coverage. |
+
+Evidence: [DEF-020 numeric adjacency](2026-09-29-def-020-numeric-adjacency.md), `/private/tmp/toonedge-def020-numeric-adjacency.xcresult`, and the two final UI bundles.
+
+#### DEF-021 — authoritative Continue target
+
+| Acceptance criterion | Result and evidence |
+|---|---|
+| Returning from chapter 3 immediately shows `Continue Chapter 3`. | **Pass.** Focused UI verifies Reader Back refreshes the Series Detail CTA and progress. |
+| Continue opens chapter 3, not chapter 1. | **Pass.** The exact CTA destination is asserted in the focused UI journey. |
+| Inferred/hidden adjacent chapter discovery becomes a persisted reading target. | **Pass.** Repository reconstruction with a fresh `ModelContext` preserves chapter 3 payload/progress; deterministic UI relaunch preserves the visible journey. |
+| Older unfinished chapters cannot override the newest active chapter. | **Pass.** Package regressions retain unfinished chapter 1 while selecting newer chapter 3. Planned/unread first-readable behavior also remains covered. |
+
+Evidence: [DEF-021 authoritative Continue](2026-09-29-def-021-authoritative-continue.md), `/private/tmp/toonedge-def021.xcresult`, and [sanitized Continue Chapter 3 screenshot](2026-09-29/def-021-authoritative-continue-chapter-3.png).
+
+#### DEF-022 — typed adjacent outcomes
+
+| Acceptance criterion | Result and evidence |
+|---|---|
+| Challenge/rate-limit/timeout failures show specific actionable feedback. | **Pass.** The matrix also covers unavailable, low-confidence, and non-viable-image outcomes with distinct copy. |
+| Known target offers Retry and Open Original. | **Pass.** Every failure row retains Chapter 1 and enabled actions; every Open Original route reaches the safe Chapter 2 fixture. Challenge Retry alone succeeds after the explicit 1.5-second delay. |
+| Normal adjacent navigation still opens Reader. | **Pass.** Success replaces Chapter 1 with Chapter 2, with Back and View Original free of stale feedback. |
+| Challenge/rate-limit and timeout regressions exist. | **Pass.** Loader, feedback, explicit-retry, and parameterized five-reason package tests pass. |
+| No aggressive repeated hidden loads. | **Pass.** Each failure remains at one loader call until explicit user Retry; cancellation invalidates late completion and there is no automatic loop. |
+
+Sanitized diagnostics are limited to direction, elapsed milliseconds, reason, target host, confidence, parser path, and challenge signals; full URLs, queries, cookies, headers, credentials, and sessions are absent. Evidence: [DEF-022 typed adjacent outcomes](2026-09-29-def-022-adjacent-outcomes.md), `/private/tmp/toonedge-def022.xcresult`, and [sanitized Reader screenshot](2026-09-29/def-022-adjacent-outcome-chapter-1.png).
+
+#### DEF-036 — Vortex route parity
+
+| Acceptance criterion | Result and evidence |
+|---|---|
+| WebKit integration covers a client-side/same-WebView series-to-chapter transition. | **Pass, deterministic.** Sanitized Vortex SPA and route-policy regressions exercise the transition and bounded settled-content follow-up. |
+| New chapter content runs once and produces the same viable Reader session as direct load. | **Unresolved live criterion.** Both live routes visibly opened Reader with one initial detection, but differing score/candidate counts and absent final page-list/payload comparison prevent an equivalence claim. |
+| Repeated callbacks do not duplicate detection or presentation. | **Pass.** Fixture deduplication regressions pass; both live chapter flows recorded one initial detection, zero follow-ups, one pending presentation, and one visible presentation. |
+
+DEF-036 stays **Open**. Fixture success cannot close the missing live Reader-payload parity proof.
+
+### Files and interfaces in the completed slices
+
+- DEF-020: `Core/Domain/AppModels.swift` (`ChapterNumericLabelExtractor`, `ChapterURLInference`) and `Core/Persistence/Repositories/SwiftDataLibraryRepository.swift` numeric adjacency; `PersistenceLifecycleTests.swift`, `ToonEdgeAppEntry.swift`, and `ToonEdgeOfflineUITests.swift` supply repository and UI coverage.
+- DEF-021: `AppModels.swift` (`SeriesPrimaryChapterSelector`), `SwiftDataLibraryRepository.continueReadingTarget(for:)` and recent-reading reconciliation, plus `SeriesDetailView.swift` return refresh; persistence tests, namespaced AppEntry fixtures, and `ToonEdgeAuthoritativeContinueUITests` verify the contracts.
+- DEF-022: `AdjacentReaderSessionLoader.swift` (`AdjacentReaderSessionLoadError`, diagnostics and logger), `ReaderViewModel.navigateAdjacentChapter`, `ReaderView` recovery controls, Browser-owned replacement routing, `PageAnalysisScript` challenge signals, and the related loader/Reader/Browser tests and AppEntry/UI fixtures.
+- DEF-036: `BrowserWebView.swift` settled-route observation/follow-up and `BrowserExperienceTests.swift` route scheduling/deduplication fixtures. Task 6 additionally routes named protected-profile fixtures through the existing `ProfileAwareChapterDetector`; it does not add a parallel policy.
+
+### Verification summary
+
+- Final package gate: **433/433 passed**, 0 failures, no skips reported, 4.457 seconds.
+- Focused UI: DEF-020 **3/3** on dedicated Pro Max; DEF-021 **3/3** on dedicated Pro Max; DEF-022 **4/4** on dedicated 16e; named WEBTOON/GlobalComix profiles **2/2** and adjacent routing **4/4** on dedicated 16e.
+- Final UI: **48/48** on dedicated iPhone 16e and **48/48** on dedicated iPhone 16 Pro Max, zero failures and no skips reported. Bundles: `/private/tmp/toonedge-final-16e.xcresult` and `/private/tmp/toonedge-final-16promax.xcresult`.
+- Exact required Debug simulator build: `** BUILD SUCCEEDED **` with signing disabled. The preceding wrapped invocation-only CoreSimulator failure is separately preserved and is not a product failure.
+- Simulator safety: all recorded commands name only dedicated 16e `4582CDE9-27DB-4669-86AC-0631C1D7F2ED` or Pro Max `29E33EEE-8A11-457F-8F7F-BDF2D44A9FE4`. No recorded command targets shared iPhone 16 Pro `04F65B71-EEB9-4085-BFBD-8B7406E480A2`.
+
+### Migration, compatibility, and remaining risk
+
+- No persistence schema or migration was introduced by DEF-020, DEF-021, or DEF-022. Existing stored data remains compatible.
+- DEF-020 deliberately rejects ambiguous numeric explicit URLs; sites whose URLs do not expose canonical chapter identity may show disabled adjacency unless a stored payload or safe inference exists. This is the conservative failure mode.
+- DEF-021 production reconstruction is verified against the same in-memory SwiftData container with a fresh context. The UI process-relaunch proof uses namespaced fixture `UserDefaults`; neither is a disk-schema migration test or live-site Continue journey.
+- DEF-022 classification/recovery is deterministic fixture evidence. A naturally occurring live rate limit/challenge and live Vortex Next/Previous were not forced, consistent with the no-bypass/no-aggressive-load guardrails.
+- DEF-036 live final payload parity remains the high-priority open risk. External site changes can also alter current confidence/candidate behavior.
+- Spoken VoiceOver/focus/rotor/announcement review, subjective Increased Contrast review, and Series Detail appearance signoff remain limitations. Downloads at accessibility XXXL still has the recorded `19.5 KBestimated` readability risk.
+- The successful `.xcresult` bundles remain under `/private/tmp` and are not durable. CI should upload them, safe screenshots, sanitized logs, and this ledger keyed by commit SHA/run ID with at least 30-day retention.
 
 ## Artifact locations and durable retention
 
@@ -367,11 +452,11 @@ Recommend a CI artifact set keyed by tested commit SHA and run ID containing bot
 
 ## Limitations and outstanding work
 
-- Task 1 provides baseline and integrity observations; Tasks 2–6 add the focused release journeys; Task 7 passes the fresh 433-test package gate, both complete 48-test UI gates, and the exact required build. Spoken VoiceOver/focus/rotor/announcement review, subjective Increased Contrast appearance review, Series Detail appearance, live Vortex payload parity, final protected-file hash recheck, and final defect audit remain pending.
+- Task 1 provides baseline and integrity observations; Tasks 2–6 add the focused release journeys; Task 7 passes the fresh 433-test package gate, both complete 48-test UI gates, and the exact required build; Task 8 completes the defect and protected-file audit. Spoken VoiceOver/focus/rotor/announcement review, subjective Increased Contrast appearance review, Series Detail appearance, and live Vortex payload parity remain outstanding limitations.
 - Local runtime/device inventory is a point-in-time observation, not proof of app behavior or simulator mutation history outside Task 1.
 - No live content or protected screenshot contents were viewed or captured in this task.
 - The fresh automated gates occurred on HEAD `35b9a0a41c4c8335797cff861e5d0a2534a143aa`. Durable artifact publication has not occurred, so local `/private/tmp` evidence still requires CI upload/retention before cleanup.
 
 ## Ledger validation
 
-Run `git diff --check` after creating/updating this ledger and record its outcome with the task handoff. Stage only this ledger for the Task 1 commit; the baseline HEAD above intentionally identifies the revision before that documentation commit.
+Task 8 ran `git diff --check` successfully. Final release-worktree `git status --short --untracked-files=all` contains only this modified ledger; the primary checkout separately contains only the three protected screenshots as untracked files. Proposed commit scope is this ledger alone with message `test: complete high-priority defect verification`; `docs/defects.md` is unchanged because its statuses are already accurate.
