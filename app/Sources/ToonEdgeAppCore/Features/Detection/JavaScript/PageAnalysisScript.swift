@@ -1,16 +1,19 @@
 import Foundation
 
 public enum PageAnalysisScript {
-    // Shared with Browser sanitation so positive access evidence survives until analysis.
+    // Shared with Browser sanitation so recognized blocking evidence survives until analysis.
     static let accessGatePreservationJavaScript = """
     const toonEdgeBlockingGateSelector = '[role="dialog"], [aria-modal="true"], .reader-gate, .paywall, .auth-required, .error-page';
-    const toonEdgeGateSelector = 'main, [role="main"], article, ' + toonEdgeBlockingGateSelector;
+    const toonEdgePrimaryGateSelector = 'main, [role="main"], article';
+    const toonEdgeGateSelector = toonEdgePrimaryGateSelector + ', ' + toonEdgeBlockingGateSelector;
     const toonEdgeProtectedReaderSelector = '[data-protected-reader="true"], .protected-reader, .reader-protected';
     const toonEdgeDRMSelector = '[data-drm-protected="true"], .drm-protected-reader';
     const toonEdgeAccessGateSelector = [toonEdgeGateSelector, toonEdgeProtectedReaderSelector, toonEdgeDRMSelector].join(', ');
-    const toonEdgeBlockingAccessSelector = [toonEdgeBlockingGateSelector, toonEdgeProtectedReaderSelector, toonEdgeDRMSelector].join(', ');
     const toonEdgeAuthenticationPattern = /(?:sign in|log in|login) (?:to (?:read|view|continue|unlock)|is required)|authentication required/;
     const toonEdgePaywallPattern = /(?:subscribe|purchase|pay) to (?:read|view|continue|unlock)|subscription required|this chapter is locked/;
+    const toonEdgeErrorPagePattern = /404 (?:page )?not found|403 forbidden|500 internal server error|502 bad gateway|503 service unavailable|page (?:not found|is unavailable)/;
+    const toonEdgeHasChallengeCopy = (text) => text.includes('enable javascript and cookies to continue');
+    const toonEdgeHasRateLimitCopy = (text) => text.includes('too many requests') || text.includes('rate limit') || text.includes('http 429');
     const toonEdgeIsVisible = (element) => {
       if (!element || element.hidden) return false;
       const rect = element.getBoundingClientRect();
@@ -21,10 +24,19 @@ public enum PageAnalysisScript {
     const toonEdgeHasAccessGateEvidence = (element) => {
       if (!toonEdgeIsVisible(element)) return false;
       if (element.matches([toonEdgeProtectedReaderSelector, toonEdgeDRMSelector].join(', '))) return true;
-      if (!element.matches(toonEdgeGateSelector)) return false;
       const text = (element.innerText || '').toLowerCase();
-      return toonEdgeAuthenticationPattern.test(text) || toonEdgePaywallPattern.test(text);
+      // Legacy challenge evidence uses visible body copy; other copy remains gate-scoped.
+      if (toonEdgeHasChallengeCopy(text) || toonEdgeHasRateLimitCopy(text)) return true;
+      if (!(toonEdgeAuthenticationPattern.test(text) || toonEdgePaywallPattern.test(text)
+        || toonEdgeErrorPagePattern.test(text))) return false;
+      // A copy node inherits an existing visible gate context even without its own metadata.
+      for (let surface = element; surface; surface = surface.parentElement) {
+        if (surface.matches(toonEdgeGateSelector) && toonEdgeIsVisible(surface)) return true;
+      }
+      return false;
     };
+    const toonEdgeCanPreserveGateSubtree = (element) =>
+      !element.matches('html, body, ' + toonEdgePrimaryGateSelector) && toonEdgeHasAccessGateEvidence(element);
     """
 
     public static let javaScript = """
@@ -90,10 +102,8 @@ public enum PageAnalysisScript {
         document.title.toLowerCase().includes('just a moment') ? 'title:just-a-moment' : null,
         document.querySelector('meta[http-equiv="refresh"]') ? 'meta-refresh' : null,
         document.querySelector('script[src*="challenge-platform"]') ? 'challenge-platform-script' : null,
-        bodyText.includes('enable javascript and cookies to continue') ? 'challenge-copy' : null,
-        bodyText.includes('too many requests') || bodyText.includes('rate limit') || bodyText.includes('http 429')
-          ? 'rate-limit-copy'
-          : null,
+        toonEdgeHasChallengeCopy(bodyText) ? 'challenge-copy' : null,
+        toonEdgeHasRateLimitCopy(bodyText) ? 'rate-limit-copy' : null,
         document.documentElement.innerHTML.includes('cf-mitigated') ? 'cf-mitigated' : null
       ].filter(Boolean);
 
@@ -110,7 +120,7 @@ public enum PageAnalysisScript {
       if (toonEdgePaywallPattern.test(gateText)) {
         hardBlocks.push('paywall');
       }
-      if (/404 (?:page )?not found|403 forbidden|500 internal server error|502 bad gateway|503 service unavailable|page (?:not found|is unavailable)/.test(gateText)
+      if (toonEdgeErrorPagePattern.test(gateText)
           || /^(?:404|403|500|502|503)(?: |$)|^page not found$/i.test(document.title.trim())) {
         hardBlocks.push('errorPage');
       }

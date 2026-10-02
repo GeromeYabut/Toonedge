@@ -175,7 +175,7 @@ public enum BrowserPageSanitizerScript {
         // Keep a positive blocking surface intact, including noise-labelled copy or controls.
         // Primary content itself does not exempt ordinary ads elsewhere in the chapter.
         for (let ancestor = node.parentElement; ancestor; ancestor = ancestor.parentElement) {
-          if (ancestor.matches(toonEdgeBlockingAccessSelector) && toonEdgeHasAccessGateEvidence(ancestor)) return false;
+          if (toonEdgeCanPreserveGateSubtree(ancestor)) return false;
         }
         // Preserve the visible access gate and any noise-labelled wrapper containing it.
         return !toonEdgeHasAccessGateEvidence(node)

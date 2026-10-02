@@ -213,6 +213,122 @@ import JavaScriptCore
     }
 }
 
+@Test func sanitizerPreservesRecognizedErrorAndChallengeCopyBeforeDetection() throws {
+    for (copy, gateClass, block, signals) in recognizedRenderedStatusGateCases() {
+        for (wrapped, nested) in [(false, false), (true, false), (true, true)] {
+            let fixture = try renderedChapterFixture(gateText: copy, gateClass: gateClass,
+                gateWrapped: wrapped, gateNestedCopy: nested, sanitize: true)
+            #expect(fixture.page.hardBlocks == [block], "Visible gate: \(copy)")
+            #expect(fixture.page.challengeSignals == signals, "Legacy challenge signal: \(copy)")
+            #expect(fixture.gateVisible)
+            #expect(fixture.noiseHidden)
+            var underlying = fixture.page
+            underlying.hardBlocks = []
+            underlying.challengeSignals = []
+            #expect(GenericChapterDetector().detect(page: underlying).readerEntryDisposition == .automatic,
+                "Six underlying chapter pages are otherwise viable")
+            let result = ProfileAwareChapterDetector().detect(page: fixture.page)
+            #expect(result.readerEntryDisposition == .unavailable)
+            #expect(result.readerSession == nil)
+        }
+    }
+}
+
+@Test func sanitizerKeepsHiddenErrorAndChallengeTemplatesDistinct() throws {
+    for (copy, gateClass, _, _) in recognizedRenderedStatusGateCases() {
+        let fixture = try renderedChapterFixture(gateText: copy, gateClass: gateClass,
+            gateHidden: true, gateWrapped: true, gateNestedCopy: true, sanitize: true)
+        #expect(fixture.page.hardBlocks.isEmpty, "Originally hidden: \(copy)")
+        #expect(fixture.page.challengeSignals.isEmpty)
+        #expect(!fixture.gateVisible)
+        #expect(fixture.noiseHidden)
+        #expect(GenericChapterDetector().detect(page: fixture.page).readerEntryDisposition == .automatic)
+    }
+}
+
+private func recognizedRenderedStatusGateCases() -> [(String, String, DetectionHardBlock, [String])] {
+    [
+        ("404 page not found", "error-overlay", .errorPage, []),
+        ("403 forbidden", "error-overlay", .errorPage, []),
+        ("500 internal server error", "error-overlay", .errorPage, []),
+        ("502 bad gateway", "error-overlay", .errorPage, []),
+        ("503 service unavailable", "error-overlay", .errorPage, []),
+        ("Page not found", "error-overlay", .errorPage, []),
+        ("Page is unavailable", "error-overlay", .errorPage, []),
+        ("Enable JavaScript and cookies to continue", "challenge-overlay", .challenge, ["challenge-copy"]),
+        ("Too many requests", "rate-limit-overlay", .challenge, ["rate-limit-copy"]),
+        ("Rate limit exceeded", "rate-limit-overlay", .challenge, ["rate-limit-copy"]),
+        ("HTTP 429", "rate-limit-overlay", .challenge, ["rate-limit-copy"])
+    ]
+}
+
+@Test func sanitizerPreservesErrorCopyInPrimaryContentWithoutExemptingOrdinaryAds() throws {
+    for (copy, _, block, _) in recognizedRenderedStatusGateCases() where block == .errorPage {
+        let fixture = try renderedChapterFixture(gateText: copy, gateClass: "status-overlay",
+            gateWrapped: true, gateNestedCopy: true, gateRole: "", sanitize: true)
+        #expect(fixture.page.hardBlocks == [.errorPage], "Error copy belongs to visible MAIN: \(copy)")
+        #expect(fixture.gateVisible)
+        #expect(fixture.noiseHidden)
+        let result = ProfileAwareChapterDetector().detect(page: fixture.page)
+        #expect(result.candidates.count == 6)
+        #expect(result.readerEntryDisposition == .unavailable)
+        #expect(result.readerSession == nil)
+        let hidden = try renderedChapterFixture(gateText: copy, gateClass: "status-overlay",
+            gateHidden: true, gateWrapped: true, gateNestedCopy: true, gateRole: "", sanitize: true)
+        #expect(hidden.page.hardBlocks.isEmpty)
+        #expect(!hidden.gateVisible)
+        #expect(hidden.noiseHidden)
+        #expect(GenericChapterDetector().detect(page: hidden.page).readerEntryDisposition == .automatic)
+    }
+}
+
+@Test func sanitizerPreservesPrimaryAuthenticationAndPaywallCopyWithoutNodeMetadata() throws {
+    for (copy, expected) in [
+        ("Sign in to read this chapter", DetectionHardBlock.authentication),
+        ("Subscribe to unlock this chapter", DetectionHardBlock.paywall)
+    ] {
+        let fixture = try renderedChapterFixture(gateText: copy, gateClass: "status-overlay",
+            gateWrapped: true, gateNestedCopy: true, gateRole: "", sanitize: true)
+        #expect(fixture.page.hardBlocks == [expected])
+        #expect(fixture.gateVisible)
+        #expect(fixture.noiseHidden)
+        let result = ProfileAwareChapterDetector().detect(page: fixture.page)
+        #expect(result.candidates.count == 6)
+        #expect(result.readerEntryDisposition == .unavailable)
+        #expect(result.readerSession == nil)
+        let hidden = try renderedChapterFixture(gateText: copy, gateClass: "status-overlay",
+            gateHidden: true, gateWrapped: true, gateNestedCopy: true, gateRole: "", sanitize: true)
+        #expect(hidden.page.hardBlocks.isEmpty)
+        #expect(!hidden.gateVisible)
+        #expect(hidden.noiseHidden)
+        let outside = try renderedChapterFixture(gateText: copy, gateClass: "status-overlay", gateRole: "", sanitize: true)
+        #expect(outside.page.hardBlocks.isEmpty, "Unmarked copy outside an existing gate is not access evidence")
+        #expect(!outside.gateVisible)
+        #expect(outside.noiseHidden)
+        #expect(GenericChapterDetector().detect(page: outside.page).readerEntryDisposition == .automatic)
+    }
+}
+
+@Test func sanitizerPreservesGlobalChallengeCopyWithoutGateMetadata() throws {
+    for (copy, gateClass, block, signals) in recognizedRenderedStatusGateCases() where block == .challenge {
+        for nested in [false, true] {
+            let fixture = try renderedChapterFixture(gateText: copy, gateClass: gateClass,
+                gateWrapped: true, gateNestedCopy: nested, gateRole: "", sanitize: true)
+            #expect(fixture.page.hardBlocks == [.challenge])
+            #expect(fixture.page.challengeSignals == signals)
+            #expect(fixture.gateVisible)
+            #expect(fixture.noiseHidden, "Global body challenge copy does not exempt ordinary MAIN ads")
+            #expect(ProfileAwareChapterDetector().detect(page: fixture.page).readerSession == nil)
+        }
+        let hidden = try renderedChapterFixture(gateText: copy, gateClass: gateClass,
+            gateHidden: true, gateWrapped: true, gateNestedCopy: true, gateRole: "", sanitize: true)
+        #expect(hidden.page.hardBlocks.isEmpty)
+        #expect(hidden.page.challengeSignals.isEmpty)
+        #expect(!hidden.gateVisible)
+        #expect(hidden.noiseHidden)
+    }
+}
+
 @Test func sanitizerKeepsOriginallyHiddenLoginTemplatesDistinctFromAccessGates() throws {
     let fixture = try renderedChapterFixture(gateText: "Sign in to read this chapter", gateClass: "auth-modal", gateHidden: true, sanitize: true)
     #expect(fixture.page.hardBlocks.isEmpty)
@@ -244,14 +360,14 @@ private func installRenderedURLResolver(in context: JSContext) {
 
 private func renderedChapterFixture(sourceAttribute: String = "src", source: String = "/pages/{index}.jpg",
     unloaded: Bool = false, viewer: String = "", gateText: String = "", gateClass: String = "",
-    gateHidden: Bool = false, gateWrapped: Bool = false, gateNestedCopy: Bool = false,
+    gateHidden: Bool = false, gateWrapped: Bool = false, gateNestedCopy: Bool = false, gateRole: String = "dialog",
     marker: String = "", sanitize: Bool = false)
     throws -> (page: DetectionPageAnalysis, gateVisible: Bool, noiseHidden: Bool) {
     let context = try #require(JSContext())
     installRenderedURLResolver(in: context)
     let data = try JSONSerialization.data(withJSONObject: ["sourceAttribute": sourceAttribute, "source": source,
         "unloaded": unloaded, "viewer": viewer, "gateText": gateText, "gateClass": gateClass,
-        "gateHidden": gateHidden, "gateWrapped": gateWrapped, "gateNestedCopy": gateNestedCopy, "marker": marker])
+        "gateHidden": gateHidden, "gateWrapped": gateWrapped, "gateNestedCopy": gateNestedCopy, "gateRole": gateRole, "marker": marker])
     let fixture = try #require(String(data: data, encoding: .utf8))
     context.evaluateScript("""
     const fixture = \(fixture);
@@ -300,7 +416,7 @@ private func renderedChapterFixture(sourceAttribute: String = "src", source: Str
     if (fixture.viewer === 'blob') { const blob = append(main, makeNode('IMG', { src: 'blob:opaque' })); images.push(blob); }
     const gateParent = fixture.gateNestedCopy ? main : body;
     const wrapper = fixture.gateWrapped ? append(gateParent, makeNode('DIV', { class: 'blocking-overlay' })) : gateParent;
-    const gate = append(wrapper, makeNode('DIV', { role: 'dialog', class: fixture.gateClass }, fixture.gateNestedCopy ? '' : fixture.gateText));
+    const gate = append(wrapper, makeNode('DIV', { role: fixture.gateRole, class: fixture.gateClass }, fixture.gateNestedCopy ? '' : fixture.gateText));
     if (fixture.gateNestedCopy) append(gate, makeNode('DIV', { class: 'auth-header' }, fixture.gateText));
     if (fixture.marker === 'protectedViewer') gate.setAttribute('data-protected-reader', 'true');
     if (fixture.marker === 'drm') gate.setAttribute('data-drm-protected', 'true');
