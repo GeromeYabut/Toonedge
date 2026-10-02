@@ -1646,7 +1646,7 @@ Strengthen ToonEdge's core browser-to-reader and local-library loop with bounded
 
 ### Story 13.1 — Add chapter-scoped Reader continuity and bounded prefetch
 
-**Status:** implemented locally; pending PR integration. [QA evidence](qa_evidence/2026-10-01-story-13.1-reader-continuity.md).
+**Status:** merged into `main` via [PR 2](https://github.com/GeromeYabut/Toonedge/pull/2). [Local QA evidence](qa_evidence/2026-10-01-story-13.1-reader-continuity.md) records the pre-integration verification.
 
 **Dependencies:** Existing Reader session, page metadata, request-context, cache, and progress contracts.
 
@@ -1670,7 +1670,7 @@ As a reader scrolling a long chapter, I want upcoming panels to be ready without
 
 ### Story 13.2 — Expose guarded manual Clean Mode eligibility
 
-**Status:** planned
+**Status:** implemented and locally verified; pending PR integration. [QA evidence](qa_evidence/2026-10-02-story-13.2-guarded-clean-mode.md).
 
 **Dependencies:** Existing detection scoring, profile hard blocks, Browser-owned Reader presentation, and source-page preservation.
 
@@ -1682,6 +1682,7 @@ As a reader on a plausible chapter page that ToonEdge will not open automaticall
 
 - Detection produces an explicit automatic, recommended, manual, or unavailable Reader-entry disposition.
 - High begins at score `78`, medium covers `55...77`, and manual-only covers `45...54`, subject to documented viability constraints.
+- Architecture §9.5.1's global candidate minimum applies to automatic, recommended, and manual entry: at least `4` candidates, or exactly `3` with combined actual rendered height `>= 3.5x` the viewport height. The three-image exception requires finite positive viewport and actual rendered heights for all three; unknown, nonfinite, or nonpositive geometry cannot qualify, and natural size cannot substitute. One or two candidates remain unavailable regardless of height; per-band viability constraints still apply.
 - Manual-only results require a viable normalized Reader session and no hard block.
 - Challenge, authentication, paywall, browser-only, unsupported pagination, protected viewer, canvas/blob, error, and nonviable results are unavailable regardless of score.
 - Browser renders `Try Clean Mode` as a secondary tool action only for manual disposition.

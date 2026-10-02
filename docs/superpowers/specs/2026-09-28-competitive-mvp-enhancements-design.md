@@ -170,6 +170,8 @@ The Architecture document defines:
 - manual-only: score `45...54`, no hard block, with a viable normalized session;
 - unavailable: lower score, nonviable output, or any hard block.
 
+The Architecture §9.5.1 global candidate minimum applies before all three entry bands: at least four candidates, or exactly three whose combined actual rendered height reaches 3.5 viewport heights. One or two images never qualify, regardless of natural size. The three-image exception requires finite positive viewport height and actual rendered measurements for all three candidates; missing legacy geometry cannot establish it. Per-band candidate/height constraints still apply after this global gate.
+
 The current `GenericChapterDetector` defaults to high `>= 85` and medium `>= 45`, and it creates no Reader session for low confidence. That implementation cannot distinguish the architecture's manual-only band. This design treats the Architecture document as authoritative and includes threshold/policy alignment in this slice. Thresholds must live in one policy type and must not be duplicated in Browser UI.
 
 This also conflicts with planned Epic 12 Story 12.3 wording that all low-confidence pages never expose Clean Mode. The story should be amended to distinguish ordinary/hard-blocked low confidence from architecture-approved manual-only eligibility.

@@ -1,6 +1,585 @@
 import Foundation
 import Testing
+#if canImport(JavaScriptCore)
+import JavaScriptCore
+#endif
 @testable import ToonEdgeAppCore
+
+@Test func manualBandRetainsViableSessionWithoutRecommendingIt() throws {
+    let result = GenericChapterDetector().detect(page: try entryPage(count: 4))
+    #expect(result.score == 46)
+    #expect(result.confidence == .low)
+    #expect(result.readerEntryDisposition == .manual)
+    #expect(result.readerSession?.imageURLs.count == 4)
+}
+
+@Test func highBandDoesNotFallBackWhenCandidateAndHeightConstraintsFail() throws {
+    let page = DetectionPageAnalysis(
+        pageURL: try #require(URL(string: "https://example.test/chapter-1")),
+        title: "Chapter 1", documentHeight: 18_000, viewportWidth: 390,
+        images: Array(chapterImages(host: "cdn.example.test").prefix(5))
+    )
+    let result = GenericChapterDetector().detect(page: page)
+    #expect(result.score >= 78)
+    #expect(result.readerEntryDisposition == .unavailable)
+    #expect(result.diagnostics.tallestHeightRatio == 0)
+    #expect(result.readerSession == nil)
+}
+
+@Test func protectedViewerIsUnavailableRegardlessOfScore() throws {
+    var page = try entryPage(count: 8, width: 900, height: 1_350)
+    page.documentHeight = 18_000
+    for block in DetectionHardBlock.allCases {
+        let protectedPage = try pageWithPayloadFields(page, fields: ["hardBlocks": [block.rawValue]])
+        let result = ProfileAwareChapterDetector().detect(page: protectedPage)
+        #expect(result.readerEntryDisposition == .unavailable)
+        #expect(result.diagnostics.hardBlocks.contains(block))
+        #expect(result.readerSession == nil, "Blocked by \(block.rawValue)")
+    }
+}
+
+@Test func globalCandidateFloorRejectsTwoTallImagesAtEveryViewportHeight() throws {
+    var page = try entryPage(count: 2, width: 900, height: 4_500)
+    page.documentHeight = 18_000
+    let tallViewport = try pageWithPayloadFields(page, fields: ["viewportHeight": 1_500])
+    let shortViewport = try pageWithPayloadFields(page, fields: ["viewportHeight": 800])
+    #expect(GenericChapterDetector().detect(page: tallViewport).readerSession == nil)
+    #expect(GenericChapterDetector().detect(page: shortViewport).readerSession == nil)
+    #expect(GenericChapterDetector().detect(page: shortViewport).readerEntryDisposition == .unavailable)
+    #expect(GenericChapterDetector().detect(page: shortViewport).diagnostics.negativeScore == -16)
+    #expect(GenericChapterDetector().detect(page: shortViewport).diagnostics.tallestHeightRatio == 5.625)
+}
+
+@Test(arguments: [ReaderEntryDisposition.manual, .recommended, .automatic])
+func detectorGlobalFloorUsesActualCombinedRenderedHeightAtEveryBand(band: ReaderEntryDisposition) throws {
+    let valid = try globalFloorPage(band: band, renderedHeights: [900, 950, 950])
+    let below = try globalFloorPage(band: band, renderedHeights: [900, 950, 949])
+    let unknown = try globalFloorPage(band: band, renderedHeights: [900, 950, nil])
+    let zero = try globalFloorPage(band: band, renderedHeights: [900, 1_900, 0])
+    let negative = try globalFloorPage(band: band, renderedHeights: [900, 1_900, -1])
+    for page in [below, unknown, zero, negative] {
+        for result in [GenericChapterDetector().detect(page: page), ProfileAwareChapterDetector().detect(page: page)] {
+            #expect(result.candidates.count == 3)
+            #expect(result.score == GenericChapterDetector().detect(page: valid).score)
+            #expect(result.readerEntryDisposition == .unavailable)
+            #expect(result.readerSession == nil)
+        }
+    }
+    let result = ProfileAwareChapterDetector().detect(page: valid)
+    #expect(result.diagnostics.totalRenderedHeightRatio == 3.5)
+    #expect(result.readerEntryDisposition == band)
+    #expect(result.readerSession?.imageURLs.count == 3)
+}
+
+@Test(arguments: [0.0, -1.0, Double.infinity, Double.nan])
+func detectorGlobalFloorRequiresFinitePositiveViewportForThreeImages(viewportHeight: Double) throws {
+    var page = try globalFloorPage(band: .manual, renderedHeights: [900, 950, 950])
+    page.viewportHeight = viewportHeight
+    let result = ProfileAwareChapterDetector().detect(page: page)
+    #expect(result.score == 47)
+    #expect(result.readerEntryDisposition == .unavailable)
+    #expect(result.readerSession == nil)
+}
+
+@Test(arguments: [Double.infinity, Double.nan, Double.greatestFiniteMagnitude])
+func detectorGlobalFloorRejectsInvalidRenderedHeightOrOverflow(height: Double) throws {
+    var page = try globalFloorPage(band: .manual, renderedHeights: [900, 950, 950])
+    for index in page.images.indices { page.images[index].renderedHeight = height }
+    let result = GenericChapterDetector().detect(page: page)
+    #expect(result.candidates.count == 3)
+    #expect(result.diagnostics.totalRenderedHeightRatio == 0)
+    #expect(result.readerEntryDisposition == .unavailable)
+    #expect(result.readerSession == nil)
+}
+
+private func globalFloorPage(band: ReaderEntryDisposition, renderedHeights: [Double?]) throws -> DetectionPageAnalysis {
+    var page = try entryPage(count: 3, width: band == .manual ? 320 : 900, height: band == .manual ? 500 : 4_500)
+    page.viewportHeight = 800
+    if band == .manual {
+        page.images[0].semanticHints = ["data-reader-page-image", "data-reader-index"]
+    }
+    if band == .automatic { page.documentHeight = 18_000 }
+    var payload = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(page)) as? [String: Any])
+    var images = try #require(payload["images"] as? [[String: Any]])
+    for index in images.indices {
+        if let height = renderedHeights[index] { images[index]["renderedHeight"] = height }
+    }
+    payload["images"] = images
+    return try JSONDecoder().decode(DetectionPageAnalysis.self, from: JSONSerialization.data(withJSONObject: payload))
+}
+
+@Test func unavailableResultsPreserveAllTypedBlocksThroughProfilesAndFollowUp() throws {
+    for host in ["unknown.example.test", "mangapill.com", "mangafire.to", "m.webtoons.com", "mangahere.cc"] {
+        var page = try entryPage(count: 8, width: 900, height: 1_350)
+        page.pageURL = try #require(URL(string: "https://\(host)/chapter-1"))
+        page.hardBlocks = [.authentication, .paywall, .protectedViewer]
+        page.challengeSignals = ["challenge-copy"]
+        let detector = ProfileAwareChapterDetector()
+        for result in [detector.detect(page: page), detector.detectBrowserSessionFollowUp(page: page)] {
+            #expect(result.readerEntryDisposition == .unavailable)
+            #expect(result.readerSession == nil)
+            #expect(result.retryRecommendation == .none)
+            #expect(result.diagnostics.hardBlocks.isSuperset(of: [.challenge, .authentication, .paywall, .protectedViewer]))
+        }
+    }
+}
+
+@Test func legacyAnalysisAndDiagnosticsDecodeWithConservativeDefaults() throws {
+    let page = try detectionFixture(named: "mangapill_hydrated_dom")
+    #expect(page.viewportHeight == 0)
+    #expect(page.hardBlocks.isEmpty)
+    #expect(page.images.allSatisfy { $0.renderedHeight == nil })
+    let json = Data(#"{"confidence":"low","score":0,"parserPath":"genericHeuristic","retryRecommendation":"none","candidateCount":0,"messages":[]}"#.utf8)
+    let diagnostics = try JSONDecoder().decode(DetectionDiagnostics.self, from: json)
+    #expect(diagnostics.hardBlocks.isEmpty)
+    #expect(diagnostics.negativeScore == 0)
+    #expect(diagnostics.tallestHeightRatio == 0)
+    #expect(diagnostics.totalRenderedHeightRatio == 0)
+}
+
+@Test func blockedResultInitializerCannotHonorAnExplicitEntryDisposition() throws {
+    let page = try entryPage(count: 8, width: 900, height: 1_350)
+    let session = try #require(GenericChapterDetector().detect(page: page).readerSession)
+    let result = DetectionResult(pageURL: page.pageURL, confidence: .high, score: 100, candidates: page.images,
+        readerSession: session,
+        diagnostics: .init(confidence: .high, score: 100, parserPath: .genericHeuristic, hardBlocks: [.paywall]),
+        readerEntryDisposition: .automatic)
+    #expect(result.readerEntryDisposition == .unavailable)
+    #expect(result.readerSession == nil)
+}
+
+@Test func unavailableResultInitializerCannotRetainAReaderSession() throws {
+    let page = try entryPage(count: 8, width: 900, height: 1_350)
+    let session = try #require(GenericChapterDetector().detect(page: page).readerSession)
+    let result = DetectionResult(pageURL: page.pageURL, confidence: .high, score: 100, candidates: page.images,
+        readerSession: session,
+        diagnostics: .init(confidence: .high, score: 100, parserPath: .genericHeuristic),
+        readerEntryDisposition: .unavailable)
+    #expect(result.readerSession == nil)
+    #expect(result.readerEntryDisposition == .unavailable)
+}
+
+@Test func taggedOpaqueSourcesNeverCreateReaderSession() throws {
+    for scheme in ["blob:https://cdn.example.test/", "data:image/png;base64,", "file:///pages/", "javascript:"] {
+        var page = try entryPage(count: 8, width: 900, height: 1_350)
+        for index in page.images.indices {
+            page.images[index].src = scheme + String(index)
+            page.images[index].semanticHints = ["data-reader-page-image", "data-reader-index"]
+        }
+        let result = GenericChapterDetector().detect(page: page)
+        #expect(result.readerSession == nil)
+        #expect(result.readerEntryDisposition == .unavailable)
+        #expect(result.candidates.isEmpty)
+    }
+}
+
+@Test func knownViewportAllowsAutomaticEntryForFiveActuallyTallImages() throws {
+    var page = try entryPage(count: 5, width: 900, height: 4_500)
+    page.viewportHeight = 800
+    for index in page.images.indices { page.images[index].renderedHeight = 4_500 }
+    let result = GenericChapterDetector(entryPolicy: .architectureDefault).detect(page: page)
+    #expect(result.score == 79)
+    #expect(result.readerEntryDisposition == .automatic)
+    #expect(result.confidence == .high)
+    #expect(result.readerSession?.imageURLs.count == 5)
+}
+
+#if canImport(JavaScriptCore)
+@Test func renderedPayloadKeepsActualHeightSeparateFromNaturalSize() throws {
+    let payload = try renderedEntryPayload(mainText: "Chapter 1", hasNetworkImages: true)
+    let images = try #require(payload["images"] as? [[String: Any]])
+    let image = try #require(images.first)
+    #expect(image["height"] as? Double == 1_350)
+    #expect(image["renderedHeight"] as? Double == 844)
+    let unloaded = try renderedEntryPayload(mainText: "Chapter 1", readerTaggedUnloadedImages: true)
+    let unloadedImages = try #require(unloaded["images"] as? [[String: Any]])
+    #expect(unloadedImages.first?["renderedHeight"] as? Double == 0)
+}
+
+@Test func renderedGatesBlockCleanModeWithoutTreatingGlobalDecorationsAsProtection() throws {
+    for (gate, expected) in [("Sign in to read this chapter", "authentication"), ("Subscribe to unlock this chapter", "paywall"), ("404 page not found", "errorPage")] {
+        let payload = try renderedEntryPayload(mainText: gate)
+        let blocks = try #require(payload["hardBlocks"] as? [String])
+        #expect(blocks == [expected], "Visible gate: \(gate)")
+    }
+    let ordinary = try renderedEntryPayload(mainText: "Chapter 1 Login", globalText: "Login Accept cookies Subscribe", decorativeCanvas: true)
+    #expect((ordinary["hardBlocks"] as? [String])?.isEmpty == true)
+}
+
+@Test func renderedOpaqueViewersNeedContentSizeAndAbsenceOfNetworkPages() throws {
+    for viewer in ["canvas", "blob"] {
+        let opaque = try renderedEntryPayload(mainText: "Chapter 1", viewer: viewer)
+        #expect(opaque["hardBlocks"] as? [String] == ["canvasOrBlob"])
+        let withPages = try renderedEntryPayload(mainText: "Chapter 1", viewer: viewer, hasNetworkImages: true)
+        #expect((withPages["hardBlocks"] as? [String])?.isEmpty == true)
+    }
+    let decoration = try renderedEntryPayload(mainText: "Chapter 1", decorativeCanvas: true, viewer: "canvas")
+    #expect((decoration["hardBlocks"] as? [String])?.isEmpty == true)
+    let recoverable = try renderedEntryPayload(mainText: "Chapter 1", viewer: "canvas", readerTaggedUnloadedImages: true)
+    #expect((recoverable["hardBlocks"] as? [String])?.isEmpty == true)
+}
+
+@Test func renderedProtectedMarkersAndHiddenGatesRemainDistinct() throws {
+    for marker in ["protectedViewer", "drm"] {
+        let protected = try renderedEntryPayload(mainText: "Chapter 1", marker: marker)
+        #expect(protected["hardBlocks"] as? [String] == [marker])
+    }
+    let hidden = try renderedEntryPayload(mainText: "Sign in to read this chapter", visible: false, marker: "protectedViewer")
+    #expect((hidden["hardBlocks"] as? [String])?.isEmpty == true)
+}
+
+@Test func renderedLazySrcsetHydrationRemainsEligibleBesideOpaqueViewers() throws {
+    for attribute in ["data-srcset", "data-lazy-srcset"] {
+        for viewer in ["canvas", "blob"] {
+            let fixture = try renderedChapterFixture(sourceAttribute: attribute, unloaded: true, viewer: viewer)
+            #expect(fixture.page.hardBlocks.isEmpty, "\(attribute) beside \(viewer)")
+            let result = GenericChapterDetector().detect(page: fixture.page)
+            #expect(result.readerEntryDisposition == .automatic)
+            #expect(result.readerSession?.imageURLs.count == 6)
+            #expect(result.readerSession?.imageURLs.first?.absoluteString == "https://unknown.example.test/pages/1.jpg")
+        }
+    }
+}
+
+@Test func renderedOpaqueSchemesDoNotCountAsNetworkPages() throws {
+    for attribute in ["src", "srcset", "data-srcset", "data-lazy-srcset"] {
+        for source in ["blob:opaque-{index}", "data:image/png;base64,opaque{index}", "file:///pages/{index}.jpg", "javascript:page{index}"] {
+            let fixture = try renderedChapterFixture(sourceAttribute: attribute, source: source, unloaded: true, viewer: "canvas")
+            #expect(fixture.page.hardBlocks == [.canvasOrBlob], "\(attribute): \(source)")
+            #expect(GenericChapterDetector().detect(page: fixture.page).readerSession == nil)
+        }
+    }
+}
+
+@Test func sanitizerPreservesVisibleAccessGatesBeforeDetection() throws {
+    for (copy, gateClass, expected) in [
+        ("Sign in to read this chapter", "auth-modal", DetectionHardBlock.authentication),
+        ("Subscribe to unlock this chapter", "paywall-overlay", DetectionHardBlock.paywall)
+    ] {
+        for wrapped in [false, true] {
+            let fixture = try renderedChapterFixture(gateText: copy, gateClass: gateClass, gateWrapped: wrapped, sanitize: true)
+            #expect(fixture.page.hardBlocks == [expected])
+            #expect(fixture.gateVisible, "Original access gate must remain visible")
+            #expect(fixture.noiseHidden, "Ordinary ads and decorative overlays still disappear")
+            let result = ProfileAwareChapterDetector().detect(page: fixture.page)
+            #expect(result.candidates.count == 6, "Underlying images remain viable")
+            #expect(result.readerEntryDisposition == .unavailable)
+            #expect(result.readerSession == nil)
+        }
+    }
+}
+
+@Test func sanitizerPreservesAccessGateCopyInsideNoiseLabelledDescendants() throws {
+    for (copy, expected) in [
+        ("Sign in to read this chapter", DetectionHardBlock.authentication),
+        ("Subscribe to unlock this chapter", DetectionHardBlock.paywall)
+    ] {
+        let fixture = try renderedChapterFixture(gateText: copy, gateClass: "auth-modal", gateNestedCopy: true, sanitize: true)
+        #expect(fixture.page.hardBlocks == [expected])
+        #expect(fixture.gateVisible)
+        #expect(fixture.noiseHidden, "Ads in primary content remain suppressible")
+        let result = ProfileAwareChapterDetector().detect(page: fixture.page)
+        #expect(result.candidates.count == 6)
+        #expect(result.readerEntryDisposition == .unavailable)
+        #expect(result.readerSession == nil)
+    }
+}
+
+@Test func sanitizerPreservesRecognizedErrorAndChallengeCopyBeforeDetection() throws {
+    for (copy, gateClass, block, signals) in recognizedRenderedStatusGateCases() {
+        for (wrapped, nested) in [(false, false), (true, false), (true, true)] {
+            let fixture = try renderedChapterFixture(gateText: copy, gateClass: gateClass,
+                gateWrapped: wrapped, gateNestedCopy: nested, sanitize: true)
+            #expect(fixture.page.hardBlocks == [block], "Visible gate: \(copy)")
+            #expect(fixture.page.challengeSignals == signals, "Legacy challenge signal: \(copy)")
+            #expect(fixture.gateVisible)
+            #expect(fixture.noiseHidden)
+            var underlying = fixture.page
+            underlying.hardBlocks = []
+            underlying.challengeSignals = []
+            #expect(GenericChapterDetector().detect(page: underlying).readerEntryDisposition == .automatic,
+                "Six underlying chapter pages are otherwise viable")
+            let result = ProfileAwareChapterDetector().detect(page: fixture.page)
+            #expect(result.readerEntryDisposition == .unavailable)
+            #expect(result.readerSession == nil)
+        }
+    }
+}
+
+@Test func sanitizerKeepsHiddenErrorAndChallengeTemplatesDistinct() throws {
+    for (copy, gateClass, _, _) in recognizedRenderedStatusGateCases() {
+        let fixture = try renderedChapterFixture(gateText: copy, gateClass: gateClass,
+            gateHidden: true, gateWrapped: true, gateNestedCopy: true, sanitize: true)
+        #expect(fixture.page.hardBlocks.isEmpty, "Originally hidden: \(copy)")
+        #expect(fixture.page.challengeSignals.isEmpty)
+        #expect(!fixture.gateVisible)
+        #expect(fixture.noiseHidden)
+        #expect(GenericChapterDetector().detect(page: fixture.page).readerEntryDisposition == .automatic)
+    }
+}
+
+private func recognizedRenderedStatusGateCases() -> [(String, String, DetectionHardBlock, [String])] {
+    [
+        ("404 page not found", "error-overlay", .errorPage, []),
+        ("403 forbidden", "error-overlay", .errorPage, []),
+        ("500 internal server error", "error-overlay", .errorPage, []),
+        ("502 bad gateway", "error-overlay", .errorPage, []),
+        ("503 service unavailable", "error-overlay", .errorPage, []),
+        ("Page not found", "error-overlay", .errorPage, []),
+        ("Page is unavailable", "error-overlay", .errorPage, []),
+        ("Enable JavaScript and cookies to continue", "challenge-overlay", .challenge, ["challenge-copy"]),
+        ("Too many requests", "rate-limit-overlay", .challenge, ["rate-limit-copy"]),
+        ("Rate limit exceeded", "rate-limit-overlay", .challenge, ["rate-limit-copy"]),
+        ("HTTP 429", "rate-limit-overlay", .challenge, ["rate-limit-copy"])
+    ]
+}
+
+@Test func sanitizerPreservesErrorCopyInPrimaryContentWithoutExemptingOrdinaryAds() throws {
+    for (copy, _, block, _) in recognizedRenderedStatusGateCases() where block == .errorPage {
+        let fixture = try renderedChapterFixture(gateText: copy, gateClass: "status-overlay",
+            gateWrapped: true, gateNestedCopy: true, gateRole: "", sanitize: true)
+        #expect(fixture.page.hardBlocks == [.errorPage], "Error copy belongs to visible MAIN: \(copy)")
+        #expect(fixture.gateVisible)
+        #expect(fixture.noiseHidden)
+        let result = ProfileAwareChapterDetector().detect(page: fixture.page)
+        #expect(result.candidates.count == 6)
+        #expect(result.readerEntryDisposition == .unavailable)
+        #expect(result.readerSession == nil)
+        let hidden = try renderedChapterFixture(gateText: copy, gateClass: "status-overlay",
+            gateHidden: true, gateWrapped: true, gateNestedCopy: true, gateRole: "", sanitize: true)
+        #expect(hidden.page.hardBlocks.isEmpty)
+        #expect(!hidden.gateVisible)
+        #expect(hidden.noiseHidden)
+        #expect(GenericChapterDetector().detect(page: hidden.page).readerEntryDisposition == .automatic)
+    }
+}
+
+@Test func sanitizerPreservesPrimaryAuthenticationAndPaywallCopyWithoutNodeMetadata() throws {
+    for (copy, expected) in [
+        ("Sign in to read this chapter", DetectionHardBlock.authentication),
+        ("Subscribe to unlock this chapter", DetectionHardBlock.paywall)
+    ] {
+        let fixture = try renderedChapterFixture(gateText: copy, gateClass: "status-overlay",
+            gateWrapped: true, gateNestedCopy: true, gateRole: "", sanitize: true)
+        #expect(fixture.page.hardBlocks == [expected])
+        #expect(fixture.gateVisible)
+        #expect(fixture.noiseHidden)
+        let result = ProfileAwareChapterDetector().detect(page: fixture.page)
+        #expect(result.candidates.count == 6)
+        #expect(result.readerEntryDisposition == .unavailable)
+        #expect(result.readerSession == nil)
+        let hidden = try renderedChapterFixture(gateText: copy, gateClass: "status-overlay",
+            gateHidden: true, gateWrapped: true, gateNestedCopy: true, gateRole: "", sanitize: true)
+        #expect(hidden.page.hardBlocks.isEmpty)
+        #expect(!hidden.gateVisible)
+        #expect(hidden.noiseHidden)
+        let outside = try renderedChapterFixture(gateText: copy, gateClass: "status-overlay", gateRole: "", sanitize: true)
+        #expect(outside.page.hardBlocks.isEmpty, "Unmarked copy outside an existing gate is not access evidence")
+        #expect(!outside.gateVisible)
+        #expect(outside.noiseHidden)
+        #expect(GenericChapterDetector().detect(page: outside.page).readerEntryDisposition == .automatic)
+    }
+}
+
+@Test func sanitizerPreservesGlobalChallengeCopyWithoutGateMetadata() throws {
+    for (copy, gateClass, block, signals) in recognizedRenderedStatusGateCases() where block == .challenge {
+        for nested in [false, true] {
+            let fixture = try renderedChapterFixture(gateText: copy, gateClass: gateClass,
+                gateWrapped: true, gateNestedCopy: nested, gateRole: "", sanitize: true)
+            #expect(fixture.page.hardBlocks == [.challenge])
+            #expect(fixture.page.challengeSignals == signals)
+            #expect(fixture.gateVisible)
+            #expect(fixture.noiseHidden, "Global body challenge copy does not exempt ordinary MAIN ads")
+            #expect(ProfileAwareChapterDetector().detect(page: fixture.page).readerSession == nil)
+        }
+        let hidden = try renderedChapterFixture(gateText: copy, gateClass: gateClass,
+            gateHidden: true, gateWrapped: true, gateNestedCopy: true, gateRole: "", sanitize: true)
+        #expect(hidden.page.hardBlocks.isEmpty)
+        #expect(hidden.page.challengeSignals.isEmpty)
+        #expect(!hidden.gateVisible)
+        #expect(hidden.noiseHidden)
+    }
+}
+
+@Test func sanitizerKeepsOriginallyHiddenLoginTemplatesDistinctFromAccessGates() throws {
+    let fixture = try renderedChapterFixture(gateText: "Sign in to read this chapter", gateClass: "auth-modal", gateHidden: true, sanitize: true)
+    #expect(fixture.page.hardBlocks.isEmpty)
+    #expect(!fixture.gateVisible)
+    #expect(fixture.noiseHidden)
+    #expect(GenericChapterDetector().detect(page: fixture.page).readerEntryDisposition == .automatic)
+}
+
+@Test func sanitizerPreservesVisibleProtectedReaderMarkersAndTheirOverlays() throws {
+    for marker in [DetectionHardBlock.protectedViewer, .drm] {
+        let fixture = try renderedChapterFixture(gateClass: "protected-modal", gateWrapped: true, marker: marker.rawValue, sanitize: true)
+        #expect(fixture.page.hardBlocks == [marker])
+        #expect(fixture.gateVisible)
+        #expect(fixture.noiseHidden)
+        #expect(ProfileAwareChapterDetector().detect(page: fixture.page).readerSession == nil)
+        let hidden = try renderedChapterFixture(gateClass: "protected-modal", gateHidden: true, marker: marker.rawValue, sanitize: true)
+        #expect(hidden.page.hardBlocks.isEmpty)
+        #expect(!hidden.gateVisible)
+    }
+}
+
+private func installRenderedURLResolver(in context: JSContext) {
+    let scheme: @convention(block) (String, String) -> String = { source, base in
+        URL(string: source, relativeTo: URL(string: base))?.absoluteURL.scheme ?? ""
+    }
+    context.setObject(scheme, forKeyedSubscript: "__resolvedURLScheme" as NSString)
+    context.evaluateScript("globalThis.URL = class { constructor(source, base) { this.protocol = __resolvedURLScheme(source, base) + ':'; } };")
+}
+
+private func renderedChapterFixture(sourceAttribute: String = "src", source: String = "/pages/{index}.jpg",
+    unloaded: Bool = false, viewer: String = "", gateText: String = "", gateClass: String = "",
+    gateHidden: Bool = false, gateWrapped: Bool = false, gateNestedCopy: Bool = false, gateRole: String = "dialog",
+    marker: String = "", sanitize: Bool = false)
+    throws -> (page: DetectionPageAnalysis, gateVisible: Bool, noiseHidden: Bool) {
+    let context = try #require(JSContext())
+    installRenderedURLResolver(in: context)
+    let data = try JSONSerialization.data(withJSONObject: ["sourceAttribute": sourceAttribute, "source": source,
+        "unloaded": unloaded, "viewer": viewer, "gateText": gateText, "gateClass": gateClass,
+        "gateHidden": gateHidden, "gateWrapped": gateWrapped, "gateNestedCopy": gateNestedCopy, "gateRole": gateRole, "marker": marker])
+    let fixture = try #require(String(data: data, encoding: .utf8))
+    context.evaluateScript("""
+    const fixture = \(fixture);
+    const computedStyle = (node) => {
+      let hidden = false;
+      for (let current = node; current; current = current.parentElement) {
+        hidden ||= current.hidden || current.style.display === 'none' || current.style.visibility === 'hidden';
+      }
+      return { display: hidden ? 'none' : 'block', visibility: hidden ? 'hidden' : 'visible', opacity: '1' };
+    };
+    const makeNode = (tagName, attributes = {}, text = '', width = 390, height = 844, top = 0) => {
+      const node = { tagName, attributes, text, children: [], parentElement: null, hidden: false,
+        id: attributes.id || '', className: attributes.class || '', alt: '', currentSrc: '', naturalWidth: 0, naturalHeight: 0,
+        style: { setProperty(name, value) { this[name] = value; } },
+        getAttribute(name) { return this.attributes[name] || null; },
+        hasAttribute(name) { return Object.hasOwn(this.attributes, name); },
+        setAttribute(name, value) { this.attributes[name] = value; },
+        matches(selector) { return selector.split(',').some((part) => {
+          const token = part.trim();
+          if (token === 'img[src^="blob:"]') return this.tagName === 'IMG' && (this.getAttribute('src') || '').startsWith('blob:');
+          if (token.startsWith('.')) return this.className.split(' ').includes(token.slice(1));
+          const attr = token.match(/^\\[([^=\\]]+)(?:="([^"]*)")?\\]$/);
+          return attr ? this.hasAttribute(attr[1]) && (attr[2] === undefined || this.getAttribute(attr[1]) === attr[2]) : this.tagName.toLowerCase() === token;
+        }); },
+        querySelectorAll(selector) { return this.children.flatMap((child) => [child, ...child.querySelectorAll('*')]).filter((child) => selector === '*' || child.matches(selector)); },
+        getBoundingClientRect() { return { width: computedStyle(this).display === 'none' ? 0 : width,
+          height: computedStyle(this).display === 'none' ? 0 : height, top, left: 0 }; }
+      };
+      Object.defineProperty(node, 'innerText', { get() { return computedStyle(this).display === 'none' ? '' : [this.text, ...this.children.map((child) => child.innerText)].join(' '); } });
+      return node;
+    };
+    const append = (parent, child) => { parent.children.push(child); child.parentElement = parent; return child; };
+    const body = makeNode('BODY'); body.scrollHeight = 18000;
+    const main = append(body, makeNode('MAIN', { class: 'reader-main' }, 'Chapter 1', 390, 18000));
+    const images = Array.from({ length: 6 }, (_, offset) => {
+      const index = offset + 1;
+      const source = fixture.source.replace('{index}', index);
+      const value = fixture.sourceAttribute.includes('srcset') ? source + ' 900w' : source;
+      const image = append(main, makeNode('IMG', { [fixture.sourceAttribute]: value,
+        'data-reader-page-image': 'true', 'data-reader-index': String(index) }, '', fixture.unloaded ? 0 : 900,
+        fixture.unloaded ? 0 : 1350, index * 1360));
+      image.naturalWidth = fixture.unloaded ? 0 : 900; image.naturalHeight = fixture.unloaded ? 0 : 1350;
+      return image;
+    });
+    if (fixture.viewer === 'canvas') append(main, makeNode('CANVAS'));
+    if (fixture.viewer === 'blob') { const blob = append(main, makeNode('IMG', { src: 'blob:opaque' })); images.push(blob); }
+    const gateParent = fixture.gateNestedCopy ? main : body;
+    const wrapper = fixture.gateWrapped ? append(gateParent, makeNode('DIV', { class: 'blocking-overlay' })) : gateParent;
+    const gate = append(wrapper, makeNode('DIV', { role: fixture.gateRole, class: fixture.gateClass }, fixture.gateNestedCopy ? '' : fixture.gateText));
+    if (fixture.gateNestedCopy) append(gate, makeNode('DIV', { class: 'auth-header' }, fixture.gateText));
+    if (fixture.marker === 'protectedViewer') gate.setAttribute('data-protected-reader', 'true');
+    if (fixture.marker === 'drm') gate.setAttribute('data-drm-protected', 'true');
+    gate.hidden = fixture.gateHidden;
+    const ad = append(main, makeNode('ASIDE', { class: 'advert-banner' }, 'Advertisement'));
+    const decoration = append(body, makeNode('DIV', { class: 'decorative-overlay' }, 'Accept cookies'));
+    globalThis.window = { location: { href: 'https://unknown.example.test/chapter-1' }, innerWidth: 390, innerHeight: 844,
+      scrollX: 0, scrollY: 0, getComputedStyle: computedStyle, open: () => null };
+    globalThis.MutationObserver = class { constructor(callback) {} observe() {} };
+    globalThis.document = { title: 'Chapter 1', images, body, documentElement: { scrollHeight: 18000, innerHTML: '' },
+      querySelector: (selector) => body.querySelectorAll(selector)[0] || null,
+      querySelectorAll: (selector) => body.querySelectorAll(selector) };
+    """)
+    #expect(context.exception == nil)
+    if sanitize {
+        context.evaluateScript(BrowserPageSanitizerScript.javaScript)
+        #expect(context.exception == nil)
+    }
+    let json = try #require(context.evaluateScript(PageAnalysisScript.javaScript)?.toString())
+    #expect(context.exception == nil)
+    let page = try JSONDecoder().decode(DetectionPageAnalysis.self, from: Data(json.utf8))
+    let gateVisibility = try #require(context.evaluateScript("computedStyle(gate).display !== 'none'"))
+    let noiseVisibility = try #require(context.evaluateScript("computedStyle(ad).display === 'none' && computedStyle(decoration).display === 'none'"))
+    let gateVisible = gateVisibility.toBool()
+    let noiseHidden = noiseVisibility.toBool()
+    return (page, gateVisible, noiseHidden)
+}
+
+private func renderedEntryPayload(mainText: String, globalText: String = "", decorativeCanvas: Bool = false,
+    viewer: String = "", hasNetworkImages: Bool = false, visible: Bool = true, marker: String = "",
+    readerTaggedUnloadedImages: Bool = false) throws -> [String: Any] {
+    let context = try #require(JSContext())
+    installRenderedURLResolver(in: context)
+    let data = try JSONSerialization.data(withJSONObject: ["mainText": mainText, "globalText": globalText,
+        "decorativeCanvas": decorativeCanvas, "viewer": viewer, "hasNetworkImages": hasNetworkImages,
+        "visible": visible, "marker": marker, "readerTaggedUnloadedImages": readerTaggedUnloadedImages])
+    let fixture = try #require(String(data: data, encoding: .utf8))
+    context.evaluateScript("""
+    const fixture = \(fixture);
+    const main = { innerText: fixture.mainText, textContent: fixture.mainText, hidden: !fixture.visible,
+      tagName: 'MAIN', id: '', className: '', getAttribute: () => null, hasAttribute: () => false,
+      getBoundingClientRect: () => ({ width: 390, height: 844, top: 0, left: 0 }),
+      querySelector: () => null, querySelectorAll: () => [], matches: () => false };
+    const canvas = { ...main, tagName: 'CANVAS', getBoundingClientRect: () => ({
+      width: fixture.decorativeCanvas ? 30 : 390, height: fixture.decorativeCanvas ? 30 : 844, top: 0, left: 0 }) };
+    const networkImage = { ...main, tagName: 'IMG', naturalWidth: fixture.readerTaggedUnloadedImages ? 0 : 900,
+      naturalHeight: fixture.readerTaggedUnloadedImages ? 0 : 1350,
+      getBoundingClientRect: () => ({ width: fixture.readerTaggedUnloadedImages ? 0 : 390,
+        height: fixture.readerTaggedUnloadedImages ? 0 : 844, top: 0, left: 0 }),
+      hasAttribute: (name) => fixture.readerTaggedUnloadedImages && ['data-reader-page-image', 'data-reader-index'].includes(name),
+      currentSrc: 'https://cdn.example.test/1.jpg', parentElement: main,
+      getAttribute: (name) => name === 'src' ? 'https://cdn.example.test/1.jpg' : null };
+    const blobImage = { ...networkImage, currentSrc: 'blob:opaque', getAttribute: (name) => name === 'src' ? 'blob:opaque' : null };
+    main.querySelectorAll = (selector) => selector === 'img' && (fixture.hasNetworkImages || fixture.readerTaggedUnloadedImages) ? [networkImage] :
+      selector === 'canvas, img[src^="blob:"]' ? (fixture.viewer === 'canvas' ? [canvas] : fixture.viewer === 'blob' ? [blobImage] : []) : [];
+    globalThis.window = { location: { href: 'https://unknown.example.test/chapter-1' }, innerWidth: 390, innerHeight: 844, scrollX: 0, scrollY: 0,
+      getComputedStyle: () => ({ display: 'block', visibility: 'visible', opacity: '1' }) };
+    globalThis.getComputedStyle = window.getComputedStyle;
+    globalThis.document = { title: 'Chapter 1', images: (fixture.hasNetworkImages || fixture.readerTaggedUnloadedImages) ? [networkImage] : fixture.viewer === 'blob' ? [blobImage] : [],
+      body: { innerText: fixture.mainText + ' ' + fixture.globalText, scrollHeight: 844 },
+      documentElement: { scrollHeight: 844, innerHTML: '' },
+      querySelector: (selector) => selector.includes('main') ? main : null,
+      querySelectorAll: (selector) => selector.includes('main') || selector.includes('role="main"') ? [main] :
+        selector.includes('data-protected-reader') && fixture.marker === 'protectedViewer' ? [main] :
+        selector.includes('data-drm-protected') && fixture.marker === 'drm' ? [main] :
+        selector === 'canvas' && fixture.decorativeCanvas ? [canvas] :
+        selector === 'iframe' ? [{ ...main, tagName: 'IFRAME', src: 'https://ads.example.test/' }] : [] };
+    """)
+    let json = try #require(context.evaluateScript(PageAnalysisScript.javaScript)?.toString())
+    #expect(context.exception == nil)
+    return try #require(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+}
+#endif
+
+private func entryPage(count: Int, width: Double = 320, height: Double = 500) throws -> DetectionPageAnalysis {
+    DetectionPageAnalysis(
+        pageURL: try #require(URL(string: "https://unknown.example.test/story")),
+        title: "Story", documentHeight: 2_000, viewportWidth: 390,
+        images: (1...count).map { index in
+            DetectionImageCandidate(src: "https://cdn.example.test/pages/\(index).jpg", lazySources: [], srcset: nil,
+                width: width, height: height, top: Double(index) * (height + 10), left: 0,
+                className: nil, id: nil, alt: nil, parentSignature: nil)
+        }
+    )
+}
+
+private func pageWithPayloadFields(_ page: DetectionPageAnalysis, fields: [String: Any]) throws -> DetectionPageAnalysis {
+    var payload = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(page)) as? [String: Any])
+    payload.merge(fields) { _, new in new }
+    return try JSONDecoder().decode(DetectionPageAnalysis.self, from: JSONSerialization.data(withJSONObject: payload))
+}
 
 @Test func detectionLogURLShapeDropsQueryCredentialsAndSpecificRouteValues() throws {
     let url = try #require(URL(string:
@@ -161,13 +740,13 @@ import Testing
         title: "Moonlit Edge 12",
         documentHeight: 7_000,
         viewportWidth: 390,
-        images: (1...3).map { index in
+        images: (1...4).map { index in
             DetectionImageCandidate(
                 src: "https://cdn.example.com/ch12/\(index).jpg",
                 lazySources: [],
                 srcset: nil,
-                width: 820,
-                height: 1_200,
+                width: 320,
+                height: 500,
                 top: Double(index * 1_220),
                 left: 0,
                 className: "chapter-page",
@@ -181,7 +760,9 @@ import Testing
     let result = GenericChapterDetector().detect(page: page)
 
     #expect(result.confidence == .medium)
-    #expect(result.readerSession?.imageURLs.count == 3)
+    #expect(result.readerEntryDisposition == .recommended)
+    #expect(result.score == 70)
+    #expect(result.readerSession?.imageURLs.count == 4)
 }
 
 @Test func genericDetectorExcludesLargeAdImagesOutsideReaderFlow() throws {
@@ -424,6 +1005,12 @@ import Testing
     for name in readableFixtures {
         let page = try detectionFixture(named: name)
         let result = ProfileAwareChapterDetector().detect(page: page)
+        if name == "mangapill_hydrated_dom" {
+            #expect(result.readerEntryDisposition == .unavailable)
+            #expect(result.readerSession == nil)
+            #expect(result.candidates.count == 5)
+            continue
+        }
         let session = try #require(result.readerSession)
         #expect(result.confidence == .high)
         #expect(session.imageURLs.count == page.images.count)
@@ -467,8 +1054,10 @@ import Testing
 
     let result = ProfileAwareChapterDetector().detect(page: page)
 
-    #expect(result.confidence == .high)
-    #expect(result.readerSession?.imageURLs.count == 5)
+    #expect(result.confidence == .low)
+    #expect(result.readerEntryDisposition == .unavailable)
+    #expect(result.readerSession == nil)
+    #expect(result.candidates.count == 5)
     #expect(result.diagnostics.parserPath == .siteProfile)
     #expect(result.diagnostics.compatibilityClass == .hydratedDOM)
 }
@@ -666,6 +1255,7 @@ import Testing
     #expect(result.retryRecommendation == .none)
     #expect(result.diagnostics.parserPath == .unsupportedPaginatedProfile)
     #expect(result.diagnostics.compatibilityClass == .paginatedSinglePage)
+    #expect(result.diagnostics.hardBlocks.contains(.unsupportedPagination))
 }
 
 @Test func profileAwareDetectorUsesProfileSelectorHintsBeforeGenericFallback() throws {

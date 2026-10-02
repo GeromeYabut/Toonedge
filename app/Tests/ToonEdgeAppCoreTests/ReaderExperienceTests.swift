@@ -684,6 +684,7 @@ import Testing
 @Test(arguments: [
     AdjacentReaderSessionLoadFailureReason.timeout,
     .challengeOrRateLimit,
+    .readerEntryBlocked,
     .unavailable,
     .lowConfidence,
     .nonViableImages
@@ -1069,11 +1070,25 @@ func adjacentFailureWaitsForExplicitRetry(reason: AdjacentReaderSessionLoadFailu
     #expect(layout.minimumHitSize(for: .openOriginal) >= 44)
 }
 
+@Test func adjacentBlockedFailureKeepsGenericRecoveryCopyAndOriginalTarget() throws {
+    let reason = try #require(AdjacentReaderSessionLoadFailureReason(rawValue: "readerEntryBlocked"))
+    let targetURL = URL(string: "https://fixture.example/series/chapter-2?view=original#page-3")!
+    let failure = AdjacentChapterLoadFailure(direction: .next, reason: reason, targetURL: targetURL)
+    let presentation = try #require(ReaderAdjacentFeedbackPresentation(state: .failed(failure)))
+
+    #expect(failure.message == "This chapter is unavailable in Reader Mode. Try again or open the original page.")
+    #expect(presentation.message == "Chapter unavailable in Reader.")
+    #expect(presentation.actions == [.retry, .openOriginal])
+    #expect(presentation.keepsCurrentSessionVisible)
+    #expect(failure.targetURL == targetURL)
+}
+
 @Test func adjacentFeedbackKeepsTypedRecoveryCompactAndTargetAware() {
     let knownTarget = URL(string: "https://example.com/series/chapter-13")!
     let expectedMessages: [AdjacentReaderSessionLoadFailureReason: String] = [
         .timeout: "Chapter timed out.",
         .challengeOrRateLimit: "Reader access is temporarily limited.",
+        .readerEntryBlocked: "Chapter unavailable in Reader.",
         .unavailable: "Chapter unavailable in Reader.",
         .lowConfidence: "Chapter could not be verified.",
         .nonViableImages: "No usable chapter images found."
