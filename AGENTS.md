@@ -279,6 +279,18 @@ A story is done when:
 
 ## Branch and Delivery Workflow
 
+## External Build Storage
+
+- Prefer `/Volumes/Seagate 2TB/ToonEdgeBuilds` for ToonEdge build outputs only when the mounted volume is writable and has UUID `7C6E7CE1-D8D5-3041-AA58-DC000A724A29`.
+- Before writing, verify the exact volume UUID, available space, and a direct directory-creation probe. Never create `/Volumes/Seagate 2TB` as a mount-point directory when the drive is absent.
+- Keep repositories, active worktrees, simulator runtimes, and simulator devices on the internal disk. Do not target shared iPhone 16 Pro simulator `04F65B71-EEB9-4085-BFBD-8B7406E480A2`.
+- Use a filesystem-safe, branch-isolated subdirectory for Xcode `-derivedDataPath`, SwiftPM `--scratch-path`, `.xcresult` bundles, and sanitized logs. Do not share one mutable output directory between concurrent agents.
+- Quote external paths because the volume name contains a space. The USB connection is appropriate for disposable output and archive retention, but can be slower than the internal SSD for compilation.
+- If the drive is unavailable or unwritable, use a unique `/private/tmp/toonedge-...` fallback, report it, and archive or remove it only after verification.
+- Inspect result-bundle and build-output attachments before retention. Never retain copyrighted page artwork, credentials, cookies, session secrets, complete sensitive URLs, or the three protected local screenshots.
+- Never move, copy, stage, modify, or delete `docs/qa_evidence/2026-09-22/manhuatop-chapter-label-top.png`, `docs/qa_evidence/2026-09-22/manhuatop-original-page.png`, or `docs/qa_evidence/2026-09-22/webtoon-protected-reader-cta.png`.
+- Never reformat, repartition, eject, rename, or broadly clean the external drive without explicit user authorization.
+
 - Treat `main` as the stable integration branch. Fetch and verify `origin/main` before starting new work.
 - Never implement product work directly on `main` and never use a story branch as a rolling integration branch.
 - Create one short-lived branch per reviewable outcome using `feature/`, `fix/`, `chore/`, or `docs/`.
