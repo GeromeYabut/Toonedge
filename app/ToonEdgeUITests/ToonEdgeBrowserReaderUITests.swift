@@ -2,6 +2,46 @@ import XCTest
 
 @MainActor
 final class ToonEdgeBrowserReaderUITests: XCTestCase {
+    func testManualFixtureOffersSecondaryToolAndPreservesExactOriginalHistory() {
+        let app = launchBrowserFixture("manual")
+        let manual = app.buttons["browser.tryCleanMode"]
+        XCTAssertTrue(manual.waitForExistence(timeout: 5))
+        XCTAssertEqual(manual.label, "Try Clean Mode")
+        XCTAssertTrue(manual.isHittable)
+        XCTAssertFalse(app.buttons["browser.cleanModeAction"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["reader.root"].exists)
+        XCTAssertTrue(app.buttons["browser.back"].isEnabled)
+        manual.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForExistence(timeout: 5))
+        revealReaderChrome(in: app)
+        app.buttons["reader.viewOriginalPage"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForNonExistence(timeout: 2))
+        let original = "https://fixture.toonedge.test/chapter-1?position=7#panel-2"
+        XCTAssertTrue(app.staticTexts[original].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["browser.back"].isEnabled)
+        app.buttons["browser.back"].tap()
+        XCTAssertTrue(app.staticTexts["https://fixture.toonedge.test/synthetic-start"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["browser.tryCleanMode"].exists)
+    }
+
+    func testUnreadableManualFixtureKeepsOriginalPageAndHidesEntry() {
+        let app = launchBrowserFixture("manual-unreadable")
+        XCTAssertTrue(app.otherElements["browser.root"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["browser.readerUnavailable"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["browser.tryCleanMode"].exists)
+        XCTAssertFalse(app.buttons["browser.cleanModeAction"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["reader.root"].exists)
+        XCTAssertTrue(app.staticTexts["https://fixture.toonedge.test/chapter-1"].exists)
+    }
+
+    func testTypedHardBlockFixtureHidesAllEntry() {
+        let app = launchBrowserFixture("typed-hardblock")
+        XCTAssertTrue(app.otherElements["browser.root"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["browser.tryCleanMode"].exists)
+        XCTAssertFalse(app.buttons["browser.cleanModeAction"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["reader.root"].exists)
+    }
+
     func testHighConfidenceFixtureAutomaticallyOpensReader() {
         let app = launchBrowserFixture("high")
 

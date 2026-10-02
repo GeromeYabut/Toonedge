@@ -2,6 +2,183 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@MainActor
+@Test func manualDispositionShowsOnlySecondaryAction() {
+    let result = browserEntryResult(.manual)
+    let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+    model.handleDetectionResult(result)
+    #expect(!model.showsCleanModeCTA)
+    #expect(model.pendingReaderSession == nil)
+    model.enterCleanModeManually()
+    #expect(model.pendingReaderSession == result.readerSession)
+}
+
+@MainActor
+@Test func browserEntryHonorsDispositionRatherThanConfidence() {
+    var result = browserEntryResult(.recommended)
+    result.confidence = .high
+    let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+    model.handleDetectionResult(result)
+    #expect(model.showsCleanModeCTA)
+    #expect(model.pendingReaderSession == nil)
+}
+
+@MainActor
+@Test func unavailableDispositionCannotEnterReader() {
+    var result = browserEntryResult(.manual)
+    result.readerEntryDisposition = .unavailable
+    let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+    model.handleDetectionResult(result)
+    model.enterCleanModeManually()
+    model.presentPendingReaderInsideBrowser(result.readerSession!)
+    #expect(model.pendingReaderSession == nil)
+    #expect(model.browserOwnedReaderSession == nil)
+}
+
+@MainActor
+@Test func typedHardBlocksPreventEveryBrowserEntry() {
+    for block in DetectionHardBlock.allCases {
+        for disposition in [ReaderEntryDisposition.automatic, .recommended, .manual] {
+            var result = browserEntryResult(disposition)
+            result.diagnostics.hardBlocks = [block]
+            let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+            model.handleDetectionResult(result)
+            model.enterCleanModeManually()
+            model.presentPendingReaderInsideBrowser(result.readerSession!)
+            #expect(!model.showsCleanModeCTA)
+            #expect(model.pendingReaderSession == nil)
+            #expect(model.browserOwnedReaderSession == nil)
+        }
+    }
+}
+
+@MainActor
+@Test func unreadableResultRemovesEligibilityAndKeepsExactBrowserNavigation() {
+    let result = browserEntryResult(.manual)
+    let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+    model.updateNavigation(url: result.pageURL, title: "Synthetic chapter", canGoBack: true, canGoForward: true, isLoading: false)
+    model.handleDetectionResult(result)
+    model.handleUnreadableDetectionResult(result)
+    model.enterCleanModeManually()
+    model.presentPendingReaderInsideBrowser(result.readerSession!)
+    #expect(model.detectionResult?.readerSession == nil)
+    #expect(model.detectionResult?.readerEntryDisposition == .unavailable)
+    #expect(model.pendingReaderSession == nil)
+    #expect(model.browserOwnedReaderSession == nil)
+    #expect(model.readerUnavailableMessage != nil)
+    #expect(model.currentURL == result.pageURL)
+    #expect(model.canGoBack && model.canGoForward)
+    #expect(model.pendingCommand == nil)
+}
+
+@MainActor
+@Test func freshUnavailableResultClearsPreviousAutomaticPendingEntry() {
+    let result = browserEntryResult(.automatic)
+    let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+    model.handleDetectionResult(result)
+    var unavailable = result
+    unavailable.readerEntryDisposition = .unavailable
+    model.handleDetectionResult(unavailable)
+    model.presentPendingReaderInsideBrowser(result.readerSession!)
+    #expect(model.pendingReaderSession == nil)
+    #expect(model.browserOwnedReaderSession == nil)
+}
+
+@MainActor
+@Test func navigationClearsEntryAndRejectsPreviousPendingReader() {
+    let result = browserEntryResult(.automatic)
+    let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+    model.handleDetectionResult(result)
+    model.navigationDidStart()
+    model.presentPendingReaderInsideBrowser(result.readerSession!)
+    #expect(model.detectionResult == nil)
+    #expect(model.pendingReaderSession == nil)
+    #expect(model.browserOwnedReaderSession == nil)
+}
+
+@MainActor
+@Test func automaticDispositionCannotBeEnteredThroughManualAction() {
+    let result = browserEntryResult(.automatic)
+    let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+    model.handleDetectionResult(result)
+    model.clearPendingReaderSession(result.readerSession!)
+    model.enterCleanModeManually()
+    #expect(model.pendingReaderSession == nil)
+}
+
+@MainActor
+@Test func browserRejectsSessionForDifferentSourcePage() {
+    var result = browserEntryResult(.manual)
+    result.readerSession?.sourceURL = URL(string: "https://fixture.toonedge.test/other-chapter")!
+    let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+    model.handleDetectionResult(result)
+    model.enterCleanModeManually()
+    #expect(model.pendingReaderSession == nil)
+}
+
+@MainActor
+@Test func browserReloadImmediatelyClearsManualEligibility() {
+    let result = browserEntryResult(.manual)
+    let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+    model.handleDetectionResult(result)
+    model.reload()
+    model.enterCleanModeManually()
+    #expect(model.pendingReaderSession == nil)
+    #expect(model.detectionResult == nil)
+    #expect(model.pendingCommand?.action == .reload)
+}
+
+private func browserEntryResult(
+    _ disposition: ReaderEntryDisposition,
+    session suppliedSession: MockReaderSession? = nil
+) -> DetectionResult {
+    let pageURL = suppliedSession?.sourceURL ?? URL(string: "https://fixture.toonedge.test/chapter-1?position=7#panel-2")!
+    let session = suppliedSession ?? MockReaderSession(
+        seriesTitle: "Synthetic Fixture",
+        chapterTitle: "Chapter 1",
+        sourceURL: pageURL,
+        imageURLs: [URL(string: "https://images.example.test/001.jpg")!]
+    )
+    return DetectionResult(
+        pageURL: pageURL, confidence: .low, score: 50, candidates: [],
+        readerSession: session,
+        diagnostics: .init(confidence: .low, score: 50, parserPath: .genericHeuristic),
+        readerEntryDisposition: disposition
+    )
+}
+
+@MainActor
+@Test func browserEntryPresentationDistinguishesEveryDisposition() {
+    for (disposition, expected) in [
+        (ReaderEntryDisposition.automatic, BrowserCleanModePresentation.hidden),
+        (.recommended, .recommendedBanner), (.manual, .manualTool), (.unavailable, .hidden)
+    ] {
+        let result = browserEntryResult(disposition)
+        let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+        model.handleDetectionResult(result)
+        #expect(model.cleanModePresentation == expected)
+        #expect((model.pendingReaderSession != nil) == (disposition == .automatic))
+        model.navigationDidStart()
+        #expect(model.cleanModePresentation == .hidden)
+    }
+}
+
+@Test func sameURLReloadReschedulesDetectionAndInvalidatesOldGeneration() {
+    let url = URL(string: "https://fixture.toonedge.test/chapter-1")!
+    var policy = BrowserDetectionNavigationPolicy()
+    let oldGeneration = policy.generation
+    let initial = policy.shouldSchedule(url: url, isLoading: false)
+    #expect(initial)
+    policy.navigationDidStart()
+    #expect(policy.generation != oldGeneration)
+    #expect(!policy.isCurrent(oldGeneration))
+    let reload = policy.shouldSchedule(url: url, isLoading: false)
+    #expect(reload)
+    #expect(policy.isCurrent(policy.generation))
+    let duplicate = policy.shouldSchedule(url: url, isLoading: false)
+    #expect(!duplicate)
+}
+
 @Test func quietBrowserChromeDoesNotDuplicateReloadOrStatusLabel() {
     let layout = BrowserChromeLayout()
 
@@ -15,6 +192,7 @@ import Testing
     let layout = BrowserChromeLayout()
 
     #expect(layout.cleanModeActionIdentifier == "browser.cleanModeAction")
+    #expect(layout.manualCleanModeActionIdentifier == "browser.tryCleanMode")
     #expect(layout.closeActionIdentifier == "browser.close")
     #expect(layout.reloadActionIdentifier == "browser.reload")
     #expect(layout.backActionIdentifier == "browser.back")
@@ -172,6 +350,7 @@ import Testing
         imageURLs: [try #require(URL(string: "https://img.example.com/1.jpg"))]
     )
 
+    viewModel.handleDetectionResult(browserEntryResult(.automatic, session: session))
     viewModel.presentPendingReaderInsideBrowser(session)
     viewModel.dismissBrowserOwnedReader()
 
@@ -196,6 +375,7 @@ import Testing
     adjacent.sourceURL = adjacentURL
     adjacent.imageURLs = [try #require(URL(string: "https://img.example.com/13-1.jpg"))]
 
+    viewModel.handleDetectionResult(browserEntryResult(.automatic, session: current))
     viewModel.presentPendingReaderInsideBrowser(current)
     viewModel.replaceBrowserOwnedReaderSession(adjacent)
 
@@ -354,7 +534,7 @@ import Testing
     viewModel.dismissBrowserOwnedReader()
     viewModel.presentPendingReaderInsideBrowser(initialSession)
 
-    #expect(viewModel.browserOwnedReaderSession?.launchOrigin == .browser)
+    #expect(viewModel.browserOwnedReaderSession == nil)
 }
 
 @MainActor
@@ -380,10 +560,12 @@ import Testing
         launchOrigin: .browser
     )
 
+    viewModel.handleDetectionResult(browserEntryResult(.automatic, session: firstSession))
     viewModel.presentPendingReaderInsideBrowser(firstSession)
     #expect(viewModel.browserOwnedReaderSession?.launchOrigin == .library(seriesID: seriesID))
 
     viewModel.dismissBrowserOwnedReader()
+    viewModel.handleDetectionResult(browserEntryResult(.automatic, session: secondSession))
     viewModel.presentPendingReaderInsideBrowser(secondSession)
 
     #expect(viewModel.browserOwnedReaderSession?.launchOrigin == .browser)

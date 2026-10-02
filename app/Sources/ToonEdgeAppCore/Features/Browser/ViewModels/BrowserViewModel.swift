@@ -8,6 +8,12 @@ public enum BrowserReaderPresentationState: Equatable, Sendable {
     case browserOwnedReaderVisible
 }
 
+public enum BrowserCleanModePresentation: Equatable, Sendable {
+    case hidden
+    case recommendedBanner
+    case manualTool
+}
+
 public enum BrowserPresentationFixture: Sendable {
     case highConfidence
     case mediumConfidence
@@ -16,9 +22,17 @@ public enum BrowserPresentationFixture: Sendable {
     case protectedWebtoon
     case protectedGlobalComix
     case nonviable
+    case manual
+    case manualUnreadable
+    case typedHardBlock
 
     public var detectionResult: DetectionResult {
-        let pageURL = URL(string: "https://fixture.toonedge.test/chapter-1")!
+        let pageURL: URL
+        if case .manual = self {
+            pageURL = URL(string: "https://fixture.toonedge.test/chapter-1?position=7#panel-2")!
+        } else {
+            pageURL = URL(string: "https://fixture.toonedge.test/chapter-1")!
+        }
         let session = MockReaderSession(
             seriesTitle: "Browser Fixture",
             chapterTitle: "Chapter 1",
@@ -28,6 +42,21 @@ public enum BrowserPresentationFixture: Sendable {
         )
 
         switch self {
+        case .manual, .manualUnreadable, .typedHardBlock:
+            var result = DetectionResult(
+                pageURL: pageURL,
+                confidence: .low,
+                score: 50,
+                candidates: [],
+                readerSession: session,
+                diagnostics: .init(confidence: .low, score: 50, parserPath: .genericHeuristic),
+                readerEntryDisposition: .manual
+            )
+            if case .typedHardBlock = self {
+                // Deliberately mutated to exercise Browser's defensive eligibility checks.
+                result.diagnostics.hardBlocks = [.paywall]
+            }
+            return result
         case .highConfidence:
             return DetectionResult(
                 pageURL: pageURL,
@@ -141,7 +170,7 @@ public final class BrowserViewModel: ObservableObject {
     @Published public private(set) var isLoading: Bool
     @Published public private(set) var pendingCommand: BrowserCommand?
     @Published public private(set) var detectionResult: DetectionResult?
-    @Published public private(set) var showsCleanModeCTA: Bool
+    @Published public private(set) var cleanModePresentation: BrowserCleanModePresentation
     @Published public private(set) var readerUnavailableMessage: String?
     @Published public private(set) var pendingReaderSession: MockReaderSession?
     @Published public private(set) var browserOwnedReaderSession: MockReaderSession?
@@ -162,7 +191,7 @@ public final class BrowserViewModel: ObservableObject {
         self.canGoForward = false
         self.isLoading = false
         self.detectionResult = nil
-        self.showsCleanModeCTA = false
+        self.cleanModePresentation = .hidden
         self.readerUnavailableMessage = nil
         self.pendingReaderSession = nil
         self.browserOwnedReaderSession = nil
@@ -199,21 +228,29 @@ public final class BrowserViewModel: ObservableObject {
         return .none
     }
 
+    public var showsCleanModeCTA: Bool {
+        cleanModePresentation == .recommendedBanner
+    }
+
     public func goBack() {
         guard canGoBack else { return }
+        navigationDidStart()
         pendingCommand = BrowserCommand(action: .goBack)
     }
 
     public func goForward() {
         guard canGoForward else { return }
+        navigationDidStart()
         pendingCommand = BrowserCommand(action: .goForward)
     }
 
     public func reload() {
+        navigationDidStart()
         pendingCommand = BrowserCommand(action: .reload)
     }
 
     public func load(_ url: URL) {
+        navigationDidStart()
         pendingCommand = BrowserCommand(action: .loadURL(url))
     }
 
@@ -233,43 +270,59 @@ public final class BrowserViewModel: ObservableObject {
 
     public func navigationDidStart() {
         detectionResult = nil
-        showsCleanModeCTA = false
+        cleanModePresentation = .hidden
         pendingReaderSession = nil
         readerUnavailableMessage = nil
     }
 
     public func handleDetectionResult(_ result: DetectionResult) {
-        detectionResult = result
+        guard result.pageURL == currentURL else { return }
+        cleanModePresentation = .hidden
+        pendingReaderSession = nil
         readerUnavailableMessage = nil
-
-        switch result.confidence {
-        case .high:
-            showsCleanModeCTA = false
-            pendingReaderSession = viableReaderSession(from: result.readerSession)
-            if pendingReaderSession != nil {
-                readerPresentationLogger.log(.pendingBrowserOwnedReader)
-            }
-        case .medium:
-            showsCleanModeCTA = viableReaderSession(from: result.readerSession) != nil
-        case .low:
-            showsCleanModeCTA = false
+        guard let session = eligibleReaderSession(from: result) else {
+            var unavailable = result
+            unavailable.readerEntryDisposition = .unavailable
+            unavailable.readerSession = nil
+            detectionResult = unavailable
+            return
+        }
+        detectionResult = result
+        switch result.readerEntryDisposition {
+        case .automatic:
+            pendingReaderSession = session
+            readerPresentationLogger.log(.pendingBrowserOwnedReader)
+        case .recommended:
+            cleanModePresentation = .recommendedBanner
+        case .manual:
+            cleanModePresentation = .manualTool
+        case .unavailable:
+            break
         }
     }
 
     public func handleUnreadableDetectionResult(_ result: DetectionResult) {
-        detectionResult = result
-        showsCleanModeCTA = false
+        guard result.pageURL == currentURL else { return }
+        var unavailable = result
+        unavailable.readerEntryDisposition = .unavailable
+        unavailable.readerSession = nil
+        unavailable.diagnostics.hardBlocks.insert(.nonviableSession)
+        detectionResult = unavailable
+        cleanModePresentation = .hidden
         pendingReaderSession = nil
         readerUnavailableMessage = "Clean Reader could not load this page. Continue on the original site."
     }
 
     public func enterCleanModeManually() {
-        guard let session = viableReaderSession(from: detectionResult?.readerSession) else {
+        guard let result = detectionResult,
+              result.readerEntryDisposition == .recommended || result.readerEntryDisposition == .manual,
+              let session = eligibleReaderSession(from: result) else {
             return
         }
 
-        showsCleanModeCTA = false
+        cleanModePresentation = .hidden
         pendingReaderSession = session
+        readerPresentationLogger.log(.pendingBrowserOwnedReader)
     }
 
     public func clearPendingReaderSession(_ session: MockReaderSession) {
@@ -279,7 +332,9 @@ public final class BrowserViewModel: ObservableObject {
     }
 
     public func presentPendingReaderInsideBrowser(_ session: MockReaderSession) {
-        guard isViableReaderSession(session) else {
+        guard pendingReaderSession == session,
+              let result = detectionResult,
+              eligibleReaderSession(from: result) == session else {
             clearPendingReaderSession(session)
             return
         }
@@ -306,8 +361,13 @@ public final class BrowserViewModel: ObservableObject {
         }
     }
 
-    private func viableReaderSession(from session: MockReaderSession?) -> MockReaderSession? {
-        guard let session, isViableReaderSession(session) else {
+    private func eligibleReaderSession(from result: DetectionResult) -> MockReaderSession? {
+        guard result.pageURL == currentURL,
+              result.readerEntryDisposition != .unavailable,
+              result.diagnostics.hardBlocks.isEmpty,
+              let session = result.readerSession,
+              session.sourceURL == result.pageURL,
+              isViableReaderSession(session) else {
             return nil
         }
 
