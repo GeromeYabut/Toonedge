@@ -276,7 +276,7 @@ public final class BrowserViewModel: ObservableObject {
     }
 
     public func handleDetectionResult(_ result: DetectionResult) {
-        guard result.pageURL == currentURL else { return }
+        guard pendingCommand == nil, result.pageURL == currentURL else { return }
         cleanModePresentation = .hidden
         pendingReaderSession = nil
         readerUnavailableMessage = nil
@@ -302,7 +302,7 @@ public final class BrowserViewModel: ObservableObject {
     }
 
     public func handleUnreadableDetectionResult(_ result: DetectionResult) {
-        guard result.pageURL == currentURL else { return }
+        guard pendingCommand == nil, result.pageURL == currentURL else { return }
         var unavailable = result
         unavailable.readerEntryDisposition = .unavailable
         unavailable.readerSession = nil

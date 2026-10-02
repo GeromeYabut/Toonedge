@@ -128,6 +128,86 @@ import Testing
     #expect(model.pendingCommand?.action == .reload)
 }
 
+@MainActor
+@Test func queuedNavigationRejectsLateAutomaticAndManualDetection() throws {
+    for action in ["reload", "load", "back", "forward"] {
+        for disposition in [ReaderEntryDisposition.automatic, .recommended, .manual] {
+            let result = browserEntryResult(disposition)
+            let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+            model.updateNavigation(url: result.pageURL, title: nil, canGoBack: true, canGoForward: true, isLoading: false)
+            model.handleDetectionResult(result)
+            enqueueBrowserNavigation(action, on: model)
+            let command = try #require(model.pendingCommand)
+
+            // The old WebView is still idle and its command has not been consumed.
+            model.handleDetectionResult(result)
+            model.enterCleanModeManually()
+            model.presentPendingReaderInsideBrowser(result.readerSession!)
+
+            #expect(model.detectionResult == nil)
+            #expect(model.cleanModePresentation == .hidden)
+            #expect(model.pendingReaderSession == nil)
+            #expect(model.browserOwnedReaderSession == nil)
+            #expect(model.pendingCommand == command)
+        }
+    }
+}
+
+@MainActor
+@Test func queuedNavigationRejectsLateUnreadableDelivery() throws {
+    for action in ["reload", "load", "back", "forward"] {
+        let result = browserEntryResult(.manual)
+        let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+        model.updateNavigation(url: result.pageURL, title: nil, canGoBack: true, canGoForward: true, isLoading: false)
+        model.handleDetectionResult(result)
+        enqueueBrowserNavigation(action, on: model)
+        let command = try #require(model.pendingCommand)
+
+        model.handleUnreadableDetectionResult(result)
+
+        #expect(model.detectionResult == nil)
+        #expect(model.readerUnavailableMessage == nil)
+        #expect(model.cleanModePresentation == .hidden)
+        #expect(model.pendingReaderSession == nil)
+        #expect(model.pendingCommand == command)
+    }
+}
+
+@MainActor
+@Test func consumedNavigationAcceptsFreshDetectionAfterNavigation() throws {
+    for disposition in [ReaderEntryDisposition.automatic, .recommended, .manual] {
+        let result = browserEntryResult(disposition)
+        let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+        model.reload()
+        let command = try #require(model.pendingCommand)
+        model.clearCommand(command)
+        model.navigationDidStart()
+        model.updateNavigation(url: result.pageURL, title: nil, canGoBack: true, canGoForward: false, isLoading: false)
+
+        model.handleDetectionResult(result)
+
+        #expect(model.detectionResult == result)
+        if disposition == .automatic {
+            #expect(model.pendingReaderSession == result.readerSession)
+        } else {
+            #expect(model.cleanModePresentation == (disposition == .recommended ? .recommendedBanner : .manualTool))
+            model.enterCleanModeManually()
+            #expect(model.pendingReaderSession == result.readerSession)
+        }
+    }
+}
+
+@MainActor
+private func enqueueBrowserNavigation(_ action: String, on model: BrowserViewModel) {
+    switch action {
+    case "reload": model.reload()
+    case "load": model.load(URL(string: "https://fixture.toonedge.test/chapter-2")!)
+    case "back": model.goBack()
+    case "forward": model.goForward()
+    default: preconditionFailure("Unknown synthetic navigation action")
+    }
+}
+
 private func browserEntryResult(
     _ disposition: ReaderEntryDisposition,
     session suppliedSession: MockReaderSession? = nil

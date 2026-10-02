@@ -4,6 +4,10 @@ import XCTest
 final class ToonEdgeBrowserReaderUITests: XCTestCase {
     func testManualFixtureOffersSecondaryToolAndPreservesExactOriginalHistory() {
         let app = launchBrowserFixture("manual")
+        let chapter = app.webViews.buttons["Open synthetic chapter"]
+        XCTAssertTrue(chapter.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["https://fixture.toonedge.test/synthetic-start"].waitForExistence(timeout: 5))
+        chapter.tap()
         let manual = app.buttons["browser.tryCleanMode"]
         XCTAssertTrue(manual.waitForExistence(timeout: 5))
         XCTAssertEqual(manual.label, "Try Clean Mode")

@@ -264,6 +264,13 @@ public extension BrowserWebView {
                 invalidateDetection()
             }
             updateState(from: webView, isLoading: webView.isLoading)
+            if let presentationFixture {
+                let result = presentationFixture.detectionResult
+                if webView.url == result.pageURL {
+                    viewModel.handleDetectionResult(result)
+                }
+                return
+            }
             scheduleDetection(for: webView)
         }
 
@@ -273,16 +280,19 @@ public extension BrowserWebView {
             if let presentationFixture {
                 hasLoadedInitialRequest = true
                 if case .manual = presentationFixture {
-                    // Local synthetic content gives UI tests a real same-document history entry.
-                    webView?.loadHTMLString(
-                        """
+                    // A user gesture after the initial document commits creates real native history.
+                    webView?.loadSimulatedRequest(
+                        URLRequest(url: URL(string: "https://fixture.toonedge.test/synthetic-start")!),
+                        responseHTML: """
                         <!doctype html><meta name="viewport" content="width=device-width">
                         <body style="font:20px system-ui;padding:24px;background:#f4f2ed">
                         Synthetic chapter for Browser navigation testing.
-                        <script>history.pushState(null, "", "/chapter-1?position=7#panel-2");</script>
+                        <button style="font:inherit;padding:16px"
+                          onclick='history.pushState(null, "", "/chapter-1?position=7#panel-2");this.hidden=true'>
+                        Open synthetic chapter
+                        </button>
                         </body>
-                        """,
-                        baseURL: URL(string: "https://fixture.toonedge.test/synthetic-start")!
+                        """
                     )
                 } else if case .manualUnreadable = presentationFixture {
                     viewModel.handleUnreadableDetectionResult(presentationFixture.detectionResult)
