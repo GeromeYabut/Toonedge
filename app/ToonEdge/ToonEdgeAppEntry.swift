@@ -74,6 +74,12 @@ struct ToonEdgeAppEntry: App {
                 dependencies.browserPresentationFixture = .protectedGlobalComix
             case "nonviable":
                 dependencies.browserPresentationFixture = .nonviable
+            case "manual":
+                dependencies.browserPresentationFixture = .manual
+            case "manual-unreadable":
+                dependencies.browserPresentationFixture = .manualUnreadable
+            case "typed-hardblock":
+                dependencies.browserPresentationFixture = .typedHardBlock
             default:
                 break
             }
@@ -233,8 +239,10 @@ struct ToonEdgeAppEntry: App {
                 fixtureURL = "https://m.webtoons.com/en/action/toonedge-fixture/viewer"
             case "protected-globalcomix":
                 fixtureURL = "https://www.globalcomix.com/c/toonedge-fixture/chapters/en/1"
+            case "manual":
+                fixtureURL = "https://fixture.toonedge.test/chapter-1?position=7#panel-2"
             default:
-                fixtureURL = "about:blank"
+                fixtureURL = "https://fixture.toonedge.test/chapter-1"
             }
             return AppRouter(presentedBrowser: .url(fixtureURL))
         }

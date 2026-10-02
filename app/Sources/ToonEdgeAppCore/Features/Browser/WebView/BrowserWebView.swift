@@ -116,8 +116,18 @@ public struct BrowserDetectionRetryPolicy {
 
 public struct BrowserDetectionNavigationPolicy {
     private var lastScheduledURL: URL?
+    public private(set) var generation = UUID()
 
     public init() {}
+
+    public mutating func navigationDidStart() {
+        generation = UUID()
+        lastScheduledURL = nil
+    }
+
+    public func isCurrent(_ generation: UUID) -> Bool {
+        self.generation == generation
+    }
 
     public mutating func shouldSchedule(url: URL?, isLoading: Bool) -> Bool {
         guard let url, !isLoading, lastScheduledURL != url else { return false }
@@ -142,6 +152,7 @@ public struct BrowserPopupPolicy: Sendable {
 public enum BrowserPageSanitizerScript {
     public static let javaScript = """
     (() => {
+      \(PageAnalysisScript.accessGatePreservationJavaScript)
       const blockedSelectorFragments = [
         'ad', 'ads', 'advert', 'banner', 'sponsor', 'promo',
         'popup', 'pop-up', 'popunder', 'modal', 'overlay',
@@ -170,7 +181,15 @@ public enum BrowserPageSanitizerScript {
       const shouldHide = (node) => {
         const text = textFor(node);
         if (!text || isReaderNode(node)) return false;
-        return blockedSelectorFragments.some((fragment) => text.includes(fragment));
+        if (!blockedSelectorFragments.some((fragment) => text.includes(fragment))) return false;
+        // Keep a positive blocking surface intact, including noise-labelled copy or controls.
+        // Primary content itself does not exempt ordinary ads elsewhere in the chapter.
+        for (let ancestor = node.parentElement; ancestor; ancestor = ancestor.parentElement) {
+          if (toonEdgeCanPreserveGateSubtree(ancestor)) return false;
+        }
+        // Preserve the visible access gate and any noise-labelled wrapper containing it.
+        return !toonEdgeHasAccessGateEvidence(node)
+          && !Array.from(node.querySelectorAll(toonEdgeAccessGateSelector)).some(toonEdgeHasAccessGateEvidence);
       };
 
       const hideNoise = () => {
@@ -242,16 +261,44 @@ public extension BrowserWebView {
         private func observedURLDidChange(on webView: WKWebView) {
             if lastObservedURL != webView.url {
                 lastObservedURL = webView.url
-                retryPolicy = BrowserDetectionRetryPolicy()
+                invalidateDetection()
             }
             updateState(from: webView, isLoading: webView.isLoading)
+            if let presentationFixture {
+                let result = presentationFixture.detectionResult
+                if webView.url == result.pageURL {
+                    viewModel.handleDetectionResult(result)
+                }
+                return
+            }
             scheduleDetection(for: webView)
         }
 
         @MainActor
         func loadInitialRequestIfNeeded() {
+            guard !hasLoadedInitialRequest else { return }
             if let presentationFixture {
-                viewModel.handleDetectionResult(presentationFixture.detectionResult)
+                hasLoadedInitialRequest = true
+                if case .manual = presentationFixture {
+                    // A user gesture after the initial document commits creates real native history.
+                    webView?.loadSimulatedRequest(
+                        URLRequest(url: URL(string: "https://fixture.toonedge.test/synthetic-start")!),
+                        responseHTML: """
+                        <!doctype html><meta name="viewport" content="width=device-width">
+                        <body style="font:20px system-ui;padding:24px;background:#f4f2ed">
+                        Synthetic chapter for Browser navigation testing.
+                        <button style="font:inherit;padding:16px"
+                          onclick='history.pushState(null, "", "/chapter-1?position=7#panel-2");this.hidden=true'>
+                        Open synthetic chapter
+                        </button>
+                        </body>
+                        """
+                    )
+                } else if case .manualUnreadable = presentationFixture {
+                    viewModel.handleUnreadableDetectionResult(presentationFixture.detectionResult)
+                } else {
+                    viewModel.handleDetectionResult(presentationFixture.detectionResult)
+                }
                 return
             }
 
@@ -270,6 +317,7 @@ public extension BrowserWebView {
             }
 
             handledCommandID = command.id
+            invalidateDetection()
 
             switch command.action {
             case .goBack:
@@ -287,7 +335,7 @@ public extension BrowserWebView {
 
         @MainActor
         public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-            viewModel.navigationDidStart()
+            invalidateDetection()
             updateState(from: webView, isLoading: true)
         }
 
@@ -298,7 +346,14 @@ public extension BrowserWebView {
 
         @MainActor
         public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            lastObservedURL = webView.url
             updateState(from: webView, isLoading: false)
+            if let presentationFixture {
+                if webView.url == presentationFixture.detectionResult.pageURL {
+                    viewModel.handleDetectionResult(presentationFixture.detectionResult)
+                }
+                return
+            }
             scheduleDetection(for: webView)
         }
 
@@ -343,15 +398,25 @@ public extension BrowserWebView {
         }
 
         @MainActor
+        private func invalidateDetection() {
+            navigationPolicy.navigationDidStart()
+            retryPolicy = BrowserDetectionRetryPolicy()
+            viewModel.navigationDidStart()
+        }
+
+        @MainActor
         private func scheduleDetection(for webView: WKWebView) {
+            if presentationFixture != nil { return }
             guard navigationPolicy.shouldSchedule(url: webView.url, isLoading: webView.isLoading),
                   let url = webView.url else {
                 return
             }
 
+            let generation = navigationPolicy.generation
             Task { @MainActor [weak webView, viewModel, detector] in
                 try? await Task.sleep(nanoseconds: 750_000_000)
-                guard let webView, webView.url == url else {
+                guard let webView, self.navigationPolicy.isCurrent(generation),
+                      webView.url == url, !webView.isLoading else {
                     return
                 }
 
@@ -363,11 +428,13 @@ public extension BrowserWebView {
 
                     let page = try JSONDecoder().decode(DetectionPageAnalysis.self, from: data)
                     let result = detector.detect(page: page)
-                    guard webView.url == page.pageURL else {
+                    guard self.navigationPolicy.isCurrent(generation),
+                          webView.url == page.pageURL, !webView.isLoading else {
                         return
                     }
 
-                    await self.deliverDetectionResult(result, in: webView)
+                    await self.deliverDetectionResult(result, in: webView, generation: generation)
+                    guard self.navigationPolicy.isCurrent(generation) else { return }
                     if self.retryPolicy.shouldScheduleFollowUp(
                         for: page.pageURL,
                         recommendation: result.retryRecommendation,
@@ -376,7 +443,9 @@ public extension BrowserWebView {
                         self.scheduleFollowUpDetection(for: webView, url: page.pageURL)
                     }
                 } catch {
-                    guard let currentURL = webView.url else {
+                    guard self.navigationPolicy.isCurrent(generation),
+                          webView.url == url, !webView.isLoading,
+                          let currentURL = webView.url else {
                         return
                     }
 
@@ -401,11 +470,13 @@ public extension BrowserWebView {
 
         @MainActor
         private func scheduleFollowUpDetection(for webView: WKWebView, url: URL) {
+            let generation = navigationPolicy.generation
             Task { @MainActor [weak webView, detector] in
                 try? await Task.sleep(
                     nanoseconds: BrowserDetectionRetryPolicy.followUpDelayNanoseconds(for: url)
                 )
-                guard let webView, webView.url == url else {
+                guard let webView, self.navigationPolicy.isCurrent(generation),
+                      webView.url == url, !webView.isLoading else {
                     return
                 }
 
@@ -416,13 +487,14 @@ public extension BrowserWebView {
                     }
 
                     let page = try JSONDecoder().decode(DetectionPageAnalysis.self, from: data)
-                    guard webView.url == page.pageURL else {
+                    guard self.navigationPolicy.isCurrent(generation),
+                          webView.url == page.pageURL, !webView.isLoading else {
                         return
                     }
 
                     let result = (detector as? ProfileAwareChapterDetector)?
                         .detectBrowserSessionFollowUp(page: page) ?? detector.detect(page: page)
-                    await self.deliverDetectionResult(result, in: webView)
+                    await self.deliverDetectionResult(result, in: webView, generation: generation)
                 } catch {
                     return
                 }
@@ -430,14 +502,23 @@ public extension BrowserWebView {
         }
 
         @MainActor
-        private func deliverDetectionResult(_ result: DetectionResult, in webView: WKWebView) async {
-            guard webView.url == result.pageURL else { return }
-            guard result.confidence != .low, var session = result.readerSession else {
+        private func deliverDetectionResult(
+            _ result: DetectionResult, in webView: WKWebView, generation: UUID
+        ) async {
+            guard navigationPolicy.isCurrent(generation),
+                  webView.url == result.pageURL, !webView.isLoading else { return }
+            guard result.readerEntryDisposition != .unavailable,
+                  result.diagnostics.hardBlocks.isEmpty,
+                  var session = result.readerSession,
+                  session.sourceURL == result.pageURL,
+                  !session.imageURLs.isEmpty else {
                 viewModel.handleDetectionResult(result)
                 return
             }
 
             let cookies = await webView.configuration.websiteDataStore.httpCookieStore.allCookies()
+            guard navigationPolicy.isCurrent(generation),
+                  webView.url == result.pageURL, !webView.isLoading else { return }
             let imageHost = session.imageURLs.first?.host()?.lowercased() ?? ""
             let matchingCookies = cookies.filter { cookie in
                 let domain = cookie.domain.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
@@ -451,7 +532,8 @@ public extension BrowserWebView {
             )
 
             let viable = await ReaderSessionImagePreflight().isViable(session)
-            guard webView.url == result.pageURL else { return }
+            guard navigationPolicy.isCurrent(generation),
+                  webView.url == result.pageURL, !webView.isLoading else { return }
             if viable {
                 var prepared = result
                 prepared.readerSession = session

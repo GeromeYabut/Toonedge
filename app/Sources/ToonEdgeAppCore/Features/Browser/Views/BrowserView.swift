@@ -10,6 +10,7 @@ public struct BrowserChromeLayout: Equatable, Sendable {
     public let showsDecorativeBrowserStatus = false
     public let minimumActionSize: CGFloat = 44
     public let cleanModeActionIdentifier = "browser.cleanModeAction"
+    public let manualCleanModeActionIdentifier = "browser.tryCleanMode"
     public let closeActionIdentifier = "browser.close"
     public let reloadActionIdentifier = "browser.reload"
     public let backActionIdentifier = "browser.back"
@@ -254,7 +255,7 @@ public struct BrowserView: View {
     }
 
     private var bottomControls: some View {
-        HStack(spacing: ToonEdgeSpacing.xlarge) {
+        HStack(spacing: ToonEdgeSpacing.medium) {
             Button {
                 viewModel.goBack()
             } label: {
@@ -276,6 +277,15 @@ public struct BrowserView: View {
             .accessibilityIdentifier(chromeLayout.forwardActionIdentifier)
 
             Spacer()
+
+            if viewModel.cleanModePresentation == .manualTool {
+                Button("Try Clean Mode") {
+                    viewModel.enterCleanModeManually()
+                }
+                .font(ToonEdgeTypography.caption)
+                .frame(minWidth: chromeLayout.minimumActionSize, minHeight: chromeLayout.minimumActionSize)
+                .accessibilityIdentifier(chromeLayout.manualCleanModeActionIdentifier)
+            }
 
             if chromeLayout.reloadPlacement == .bottomToolbar {
                 Button {
@@ -351,6 +361,7 @@ public struct BrowserView: View {
         .padding(ToonEdgeSpacing.medium)
         .background(ToonEdgeColor.elevated, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("browser.readerUnavailable")
     }
 
     private var invalidRequestView: some View {
