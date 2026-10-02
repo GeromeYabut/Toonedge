@@ -208,6 +208,11 @@ public enum SearchSuggestionKind: Equatable, Sendable {
     case searchAction
 }
 
+public enum SearchSuggestionDestination: Equatable, Sendable {
+    case browserInput(String)
+    case librarySeries(LibrarySearchItem)
+}
+
 public struct SearchSuggestion: Identifiable, Equatable, Sendable {
     public let id: UUID
     public var kind: SearchSuggestionKind

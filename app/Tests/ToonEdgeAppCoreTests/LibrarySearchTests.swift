@@ -147,3 +147,94 @@ import Testing
         coverImageURL: coverURL
     ))
 }
+
+private func searchItem(_ suffix: Int, _ title: String) -> LibrarySearchItem {
+    LibrarySearchItem(
+        id: UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", suffix))!,
+        title: title,
+        sourceDomain: "example.com",
+        libraryState: .reading,
+        currentChapterLabel: nil,
+        coverImageURL: nil
+    )
+}
+
+@Test func libraryRankerOrdersExactPrefixOrderedTokenPrefixThenAllTokenContained() {
+    let exact = searchItem(1, "Hero Rest")
+    let prefix = searchItem(2, "Hero Rest Returns")
+    let ordered = searchItem(3, "The Heroic Resting")
+    let contained = searchItem(4, "The Resting Hero")
+    let unrelated = searchItem(5, "Villain's Journey")
+
+    let result = LibrarySuggestionRanker().rank(
+        query: "hero rest",
+        items: [contained, unrelated, ordered, prefix, exact],
+        limit: 8
+    )
+
+    #expect(result.map(\.id) == [exact.id, prefix.id, ordered.id, contained.id])
+}
+
+@Test func libraryRankerNormalizesCaseDiacriticsPunctuationAndWhitespace() {
+    let item = searchItem(1, "Héro—Returns")
+    let ranker = LibrarySuggestionRanker()
+
+    #expect(ranker.rank(query: "  HERO,   returns  ", items: [item], limit: 8) == [item])
+    #expect(ranker.rank(query: "héro returns", items: [item], limit: 8) == [item])
+}
+
+@Test func libraryRankerBreaksTiesByNormalizedTitleThenSeriesID() {
+    let zulu = searchItem(1, "Hero Zulu")
+    let alphaLaterID = searchItem(3, "Hero Álpha")
+    let alphaEarlierID = searchItem(2, "Hero Alpha")
+    let ranker = LibrarySuggestionRanker()
+    let items = [zulu, alphaLaterID, alphaEarlierID]
+    let expected = [alphaEarlierID.id, alphaLaterID.id, zulu.id]
+
+    #expect(ranker.rank(query: "hero", items: items, limit: 8).map(\.id) == expected)
+    #expect(ranker.rank(query: "hero", items: items.reversed(), limit: 8).map(\.id) == expected)
+}
+
+@Test func libraryRankerDeduplicatesSavedSeriesIDAndHonorsLimit() {
+    let best = searchItem(1, "Hero")
+    let duplicate = searchItem(1, "The Hero")
+    let second = searchItem(2, "Hero Returns")
+    let ranker = LibrarySuggestionRanker()
+
+    #expect(ranker.rank(query: "hero", items: [duplicate, second, best], limit: 8).map(\.id) == [best.id, second.id])
+    #expect(ranker.rank(query: "hero", items: [second, best, duplicate], limit: 1) == [best])
+    #expect(ranker.rank(query: "hero", items: [best], limit: 0).isEmpty)
+    #expect(ranker.rank(query: "hero", items: [best], limit: -1).isEmpty)
+}
+
+@Test func libraryRankerReturnsNoResultsForEmptyOrPunctuationOnlyQueries() {
+    let item = searchItem(1, "Hero")
+    let ranker = LibrarySuggestionRanker()
+
+    #expect(ranker.rank(query: "", items: [item], limit: 8).isEmpty)
+    #expect(ranker.rank(query: "   ", items: [item], limit: 8).isEmpty)
+    #expect(ranker.rank(query: "—?!", items: [item], limit: 8).isEmpty)
+}
+
+@Test func searchSuggestionDestinationsKeepBrowserAndSavedSeriesDistinct() {
+    let item = searchItem(1, "Hero")
+
+    #expect(SearchSuggestionDestination.browserInput("hero") != .librarySeries(item))
+    #expect(SearchSuggestionDestination.librarySeries(item) == .librarySeries(item))
+}
+
+@Test func libraryRankerChoosesStableRepresentativeForEqualRankDuplicateIDs() {
+    let id = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+    let nilChapter = LibrarySearchItem(
+        id: id, title: "Hero", sourceDomain: "example.com", libraryState: .reading,
+        currentChapterLabel: nil, coverImageURL: nil
+    )
+    let emptyChapter = LibrarySearchItem(
+        id: id, title: "Hero", sourceDomain: "example.com", libraryState: .reading,
+        currentChapterLabel: "", coverImageURL: nil
+    )
+    let ranker = LibrarySuggestionRanker()
+
+    #expect(ranker.rank(query: "hero", items: [nilChapter, emptyChapter], limit: 1) == [nilChapter])
+    #expect(ranker.rank(query: "hero", items: [emptyChapter, nilChapter], limit: 1) == [nilChapter])
+}
