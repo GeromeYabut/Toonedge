@@ -142,6 +142,7 @@ public struct BrowserPopupPolicy: Sendable {
 public enum BrowserPageSanitizerScript {
     public static let javaScript = """
     (() => {
+      \(PageAnalysisScript.accessGatePreservationJavaScript)
       const blockedSelectorFragments = [
         'ad', 'ads', 'advert', 'banner', 'sponsor', 'promo',
         'popup', 'pop-up', 'popunder', 'modal', 'overlay',
@@ -170,7 +171,15 @@ public enum BrowserPageSanitizerScript {
       const shouldHide = (node) => {
         const text = textFor(node);
         if (!text || isReaderNode(node)) return false;
-        return blockedSelectorFragments.some((fragment) => text.includes(fragment));
+        if (!blockedSelectorFragments.some((fragment) => text.includes(fragment))) return false;
+        // Keep a positive blocking surface intact, including noise-labelled copy or controls.
+        // Primary content itself does not exempt ordinary ads elsewhere in the chapter.
+        for (let ancestor = node.parentElement; ancestor; ancestor = ancestor.parentElement) {
+          if (ancestor.matches(toonEdgeBlockingAccessSelector) && toonEdgeHasAccessGateEvidence(ancestor)) return false;
+        }
+        // Preserve the visible access gate and any noise-labelled wrapper containing it.
+        return !toonEdgeHasAccessGateEvidence(node)
+          && !Array.from(node.querySelectorAll(toonEdgeAccessGateSelector)).some(toonEdgeHasAccessGateEvidence);
       };
 
       const hideNoise = () => {

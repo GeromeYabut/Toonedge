@@ -156,10 +156,184 @@ import JavaScriptCore
     #expect((hidden["hardBlocks"] as? [String])?.isEmpty == true)
 }
 
+@Test func renderedLazySrcsetHydrationRemainsEligibleBesideOpaqueViewers() throws {
+    for attribute in ["data-srcset", "data-lazy-srcset"] {
+        for viewer in ["canvas", "blob"] {
+            let fixture = try renderedChapterFixture(sourceAttribute: attribute, unloaded: true, viewer: viewer)
+            #expect(fixture.page.hardBlocks.isEmpty, "\(attribute) beside \(viewer)")
+            let result = GenericChapterDetector().detect(page: fixture.page)
+            #expect(result.readerEntryDisposition == .automatic)
+            #expect(result.readerSession?.imageURLs.count == 6)
+            #expect(result.readerSession?.imageURLs.first?.absoluteString == "https://unknown.example.test/pages/1.jpg")
+        }
+    }
+}
+
+@Test func renderedOpaqueSchemesDoNotCountAsNetworkPages() throws {
+    for attribute in ["src", "srcset", "data-srcset", "data-lazy-srcset"] {
+        for source in ["blob:opaque-{index}", "data:image/png;base64,opaque{index}", "file:///pages/{index}.jpg", "javascript:page{index}"] {
+            let fixture = try renderedChapterFixture(sourceAttribute: attribute, source: source, unloaded: true, viewer: "canvas")
+            #expect(fixture.page.hardBlocks == [.canvasOrBlob], "\(attribute): \(source)")
+            #expect(GenericChapterDetector().detect(page: fixture.page).readerSession == nil)
+        }
+    }
+}
+
+@Test func sanitizerPreservesVisibleAccessGatesBeforeDetection() throws {
+    for (copy, gateClass, expected) in [
+        ("Sign in to read this chapter", "auth-modal", DetectionHardBlock.authentication),
+        ("Subscribe to unlock this chapter", "paywall-overlay", DetectionHardBlock.paywall)
+    ] {
+        for wrapped in [false, true] {
+            let fixture = try renderedChapterFixture(gateText: copy, gateClass: gateClass, gateWrapped: wrapped, sanitize: true)
+            #expect(fixture.page.hardBlocks == [expected])
+            #expect(fixture.gateVisible, "Original access gate must remain visible")
+            #expect(fixture.noiseHidden, "Ordinary ads and decorative overlays still disappear")
+            let result = ProfileAwareChapterDetector().detect(page: fixture.page)
+            #expect(result.candidates.count == 6, "Underlying images remain viable")
+            #expect(result.readerEntryDisposition == .unavailable)
+            #expect(result.readerSession == nil)
+        }
+    }
+}
+
+@Test func sanitizerPreservesAccessGateCopyInsideNoiseLabelledDescendants() throws {
+    for (copy, expected) in [
+        ("Sign in to read this chapter", DetectionHardBlock.authentication),
+        ("Subscribe to unlock this chapter", DetectionHardBlock.paywall)
+    ] {
+        let fixture = try renderedChapterFixture(gateText: copy, gateClass: "auth-modal", gateNestedCopy: true, sanitize: true)
+        #expect(fixture.page.hardBlocks == [expected])
+        #expect(fixture.gateVisible)
+        #expect(fixture.noiseHidden, "Ads in primary content remain suppressible")
+        let result = ProfileAwareChapterDetector().detect(page: fixture.page)
+        #expect(result.candidates.count == 6)
+        #expect(result.readerEntryDisposition == .unavailable)
+        #expect(result.readerSession == nil)
+    }
+}
+
+@Test func sanitizerKeepsOriginallyHiddenLoginTemplatesDistinctFromAccessGates() throws {
+    let fixture = try renderedChapterFixture(gateText: "Sign in to read this chapter", gateClass: "auth-modal", gateHidden: true, sanitize: true)
+    #expect(fixture.page.hardBlocks.isEmpty)
+    #expect(!fixture.gateVisible)
+    #expect(fixture.noiseHidden)
+    #expect(GenericChapterDetector().detect(page: fixture.page).readerEntryDisposition == .automatic)
+}
+
+@Test func sanitizerPreservesVisibleProtectedReaderMarkersAndTheirOverlays() throws {
+    for marker in [DetectionHardBlock.protectedViewer, .drm] {
+        let fixture = try renderedChapterFixture(gateClass: "protected-modal", gateWrapped: true, marker: marker.rawValue, sanitize: true)
+        #expect(fixture.page.hardBlocks == [marker])
+        #expect(fixture.gateVisible)
+        #expect(fixture.noiseHidden)
+        #expect(ProfileAwareChapterDetector().detect(page: fixture.page).readerSession == nil)
+        let hidden = try renderedChapterFixture(gateClass: "protected-modal", gateHidden: true, marker: marker.rawValue, sanitize: true)
+        #expect(hidden.page.hardBlocks.isEmpty)
+        #expect(!hidden.gateVisible)
+    }
+}
+
+private func installRenderedURLResolver(in context: JSContext) {
+    let scheme: @convention(block) (String, String) -> String = { source, base in
+        URL(string: source, relativeTo: URL(string: base))?.absoluteURL.scheme ?? ""
+    }
+    context.setObject(scheme, forKeyedSubscript: "__resolvedURLScheme" as NSString)
+    context.evaluateScript("globalThis.URL = class { constructor(source, base) { this.protocol = __resolvedURLScheme(source, base) + ':'; } };")
+}
+
+private func renderedChapterFixture(sourceAttribute: String = "src", source: String = "/pages/{index}.jpg",
+    unloaded: Bool = false, viewer: String = "", gateText: String = "", gateClass: String = "",
+    gateHidden: Bool = false, gateWrapped: Bool = false, gateNestedCopy: Bool = false,
+    marker: String = "", sanitize: Bool = false)
+    throws -> (page: DetectionPageAnalysis, gateVisible: Bool, noiseHidden: Bool) {
+    let context = try #require(JSContext())
+    installRenderedURLResolver(in: context)
+    let data = try JSONSerialization.data(withJSONObject: ["sourceAttribute": sourceAttribute, "source": source,
+        "unloaded": unloaded, "viewer": viewer, "gateText": gateText, "gateClass": gateClass,
+        "gateHidden": gateHidden, "gateWrapped": gateWrapped, "gateNestedCopy": gateNestedCopy, "marker": marker])
+    let fixture = try #require(String(data: data, encoding: .utf8))
+    context.evaluateScript("""
+    const fixture = \(fixture);
+    const computedStyle = (node) => {
+      let hidden = false;
+      for (let current = node; current; current = current.parentElement) {
+        hidden ||= current.hidden || current.style.display === 'none' || current.style.visibility === 'hidden';
+      }
+      return { display: hidden ? 'none' : 'block', visibility: hidden ? 'hidden' : 'visible', opacity: '1' };
+    };
+    const makeNode = (tagName, attributes = {}, text = '', width = 390, height = 844, top = 0) => {
+      const node = { tagName, attributes, text, children: [], parentElement: null, hidden: false,
+        id: attributes.id || '', className: attributes.class || '', alt: '', currentSrc: '', naturalWidth: 0, naturalHeight: 0,
+        style: { setProperty(name, value) { this[name] = value; } },
+        getAttribute(name) { return this.attributes[name] || null; },
+        hasAttribute(name) { return Object.hasOwn(this.attributes, name); },
+        setAttribute(name, value) { this.attributes[name] = value; },
+        matches(selector) { return selector.split(',').some((part) => {
+          const token = part.trim();
+          if (token === 'img[src^="blob:"]') return this.tagName === 'IMG' && (this.getAttribute('src') || '').startsWith('blob:');
+          if (token.startsWith('.')) return this.className.split(' ').includes(token.slice(1));
+          const attr = token.match(/^\\[([^=\\]]+)(?:="([^"]*)")?\\]$/);
+          return attr ? this.hasAttribute(attr[1]) && (attr[2] === undefined || this.getAttribute(attr[1]) === attr[2]) : this.tagName.toLowerCase() === token;
+        }); },
+        querySelectorAll(selector) { return this.children.flatMap((child) => [child, ...child.querySelectorAll('*')]).filter((child) => selector === '*' || child.matches(selector)); },
+        getBoundingClientRect() { return { width: computedStyle(this).display === 'none' ? 0 : width,
+          height: computedStyle(this).display === 'none' ? 0 : height, top, left: 0 }; }
+      };
+      Object.defineProperty(node, 'innerText', { get() { return computedStyle(this).display === 'none' ? '' : [this.text, ...this.children.map((child) => child.innerText)].join(' '); } });
+      return node;
+    };
+    const append = (parent, child) => { parent.children.push(child); child.parentElement = parent; return child; };
+    const body = makeNode('BODY'); body.scrollHeight = 18000;
+    const main = append(body, makeNode('MAIN', { class: 'reader-main' }, 'Chapter 1', 390, 18000));
+    const images = Array.from({ length: 6 }, (_, offset) => {
+      const index = offset + 1;
+      const source = fixture.source.replace('{index}', index);
+      const value = fixture.sourceAttribute.includes('srcset') ? source + ' 900w' : source;
+      const image = append(main, makeNode('IMG', { [fixture.sourceAttribute]: value,
+        'data-reader-page-image': 'true', 'data-reader-index': String(index) }, '', fixture.unloaded ? 0 : 900,
+        fixture.unloaded ? 0 : 1350, index * 1360));
+      image.naturalWidth = fixture.unloaded ? 0 : 900; image.naturalHeight = fixture.unloaded ? 0 : 1350;
+      return image;
+    });
+    if (fixture.viewer === 'canvas') append(main, makeNode('CANVAS'));
+    if (fixture.viewer === 'blob') { const blob = append(main, makeNode('IMG', { src: 'blob:opaque' })); images.push(blob); }
+    const gateParent = fixture.gateNestedCopy ? main : body;
+    const wrapper = fixture.gateWrapped ? append(gateParent, makeNode('DIV', { class: 'blocking-overlay' })) : gateParent;
+    const gate = append(wrapper, makeNode('DIV', { role: 'dialog', class: fixture.gateClass }, fixture.gateNestedCopy ? '' : fixture.gateText));
+    if (fixture.gateNestedCopy) append(gate, makeNode('DIV', { class: 'auth-header' }, fixture.gateText));
+    if (fixture.marker === 'protectedViewer') gate.setAttribute('data-protected-reader', 'true');
+    if (fixture.marker === 'drm') gate.setAttribute('data-drm-protected', 'true');
+    gate.hidden = fixture.gateHidden;
+    const ad = append(main, makeNode('ASIDE', { class: 'advert-banner' }, 'Advertisement'));
+    const decoration = append(body, makeNode('DIV', { class: 'decorative-overlay' }, 'Accept cookies'));
+    globalThis.window = { location: { href: 'https://unknown.example.test/chapter-1' }, innerWidth: 390, innerHeight: 844,
+      scrollX: 0, scrollY: 0, getComputedStyle: computedStyle, open: () => null };
+    globalThis.MutationObserver = class { constructor(callback) {} observe() {} };
+    globalThis.document = { title: 'Chapter 1', images, body, documentElement: { scrollHeight: 18000, innerHTML: '' },
+      querySelector: (selector) => body.querySelectorAll(selector)[0] || null,
+      querySelectorAll: (selector) => body.querySelectorAll(selector) };
+    """)
+    #expect(context.exception == nil)
+    if sanitize {
+        context.evaluateScript(BrowserPageSanitizerScript.javaScript)
+        #expect(context.exception == nil)
+    }
+    let json = try #require(context.evaluateScript(PageAnalysisScript.javaScript)?.toString())
+    #expect(context.exception == nil)
+    let page = try JSONDecoder().decode(DetectionPageAnalysis.self, from: Data(json.utf8))
+    let gateVisibility = try #require(context.evaluateScript("computedStyle(gate).display !== 'none'"))
+    let noiseVisibility = try #require(context.evaluateScript("computedStyle(ad).display === 'none' && computedStyle(decoration).display === 'none'"))
+    let gateVisible = gateVisibility.toBool()
+    let noiseHidden = noiseVisibility.toBool()
+    return (page, gateVisible, noiseHidden)
+}
+
 private func renderedEntryPayload(mainText: String, globalText: String = "", decorativeCanvas: Bool = false,
     viewer: String = "", hasNetworkImages: Bool = false, visible: Bool = true, marker: String = "",
     readerTaggedUnloadedImages: Bool = false) throws -> [String: Any] {
     let context = try #require(JSContext())
+    installRenderedURLResolver(in: context)
     let data = try JSONSerialization.data(withJSONObject: ["mainText": mainText, "globalText": globalText,
         "decorativeCanvas": decorativeCanvas, "viewer": viewer, "hasNetworkImages": hasNetworkImages,
         "visible": visible, "marker": marker, "readerTaggedUnloadedImages": readerTaggedUnloadedImages])
