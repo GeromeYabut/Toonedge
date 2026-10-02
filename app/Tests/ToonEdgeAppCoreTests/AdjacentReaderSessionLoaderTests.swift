@@ -183,6 +183,7 @@ import Testing
                 <figure><img src="https://storage.vortexscans.org/upload/series/past-life-returner/chapter-170/page-0003.webp" width="800" height="5000" alt="Past Life Returner Chapter 170 Page 3" class="h-auto w-full object-contain" data-reader-page-image data-reader-index="2"></figure>
                 <figure><img src="https://storage.vortexscans.org/upload/series/past-life-returner/chapter-170/page-0004.webp" width="800" height="5000" alt="Past Life Returner Chapter 170 Page 4" class="h-auto w-full object-contain" data-reader-page-image data-reader-index="3"></figure>
                 <figure><img src="https://storage.vortexscans.org/upload/series/past-life-returner/chapter-170/page-0005.webp" width="800" height="5000" alt="Past Life Returner Chapter 170 Page 5" class="h-auto w-full object-contain" data-reader-page-image data-reader-index="4"></figure>
+                <figure><img src="https://storage.vortexscans.org/upload/series/past-life-returner/chapter-170/page-0006.webp" width="800" height="5000" alt="Past Life Returner Chapter 170 Page 6" class="h-auto w-full object-contain" data-reader-page-image data-reader-index="5"></figure>
                 <nav aria-label="Chapter navigation">
                   <a href="/series/past-life-returner/chapter-169">Prev</a>
                   <a href="/series/past-life-returner/chapter-171">Next</a>
@@ -200,7 +201,7 @@ import Testing
 
     #expect(loaded.sourceURL == sourceURL)
     #expect(loaded.chapterTitle == "Past Life Returner Chapter 170")
-    #expect(loaded.imageURLs.count == 5)
+    #expect(loaded.imageURLs.count == 6)
     #expect(loaded.previousChapter?.sourceURL == URL(string: "https://vortexscans.org/series/past-life-returner/chapter-169")!)
     #expect(loaded.nextChapter?.sourceURL == URL(string: "https://vortexscans.org/series/past-life-returner/chapter-171")!)
 }
@@ -219,7 +220,7 @@ import Testing
                 images: []
             )
         ),
-        htmlLoader: StubAdjacentHTMLLoader(html: vortexChapterHTML(pageNumberCount: 5))
+        htmlLoader: StubAdjacentHTMLLoader(html: vortexChapterHTML(pageNumberCount: 6))
     )
 
     let loaded = try await loader.loadAdjacentReaderSession(
@@ -228,7 +229,7 @@ import Testing
     )
 
     #expect(loaded.sourceURL == sourceURL)
-    #expect(loaded.imageURLs.count == 5)
+    #expect(loaded.imageURLs.count == 6)
 }
 
 @MainActor
@@ -245,7 +246,7 @@ import Testing
                 images: []
             )
         ),
-        htmlLoader: StubAdjacentHTMLLoader(html: vortexChapterHTML(pageNumberCount: 5))
+        htmlLoader: StubAdjacentHTMLLoader(html: vortexChapterHTML(pageNumberCount: 6))
     )
 
     let loaded = try await loader.loadAdjacentReaderSession(
@@ -254,7 +255,7 @@ import Testing
     )
 
     #expect(loaded.sourceURL == sourceURL)
-    #expect(loaded.imageURLs.count == 5)
+    #expect(loaded.imageURLs.count == 6)
 }
 
 @MainActor
@@ -268,7 +269,7 @@ import Testing
             <html>
               <head><title>Past Life Returner Chapter 170</title></head>
               <body>
-                \(vortexImageTags(pageNumberCount: 5))
+                \(vortexImageTags(pageNumberCount: 6))
                 <nav aria-label="Chapter navigation">
                   <a href="/series/past-life-returner/chapter-169"><span aria-hidden="true">&larr;</span>Prev</a>
                   <a href="/series/past-life-returner/chapter-171">Next<span aria-hidden="true">&rarr;</span></a>

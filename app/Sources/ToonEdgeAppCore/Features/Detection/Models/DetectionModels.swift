@@ -116,6 +116,9 @@ public struct DetectionPageAnalysis: Codable, Equatable, Sendable {
     public var previousChapterURL: URL?
     public var nextChapterURL: URL?
     public var challengeSignals: [String]
+    /// Zero means an older payload did not measure viewport height; never infer it from width.
+    public var viewportHeight: Double
+    public var hardBlocks: [DetectionHardBlock]
 
     public init(
         pageURL: URL,
@@ -125,7 +128,9 @@ public struct DetectionPageAnalysis: Codable, Equatable, Sendable {
         images: [DetectionImageCandidate],
         previousChapterURL: URL? = nil,
         nextChapterURL: URL? = nil,
-        challengeSignals: [String] = []
+        challengeSignals: [String] = [],
+        viewportHeight: Double = 0,
+        hardBlocks: [DetectionHardBlock] = []
     ) {
         self.pageURL = pageURL
         self.title = title
@@ -135,6 +140,37 @@ public struct DetectionPageAnalysis: Codable, Equatable, Sendable {
         self.previousChapterURL = previousChapterURL
         self.nextChapterURL = nextChapterURL
         self.challengeSignals = challengeSignals
+        self.viewportHeight = viewportHeight
+        self.hardBlocks = hardBlocks
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case pageURL, title, documentHeight, viewportWidth, images
+        case previousChapterURL, nextChapterURL, challengeSignals, viewportHeight, hardBlocks
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            pageURL: try values.decode(URL.self, forKey: .pageURL),
+            title: try values.decode(String.self, forKey: .title),
+            documentHeight: try values.decode(Double.self, forKey: .documentHeight),
+            viewportWidth: try values.decode(Double.self, forKey: .viewportWidth),
+            images: try values.decode([DetectionImageCandidate].self, forKey: .images),
+            previousChapterURL: try values.decodeIfPresent(URL.self, forKey: .previousChapterURL),
+            nextChapterURL: try values.decodeIfPresent(URL.self, forKey: .nextChapterURL),
+            challengeSignals: try values.decodeIfPresent([String].self, forKey: .challengeSignals) ?? [],
+            viewportHeight: try values.decodeIfPresent(Double.self, forKey: .viewportHeight) ?? 0,
+            hardBlocks: try values.decodeIfPresent([DetectionHardBlock].self, forKey: .hardBlocks) ?? []
+        )
+    }
+
+    var resolvedHardBlocks: Set<DetectionHardBlock> {
+        var blocks = Set(hardBlocks)
+        if !challengeSignals.isEmpty || title.lowercased().contains("just a moment") {
+            blocks.insert(.challenge)
+        }
+        return blocks
     }
 }
 
@@ -146,6 +182,7 @@ public struct DetectionResult: Equatable, Sendable {
     public var readerSession: MockReaderSession?
     public var retryRecommendation: DetectionRetryRecommendation
     public var diagnostics: DetectionDiagnostics
+    public var readerEntryDisposition: ReaderEntryDisposition
 
     public init(
         pageURL: URL,
@@ -154,15 +191,28 @@ public struct DetectionResult: Equatable, Sendable {
         candidates: [DetectionImageCandidate],
         readerSession: MockReaderSession?,
         retryRecommendation: DetectionRetryRecommendation = .none,
-        diagnostics: DetectionDiagnostics
+        diagnostics: DetectionDiagnostics,
+        readerEntryDisposition: ReaderEntryDisposition? = nil
     ) {
         self.pageURL = pageURL
         self.confidence = confidence
         self.score = score
         self.candidates = candidates
-        self.readerSession = readerSession
         self.retryRecommendation = retryRecommendation
         self.diagnostics = diagnostics
+        if !diagnostics.hardBlocks.isEmpty || readerSession == nil {
+            self.readerEntryDisposition = .unavailable
+        } else if let readerEntryDisposition {
+            self.readerEntryDisposition = readerEntryDisposition
+        } else {
+            // Keep existing injected result initializers compatible while detectors supply explicit policy output.
+            switch confidence {
+            case .high: self.readerEntryDisposition = .automatic
+            case .medium: self.readerEntryDisposition = .recommended
+            case .low: self.readerEntryDisposition = .unavailable
+            }
+        }
+        self.readerSession = self.readerEntryDisposition == .unavailable ? nil : readerSession
     }
 }
 
@@ -176,6 +226,9 @@ public struct DetectionDiagnostics: Codable, Equatable, Sendable {
     public var retryRecommendation: DetectionRetryRecommendation
     public var candidateCount: Int
     public var messages: [String]
+    public var hardBlocks: Set<DetectionHardBlock>
+    public var negativeScore: Int
+    public var tallestHeightRatio: Double
 
     public init(
         confidence: DetectionConfidence,
@@ -186,7 +239,10 @@ public struct DetectionDiagnostics: Codable, Equatable, Sendable {
         compatibilityClass: SiteProfileCompatibilityClass? = nil,
         retryRecommendation: DetectionRetryRecommendation = .none,
         candidateCount: Int = 0,
-        messages: [String] = []
+        messages: [String] = [],
+        hardBlocks: Set<DetectionHardBlock> = [],
+        negativeScore: Int = 0,
+        tallestHeightRatio: Double = 0
     ) {
         self.confidence = confidence
         self.score = score
@@ -197,5 +253,31 @@ public struct DetectionDiagnostics: Codable, Equatable, Sendable {
         self.retryRecommendation = retryRecommendation
         self.candidateCount = candidateCount
         self.messages = messages
+        self.hardBlocks = hardBlocks
+        self.negativeScore = negativeScore
+        self.tallestHeightRatio = tallestHeightRatio
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case confidence, score, parserPath, profileDomain, supportTier, compatibilityClass
+        case retryRecommendation, candidateCount, messages, hardBlocks, negativeScore, tallestHeightRatio
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            confidence: try values.decode(DetectionConfidence.self, forKey: .confidence),
+            score: try values.decode(Int.self, forKey: .score),
+            parserPath: try values.decode(DetectionParserPath.self, forKey: .parserPath),
+            profileDomain: try values.decodeIfPresent(String.self, forKey: .profileDomain),
+            supportTier: try values.decodeIfPresent(SiteProfileSupportTier.self, forKey: .supportTier),
+            compatibilityClass: try values.decodeIfPresent(SiteProfileCompatibilityClass.self, forKey: .compatibilityClass),
+            retryRecommendation: try values.decodeIfPresent(DetectionRetryRecommendation.self, forKey: .retryRecommendation) ?? .none,
+            candidateCount: try values.decodeIfPresent(Int.self, forKey: .candidateCount) ?? 0,
+            messages: try values.decodeIfPresent([String].self, forKey: .messages) ?? [],
+            hardBlocks: try values.decodeIfPresent(Set<DetectionHardBlock>.self, forKey: .hardBlocks) ?? [],
+            negativeScore: try values.decodeIfPresent(Int.self, forKey: .negativeScore) ?? 0,
+            tallestHeightRatio: try values.decodeIfPresent(Double.self, forKey: .tallestHeightRatio) ?? 0
+        )
     }
 }

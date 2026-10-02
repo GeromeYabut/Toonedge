@@ -48,7 +48,8 @@ public struct ProfileAwareChapterDetector: ChapterPageDetecting {
                         "profileDomain=\(profile.domain)",
                         "supportTier=\(profile.supportTier.rawValue)",
                         "compatibilityClass=\(profile.compatibilityClass.rawValue)"
-                    ]
+                    ],
+                    hardBlocks: page.resolvedHardBlocks.union([.unsupportedPagination])
                 )
             )
             diagnosticsLogger.log(result.diagnostics, pageURL: page.pageURL)
@@ -79,14 +80,15 @@ public struct ProfileAwareChapterDetector: ChapterPageDetecting {
                         "profileDomain=\(profile.domain)",
                         "supportTier=\(profile.supportTier.rawValue)",
                         "compatibilityClass=\(profile.compatibilityClass.rawValue)"
-                    ]
+                    ],
+                    hardBlocks: page.resolvedHardBlocks.union([.browserOnly])
                 )
             )
             diagnosticsLogger.log(result.diagnostics, pageURL: page.pageURL)
             return result
         }
 
-        if page.isChallengePage {
+        if !page.resolvedHardBlocks.isEmpty {
             result = genericDetector.detect(page: page, parserPath: .browserSessionProfile, profile: profile)
             diagnosticsLogger.log(result.diagnostics, pageURL: page.pageURL)
             return result
@@ -135,7 +137,8 @@ public struct ProfileAwareChapterDetector: ChapterPageDetecting {
 
     public func detectBrowserSessionFollowUp(page: DetectionPageAnalysis) -> DetectionResult {
         guard let profile = registry.profile(for: page.pageURL),
-              profile.compatibilityClass == .browserSession else {
+              profile.compatibilityClass == .browserSession,
+              profile.supportTier != .browserOnly else {
             return detect(page: page)
         }
 
@@ -146,10 +149,6 @@ public struct ProfileAwareChapterDetector: ChapterPageDetecting {
 }
 
 private extension DetectionPageAnalysis {
-    var isChallengePage: Bool {
-        !challengeSignals.isEmpty || title.lowercased().contains("just a moment")
-    }
-
     func withImagesMatching(_ selectorHints: [String]) -> DetectionPageAnalysis {
         let normalizedHints = selectorHints
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }

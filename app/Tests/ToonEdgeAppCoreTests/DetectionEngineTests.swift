@@ -1,6 +1,223 @@
 import Foundation
 import Testing
+#if canImport(JavaScriptCore)
+import JavaScriptCore
+#endif
 @testable import ToonEdgeAppCore
+
+@Test func manualBandRetainsViableSessionWithoutRecommendingIt() throws {
+    let result = GenericChapterDetector().detect(page: try entryPage(count: 4))
+    #expect(result.score == 46)
+    #expect(result.confidence == .low)
+    #expect(result.readerEntryDisposition == .manual)
+    #expect(result.readerSession?.imageURLs.count == 4)
+}
+
+@Test func highBandDoesNotFallBackWhenCandidateAndHeightConstraintsFail() throws {
+    let page = DetectionPageAnalysis(
+        pageURL: try #require(URL(string: "https://example.test/chapter-1")),
+        title: "Chapter 1", documentHeight: 18_000, viewportWidth: 390,
+        images: Array(chapterImages(host: "cdn.example.test").prefix(5))
+    )
+    let result = GenericChapterDetector().detect(page: page)
+    #expect(result.score >= 78)
+    #expect(result.readerEntryDisposition == .unavailable)
+    #expect(result.diagnostics.tallestHeightRatio == 0)
+    #expect(result.readerSession == nil)
+}
+
+@Test func protectedViewerIsUnavailableRegardlessOfScore() throws {
+    var page = try entryPage(count: 8, width: 900, height: 1_350)
+    page.documentHeight = 18_000
+    for block in DetectionHardBlock.allCases {
+        let protectedPage = try pageWithPayloadFields(page, fields: ["hardBlocks": [block.rawValue]])
+        let result = ProfileAwareChapterDetector().detect(page: protectedPage)
+        #expect(result.readerEntryDisposition == .unavailable)
+        #expect(result.diagnostics.hardBlocks.contains(block))
+        #expect(result.readerSession == nil, "Blocked by \(block.rawValue)")
+    }
+}
+
+@Test func tallestImageRequiresActualViewportHeight() throws {
+    var page = try entryPage(count: 2, width: 900, height: 4_500)
+    page.documentHeight = 18_000
+    let tallViewport = try pageWithPayloadFields(page, fields: ["viewportHeight": 1_500])
+    let shortViewport = try pageWithPayloadFields(page, fields: ["viewportHeight": 800])
+    #expect(GenericChapterDetector().detect(page: tallViewport).readerSession == nil)
+    #expect(GenericChapterDetector().detect(page: shortViewport).readerSession != nil)
+    #expect(GenericChapterDetector().detect(page: shortViewport).readerEntryDisposition == .recommended)
+    #expect(GenericChapterDetector().detect(page: shortViewport).diagnostics.negativeScore == -16)
+    #expect(GenericChapterDetector().detect(page: shortViewport).diagnostics.tallestHeightRatio == 5.625)
+}
+
+@Test func unavailableResultsPreserveAllTypedBlocksThroughProfilesAndFollowUp() throws {
+    for host in ["unknown.example.test", "mangapill.com", "mangafire.to", "m.webtoons.com", "mangahere.cc"] {
+        var page = try entryPage(count: 8, width: 900, height: 1_350)
+        page.pageURL = try #require(URL(string: "https://\(host)/chapter-1"))
+        page.hardBlocks = [.authentication, .paywall, .protectedViewer]
+        page.challengeSignals = ["challenge-copy"]
+        let detector = ProfileAwareChapterDetector()
+        for result in [detector.detect(page: page), detector.detectBrowserSessionFollowUp(page: page)] {
+            #expect(result.readerEntryDisposition == .unavailable)
+            #expect(result.readerSession == nil)
+            #expect(result.retryRecommendation == .none)
+            #expect(result.diagnostics.hardBlocks.isSuperset(of: [.challenge, .authentication, .paywall, .protectedViewer]))
+        }
+    }
+}
+
+@Test func legacyAnalysisAndDiagnosticsDecodeWithConservativeDefaults() throws {
+    let page = try detectionFixture(named: "mangapill_hydrated_dom")
+    #expect(page.viewportHeight == 0)
+    #expect(page.hardBlocks.isEmpty)
+    let json = Data(#"{"confidence":"low","score":0,"parserPath":"genericHeuristic","retryRecommendation":"none","candidateCount":0,"messages":[]}"#.utf8)
+    let diagnostics = try JSONDecoder().decode(DetectionDiagnostics.self, from: json)
+    #expect(diagnostics.hardBlocks.isEmpty)
+    #expect(diagnostics.negativeScore == 0)
+    #expect(diagnostics.tallestHeightRatio == 0)
+}
+
+@Test func blockedResultInitializerCannotHonorAnExplicitEntryDisposition() throws {
+    let page = try entryPage(count: 8, width: 900, height: 1_350)
+    let session = try #require(GenericChapterDetector().detect(page: page).readerSession)
+    let result = DetectionResult(pageURL: page.pageURL, confidence: .high, score: 100, candidates: page.images,
+        readerSession: session,
+        diagnostics: .init(confidence: .high, score: 100, parserPath: .genericHeuristic, hardBlocks: [.paywall]),
+        readerEntryDisposition: .automatic)
+    #expect(result.readerEntryDisposition == .unavailable)
+    #expect(result.readerSession == nil)
+}
+
+@Test func unavailableResultInitializerCannotRetainAReaderSession() throws {
+    let page = try entryPage(count: 8, width: 900, height: 1_350)
+    let session = try #require(GenericChapterDetector().detect(page: page).readerSession)
+    let result = DetectionResult(pageURL: page.pageURL, confidence: .high, score: 100, candidates: page.images,
+        readerSession: session,
+        diagnostics: .init(confidence: .high, score: 100, parserPath: .genericHeuristic),
+        readerEntryDisposition: .unavailable)
+    #expect(result.readerSession == nil)
+    #expect(result.readerEntryDisposition == .unavailable)
+}
+
+@Test func taggedOpaqueSourcesNeverCreateReaderSession() throws {
+    for scheme in ["blob:https://cdn.example.test/", "data:image/png;base64,", "file:///pages/", "javascript:"] {
+        var page = try entryPage(count: 8, width: 900, height: 1_350)
+        for index in page.images.indices {
+            page.images[index].src = scheme + String(index)
+            page.images[index].semanticHints = ["data-reader-page-image", "data-reader-index"]
+        }
+        let result = GenericChapterDetector().detect(page: page)
+        #expect(result.readerSession == nil)
+        #expect(result.readerEntryDisposition == .unavailable)
+        #expect(result.candidates.isEmpty)
+    }
+}
+
+@Test func knownViewportAllowsAutomaticEntryForFiveActuallyTallImages() throws {
+    var page = try entryPage(count: 5, width: 900, height: 4_500)
+    page.viewportHeight = 800
+    let result = GenericChapterDetector(entryPolicy: .architectureDefault).detect(page: page)
+    #expect(result.score == 79)
+    #expect(result.readerEntryDisposition == .automatic)
+    #expect(result.confidence == .high)
+    #expect(result.readerSession?.imageURLs.count == 5)
+}
+
+#if canImport(JavaScriptCore)
+@Test func renderedGatesBlockCleanModeWithoutTreatingGlobalDecorationsAsProtection() throws {
+    for (gate, expected) in [("Sign in to read this chapter", "authentication"), ("Subscribe to unlock this chapter", "paywall"), ("404 page not found", "errorPage")] {
+        let payload = try renderedEntryPayload(mainText: gate)
+        let blocks = try #require(payload["hardBlocks"] as? [String])
+        #expect(blocks == [expected], "Visible gate: \(gate)")
+    }
+    let ordinary = try renderedEntryPayload(mainText: "Chapter 1 Login", globalText: "Login Accept cookies Subscribe", decorativeCanvas: true)
+    #expect((ordinary["hardBlocks"] as? [String])?.isEmpty == true)
+}
+
+@Test func renderedOpaqueViewersNeedContentSizeAndAbsenceOfNetworkPages() throws {
+    for viewer in ["canvas", "blob"] {
+        let opaque = try renderedEntryPayload(mainText: "Chapter 1", viewer: viewer)
+        #expect(opaque["hardBlocks"] as? [String] == ["canvasOrBlob"])
+        let withPages = try renderedEntryPayload(mainText: "Chapter 1", viewer: viewer, hasNetworkImages: true)
+        #expect((withPages["hardBlocks"] as? [String])?.isEmpty == true)
+    }
+    let decoration = try renderedEntryPayload(mainText: "Chapter 1", decorativeCanvas: true, viewer: "canvas")
+    #expect((decoration["hardBlocks"] as? [String])?.isEmpty == true)
+    let recoverable = try renderedEntryPayload(mainText: "Chapter 1", viewer: "canvas", readerTaggedUnloadedImages: true)
+    #expect((recoverable["hardBlocks"] as? [String])?.isEmpty == true)
+}
+
+@Test func renderedProtectedMarkersAndHiddenGatesRemainDistinct() throws {
+    for marker in ["protectedViewer", "drm"] {
+        let protected = try renderedEntryPayload(mainText: "Chapter 1", marker: marker)
+        #expect(protected["hardBlocks"] as? [String] == [marker])
+    }
+    let hidden = try renderedEntryPayload(mainText: "Sign in to read this chapter", visible: false, marker: "protectedViewer")
+    #expect((hidden["hardBlocks"] as? [String])?.isEmpty == true)
+}
+
+private func renderedEntryPayload(mainText: String, globalText: String = "", decorativeCanvas: Bool = false,
+    viewer: String = "", hasNetworkImages: Bool = false, visible: Bool = true, marker: String = "",
+    readerTaggedUnloadedImages: Bool = false) throws -> [String: Any] {
+    let context = try #require(JSContext())
+    let data = try JSONSerialization.data(withJSONObject: ["mainText": mainText, "globalText": globalText,
+        "decorativeCanvas": decorativeCanvas, "viewer": viewer, "hasNetworkImages": hasNetworkImages,
+        "visible": visible, "marker": marker, "readerTaggedUnloadedImages": readerTaggedUnloadedImages])
+    let fixture = try #require(String(data: data, encoding: .utf8))
+    context.evaluateScript("""
+    const fixture = \(fixture);
+    const main = { innerText: fixture.mainText, textContent: fixture.mainText, hidden: !fixture.visible,
+      tagName: 'MAIN', id: '', className: '', getAttribute: () => null, hasAttribute: () => false,
+      getBoundingClientRect: () => ({ width: 390, height: 844, top: 0, left: 0 }),
+      querySelector: () => null, querySelectorAll: () => [], matches: () => false };
+    const canvas = { ...main, tagName: 'CANVAS', getBoundingClientRect: () => ({
+      width: fixture.decorativeCanvas ? 30 : 390, height: fixture.decorativeCanvas ? 30 : 844, top: 0, left: 0 }) };
+    const networkImage = { ...main, tagName: 'IMG', naturalWidth: fixture.readerTaggedUnloadedImages ? 0 : 900,
+      naturalHeight: fixture.readerTaggedUnloadedImages ? 0 : 1350,
+      getBoundingClientRect: () => ({ width: fixture.readerTaggedUnloadedImages ? 0 : 390,
+        height: fixture.readerTaggedUnloadedImages ? 0 : 844, top: 0, left: 0 }),
+      hasAttribute: (name) => fixture.readerTaggedUnloadedImages && ['data-reader-page-image', 'data-reader-index'].includes(name),
+      currentSrc: 'https://cdn.example.test/1.jpg', parentElement: main,
+      getAttribute: (name) => name === 'src' ? 'https://cdn.example.test/1.jpg' : null };
+    const blobImage = { ...networkImage, currentSrc: 'blob:opaque', getAttribute: (name) => name === 'src' ? 'blob:opaque' : null };
+    main.querySelectorAll = (selector) => selector === 'img' && (fixture.hasNetworkImages || fixture.readerTaggedUnloadedImages) ? [networkImage] :
+      selector === 'canvas, img[src^="blob:"]' ? (fixture.viewer === 'canvas' ? [canvas] : fixture.viewer === 'blob' ? [blobImage] : []) : [];
+    globalThis.window = { location: { href: 'https://unknown.example.test/chapter-1' }, innerWidth: 390, innerHeight: 844, scrollX: 0, scrollY: 0,
+      getComputedStyle: () => ({ display: 'block', visibility: 'visible', opacity: '1' }) };
+    globalThis.getComputedStyle = window.getComputedStyle;
+    globalThis.document = { title: 'Chapter 1', images: (fixture.hasNetworkImages || fixture.readerTaggedUnloadedImages) ? [networkImage] : fixture.viewer === 'blob' ? [blobImage] : [],
+      body: { innerText: fixture.mainText + ' ' + fixture.globalText, scrollHeight: 844 },
+      documentElement: { scrollHeight: 844, innerHTML: '' },
+      querySelector: (selector) => selector.includes('main') ? main : null,
+      querySelectorAll: (selector) => selector.includes('main') || selector.includes('role="main"') ? [main] :
+        selector.includes('data-protected-reader') && fixture.marker === 'protectedViewer' ? [main] :
+        selector.includes('data-drm-protected') && fixture.marker === 'drm' ? [main] :
+        selector === 'canvas' && fixture.decorativeCanvas ? [canvas] :
+        selector === 'iframe' ? [{ ...main, tagName: 'IFRAME', src: 'https://ads.example.test/' }] : [] };
+    """)
+    let json = try #require(context.evaluateScript(PageAnalysisScript.javaScript)?.toString())
+    #expect(context.exception == nil)
+    return try #require(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+}
+#endif
+
+private func entryPage(count: Int, width: Double = 320, height: Double = 500) throws -> DetectionPageAnalysis {
+    DetectionPageAnalysis(
+        pageURL: try #require(URL(string: "https://unknown.example.test/story")),
+        title: "Story", documentHeight: 2_000, viewportWidth: 390,
+        images: (1...count).map { index in
+            DetectionImageCandidate(src: "https://cdn.example.test/pages/\(index).jpg", lazySources: [], srcset: nil,
+                width: width, height: height, top: Double(index) * (height + 10), left: 0,
+                className: nil, id: nil, alt: nil, parentSignature: nil)
+        }
+    )
+}
+
+private func pageWithPayloadFields(_ page: DetectionPageAnalysis, fields: [String: Any]) throws -> DetectionPageAnalysis {
+    var payload = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(page)) as? [String: Any])
+    payload.merge(fields) { _, new in new }
+    return try JSONDecoder().decode(DetectionPageAnalysis.self, from: JSONSerialization.data(withJSONObject: payload))
+}
 
 @Test func detectionLogURLShapeDropsQueryCredentialsAndSpecificRouteValues() throws {
     let url = try #require(URL(string:
@@ -161,13 +378,13 @@ import Testing
         title: "Moonlit Edge 12",
         documentHeight: 7_000,
         viewportWidth: 390,
-        images: (1...3).map { index in
+        images: (1...4).map { index in
             DetectionImageCandidate(
                 src: "https://cdn.example.com/ch12/\(index).jpg",
                 lazySources: [],
                 srcset: nil,
-                width: 820,
-                height: 1_200,
+                width: 320,
+                height: 500,
                 top: Double(index * 1_220),
                 left: 0,
                 className: "chapter-page",
@@ -181,7 +398,9 @@ import Testing
     let result = GenericChapterDetector().detect(page: page)
 
     #expect(result.confidence == .medium)
-    #expect(result.readerSession?.imageURLs.count == 3)
+    #expect(result.readerEntryDisposition == .recommended)
+    #expect(result.score == 70)
+    #expect(result.readerSession?.imageURLs.count == 4)
 }
 
 @Test func genericDetectorExcludesLargeAdImagesOutsideReaderFlow() throws {
@@ -424,6 +643,12 @@ import Testing
     for name in readableFixtures {
         let page = try detectionFixture(named: name)
         let result = ProfileAwareChapterDetector().detect(page: page)
+        if name == "mangapill_hydrated_dom" {
+            #expect(result.readerEntryDisposition == .unavailable)
+            #expect(result.readerSession == nil)
+            #expect(result.candidates.count == 5)
+            continue
+        }
         let session = try #require(result.readerSession)
         #expect(result.confidence == .high)
         #expect(session.imageURLs.count == page.images.count)
@@ -467,8 +692,10 @@ import Testing
 
     let result = ProfileAwareChapterDetector().detect(page: page)
 
-    #expect(result.confidence == .high)
-    #expect(result.readerSession?.imageURLs.count == 5)
+    #expect(result.confidence == .low)
+    #expect(result.readerEntryDisposition == .unavailable)
+    #expect(result.readerSession == nil)
+    #expect(result.candidates.count == 5)
     #expect(result.diagnostics.parserPath == .siteProfile)
     #expect(result.diagnostics.compatibilityClass == .hydratedDOM)
 }
@@ -666,6 +893,7 @@ import Testing
     #expect(result.retryRecommendation == .none)
     #expect(result.diagnostics.parserPath == .unsupportedPaginatedProfile)
     #expect(result.diagnostics.compatibilityClass == .paginatedSinglePage)
+    #expect(result.diagnostics.hardBlocks.contains(.unsupportedPagination))
 }
 
 @Test func profileAwareDetectorUsesProfileSelectorHintsBeforeGenericFallback() throws {

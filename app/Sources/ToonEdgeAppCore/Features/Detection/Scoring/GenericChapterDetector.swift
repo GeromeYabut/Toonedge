@@ -1,48 +1,18 @@
 import Foundation
 
 public struct GenericChapterDetector: ChapterPageDetecting {
-    private let highConfidenceThreshold: Int
-    private let mediumConfidenceThreshold: Int
+    private let entryPolicy: ReaderEntryPolicy
 
-    public init(highConfidenceThreshold: Int = 85, mediumConfidenceThreshold: Int = 45) {
-        self.highConfidenceThreshold = highConfidenceThreshold
-        self.mediumConfidenceThreshold = mediumConfidenceThreshold
+    public init(highConfidenceThreshold: Int = 78, mediumConfidenceThreshold: Int = 55) {
+        self.entryPolicy = ReaderEntryPolicy(manual: 45, medium: mediumConfidenceThreshold, high: highConfidenceThreshold)
+    }
+
+    public init(entryPolicy: ReaderEntryPolicy) {
+        self.entryPolicy = entryPolicy
     }
 
     public func detect(page: DetectionPageAnalysis) -> DetectionResult {
-        if isChallengePage(page) {
-            return challengeResult(for: page, parserPath: .genericHeuristic)
-        }
-
-        let normalizedCandidates = normalizedCandidates(from: page)
-        let score = score(page: page, candidates: normalizedCandidates)
-        let confidence: DetectionConfidence
-
-        if score >= highConfidenceThreshold, normalizedCandidates.count >= 5 {
-            confidence = .high
-        } else if score >= mediumConfidenceThreshold, normalizedCandidates.count >= 2 {
-            confidence = .medium
-        } else {
-            confidence = .low
-        }
-
-        let readerSession = confidence == .low ? nil : makeReaderSession(page: page, candidates: normalizedCandidates)
-
-        return DetectionResult(
-            pageURL: page.pageURL,
-            confidence: readerSession == nil ? .low : confidence,
-            score: score,
-            candidates: normalizedCandidates,
-            readerSession: readerSession,
-            retryRecommendation: .none,
-            diagnostics: diagnostics(
-                page: page,
-                confidence: readerSession == nil ? .low : confidence,
-                candidates: normalizedCandidates,
-                score: score,
-                parserPath: .genericHeuristic
-            )
-        )
+        detect(page: page, parserPath: .genericHeuristic)
     }
 
     public func detect(
@@ -50,40 +20,50 @@ public struct GenericChapterDetector: ChapterPageDetecting {
         parserPath: DetectionParserPath,
         profile: SiteProfile? = nil
     ) -> DetectionResult {
-        if isChallengePage(page) {
+        if page.resolvedHardBlocks.contains(.challenge) {
             return challengeResult(for: page, parserPath: parserPath, profile: profile)
         }
 
         let normalizedCandidates = normalizedCandidates(from: page)
-        let score = score(page: page, candidates: normalizedCandidates)
+        let scoring = score(page: page, candidates: normalizedCandidates)
+        let session = scoring.total >= entryPolicy.manual
+            ? makeReaderSession(page: page, candidates: normalizedCandidates) : nil
+        var hardBlocks = page.resolvedHardBlocks
+        if session == nil { hardBlocks.insert(.nonviableSession) }
+        let tallestHeightRatio = page.viewportHeight.isFinite && page.viewportHeight > 0
+            ? (normalizedCandidates.map(\.height).filter { $0.isFinite }.max() ?? 0) / page.viewportHeight : 0
+        let evidence = ReaderEntryEvidence(
+            score: scoring.total,
+            negativeScore: scoring.negative,
+            candidateCount: normalizedCandidates.count,
+            tallestHeightRatio: tallestHeightRatio,
+            hardBlocks: hardBlocks,
+            hasViableSession: session != nil
+        )
+        let disposition = entryPolicy.disposition(for: evidence)
         let confidence: DetectionConfidence
-
-        if score >= highConfidenceThreshold, normalizedCandidates.count >= 5 {
-            confidence = .high
-        } else if score >= mediumConfidenceThreshold, normalizedCandidates.count >= 2 {
-            confidence = .medium
-        } else {
-            confidence = .low
+        switch disposition {
+        case .automatic: confidence = .high
+        case .recommended: confidence = .medium
+        case .manual, .unavailable: confidence = .low
         }
-
-        let readerSession = confidence == .low ? nil : makeReaderSession(page: page, candidates: normalizedCandidates)
-        let resolvedConfidence: DetectionConfidence = readerSession == nil ? .low : confidence
 
         return DetectionResult(
             pageURL: page.pageURL,
-            confidence: resolvedConfidence,
-            score: score,
+            confidence: confidence,
+            score: scoring.total,
             candidates: normalizedCandidates,
-            readerSession: readerSession,
+            readerSession: disposition == .unavailable ? nil : session,
             retryRecommendation: .none,
             diagnostics: diagnostics(
                 page: page,
-                confidence: resolvedConfidence,
+                confidence: confidence,
                 candidates: normalizedCandidates,
-                score: score,
+                evidence: evidence,
                 parserPath: parserPath,
                 profile: profile
-            )
+            ),
+            readerEntryDisposition: disposition
         )
     }
 
@@ -155,13 +135,18 @@ public struct GenericChapterDetector: ChapterPageDetecting {
 
     private func isPlaceholderSource(_ source: String) -> Bool {
         let lowercased = source.lowercased()
-        return lowercased.hasPrefix("data:")
+        return lowercased.hasPrefix("data:") || lowercased.hasPrefix("blob:")
             || lowercased.contains("placeholder")
             || lowercased.contains("blank.gif")
             || lowercased.contains("spacer.gif")
     }
 
     private func isUsable(_ candidate: DetectionImageCandidate, resolvedURL: URL) -> Bool {
+        guard ["http", "https"].contains(resolvedURL.scheme?.lowercased() ?? ""),
+              candidate.width.isFinite, candidate.height.isFinite,
+              candidate.width >= 0, candidate.height >= 0 else {
+            return false
+        }
         guard hasStrongReaderHint(candidate) || (candidate.width >= 320 && candidate.height >= 500) else {
             return false
         }
@@ -178,9 +163,9 @@ public struct GenericChapterDetector: ChapterPageDetecting {
         return !hardBlockHints.contains { text.contains($0) }
     }
 
-    private func score(page: DetectionPageAnalysis, candidates: [DetectionImageCandidate]) -> Int {
+    private func score(page: DetectionPageAnalysis, candidates: [DetectionImageCandidate]) -> (total: Int, negative: Int) {
         guard !candidates.isEmpty else {
-            return 0
+            return (0, 0)
         }
 
         var score = 0
@@ -215,11 +200,8 @@ public struct GenericChapterDetector: ChapterPageDetecting {
             score += 12
         }
 
-        if candidates.count < 3 {
-            score -= 16
-        }
-
-        return max(0, score)
+        let negativeScore = candidates.count < 3 ? -16 : 0
+        return (max(0, score + negativeScore), negativeScore)
     }
 
     private func hasStrongReaderHint(_ candidate: DetectionImageCandidate) -> Bool {
@@ -362,13 +344,13 @@ public struct GenericChapterDetector: ChapterPageDetecting {
         page: DetectionPageAnalysis,
         confidence: DetectionConfidence,
         candidates: [DetectionImageCandidate],
-        score: Int,
+        evidence: ReaderEntryEvidence,
         parserPath: DetectionParserPath,
         profile: SiteProfile? = nil
     ) -> DetectionDiagnostics {
         DetectionDiagnostics(
             confidence: confidence,
-            score: score,
+            score: evidence.score,
             parserPath: parserPath,
             profileDomain: profile?.domain,
             supportTier: profile?.supportTier,
@@ -377,22 +359,16 @@ public struct GenericChapterDetector: ChapterPageDetecting {
             candidateCount: candidates.count,
             messages: [
                 "confidence=\(confidence.rawValue)",
-                "score=\(score)",
+                "score=\(evidence.score)",
                 "candidateCount=\(candidates.count)",
                 "documentHeight=\(Int(page.documentHeight))",
                 "parserPath=\(parserPath.rawValue)",
                 "compatibilityClass=\(profile?.compatibilityClass.rawValue ?? "none")"
-            ]
+            ],
+            hardBlocks: evidence.hardBlocks,
+            negativeScore: evidence.negativeScore,
+            tallestHeightRatio: evidence.tallestHeightRatio
         )
-    }
-
-    private func isChallengePage(_ page: DetectionPageAnalysis) -> Bool {
-        if !page.challengeSignals.isEmpty {
-            return true
-        }
-
-        let title = page.title.lowercased()
-        return title.contains("just a moment")
     }
 
     private func challengeResult(
@@ -421,7 +397,8 @@ public struct GenericChapterDetector: ChapterPageDetecting {
                     "challengePage=true",
                     "parserPath=\(parserPath.rawValue)",
                     "compatibilityClass=\(profile?.compatibilityClass.rawValue ?? "none")"
-                ]
+                ],
+                hardBlocks: page.resolvedHardBlocks
             )
         )
     }
