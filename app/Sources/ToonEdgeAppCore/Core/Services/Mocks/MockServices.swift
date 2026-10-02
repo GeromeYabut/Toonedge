@@ -56,6 +56,10 @@ public struct MockLibraryService: LibraryProviding {
         LibrarySnapshot(series: Self.series)
     }
 
+    public func librarySearchItems() async -> [LibrarySearchItem] {
+        Self.series.map(LibrarySearchItem.init(summary:))
+    }
+
     public func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
         Self.details[seriesID]
     }

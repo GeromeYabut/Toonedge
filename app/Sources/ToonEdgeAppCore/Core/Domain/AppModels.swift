@@ -511,6 +511,42 @@ public struct LibrarySeriesSummary: Identifiable, Equatable, Sendable {
     }
 }
 
+public struct LibrarySearchItem: Identifiable, Equatable, Sendable {
+    public let id: UUID
+    public let title: String
+    public let sourceDomain: String
+    public let libraryState: LibraryCollectionState
+    public let currentChapterLabel: String?
+    public let coverImageURL: URL?
+
+    public init(
+        id: UUID,
+        title: String,
+        sourceDomain: String,
+        libraryState: LibraryCollectionState,
+        currentChapterLabel: String?,
+        coverImageURL: URL?
+    ) {
+        self.id = id
+        self.title = title
+        self.sourceDomain = sourceDomain
+        self.libraryState = libraryState
+        self.currentChapterLabel = currentChapterLabel
+        self.coverImageURL = coverImageURL
+    }
+
+    public init(summary: LibrarySeriesSummary) {
+        self.init(
+            id: summary.id,
+            title: summary.title,
+            sourceDomain: summary.sourceDomain,
+            libraryState: summary.libraryState,
+            currentChapterLabel: summary.currentChapterLabel,
+            coverImageURL: summary.coverImageURL
+        )
+    }
+}
+
 public struct LibrarySnapshot: Equatable, Sendable {
     public var series: [LibrarySeriesSummary]
     public var recentReadSeries: [LibrarySeriesSummary]

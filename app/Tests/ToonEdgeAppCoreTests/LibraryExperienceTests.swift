@@ -1711,6 +1711,7 @@ private actor FailingSeriesDetailLifecycleService: LibraryLifecycleManaging {
 
     func homeSnapshot() async -> HomeSnapshot { HomeSnapshot(continueReading: [], recentlyUpdated: [], library: []) }
     func librarySnapshot() async -> LibrarySnapshot { LibrarySnapshot(series: []) }
+    func librarySearchItems() async -> [LibrarySearchItem] { [] }
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? { detail }
 
     func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {
@@ -1769,6 +1770,7 @@ private actor SuspendedSeriesDetailLifecycleService: LibraryLifecycleManaging {
 
     func homeSnapshot() async -> HomeSnapshot { HomeSnapshot(continueReading: [], recentlyUpdated: [], library: []) }
     func librarySnapshot() async -> LibrarySnapshot { LibrarySnapshot(series: []) }
+    func librarySearchItems() async -> [LibrarySearchItem] { [] }
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? { nil }
 
     func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {

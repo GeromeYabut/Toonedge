@@ -758,6 +758,10 @@ private final class RecordingChapterIndexLibrary: LibraryLifecycleManaging, Libr
         snapshot
     }
 
+    func librarySearchItems() async -> [LibrarySearchItem] {
+        snapshot.series.map(LibrarySearchItem.init(summary:))
+    }
+
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
         details[seriesID]
     }
@@ -810,6 +814,10 @@ private actor RecordingUpdateLibrary: LibraryLifecycleManaging {
 
     func librarySnapshot() async -> LibrarySnapshot {
         snapshot
+    }
+
+    func librarySearchItems() async -> [LibrarySearchItem] {
+        snapshot.series.map(LibrarySearchItem.init(summary:))
     }
 
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {

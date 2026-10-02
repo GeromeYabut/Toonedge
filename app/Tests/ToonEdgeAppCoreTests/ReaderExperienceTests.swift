@@ -1207,6 +1207,7 @@ private actor RecordingLibraryLifecycleService: LibraryLifecycleManaging {
 
     func homeSnapshot() async -> HomeSnapshot { .init(continueReading: [], recentlyUpdated: [], library: []) }
     func librarySnapshot() async -> LibrarySnapshot { .init(series: []) }
+    func librarySearchItems() async -> [LibrarySearchItem] { [] }
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? { nil }
     func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {
         addToLibraryCallCount += 1
@@ -1230,6 +1231,7 @@ private actor SuspendedLibraryLifecycleService: LibraryLifecycleManaging {
 
     func homeSnapshot() async -> HomeSnapshot { .init(continueReading: [], recentlyUpdated: [], library: []) }
     func librarySnapshot() async -> LibrarySnapshot { .init(series: []) }
+    func librarySearchItems() async -> [LibrarySearchItem] { [] }
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? { nil }
     func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {
         addToLibraryCallCount += 1
@@ -1269,6 +1271,7 @@ private actor StoredAdjacentLibraryLifecycleService: LibraryLifecycleManaging {
 
     func homeSnapshot() async -> HomeSnapshot { .init(continueReading: [], recentlyUpdated: [], library: []) }
     func librarySnapshot() async -> LibrarySnapshot { .init(series: []) }
+    func librarySearchItems() async -> [LibrarySearchItem] { [] }
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? { nil }
     func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {}
     func removeFromLibrary(seriesID: UUID) async throws {}

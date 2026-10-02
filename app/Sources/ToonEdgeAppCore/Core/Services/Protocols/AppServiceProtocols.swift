@@ -22,7 +22,11 @@ public extension HTTPDataLoading {
     }
 }
 
-public protocol LibraryProviding: Sendable {
+public protocol LibrarySearchProviding: Sendable {
+    func librarySearchItems() async -> [LibrarySearchItem]
+}
+
+public protocol LibraryProviding: LibrarySearchProviding {
     func homeSnapshot() async -> HomeSnapshot
     func librarySnapshot() async -> LibrarySnapshot
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot?

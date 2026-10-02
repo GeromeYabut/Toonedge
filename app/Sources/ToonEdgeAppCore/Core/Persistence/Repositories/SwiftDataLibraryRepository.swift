@@ -44,6 +44,22 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
         )
     }
 
+    public func librarySearchItems() async -> [LibrarySearchItem] {
+        fetchSeries()
+            .filter { !isDomainPlaceholder(title: $0.title, sourceDomain: $0.sourceDomain) }
+            .map { series in
+                let currentChapter = series.lastOpenedChapterID.flatMap(fetchChapter(id:))
+                return LibrarySearchItem(
+                    id: series.id,
+                    title: series.title,
+                    sourceDomain: series.sourceDomain,
+                    libraryState: libraryState(for: series),
+                    currentChapterLabel: currentChapter.map(summaryChapterLabel),
+                    coverImageURL: series.coverImageURLString.flatMap(URL.init(string:))
+                )
+            }
+    }
+
     public func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
         reconcileRecentReadingsWithSavedSeriesIfNeeded()
         if let series = fetchSeries(id: seriesID) {

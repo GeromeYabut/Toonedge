@@ -583,6 +583,11 @@ private actor UITestContinueJourneyLibraryService: LibraryLifecycleManaging, Rec
         )])
     }
 
+    func librarySearchItems() async -> [LibrarySearchItem] {
+        let snapshot = await librarySnapshot()
+        return snapshot.series.map(LibrarySearchItem.init(summary:))
+    }
+
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
         guard seriesID == Fixture.seriesID else { return nil }
         return SeriesDetailSnapshot(
@@ -953,6 +958,10 @@ private struct DelayedUITestLibraryService: LibraryProviding {
         return await MockLibraryService().librarySnapshot()
     }
 
+    func librarySearchItems() async -> [LibrarySearchItem] {
+        await MockLibraryService().librarySearchItems()
+    }
+
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
         await MockLibraryService().seriesDetail(for: seriesID)
     }
@@ -969,6 +978,10 @@ private actor RetrySeriesMutationUITestLibraryService: LibraryLifecycleManaging 
 
     func librarySnapshot() async -> LibrarySnapshot {
         await base.librarySnapshot()
+    }
+
+    func librarySearchItems() async -> [LibrarySearchItem] {
+        await base.librarySearchItems()
     }
 
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
