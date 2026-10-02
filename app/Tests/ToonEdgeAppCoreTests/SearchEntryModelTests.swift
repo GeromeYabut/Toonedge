@@ -2,6 +2,217 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@Test @MainActor func searchCompositionWithoutProjectionCapabilityKeepsWebSuggestions() async {
+    let model = SearchOverlayViewModel(
+        suggestionsProvider: MockSearchSuggestionProvider(clipboardURL: nil, recentLinks: [], recentSearches: ["hero news"], commonSites: []),
+        libraryProvider: nil
+    )
+    await model.load()
+    model.query = "hero"
+    #expect(model.suggestions.map(\.kind) == [.recentSearch, .searchAction])
+    #expect(model.libraryItems.isEmpty)
+}
+
+@Test func searchSuggestionLegacyValueMutationPreservesTypedLibraryDestination() {
+    var browser = SearchSuggestion(kind: .recentSearch, title: "Hero", subtitle: "", value: "hero", systemImage: "magnifyingglass")
+    browser.value = "hero news"
+    #expect(browser.destination == .browserInput("hero news"))
+    let item = searchOverlayItem("Hero")
+    var saved = SearchSuggestion(id: item.id, kind: .librarySeries, title: item.title, subtitle: "", destination: .librarySeries(item), systemImage: "books.vertical")
+    saved.value = "https://example.com/unrelated"
+    #expect(saved.destination == .librarySeries(item))
+}
+
+@Test @MainActor func searchCompositionExactCopiedURLKeepsClipboardAndExplicitActionUtilityException() async {
+    let copiedURL = "https://example.com/hero/chapter-1"
+    let history = SearchOverlayHistorySpy(entries: [
+        SearchHistoryEntry(kind: .link, value: copiedURL, displayTitle: "Hero chapter", lastUsedAt: Date())
+    ])
+    let model = SearchOverlayViewModel(
+        suggestionsProvider: MockSearchSuggestionProvider(
+            clipboardURL: copiedURL, recentLinks: [copiedURL, copiedURL],
+            recentSearches: [copiedURL], commonSites: []
+        ),
+        searchHistoryRecorder: history
+    )
+    await model.load()
+    model.query = copiedURL
+
+    // Approved utility exception: these two actions remain visible despite
+    // sharing one browser destination; overlapping ordinary history disappears.
+    #expect(model.suggestions.map(\.kind) == [.clipboardLink, .searchAction])
+    #expect(model.suggestions.first?.destination == .browserInput(copiedURL))
+    #expect(model.suggestions.last?.destination == .browserInput(copiedURL))
+    #expect(model.suggestions.filter { $0.kind == .clipboardLink }.count == 1)
+    #expect(model.suggestions.filter { $0.kind == .searchAction }.count == 1)
+    #expect(!model.suggestions.contains { $0.kind == .recentLink || $0.kind == .recentSearch })
+}
+
+@Test @MainActor func searchCompositionKeepsClipboardFirstAndWebActionVisible() async {
+    let model = SearchOverlayViewModel(
+        suggestionsProvider: MockSearchSuggestionProvider(
+            clipboardURL: "https://example.com/hero/chapter-1",
+            recentLinks: ["https://example.com/hero/recent"],
+            recentSearches: ["hero news"], commonSites: []
+        ),
+        libraryProvider: SearchOverlayLibrarySpy(items: [searchOverlayItem("Hero Returns"), searchOverlayItem("Hero")])
+    )
+    await model.load()
+    model.query = "hero"
+
+    #expect(model.suggestions.map(\.kind) == [.clipboardLink, .librarySeries, .librarySeries, .recentLink, .recentSearch, .searchAction])
+    #expect(model.suggestions[1].title == "Hero")
+    #expect(model.suggestions[2].title == "Hero Returns")
+    #expect(model.suggestions.last?.destination == .browserInput("hero"))
+}
+
+@Test @MainActor func searchCompositionLoadsOnceAndReranksWithoutQueryIO() async {
+    let library = SearchOverlayLibrarySpy(items: [searchOverlayItem("Hero")])
+    let history = SearchOverlayHistorySpy(entries: [])
+    let model = SearchOverlayViewModel(libraryProvider: library, searchHistoryRecorder: history)
+    await model.load()
+    model.query = "her"
+    #expect(model.suggestions.contains { $0.kind == .librarySeries })
+    model.query = "unmatched"
+    #expect(!model.suggestions.contains { $0.kind == .librarySeries })
+    model.query = "Hero"
+    await model.load()
+    #expect(await library.fetchCount == 1)
+    #expect(await history.fetchCount == 1)
+}
+
+@Test @MainActor func searchCompositionBoundsLibraryMatchesAndSuppressesEmptyCatalog() async {
+    let model = SearchOverlayViewModel(
+        suggestionsProvider: MockSearchSuggestionProvider(clipboardURL: nil, recentLinks: [], recentSearches: [], commonSites: []),
+        libraryProvider: SearchOverlayLibrarySpy(items: (0..<20).map { searchOverlayItem("Hero \($0)") })
+    )
+    await model.load()
+    #expect(model.suggestions.isEmpty)
+    model.query = "  \n"
+    #expect(model.suggestions.isEmpty)
+    model.query = "hero"
+    #expect(model.suggestions.filter { $0.kind == .librarySeries }.count == 5)
+    #expect(model.suggestions.last?.kind == .searchAction)
+}
+
+@Test @MainActor func searchCompositionDeduplicatesTypedDestinationsAndRetainsWebAction() async {
+    let first = searchOverlayItem("Hero")
+    let second = searchOverlayItem("Hero")
+    let link = "https://example.com/hero"
+    let model = SearchOverlayViewModel(
+        suggestionsProvider: MockSearchSuggestionProvider(clipboardURL: link, recentLinks: [link, link], recentSearches: ["hero", "hero"], commonSites: []),
+        libraryProvider: SearchOverlayLibrarySpy(items: [first, first, second])
+    )
+    await model.load()
+    model.query = "hero"
+    let saved = model.suggestions.filter { $0.kind == .librarySeries }
+    #expect(Set(saved.map(\.id)) == Set([first.id, second.id]))
+    #expect(model.suggestions.filter { $0.destination == .browserInput(link) }.count == 1)
+    #expect(model.suggestions.filter { $0.destination == .browserInput("hero") }.count == 1)
+    #expect(model.suggestions.last?.kind == .searchAction)
+    #expect(model.suggestions.first?.kind == .clipboardLink)
+}
+
+@Test @MainActor func searchCompositionAbsentProjectionPreservesWebAndPermittedSites() async {
+    let model = SearchOverlayViewModel(
+        suggestionsProvider: MockSearchSuggestionProvider(clipboardURL: "https://example.com/unrelated", recentLinks: [], recentSearches: [], commonSites: ["webtoons.com", "tapas.io", "globalcomix.com"]),
+        libraryProvider: SearchOverlayLibrarySpy(items: [])
+    )
+    await model.load()
+    #expect(model.suggestions.map(\.value) == ["https://example.com/unrelated", "webtoons.com", "tapas.io", "globalcomix.com"])
+    #expect(!model.suggestions.contains { $0.value == "asuracomic.net" })
+    model.query = "hero"
+    #expect(model.suggestions.map(\.kind) == [.searchAction])
+}
+
+@Test @MainActor func selectingLibraryResultDoesNotRecordWebHistory() async throws {
+    // URL-shaped title proves saved destinations bypass browser classification.
+    let item = searchOverlayItem("https://")
+    let history = SearchOverlayHistorySpy(entries: [])
+    let model = SearchOverlayViewModel(libraryProvider: SearchOverlayLibrarySpy(items: [item]), searchHistoryRecorder: history)
+    await model.load()
+    model.query = "https"
+    let suggestion = try #require(model.suggestions.first { $0.kind == .librarySeries })
+    var router = AppRouter(activeSheet: .search)
+    let recording = model.select(suggestion, router: &router)
+    await recording?.value
+    #expect(router.selectedTab == .library)
+    #expect(router.pendingLibrarySeriesID == item.id)
+    #expect(router.activeSheet == nil)
+    #expect(router.presentedBrowser == nil)
+    #expect(model.validationMessage == nil)
+    #expect(await history.recordedInputs.isEmpty)
+}
+
+@Test @MainActor func selectingBrowserResultRoutesImmediatelyAndRecordsNormalizedHistory() async {
+    let history = SearchOverlayHistorySpy(entries: [])
+    let model = SearchOverlayViewModel(searchHistoryRecorder: history)
+    let suggestion = SearchSuggestion(kind: .recentLink, title: "Example", subtitle: "", value: "example.com/hero", systemImage: "globe")
+    var router = AppRouter(activeSheet: .search)
+    let recording = model.select(suggestion, router: &router)
+    #expect(router.presentedBrowser == .url("https://example.com/hero"))
+    #expect(router.activeSheet == nil)
+    router.openHomeRoot()
+    await recording?.value
+    #expect(router.presentedBrowser == nil)
+    #expect(router.selectedTab == .home)
+    let inputs = await history.recordedInputs
+    #expect(inputs.count == 1)
+    #expect(inputs.first?.kind == .link)
+    #expect(inputs.first?.value == "https://example.com/hero")
+    #expect(inputs.first?.displayTitle == "Example")
+}
+
+@Test @MainActor func searchSubmissionValidatesAndClearsFeedbackOnEditing() async {
+    let history = SearchOverlayHistorySpy(entries: [])
+    let feedback = RecordingInteractionFeedback()
+    let model = SearchOverlayViewModel(searchHistoryRecorder: history, interactionFeedback: feedback)
+    var router = AppRouter(activeSheet: .search)
+    model.query = "https://"
+    let invalid = model.submit(router: &router)
+    #expect(invalid == nil)
+    #expect(model.validationMessage == "Enter a complete web address or search phrase.")
+    #expect(feedback.events == [.userActionWarning])
+    #expect(router.activeSheet == .search)
+    #expect(router.presentedBrowser == nil)
+    #expect(await history.recordedInputs.isEmpty)
+    model.query = "  hero news  "
+    #expect(model.validationMessage == nil)
+    let recording = model.submit(router: &router)
+    #expect(router.presentedBrowser == .searchQuery("hero news"))
+    await recording?.value
+    #expect(await history.recordedInputs.first?.kind == .searchQuery)
+    #expect(await history.recordedInputs.first?.value == "hero news")
+}
+
+private func searchOverlayItem(_ title: String) -> LibrarySearchItem {
+    LibrarySearchItem(id: UUID(), title: title, sourceDomain: "example.com", libraryState: .reading, currentChapterLabel: "Chapter 1", coverImageURL: nil)
+}
+
+private actor SearchOverlayLibrarySpy: LibrarySearchProviding {
+    let items: [LibrarySearchItem]
+    private(set) var fetchCount = 0
+    init(items: [LibrarySearchItem]) { self.items = items }
+    func librarySearchItems() async -> [LibrarySearchItem] {
+        fetchCount += 1
+        return items
+    }
+}
+
+private actor SearchOverlayHistorySpy: SearchHistoryRecording {
+    let entries: [SearchHistoryEntry]
+    private(set) var fetchCount = 0
+    private(set) var recordedInputs: [SearchHistoryInput] = []
+    init(entries: [SearchHistoryEntry]) { self.entries = entries }
+    func recentSearchHistory(limit: Int) async -> [SearchHistoryEntry] {
+        fetchCount += 1
+        return Array(entries.prefix(limit))
+    }
+    func recordSearchHistory(_ input: SearchHistoryInput) async throws {
+        recordedInputs.append(input)
+    }
+}
+
 @Test func searchSuggestionEditorialRowsKeepInsetAndMinimumActionSize() {
     let layout = SearchSuggestionRowLayout()
 

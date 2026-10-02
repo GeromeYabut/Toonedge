@@ -28,26 +28,25 @@ public struct SearchOverlayFirstOpenLayout: Equatable, Sendable {
 }
 
 public struct SearchOverlayView: View {
-    private let suggestionsProvider: any SearchSuggestionProviding
-    private let searchHistoryRecorder: (any SearchHistoryRecording)?
-    private let interactionFeedback: (any InteractionFeedbackProviding)?
     private let firstOpenLayout: SearchOverlayFirstOpenLayout
     @Binding private var router: AppRouter
-    @State private var query = ""
-    @State private var validationMessage: String?
-    @State private var recentHistory: [SearchHistoryEntry] = []
+    @StateObject private var viewModel: SearchOverlayViewModel
     @FocusState private var isSearchFocused: Bool
 
     public init(
         suggestionsProvider: any SearchSuggestionProviding = MockSearchSuggestionProvider(),
+        libraryProvider: (any LibrarySearchProviding)? = nil,
         searchHistoryRecorder: (any SearchHistoryRecording)? = nil,
         interactionFeedback: (any InteractionFeedbackProviding)? = nil,
         firstOpenLayout: SearchOverlayFirstOpenLayout = .default,
         router: Binding<AppRouter>
     ) {
-        self.suggestionsProvider = suggestionsProvider
-        self.searchHistoryRecorder = searchHistoryRecorder
-        self.interactionFeedback = interactionFeedback
+        self._viewModel = StateObject(wrappedValue: SearchOverlayViewModel(
+            suggestionsProvider: suggestionsProvider,
+            libraryProvider: libraryProvider,
+            searchHistoryRecorder: searchHistoryRecorder,
+            interactionFeedback: interactionFeedback
+        ))
         self.firstOpenLayout = firstOpenLayout
         self._router = router
     }
@@ -56,14 +55,14 @@ public struct SearchOverlayView: View {
         VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
             searchHeader
 
-            if let validationMessage {
+            if let validationMessage = viewModel.validationMessage {
                 Text(validationMessage)
                     .font(ToonEdgeTypography.caption)
                     .foregroundStyle(ToonEdgeColor.failure)
                     .accessibilityIdentifier("search.validation")
             }
 
-            if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if viewModel.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text("Suggestions")
                     .font(ToonEdgeTypography.sectionTitle)
             } else {
@@ -91,7 +90,7 @@ public struct SearchOverlayView: View {
             isSearchFocused = true
         }
         .task {
-            recentHistory = await searchHistoryRecorder?.recentSearchHistory(limit: 12) ?? []
+            await viewModel.load()
         }
         .toonEdgeScreen()
     }
@@ -131,19 +130,18 @@ public struct SearchOverlayView: View {
                 .accessibilityHidden(true)
 
             ZStack(alignment: .leading) {
-                if query.isEmpty {
+                if viewModel.query.isEmpty {
                     Text("Search the web or paste a chapter link")
                         .font(ToonEdgeTypography.body)
                         .foregroundStyle(ToonEdgeColor.textSecondary)
                         .lineLimit(1)
                 }
 
-                TextField("", text: $query)
+                TextField("", text: $viewModel.query)
                     .foregroundStyle(ToonEdgeColor.textPrimary)
                     .focused($isSearchFocused)
                     .submitLabel(.go)
                     .onSubmit(openCurrentQuery)
-                    .onChange(of: query) { _, _ in validationMessage = nil }
                     .accessibilityLabel("Search the web or paste a chapter link")
                     .accessibilityIdentifier("search.input")
                     #if os(iOS)
@@ -153,9 +151,9 @@ public struct SearchOverlayView: View {
                     #endif
             }
 
-            if !query.isEmpty {
+            if !viewModel.query.isEmpty {
                 Button {
-                    query = ""
+                    viewModel.query = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(ToonEdgeColor.textSecondary)
@@ -172,14 +170,14 @@ public struct SearchOverlayView: View {
 
     private var suggestionsList: some View {
         VStack(spacing: ToonEdgeSpacing.small) {
-            if currentSuggestions.isEmpty {
+            if viewModel.suggestions.isEmpty {
                 TEBanner(
                     title: "No local suggestions",
                     message: "Type a web search or paste a chapter link to continue.",
                     systemImage: "magnifyingglass"
                 )
             } else {
-                TEEditorialGroup(currentSuggestions, spacing: 0, separatorInset: SearchSuggestionRowLayout().separatorInset) { suggestion in
+                TEEditorialGroup(viewModel.suggestions, spacing: 0, separatorInset: SearchSuggestionRowLayout().separatorInset) { suggestion in
                     Button {
                         open(suggestion)
                     } label: {
@@ -192,53 +190,14 @@ public struct SearchOverlayView: View {
         }
     }
 
-    private var currentSuggestions: [SearchSuggestion] {
-        SearchHistoryBackedSuggestionProvider(
-            baseProvider: suggestionsProvider,
-            history: recentHistory
-        )
-        .suggestions(matching: query)
-    }
-
     private func open(_ suggestion: SearchSuggestion) {
-        openValue(suggestion.value, title: suggestion.title)
+        viewModel.select(suggestion, router: &router)
+        if viewModel.validationMessage != nil { isSearchFocused = true }
     }
 
     private func openCurrentQuery() {
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        openValue(trimmed, title: trimmed)
-    }
-
-    private func openValue(_ value: String, title: String) {
-        let input: SearchInput
-        switch SearchInputClassifier.validate(value) {
-        case .empty:
-            return
-        case .invalidURL:
-            validationMessage = "Enter a complete web address or search phrase."
-            if let interactionFeedback {
-                InteractionFeedbackOutcomeReporter(feedback: interactionFeedback)
-                    .reportInvalidInput(validationIsVisible: validationMessage != nil)
-            }
-            isSearchFocused = true
-            return
-        case .valid(let validatedInput):
-            input = validatedInput
-        }
-        if let searchHistoryRecorder {
-            Task {
-                try? await searchHistoryRecorder.recordSearchHistory(
-                    SearchHistoryInput(
-                        kind: input.kind == .url ? .link : .searchQuery,
-                        value: input.normalizedValue,
-                        displayTitle: title
-                    )
-                )
-                recentHistory = await searchHistoryRecorder.recentSearchHistory(limit: 12)
-            }
-        }
-        router.presentBrowser(input.browserStartPoint)
+        viewModel.submit(router: &router)
+        if viewModel.validationMessage != nil { isSearchFocused = true }
     }
 }
 
@@ -286,7 +245,7 @@ private struct SearchSuggestionRow: View {
         switch suggestion.kind {
         case .clipboardLink:
             ToonEdgeColor.success
-        case .recentLink, .commonSite:
+        case .recentLink, .commonSite, .librarySeries:
             ToonEdgeColor.accent
         case .recentSearch, .searchAction:
             ToonEdgeColor.textSecondary
@@ -303,6 +262,8 @@ private struct SearchSuggestionRow: View {
             return "Paste"
         case .recentLink:
             return "Link"
+        case .librarySeries:
+            return "Library"
         case .recentSearch:
             return "Search"
         case .commonSite:

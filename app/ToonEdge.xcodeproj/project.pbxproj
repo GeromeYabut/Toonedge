@@ -35,6 +35,7 @@
 		A10000000000000000000019 /* DetectionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000019 /* DetectionModels.swift */; };
 		A10000000000000000000044 /* ReaderEntryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000044 /* ReaderEntryPolicy.swift */; };
 		A10000000000000000000045 /* LibrarySuggestionRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000045 /* LibrarySuggestionRanker.swift */; };
+		A10000000000000000000046 /* SearchOverlayViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000046 /* SearchOverlayViewModel.swift */; };
 		A1000000000000000000001A /* GenericChapterDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001A /* GenericChapterDetector.swift */; };
 		A1000000000000000000001B /* PageAnalysisScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001B /* PageAnalysisScript.swift */; };
 		A1000000000000000000001C /* SiteProfileRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001C /* SiteProfileRegistry.swift */; };
@@ -101,6 +102,7 @@
 		A20000000000000000000019 /* DetectionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Detection/Models/DetectionModels.swift; sourceTree = "<group>"; };
 		A20000000000000000000044 /* ReaderEntryPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Detection/Scoring/ReaderEntryPolicy.swift; sourceTree = "<group>"; };
 		A20000000000000000000045 /* LibrarySuggestionRanker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Search/Models/LibrarySuggestionRanker.swift; sourceTree = "<group>"; };
+		A20000000000000000000046 /* SearchOverlayViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Search/ViewModels/SearchOverlayViewModel.swift; sourceTree = "<group>"; };
 		A2000000000000000000001A /* GenericChapterDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Detection/Scoring/GenericChapterDetector.swift; sourceTree = "<group>"; };
 		A2000000000000000000001B /* PageAnalysisScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Detection/JavaScript/PageAnalysisScript.swift; sourceTree = "<group>"; };
 		A2000000000000000000001C /* SiteProfileRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Detection/SiteProfiles/SiteProfileRegistry.swift; sourceTree = "<group>"; };
@@ -211,6 +213,7 @@
 				A20000000000000000000017 /* ReaderSettingsView.swift */,
 				A2000000000000000000000E /* SearchOverlayView.swift */,
 				A20000000000000000000045 /* LibrarySuggestionRanker.swift */,
+				A20000000000000000000046 /* SearchOverlayViewModel.swift */,
 				A2000000000000000000000F /* SettingsView.swift */,
 				A20000000000000000000010 /* ToonEdgePrimitives.swift */,
 				A20000000000000000000011 /* ToonEdgeDesignSystem.swift */,
@@ -414,6 +417,7 @@
 				A10000000000000000000019 /* DetectionModels.swift in Sources */,
 				A10000000000000000000044 /* ReaderEntryPolicy.swift in Sources */,
 				A10000000000000000000045 /* LibrarySuggestionRanker.swift in Sources */,
+				A10000000000000000000046 /* SearchOverlayViewModel.swift in Sources */,
 				A1000000000000000000001A /* GenericChapterDetector.swift in Sources */,
 				A1000000000000000000001B /* PageAnalysisScript.swift in Sources */,
 				A1000000000000000000001C /* SiteProfileRegistry.swift in Sources */,

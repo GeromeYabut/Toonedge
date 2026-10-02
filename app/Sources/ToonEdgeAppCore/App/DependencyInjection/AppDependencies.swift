@@ -4,6 +4,7 @@ import SwiftData
 public struct AppDependencies: Sendable {
     public var persistenceContainer: ModelContainer?
     public var libraryService: any LibraryProviding
+    public var librarySearchProvider: any LibrarySearchProviding { libraryService }
     public var libraryLifecycleService: (any LibraryLifecycleManaging)?
     public var searchSuggestionProvider: any SearchSuggestionProviding
     public var searchHistoryRecorder: (any SearchHistoryRecording)?
