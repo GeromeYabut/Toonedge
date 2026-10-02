@@ -144,7 +144,7 @@ public final class AdjacentReaderSessionLoader: AdjacentReaderSessionLoading {
             primaryFailure = typedFailure(from: error, targetURL: url)
         }
 
-        if primaryFailure.reason == .challengeOrRateLimit {
+        if primaryFailure.reason == .challengeOrRateLimit || primaryFailure.reason == .readerEntryBlocked {
             await log(primaryFailure, context: context, startedAt: startedAt)
             throw primaryFailure
         }
@@ -172,7 +172,8 @@ public final class AdjacentReaderSessionLoader: AdjacentReaderSessionLoading {
         preserving context: AdjacentReaderSessionLoadContext
     ) throws -> MockReaderSession {
         let result = detector.detect(page: analysis)
-        if analysis.isChallengeOrRateLimitPage {
+        let hardBlocks = analysis.resolvedHardBlocks.union(result.diagnostics.hardBlocks)
+        if hardBlocks.contains(.challenge) {
             throw AdjacentReaderSessionLoadError(
                 reason: .challengeOrRateLimit,
                 targetURL: targetURL,
@@ -181,7 +182,26 @@ public final class AdjacentReaderSessionLoader: AdjacentReaderSessionLoading {
                 challengeSignals: analysis.challengeSignals
             )
         }
-        guard result.confidence == .high else {
+        // Extraction failures may recover through HTML; access and profile-policy blocks may not.
+        if !hardBlocks.subtracting([.nonviableSession]).isEmpty {
+            throw AdjacentReaderSessionLoadError(
+                reason: .readerEntryBlocked,
+                targetURL: targetURL,
+                confidence: result.confidence,
+                parserPath: result.diagnostics.parserPath,
+                challengeSignals: analysis.challengeSignals
+            )
+        }
+        if hardBlocks.contains(.nonviableSession) {
+            throw AdjacentReaderSessionLoadError(
+                reason: .nonViableImages,
+                targetURL: targetURL,
+                confidence: result.confidence,
+                parserPath: result.diagnostics.parserPath,
+                challengeSignals: analysis.challengeSignals
+            )
+        }
+        guard result.readerEntryDisposition == .automatic, result.confidence == .high else {
             throw AdjacentReaderSessionLoadError(
                 reason: .lowConfidence,
                 targetURL: targetURL,
@@ -226,7 +246,8 @@ public final class AdjacentReaderSessionLoader: AdjacentReaderSessionLoading {
         _ fallback: AdjacentReaderSessionLoadError
     ) -> AdjacentReaderSessionLoadError {
         let priority: [AdjacentReaderSessionLoadFailureReason: Int] = [
-            .challengeOrRateLimit: 5,
+            .challengeOrRateLimit: 6,
+            .readerEntryBlocked: 5,
             .timeout: 4,
             .lowConfidence: 3,
             .nonViableImages: 2,
@@ -381,12 +402,6 @@ enum StaticHTMLChapterPageAnalysisParser {
                 ? "rate-limit-copy"
                 : nil
         ].compactMap { $0 }
-    }
-}
-
-private extension DetectionPageAnalysis {
-    var isChallengeOrRateLimitPage: Bool {
-        !challengeSignals.isEmpty || title.lowercased().contains("just a moment")
     }
 }
 

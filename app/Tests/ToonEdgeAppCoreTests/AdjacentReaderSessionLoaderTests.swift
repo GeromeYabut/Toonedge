@@ -336,6 +336,141 @@ import Testing
     #expect(error?.reason == .nonViableImages)
 }
 
+@MainActor
+@Test(arguments: DetectionHardBlock.allCases.filter { $0 != .nonviableSession })
+func adjacentLoaderStopsStaticFallbackForRenderedTerminalBlock(block: DetectionHardBlock) async throws {
+    let targetURL = URL(string: "https://fixture.example/series/chapter-2?mode=reader#page-3")!
+    let html = vortexChapterHTML(pageNumberCount: 6)
+    var analysis = StaticHTMLChapterPageAnalysisParser.analysis(html: html, pageURL: targetURL)
+    #expect(ProfileAwareChapterDetector().detect(page: analysis).readerEntryDisposition == .automatic)
+    analysis.hardBlocks = [block]
+    #expect(analysis.challengeSignals.isEmpty)
+    let fallback = RecordingAdjacentHTMLLoader(html: html)
+    let loader = AdjacentReaderSessionLoader(
+        detector: ProfileAwareChapterDetector(),
+        pageLoader: StubAdjacentPageLoader.analysis(analysis),
+        htmlLoader: fallback
+    )
+
+    let error = await capturedAdjacentLoadError(loader: loader, url: targetURL)
+
+    #expect(error?.reason.rawValue == (block == .challenge ? "challengeOrRateLimit" : "readerEntryBlocked"))
+    #expect(error?.targetURL == targetURL)
+    #expect(await fallback.requestedURLs.isEmpty)
+}
+
+@MainActor
+@Test(arguments: DetectionHardBlock.allCases.filter { $0 != .nonviableSession }, [false, true])
+func adjacentLoaderRejectsTerminalBlockDespiteMutatedAutomaticSession(
+    block: DetectionHardBlock,
+    blockInDetector: Bool
+) async throws {
+    let targetURL = URL(string: "https://fixture.example/series/chapter-2")!
+    let html = vortexChapterHTML(pageNumberCount: 6)
+    var analysis = StaticHTMLChapterPageAnalysisParser.analysis(html: html, pageURL: targetURL)
+    var result = ProfileAwareChapterDetector().detect(page: analysis)
+    #expect(result.readerEntryDisposition == .automatic)
+    #expect(result.confidence == .high)
+    #expect(result.readerSession != nil)
+    if blockInDetector {
+        // Mutate after initialization to verify the consumer enforces terminal evidence itself.
+        result.diagnostics.hardBlocks = [block]
+    } else {
+        analysis.hardBlocks = [block]
+    }
+    let fallback = RecordingAdjacentHTMLLoader(html: html)
+    let loader = AdjacentReaderSessionLoader(
+        detector: StubChapterDetector(result: result),
+        pageLoader: StubAdjacentPageLoader.analysis(analysis),
+        htmlLoader: fallback
+    )
+
+    let error = await capturedAdjacentLoadError(loader: loader, url: targetURL)
+
+    #expect(error?.reason.rawValue == (block == .challenge ? "challengeOrRateLimit" : "readerEntryBlocked"))
+    #expect(await fallback.requestedURLs.isEmpty)
+}
+
+@MainActor
+@Test(arguments: [ReaderEntryDisposition.unavailable, .recommended, .manual])
+func adjacentLoaderRequiresAutomaticDispositionForHighConfidenceSession(disposition: ReaderEntryDisposition) async throws {
+    let targetURL = URL(string: "https://fixture.example/series/chapter-2")!
+    let analysis = StaticHTMLChapterPageAnalysisParser.analysis(
+        html: vortexChapterHTML(pageNumberCount: 6), pageURL: targetURL
+    )
+    var result = ProfileAwareChapterDetector().detect(page: analysis)
+    #expect(result.readerSession != nil)
+    result.readerEntryDisposition = disposition
+    let loader = AdjacentReaderSessionLoader(
+        detector: StubChapterDetector(result: result),
+        pageLoader: StubAdjacentPageLoader.analysis(analysis)
+    )
+
+    let error = await capturedAdjacentLoadError(loader: loader, url: targetURL)
+
+    #expect(error?.reason == .lowConfidence)
+}
+
+@MainActor
+@Test func adjacentLoaderRecoversNonviableOnlyEvidenceThroughStaticFallback() async throws {
+    let targetURL = URL(string: "https://fixture.example/series/chapter-2")!
+    var analysis = DetectionPageAnalysis.mockLowConfidencePage(url: targetURL)
+    analysis.hardBlocks = [.nonviableSession]
+    let fallback = RecordingAdjacentHTMLLoader(html: vortexChapterHTML(pageNumberCount: 6))
+    let loader = AdjacentReaderSessionLoader(
+        detector: ProfileAwareChapterDetector(),
+        pageLoader: StubAdjacentPageLoader.analysis(analysis),
+        htmlLoader: fallback
+    )
+
+    let loaded = try await loader.loadAdjacentReaderSession(
+        from: targetURL,
+        context: AdjacentReaderSessionLoadContext(currentSession: .sample, direction: .next)
+    )
+
+    #expect(loaded.sourceURL == targetURL)
+    #expect(loaded.imageURLs.count == 6)
+    #expect(await fallback.requestedURLs == [targetURL])
+}
+
+private actor RecordingAdjacentHTMLLoader: AdjacentChapterHTMLLoading {
+    let html: String
+    private(set) var requestedURLs: [URL] = []
+
+    init(html: String) {
+        self.html = html
+    }
+
+    func loadHTML(from url: URL) -> String {
+        requestedURLs.append(url)
+        return html
+    }
+}
+
+@MainActor
+@Test(arguments: [false, true])
+func adjacentLoaderRejectsMutatedAutomaticSessionWithNonviableEvidence(blockInDetector: Bool) async throws {
+    let targetURL = URL(string: "https://fixture.example/series/chapter-2")!
+    var analysis = StaticHTMLChapterPageAnalysisParser.analysis(
+        html: vortexChapterHTML(pageNumberCount: 6), pageURL: targetURL
+    )
+    var result = ProfileAwareChapterDetector().detect(page: analysis)
+    #expect(result.readerSession != nil)
+    if blockInDetector {
+        result.diagnostics.hardBlocks = [.nonviableSession]
+    } else {
+        analysis.hardBlocks = [.nonviableSession]
+    }
+    let loader = AdjacentReaderSessionLoader(
+        detector: StubChapterDetector(result: result),
+        pageLoader: StubAdjacentPageLoader.analysis(analysis)
+    )
+
+    let error = await capturedAdjacentLoadError(loader: loader, url: targetURL)
+
+    #expect(error?.reason == .nonViableImages)
+}
+
 private struct StubChapterDetector: ChapterPageDetecting {
     let result: DetectionResult
 

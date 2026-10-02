@@ -697,7 +697,7 @@ struct ReaderAdjacentFeedbackPresentation: Equatable {
                 message = "Chapter timed out."
             case .challengeOrRateLimit:
                 message = "Reader access is temporarily limited."
-            case .unavailable:
+            case .unavailable, .readerEntryBlocked:
                 message = "Chapter unavailable in Reader."
             case .lowConfidence:
                 message = "Chapter could not be verified."

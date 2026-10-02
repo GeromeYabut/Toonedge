@@ -1750,6 +1750,7 @@ public enum AdjacentChapterLoadState: Equatable, Sendable {
 public enum AdjacentReaderSessionLoadFailureReason: String, Equatable, Sendable {
     case timeout
     case challengeOrRateLimit
+    case readerEntryBlocked
     case unavailable
     case lowConfidence
     case nonViableImages
@@ -1776,7 +1777,7 @@ public struct AdjacentChapterLoadFailure: Equatable, Sendable {
             "This chapter took too long to load. Try again in a moment or open the original page."
         case .challengeOrRateLimit:
             "This site may be rate limiting Reader Mode. Try again in a moment or open the original page."
-        case .unavailable:
+        case .unavailable, .readerEntryBlocked:
             "This chapter is unavailable in Reader Mode. Try again or open the original page."
         case .lowConfidence:
             "Reader Mode could not confidently identify this chapter. Try again or open the original page."
