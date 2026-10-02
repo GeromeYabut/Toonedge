@@ -185,6 +185,38 @@ import Testing
     ) == 1)
 }
 
+@Test func finalPageSelectionRequiresItsBottomInsideViewport() {
+    let viewportHeight: CGFloat = 600
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [37: CGRect(x: 0, y: 0, width: 390, height: 400),
+                 39: CGRect(x: 0, y: 800, width: 390, height: 390)],
+        viewportHeight: viewportHeight, lastPageIndex: 39
+    ) == 37)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [38: CGRect(x: 0, y: -100, width: 390, height: 400),
+                 39: CGRect(x: 0, y: 300, width: 390, height: 390)],
+        viewportHeight: viewportHeight, lastPageIndex: 39
+    ) == 38)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [38: CGRect(x: 0, y: -290, width: 390, height: 400),
+                 39: CGRect(x: 0, y: 110, width: 390, height: 390)],
+        viewportHeight: viewportHeight, lastPageIndex: 39
+    ) == 39)
+}
+
+@Test func tallFinalPageDoesNotOverrideTopmostPageUntilBottomIsReached() {
+    let viewportHeight: CGFloat = 600
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [38: CGRect(x: 0, y: -100, width: 390, height: 200),
+                 39: CGRect(x: 0, y: 100, width: 390, height: 14_000)],
+        viewportHeight: viewportHeight, lastPageIndex: 39
+    ) == 38)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [39: CGRect(x: 0, y: -13_500, width: 390, height: 14_000)],
+        viewportHeight: viewportHeight, lastPageIndex: 39
+    ) == 39)
+}
+
 @MainActor
 @Test func revisitedMountedPageWaitsForReadinessBeforeProgressMovesBackward() async {
     let viewModel = ReaderViewModel(session: .sample)

@@ -231,7 +231,8 @@ public struct ReaderView: View {
         let selection = ReaderViewportPageSelector.selection(
             frames: frames,
             viewportHeight: viewportHeight,
-            pipelineID: ObjectIdentifier(viewModel.pagePipeline)
+            pipelineID: ObjectIdentifier(viewModel.pagePipeline),
+            lastPageIndex: viewModel.session.imageURLs.indices.last
         )
         guard selection != reportedViewportSelection else { return }
         reportedViewportSelection = selection
@@ -822,14 +823,24 @@ struct ReaderViewportSelection: Equatable {
 
 struct ReaderViewportPageSelector {
     static func selection(
-        frames: [Int: CGRect], viewportHeight: CGFloat, pipelineID: ObjectIdentifier
+        frames: [Int: CGRect], viewportHeight: CGFloat, pipelineID: ObjectIdentifier,
+        lastPageIndex: Int? = nil
     ) -> ReaderViewportSelection? {
-        guard let index = visibleIndex(frames: frames, viewportHeight: viewportHeight) else { return nil }
+        guard let index = visibleIndex(
+            frames: frames, viewportHeight: viewportHeight, lastPageIndex: lastPageIndex
+        ) else { return nil }
         return ReaderViewportSelection(index: index, pipelineID: pipelineID)
     }
 
-    static func visibleIndex(frames: [Int: CGRect], viewportHeight: CGFloat) -> Int? {
+    static func visibleIndex(
+        frames: [Int: CGRect], viewportHeight: CGFloat, lastPageIndex: Int? = nil
+    ) -> Int? {
         guard viewportHeight > 0 else { return nil }
+        if let lastPageIndex, let finalFrame = frames[lastPageIndex],
+           finalFrame.height > 0, finalFrame.maxY > 0,
+           finalFrame.minY < viewportHeight, finalFrame.maxY <= viewportHeight {
+            return lastPageIndex
+        }
         return frames
             .filter { _, frame in frame.maxY > 0 && frame.minY < viewportHeight }
             .min { left, right in

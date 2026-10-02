@@ -153,11 +153,26 @@ final class ToonEdgeLongChapterUITests: XCTestCase {
             )
         }
 
+        let lastImage = loadedImage(page: 40, in: app)
+        for _ in 0..<8 {
+            let imageBottom = lastImage.frame.maxY
+            if imageBottom > reader.frame.minY && imageBottom <= reader.frame.maxY {
+                break
+            }
+            surface.swipeUp()
+        }
+        XCTAssertGreaterThan(lastImage.frame.maxY, reader.frame.minY)
+        XCTAssertLessThanOrEqual(lastImage.frame.maxY, reader.frame.maxY)
+
         if !app.buttons["reader.back"].exists {
             reader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         }
         let progress = app.staticTexts["reader.progress.value"]
         XCTAssertTrue(progress.waitForExistence(timeout: 5))
+        let completed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", "100%"), object: progress
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [completed], timeout: 5), .completed)
         XCTAssertEqual(progress.label, "100%")
     }
 
