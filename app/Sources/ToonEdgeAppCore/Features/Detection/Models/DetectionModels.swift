@@ -6,6 +6,51 @@ public enum DetectionConfidence: String, Codable, Equatable, Sendable {
     case low
 }
 
+public enum ReaderEntryDisposition: String, Codable, Equatable, Sendable {
+    case automatic
+    case recommended
+    case manual
+    case unavailable
+}
+
+public enum DetectionHardBlock: String, CaseIterable, Codable, Equatable, Hashable, Sendable {
+    case challenge
+    case authentication
+    case paywall
+    case drm
+    case errorPage
+    case browserOnly
+    case unsupportedPagination
+    case protectedViewer
+    case canvasOrBlob
+    case nonviableSession
+}
+
+public struct ReaderEntryEvidence: Equatable, Sendable {
+    public var score: Int
+    public var negativeScore: Int
+    public var candidateCount: Int
+    public var tallestHeightRatio: Double
+    public var hardBlocks: Set<DetectionHardBlock>
+    public var hasViableSession: Bool
+
+    public init(
+        score: Int,
+        negativeScore: Int,
+        candidateCount: Int,
+        tallestHeightRatio: Double,
+        hardBlocks: Set<DetectionHardBlock>,
+        hasViableSession: Bool
+    ) {
+        self.score = score
+        self.negativeScore = negativeScore
+        self.candidateCount = candidateCount
+        self.tallestHeightRatio = tallestHeightRatio
+        self.hardBlocks = hardBlocks
+        self.hasViableSession = hasViableSession
+    }
+}
+
 public enum DetectionParserPath: String, Codable, Equatable, Sendable {
     case siteProfile
     case genericHeuristic
