@@ -1708,6 +1708,7 @@ As a reader searching from Home, I want saved titles to appear alongside web opt
 - Matching supports normalized exact title, prefix, ordered token prefix, and all-token containment.
 - Results are deterministic, deduplicated, bounded, and available offline.
 - Exact clipboard link remains first; exact and partial Library matches follow; the explicit web-search action remains visible.
+- Ordinary results deduplicate by typed destination identity; the final explicit web action is exempt. An exact copied-URL query retains both the first copied-link action and the last explicit web action, while suppressing duplicate ordinary rows for that destination.
 - Saved results are labeled as Library content and show lifecycle/resume context where available.
 - Suggestion destinations are typed so a saved result opens seeded native Series Detail rather than Browser.
 - Opening a saved result does not create a web-search-history row.
