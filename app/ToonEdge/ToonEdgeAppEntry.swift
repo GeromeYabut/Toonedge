@@ -106,6 +106,9 @@ struct ToonEdgeAppEntry: App {
         if arguments.contains("-seedDelayedLibrary") {
             dependencies.libraryService = DelayedUITestLibraryService()
         }
+        if arguments.contains("-seedStaleSavedSearch") {
+            dependencies.libraryService = StaleSavedSearchUITestLibraryService()
+        }
         if arguments.contains("-seedSeriesMutationRetry") {
             let service = RetrySeriesMutationUITestLibraryService()
             dependencies.libraryService = service
@@ -947,6 +950,26 @@ private struct UITestFixtureAssetRetainer: ChapterAssetRetaining {
             try assetCache.store(data, for: imageURL, sourceURL: session.sourceURL)
         }
         return Int64(data.count * session.imageURLs.count)
+    }
+}
+
+/// Reproduces a title removed after Search captured its local projection.
+private struct StaleSavedSearchUITestLibraryService: LibraryProviding {
+    private static let staleID = UUID(uuidString: "00000000-0000-0000-0000-000000000007")!
+
+    func homeSnapshot() async -> HomeSnapshot { await MockLibraryService().homeSnapshot() }
+    func librarySnapshot() async -> LibrarySnapshot { await MockLibraryService().librarySnapshot() }
+
+    func librarySearchItems() async -> [LibrarySearchItem] {
+        [LibrarySearchItem(
+            id: Self.staleID, title: "Removed Hero", sourceDomain: "fixture.example",
+            libraryState: .planned, currentChapterLabel: nil, coverImageURL: nil
+        )]
+    }
+
+    func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
+        guard seriesID != Self.staleID else { return nil }
+        return await MockLibraryService().seriesDetail(for: seriesID)
     }
 }
 

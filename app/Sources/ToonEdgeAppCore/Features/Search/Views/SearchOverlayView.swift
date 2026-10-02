@@ -184,7 +184,7 @@ public struct SearchOverlayView: View {
                         SearchSuggestionRow(suggestion: suggestion)
                     }
                     .buttonStyle(TEActionStyle())
-                    .accessibilityIdentifier(suggestion.kind == .searchAction ? "search.submitSuggestion" : "search.suggestion")
+                    .accessibilityIdentifier(accessibilityIdentifier(for: suggestion))
                 }
             }
         }
@@ -193,6 +193,13 @@ public struct SearchOverlayView: View {
     private func open(_ suggestion: SearchSuggestion) {
         viewModel.select(suggestion, router: &router)
         if viewModel.validationMessage != nil { isSearchFocused = true }
+    }
+
+    private func accessibilityIdentifier(for suggestion: SearchSuggestion) -> String {
+        if case .librarySeries(let item) = suggestion.destination {
+            return "search.savedSeries.\(item.id.uuidString)"
+        }
+        return suggestion.kind == .searchAction ? "search.submitSuggestion" : "search.suggestion"
     }
 
     private func openCurrentQuery() {
@@ -205,6 +212,10 @@ struct SearchSuggestionRowLayout: Equatable, Sendable {
     let minimumHeight: CGFloat = TEActionMetrics.minimumHitSize
     let iconWidth: CGFloat = 28
     var separatorInset: CGFloat { iconWidth + ToonEdgeSpacing.medium * 2 }
+
+    func subtitleLineLimit(isSaved: Bool, accessibilityText: Bool) -> Int? {
+        isSaved || accessibilityText ? nil : 1
+    }
 }
 
 private struct SearchSuggestionRow: View {
@@ -226,7 +237,7 @@ private struct SearchSuggestionRow: View {
                 Text(suggestion.subtitle)
                     .font(ToonEdgeTypography.caption)
                     .foregroundStyle(ToonEdgeColor.textSecondary)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                    .lineLimit(layout.subtitleLineLimit(isSaved: suggestion.kind == .librarySeries, accessibilityText: dynamicTypeSize.isAccessibilitySize))
             }
 
             Spacer()
@@ -234,7 +245,8 @@ private struct SearchSuggestionRow: View {
             Text(kindLabel)
                 .font(ToonEdgeTypography.caption)
                 .foregroundStyle(ToonEdgeColor.textSecondary)
-                .fixedSize(horizontal: true, vertical: false)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: dynamicTypeSize.isAccessibilitySize)
         }
         .frame(maxWidth: .infinity, minHeight: layout.minimumHeight, alignment: .leading)
         .contentShape(Rectangle())
@@ -263,7 +275,7 @@ private struct SearchSuggestionRow: View {
         case .recentLink:
             return "Link"
         case .librarySeries:
-            return "Library"
+            return "Saved in Library"
         case .recentSearch:
             return "Search"
         case .commonSite:

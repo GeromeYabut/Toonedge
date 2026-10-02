@@ -1,6 +1,143 @@
 import Foundation
+import SwiftData
 import Testing
 @testable import ToonEdgeAppCore
+
+@Test @MainActor func savedSearchPresentationShowsLifecycleAndCurrentChapter() async throws {
+    let item = LibrarySearchItem(id: UUID(), title: "Hero", sourceDomain: "example.com", libraryState: .reading, currentChapterLabel: "12", coverImageURL: nil)
+    let model = SearchOverlayViewModel(libraryProvider: SearchOverlayLibrarySpy(items: [item]))
+    await model.load()
+    model.query = "hero"
+
+    let suggestion = try #require(model.suggestions.first { $0.kind == .librarySeries })
+    #expect(suggestion.subtitle == "example.com · Reading · Chapter 12")
+    #expect(suggestion.destination == .librarySeries(item))
+}
+
+@Test @MainActor func savedSearchPresentationUsesEveryLocalLifecycleWithoutInventingProgress() async throws {
+    for state in LibraryCollectionState.allCases {
+        let item = LibrarySearchItem(id: UUID(), title: "Hero", sourceDomain: "example.com", libraryState: state, currentChapterLabel: nil, coverImageURL: nil)
+        let model = SearchOverlayViewModel(libraryProvider: SearchOverlayLibrarySpy(items: [item]))
+        await model.load()
+        model.query = "hero"
+
+        let suggestion = try #require(model.suggestions.first { $0.kind == .librarySeries })
+        #expect(suggestion.subtitle == "example.com · \(state.title)")
+    }
+}
+
+@Test @MainActor func savedSearchPresentationHandlesOptionalAndAlreadyNamedChapterLabels() async throws {
+    let labels: [(String?, String)] = [
+        (nil, "example.com · Reading"),
+        ("  \n", "example.com · Reading"),
+        (" 12 ", "example.com · Reading · Chapter 12"),
+        ("Chapter 1", "example.com · Reading · Chapter 1"),
+        ("chapter 2", "example.com · Reading · chapter 2"),
+        ("Episode 3", "example.com · Reading · Episode 3"),
+        ("Prologue", "example.com · Reading · Prologue")
+    ]
+    for (label, expected) in labels {
+        let item = LibrarySearchItem(id: UUID(), title: "Hero", sourceDomain: "example.com", libraryState: .reading, currentChapterLabel: label, coverImageURL: nil)
+        let model = SearchOverlayViewModel(libraryProvider: SearchOverlayLibrarySpy(items: [item]))
+        await model.load()
+        model.query = "hero"
+
+        #expect(model.suggestions.first { $0.kind == .librarySeries }?.subtitle == expected)
+    }
+}
+
+@Test @MainActor func savedSearchNativeRouteClearsExistingBrowserReaderAndConsumesSeriesOnce() async throws {
+    let item = searchOverlayItem("Hero")
+    let history = SearchOverlayHistorySpy(entries: [])
+    let model = SearchOverlayViewModel(libraryProvider: SearchOverlayLibrarySpy(items: [item]), searchHistoryRecorder: history)
+    await model.load()
+    model.query = "hero"
+    let suggestion = try #require(model.suggestions.first { $0.kind == .librarySeries })
+    var router = AppRouter(
+        activeSheet: .search,
+        presentedBrowser: .url("https://example.com/old"),
+        presentedReader: .sample,
+        pendingLibrarySegment: .recent,
+        presentedBrowserReaderLaunchOrigin: .homeContinueReading
+    )
+
+    #expect(model.select(suggestion, router: &router) == nil)
+    #expect(router.activeSheet == nil)
+    #expect(router.selectedTab == .library)
+    #expect(router.presentedBrowser == nil)
+    #expect(router.presentedReader == nil)
+    #expect(router.presentedBrowserReaderLaunchOrigin == nil)
+    #expect(router.pendingLibrarySegment == nil)
+    #expect(router.consumePendingLibrarySeriesID() == item.id)
+    #expect(router.consumePendingLibrarySeriesID() == nil)
+    #expect(await history.recordedInputs.isEmpty)
+}
+
+@Test @MainActor func savedSearchNativeFlowUsesLocalRepositoryWithoutWebHistory() async throws {
+    // No HTTP loader is supplied: both matching and detail resolve from local data.
+    let schema = Schema(ToonEdgePersistenceModels.all)
+    let container = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true))
+    let repository = SwiftDataLibraryRepository(modelContext: container.mainContext, modelContainer: container)
+    let seriesID = UUID()
+    try await repository.addToLibrary(LibrarySeriesInput(
+        id: seriesID, title: "Offline Hero", canonicalURL: URL(string: "https://example.com/offline-hero")!,
+        sourceDomain: "example.com", coverImageURL: nil, status: "Ongoing", synopsis: "Locally saved",
+        latestKnownChapterLabel: nil, libraryState: .planned, chapters: []
+    ), context: .seriesDetail)
+    try await repository.recordSearchHistory(SearchHistoryInput(kind: .searchQuery, value: "earlier query", displayTitle: "Earlier query"))
+    let originalHistory = await repository.recentSearchHistory(limit: 12)
+    let model = SearchOverlayViewModel(
+        suggestionsProvider: MockSearchSuggestionProvider(clipboardURL: nil, recentLinks: [], recentSearches: [], commonSites: []),
+        libraryProvider: repository, searchHistoryRecorder: repository
+    )
+    await model.load()
+    model.query = "offline hero"
+    let saved = try #require(model.suggestions.first { $0.kind == .librarySeries })
+    var router = AppRouter(activeSheet: .search)
+    #expect(model.select(saved, router: &router) == nil)
+    let pendingSeriesID = router.consumePendingLibrarySeriesID()
+    let routedID = try #require(pendingSeriesID)
+    let detail = try #require(await repository.seriesDetail(for: routedID))
+    #expect(detail.id == seriesID)
+    #expect(detail.title == "Offline Hero")
+    #expect(detail.libraryState == .planned)
+    #expect(router.activeSheet == nil)
+    #expect(router.selectedTab == .library)
+    #expect(router.presentedBrowser == nil)
+    #expect(await repository.recentSearchHistory(limit: 12) == originalHistory)
+}
+
+@Test @MainActor func staleSavedSearchRouteKeepsNativeRecoveryWithoutWebFallback() async throws {
+    let schema = Schema(ToonEdgePersistenceModels.all)
+    let container = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true))
+    let repository = SwiftDataLibraryRepository(modelContext: container.mainContext, modelContainer: container)
+    let seriesID = UUID()
+    try await repository.addToLibrary(LibrarySeriesInput(
+        id: seriesID, title: "Stale Hero", canonicalURL: URL(string: "https://example.com/stale-hero")!,
+        sourceDomain: "example.com", coverImageURL: nil, status: "Ongoing", synopsis: "Locally saved",
+        latestKnownChapterLabel: nil, libraryState: .planned, chapters: []
+    ), context: .seriesDetail)
+    let model = SearchOverlayViewModel(libraryProvider: repository, searchHistoryRecorder: repository)
+    await model.load()
+    model.query = "stale hero"
+    let saved = try #require(model.suggestions.first { $0.kind == .librarySeries })
+    // Remove the real stored record after Search has taken its one-time snapshot.
+    try await repository.removeFromLibrary(seriesID: seriesID)
+    var router = AppRouter(activeSheet: .search)
+
+    #expect(model.select(saved, router: &router) == nil)
+    let pendingSeriesID = router.consumePendingLibrarySeriesID()
+    let routedID = try #require(pendingSeriesID)
+    #expect(routedID == seriesID)
+    #expect(await repository.seriesDetail(for: routedID) == nil)
+    #expect(router.selectedTab == .library)
+    #expect(router.activeSheet == nil)
+    #expect(router.presentedBrowser == nil)
+    #expect(await repository.recentSearchHistory(limit: 12).isEmpty)
+    router.openLibraryRoot()
+    #expect(router.pendingLibrarySeriesID == nil)
+    #expect(router.presentedBrowser == nil)
+}
 
 @Test @MainActor func searchCompositionWithoutProjectionCapabilityKeepsWebSuggestions() async {
     let model = SearchOverlayViewModel(
@@ -163,6 +300,25 @@ import Testing
     #expect(inputs.first?.displayTitle == "Example")
 }
 
+@Test @MainActor func searchValidationSurvivesIdenticalQueryBindingAssignmentUntilRealEdit() {
+    let model = SearchOverlayViewModel()
+    var router = AppRouter(activeSheet: .search)
+    let invalidQuery = "https://"
+    model.query = invalidQuery
+    #expect(model.submit(router: &router) == nil)
+    #expect(model.validationMessage == "Enter a complete web address or search phrase.")
+
+    // A TextField can repeat its current binding value around submission/focus.
+    // That assignment is not an edit and must not erase visible validation.
+    model.query = invalidQuery
+    #expect(model.validationMessage == "Enter a complete web address or search phrase.")
+    #expect(router.activeSheet == .search)
+    #expect(router.presentedBrowser == nil)
+
+    model.query = "https://example.com"
+    #expect(model.validationMessage == nil)
+}
+
 @Test @MainActor func searchSubmissionValidatesAndClearsFeedbackOnEditing() async {
     let history = SearchOverlayHistorySpy(entries: [])
     let feedback = RecordingInteractionFeedback()
@@ -211,6 +367,16 @@ private actor SearchOverlayHistorySpy: SearchHistoryRecording {
     func recordSearchHistory(_ input: SearchHistoryInput) async throws {
         recordedInputs.append(input)
     }
+}
+
+@Test func savedSearchSubtitleLayoutShowsCompleteContextAtAllTextSizes() {
+    let layout = SearchSuggestionRowLayout()
+
+    #expect(layout.subtitleLineLimit(isSaved: true, accessibilityText: false) == nil)
+    #expect(layout.subtitleLineLimit(isSaved: true, accessibilityText: true) == nil)
+    #expect(layout.subtitleLineLimit(isSaved: false, accessibilityText: false) == 1)
+    #expect(layout.subtitleLineLimit(isSaved: false, accessibilityText: true) == nil)
+    #expect(layout.minimumHeight == 44)
 }
 
 @Test func searchSuggestionEditorialRowsKeepInsetAndMinimumActionSize() {

@@ -6,6 +6,7 @@ import Foundation
 public final class SearchOverlayViewModel: ObservableObject {
     @Published public var query = "" {
         didSet {
+            guard query != oldValue else { return }
             validationMessage = nil
             composeSuggestions()
         }
@@ -104,7 +105,7 @@ public final class SearchOverlayViewModel: ObservableObject {
         let saved = ranker.rank(query: query, items: libraryItems, limit: Self.savedResultLimit).map { item in
             SearchSuggestion(
                 id: item.id, kind: .librarySeries, title: item.title,
-                subtitle: item.sourceDomain, destination: .librarySeries(item), systemImage: "books.vertical"
+                subtitle: savedSubtitle(for: item), destination: .librarySeries(item), systemImage: "books.vertical"
             )
         }
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -126,6 +127,17 @@ public final class SearchOverlayViewModel: ObservableObject {
         }
         if let webAction { composed.append(webAction) }
         suggestions = composed
+    }
+
+    private func savedSubtitle(for item: LibrarySearchItem) -> String {
+        var components = [item.sourceDomain, item.libraryState.title]
+        if let label = item.currentChapterLabel?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !label.isEmpty {
+            // Bare numeric labels need context; named chapters retain the site's
+            // wording (including Episode, Prologue, and an existing Chapter prefix).
+            components.append(label.first?.isNumber == true ? "Chapter \(label)" : label)
+        }
+        return components.joined(separator: " · ")
     }
 
     private enum DestinationIdentity: Hashable {
