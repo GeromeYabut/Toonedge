@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 @MainActor
@@ -12,6 +13,7 @@ public final class ReaderViewModel: ObservableObject {
     @Published public private(set) var isSavedToLibrary: Bool
     @Published public private(set) var isSavingToLibrary: Bool
     @Published public private(set) var adjacentLoadState: AdjacentChapterLoadState
+    @Published public private(set) var pagePipeline: ReaderPagePipeline
     private let progressRepository: (any ReaderProgressStoring)?
     private let cacheMetadataManager: (any CacheMetadataManaging)?
     private let chapterAssetRetainer: (any ChapterAssetRetaining)?
@@ -22,11 +24,14 @@ public final class ReaderViewModel: ObservableObject {
     private let interactionFeedback: (any InteractionFeedbackProviding)?
     private var hasCompletedInitialRestore: Bool
     private var hasRecordedRecentCacheMetadataForSession: Bool
-    private var loadedImageIndices: Set<Int>
     private var visibleImageIndex: Int?
     private var hasAttemptedMetadataRefresh: Bool
     private let adjacentRetryDelayNanoseconds: UInt64
     private var adjacentNavigationOperationID: UUID?
+    private let pagePipelineFactory: @MainActor (MockReaderSession) -> ReaderPagePipeline
+    private var isPagePipelineCancelled: Bool
+    private var pageReadinessSubscription: AnyCancellable?
+    private var lastRecordedReadySelection: (pipelineID: ObjectIdentifier, index: Int)?
 
     public init(
         session: MockReaderSession,
@@ -38,8 +43,10 @@ public final class ReaderViewModel: ObservableObject {
         seriesMetadataService: (any SeriesMetadataFetching)? = nil,
         settingsManager: (any SettingsManaging)? = nil,
         interactionFeedback: (any InteractionFeedbackProviding)? = nil,
+        pagePipelineFactory: (@MainActor (MockReaderSession) -> ReaderPagePipeline)? = nil,
         adjacentRetryDelayNanoseconds: UInt64 = 1_500_000_000
     ) {
+        let resolvedPagePipelineFactory = pagePipelineFactory ?? { ReaderPagePipeline(session: $0) }
         self.session = session
         self.isChromeVisible = false
         self.isSettingsPresented = false
@@ -50,6 +57,7 @@ public final class ReaderViewModel: ObservableObject {
         self.isSavedToLibrary = false
         self.isSavingToLibrary = false
         self.adjacentLoadState = .idle
+        self.pagePipeline = resolvedPagePipelineFactory(session)
         self.progressRepository = progressRepository
         self.cacheMetadataManager = cacheMetadataManager
         self.chapterAssetRetainer = chapterAssetRetainer
@@ -58,13 +66,15 @@ public final class ReaderViewModel: ObservableObject {
         self.seriesMetadataService = seriesMetadataService
         self.settingsManager = settingsManager
         self.interactionFeedback = interactionFeedback
+        self.pagePipelineFactory = resolvedPagePipelineFactory
         self.adjacentRetryDelayNanoseconds = adjacentRetryDelayNanoseconds
         self.hasCompletedInitialRestore = progressRepository == nil
         self.hasRecordedRecentCacheMetadataForSession = false
-        self.loadedImageIndices = []
         self.visibleImageIndex = nil
         self.hasAttemptedMetadataRefresh = false
         self.adjacentNavigationOperationID = nil
+        self.isPagePipelineCancelled = false
+        observePagePipelineReadiness()
     }
 
     public var progressDisplay: String {
@@ -123,16 +133,38 @@ public final class ReaderViewModel: ObservableObject {
     }
 
     private func installSession(_ session: MockReaderSession, progress: ReaderProgress) {
+        pagePipeline.cancel()
         self.session = session
+        self.pagePipeline = pagePipelineFactory(session)
+        self.isPagePipelineCancelled = false
         self.settings = session.settings
         self.progress = progress
         self.isChromeVisible = true
         self.isSettingsPresented = false
         self.hasCompletedInitialRestore = true
         self.hasRecordedRecentCacheMetadataForSession = false
-        self.loadedImageIndices = []
         self.visibleImageIndex = nil
+        self.lastRecordedReadySelection = nil
         self.adjacentLoadState = .idle
+        observePagePipelineReadiness()
+    }
+
+    public func readerDidAppear() {
+        guard isPagePipelineCancelled || pagePipeline.sessionID != session.id else { return }
+        pagePipeline = pagePipelineFactory(session)
+        isPagePipelineCancelled = false
+        lastRecordedReadySelection = nil
+        observePagePipelineReadiness()
+    }
+
+    public func readerDidDisappear() {
+        pageReadinessSubscription = nil
+        pagePipeline.cancel()
+        isPagePipelineCancelled = true
+    }
+
+    public func handleReaderMemoryPressure() {
+        pagePipeline.handleMemoryPressure()
     }
 
     @discardableResult
@@ -335,22 +367,43 @@ public final class ReaderViewModel: ObservableObject {
         }
     }
 
-    public func markImageVisible(index: Int) async {
+    public func markImageVisible(
+        index: Int,
+        isReady: Bool,
+        pipelineID: ObjectIdentifier? = nil
+    ) async {
+        guard matchesCurrentPipeline(pipelineID) else { return }
         visibleImageIndex = index
-        guard loadedImageIndices.contains(index) else {
+        guard isReady || pagePipeline.states[index]?.status == .ready else { return }
+        await markImageReady(index: index, pipelineID: pipelineID)
+    }
+
+    public func markImageReady(index: Int, pipelineID: ObjectIdentifier? = nil) async {
+        guard matchesCurrentPipeline(pipelineID), visibleImageIndex == index else { return }
+        let currentPipelineID = ObjectIdentifier(pagePipeline)
+        if let lastRecordedReadySelection,
+           lastRecordedReadySelection.pipelineID == currentPipelineID,
+           lastRecordedReadySelection.index == index {
             return
         }
-
+        lastRecordedReadySelection = (currentPipelineID, index)
         await updateProgress(visibleImageIndex: index)
     }
 
-    public func markImageLoaded(index: Int) async {
-        loadedImageIndices.insert(index)
-        guard visibleImageIndex == index else {
-            return
+    private func observePagePipelineReadiness() {
+        let pipeline = pagePipeline
+        pageReadinessSubscription = pipeline.$states.sink { [weak self, weak pipeline] _ in
+            Task { @MainActor [weak self, weak pipeline] in
+                guard let self, let pipeline, self.pagePipeline === pipeline,
+                      let visibleIndex = self.visibleImageIndex,
+                      pipeline.states[visibleIndex]?.status == .ready else { return }
+                await self.markImageReady(index: visibleIndex, pipelineID: ObjectIdentifier(pipeline))
+            }
         }
+    }
 
-        await updateProgress(visibleImageIndex: index)
+    private func matchesCurrentPipeline(_ pipelineID: ObjectIdentifier?) -> Bool {
+        pipelineID == nil || pipelineID == ObjectIdentifier(pagePipeline)
     }
 
     public func retainCurrentChapter() async {

@@ -139,21 +139,179 @@ import Testing
 }
 
 @MainActor
-@Test func readerVisiblePlaceholderDoesNotAdvanceProgressUntilImageLoads() async {
+@Test func visiblePageAdvancesOnlyAfterPipelineReportsReady() async {
     let repository = MockReaderProgressRepository()
     let session = MockReaderSession.sample
     let viewModel = ReaderViewModel(session: session, progressRepository: repository)
 
     await viewModel.restoreProgress()
-    await viewModel.markImageVisible(index: 2)
+    await viewModel.markImageVisible(index: 2, isReady: false)
 
     #expect(viewModel.progress.currentImageIndex == 0)
     #expect(await repository.progress(for: session.sourceURL) == nil)
 
-    await viewModel.markImageLoaded(index: 2)
+    await viewModel.markImageVisible(index: 2, isReady: true)
 
     #expect(viewModel.progress.currentImageIndex == 2)
     #expect(await repository.progress(for: session.sourceURL)?.currentImageIndex == 2)
+}
+
+@Test func readerViewportSelectionTracksBackwardScrollAndIgnoresEdgeOnlyFrames() {
+    let viewportHeight: CGFloat = 500
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [1: CGRect(x: 0, y: 0, width: 320, height: 500),
+                 2: CGRect(x: 0, y: 500, width: 320, height: 500)],
+        viewportHeight: viewportHeight
+    ) == 1)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [0: CGRect(x: 0, y: -300, width: 320, height: 400),
+                 1: CGRect(x: 0, y: 100, width: 320, height: 500)],
+        viewportHeight: viewportHeight
+    ) == 0)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [0: CGRect(x: 0, y: -300, width: 320, height: 300),
+                 1: CGRect(x: 0, y: 20, width: 320, height: 500)],
+        viewportHeight: viewportHeight
+    ) == 1)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [0: CGRect(x: 0, y: -300, width: 320, height: 250),
+                 1: CGRect(x: 0, y: 500, width: 320, height: 500)],
+        viewportHeight: viewportHeight
+    ) == nil)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [0: CGRect(x: 0, y: -300, width: 320, height: 250),
+                 1: CGRect(x: 0, y: 500, width: 320, height: 500)],
+        viewportHeight: 600
+    ) == 1)
+}
+
+@Test func finalPageSelectionRequiresItsBottomInsideViewport() {
+    let viewportHeight: CGFloat = 600
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [37: CGRect(x: 0, y: 0, width: 390, height: 400),
+                 39: CGRect(x: 0, y: 800, width: 390, height: 390)],
+        viewportHeight: viewportHeight, lastPageIndex: 39
+    ) == 37)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [38: CGRect(x: 0, y: -100, width: 390, height: 400),
+                 39: CGRect(x: 0, y: 300, width: 390, height: 390)],
+        viewportHeight: viewportHeight, lastPageIndex: 39
+    ) == 38)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [38: CGRect(x: 0, y: -290, width: 390, height: 400),
+                 39: CGRect(x: 0, y: 110, width: 390, height: 390)],
+        viewportHeight: viewportHeight, lastPageIndex: 39
+    ) == 39)
+}
+
+@Test func tallFinalPageDoesNotOverrideTopmostPageUntilBottomIsReached() {
+    let viewportHeight: CGFloat = 600
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [38: CGRect(x: 0, y: -100, width: 390, height: 200),
+                 39: CGRect(x: 0, y: 100, width: 390, height: 14_000)],
+        viewportHeight: viewportHeight, lastPageIndex: 39
+    ) == 38)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [39: CGRect(x: 0, y: -13_500, width: 390, height: 14_000)],
+        viewportHeight: viewportHeight, lastPageIndex: 39
+    ) == 39)
+}
+
+@MainActor
+@Test func revisitedMountedPageWaitsForReadinessBeforeProgressMovesBackward() async {
+    let viewModel = ReaderViewModel(session: .sample)
+    await viewModel.markImageVisible(index: 3, isReady: true)
+    let revisit = ReaderViewportPageSelector.visibleIndex(
+        frames: [1: CGRect(x: 0, y: -120, width: 320, height: 420),
+                 3: CGRect(x: 0, y: 800, width: 320, height: 500)],
+        viewportHeight: 500
+    )
+    #expect(revisit == 1)
+    await viewModel.markImageVisible(index: 1, isReady: false)
+    #expect(viewModel.progress.currentImageIndex == 3)
+    await viewModel.markImageReady(index: 1)
+    #expect(viewModel.progress.currentImageIndex == 1)
+}
+
+@MainActor
+@Test func replacementPipelineRearmsSameVisiblePageForReadyProgress() async {
+    let viewModel = ReaderViewModel(session: .sample)
+    let frames = [1: CGRect(x: 0, y: 0, width: 320, height: 500)]
+    let initialSelection = ReaderViewportPageSelector.selection(
+        frames: frames, viewportHeight: 500, pipelineID: ObjectIdentifier(viewModel.pagePipeline)
+    )
+    await viewModel.markImageVisible(index: 1, isReady: false)
+
+    let replacement = MockReaderSession(
+        seriesTitle: "Replacement",
+        chapterTitle: "Chapter 2",
+        sourceURL: URL(string: "https://example.com/series/chapter-2")!,
+        imageURLs: (0..<3).map { URL(string: "https://example.com/new-\($0).png")! }
+    )
+    await viewModel.replaceSession(replacement)
+    let replacementSelection = ReaderViewportPageSelector.selection(
+        frames: frames, viewportHeight: 500, pipelineID: ObjectIdentifier(viewModel.pagePipeline)
+    )
+
+    #expect(replacementSelection?.index == 1)
+    #expect(replacementSelection != initialSelection)
+    await viewModel.markImageVisible(index: 1, isReady: false)
+    await viewModel.markImageReady(index: 1)
+    #expect(viewModel.progress.currentImageIndex == 1)
+}
+
+@MainActor
+@Test func lateReadyTransitionCannotRegressProgressFromNewerVisiblePage() async {
+    let viewModel = ReaderViewModel(session: .sample)
+
+    await viewModel.markImageVisible(index: 2, isReady: false)
+    await viewModel.markImageVisible(index: 3, isReady: true)
+    await viewModel.markImageReady(index: 2)
+
+    #expect(viewModel.progress.currentImageIndex == 3)
+}
+
+@MainActor
+@Test func stalePipelineVisibilityCannotAdvanceReplacementChapterProgress() async {
+    let viewModel = ReaderViewModel(session: .sample)
+    let stalePipelineID = ObjectIdentifier(viewModel.pagePipeline)
+    let replacement = MockReaderSession(
+        seriesTitle: "Replacement",
+        chapterTitle: "Chapter 2",
+        sourceURL: URL(string: "https://example.com/series/chapter-2")!,
+        imageURLs: (0..<4).map { URL(string: "https://example.com/replacement-\($0).png")! }
+    )
+    await viewModel.replaceSession(replacement)
+
+    await viewModel.markImageVisible(index: 3, isReady: true, pipelineID: stalePipelineID)
+
+    #expect(viewModel.progress.currentImageIndex == 0)
+}
+
+@MainActor
+@Test func readerPagePipelineIsRecreatedAfterDisappearanceAndForReplacementSession() async {
+    let viewModel = ReaderViewModel(session: .sample)
+    let initialPipeline = viewModel.pagePipeline
+
+    viewModel.readerDidAppear()
+    #expect(viewModel.pagePipeline === initialPipeline)
+
+    viewModel.readerDidDisappear()
+    viewModel.readerDidAppear()
+    let reappearedPipeline = viewModel.pagePipeline
+    #expect(reappearedPipeline !== initialPipeline)
+    #expect(reappearedPipeline.sessionID == viewModel.session.id)
+
+    let replacement = MockReaderSession(
+        seriesTitle: "Replacement",
+        chapterTitle: "Chapter 2",
+        sourceURL: URL(string: "https://example.com/series/chapter-2")!,
+        imageURLs: [URL(string: "https://example.com/page-2.png")!]
+    )
+    await viewModel.replaceSession(replacement)
+
+    #expect(viewModel.pagePipeline !== reappearedPipeline)
+    #expect(viewModel.pagePipeline.sessionID == replacement.id)
 }
 
 @MainActor
@@ -781,8 +939,8 @@ func adjacentFailureWaitsForExplicitRetry(reason: AdjacentReaderSessionLoadFailu
     let viewModel = ReaderViewModel(session: .sample, interactionFeedback: feedback)
 
     await viewModel.updateProgress(visibleImageIndex: 1)
-    await viewModel.markImageVisible(index: 2)
-    await viewModel.markImageLoaded(index: 2)
+    await viewModel.markImageVisible(index: 2, isReady: false)
+    await viewModel.markImageVisible(index: 2, isReady: true)
     viewModel.toggleChrome()
 
     #expect(feedback.events.isEmpty)

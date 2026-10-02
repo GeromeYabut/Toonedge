@@ -12,6 +12,9 @@ public struct ReaderView: View {
     @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .reader)
     @State private var adjacentNavigationTask: Task<Void, Never>?
     @State private var adjacentAnnouncementPolicy = ReaderAdjacentAnnouncementPolicy()
+    @State private var viewportVisibleIndex: Int?
+    @State private var reportedViewportSelection: ReaderViewportSelection?
+    @State private var pageFrames: [Int: CGRect] = [:]
     private let readerService: any ReaderSessionProviding
     private let adjacentLoader: (any AdjacentReaderSessionLoading)?
     private let libraryLifecycleService: (any LibraryLifecycleManaging)?
@@ -20,7 +23,6 @@ public struct ReaderView: View {
     private let backAction: (() -> Void)?
     private let adjacentSessionDidChange: ((MockReaderSession) -> Void)?
     private let openAdjacentOriginalPageAction: ((URL) -> Void)?
-    private let chapterAssetCache: (any ChapterAssetCaching)?
 
     public init(
         session: MockReaderSession,
@@ -56,7 +58,13 @@ public struct ReaderView: View {
                 libraryLifecycleService: libraryLifecycleService,
                 seriesMetadataService: seriesMetadataService,
                 settingsManager: settingsManager,
-                interactionFeedback: interactionFeedback
+                interactionFeedback: interactionFeedback,
+                pagePipelineFactory: { session in
+                    ReaderPagePipeline(
+                        session: session,
+                        assetLoader: DefaultReaderPageAssetLoader(cache: chapterAssetCache)
+                    )
+                }
             )
         )
         self.readerService = readerService
@@ -67,7 +75,6 @@ public struct ReaderView: View {
         self.backAction = backAction
         self.adjacentSessionDidChange = adjacentSessionDidChange
         self.openAdjacentOriginalPageAction = openAdjacentOriginalPageAction
-        self.chapterAssetCache = chapterAssetCache
         self._router = router
     }
 
@@ -132,6 +139,15 @@ public struct ReaderView: View {
         }
         .foregroundStyle(textColor)
         .animation(.easeInOut(duration: 0.16), value: viewModel.isChromeVisible)
+        .onAppear {
+            viewModel.readerDidAppear()
+            if let viewportVisibleIndex {
+                viewModel.pagePipeline.updateVisibleIndex(viewportVisibleIndex)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: readerMemoryPressureNotification)) { _ in
+            viewModel.handleReaderMemoryPressure()
+        }
         .onChange(of: viewModel.adjacentLoadState) { _, state in
             guard let announcement = adjacentAnnouncementPolicy.announcement(for: state) else {
                 return
@@ -159,6 +175,7 @@ public struct ReaderView: View {
             )
         }
         .onDisappear {
+            viewModel.readerDidDisappear()
             adjacentNavigationTask?.cancel()
             adjacentNavigationTask = nil
             viewModel.cancelAdjacentNavigation()
@@ -170,31 +187,19 @@ public struct ReaderView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: viewModel.settings.isPageSpacingEnabled ? ToonEdgeSpacing.small : 0) {
-                        ForEach(Array(viewModel.session.imageURLs.enumerated()), id: \.offset) { index, imageURL in
+                        ForEach(Array(viewModel.session.imageURLs.enumerated()), id: \.offset) { index, _ in
                             ReaderImagePanel(
-                                imageURL: imageURL,
                                 index: index,
                                 displayMode: viewModel.settings.displayMode,
                                 availableWidth: geometry.size.width,
                                 metadata: viewModel.session.pageMetadata[safe: index],
-                                sourceURL: viewModel.session.sourceURL,
-                                assetCache: chapterAssetCache,
                                 palette: canvasPalette,
-                                requestContext: viewModel.session.imageRequestContext,
-                                onImageLoaded: {
-                                    Task {
-                                        await viewModel.markImageLoaded(index: index)
-                                    }
-                                }
+                                pipeline: viewModel.pagePipeline
                             )
                             .id(index)
-                            .onAppear {
-                                Task {
-                                    await viewModel.markImageVisible(index: index)
-                                }
-                            }
                         }
                     }
+                    .id(ObjectIdentifier(viewModel.pagePipeline))
                     .padding(.vertical, viewModel.settings.isPageSpacingEnabled ? ToonEdgeSpacing.small : 0)
                 }
                 .scrollIndicators(.hidden)
@@ -203,11 +208,44 @@ public struct ReaderView: View {
                 .onTapGesture {
                     handleInteraction(.readingSurfaceTap)
                 }
+                .coordinateSpace(name: "readerViewport")
+                .onPreferenceChange(ReaderPageFramePreferenceKey.self) { frames in
+                    pageFrames = frames
+                    selectVisiblePage(frames: frames, viewportHeight: geometry.size.height)
+                }
+                .onChange(of: geometry.size.height) { _, height in
+                    selectVisiblePage(frames: pageFrames, viewportHeight: height)
+                }
+                .onChange(of: ObjectIdentifier(viewModel.pagePipeline)) { _, _ in
+                    selectVisiblePage(frames: pageFrames, viewportHeight: geometry.size.height)
+                }
                 .task(id: viewModel.session.id) {
                     await viewModel.restoreProgress()
                     proxy.scrollTo(viewModel.progress.currentImageIndex, anchor: .top)
                 }
             }
+        }
+    }
+
+    private func selectVisiblePage(frames: [Int: CGRect], viewportHeight: CGFloat) {
+        let selection = ReaderViewportPageSelector.selection(
+            frames: frames,
+            viewportHeight: viewportHeight,
+            pipelineID: ObjectIdentifier(viewModel.pagePipeline),
+            lastPageIndex: viewModel.session.imageURLs.indices.last
+        )
+        guard selection != reportedViewportSelection else { return }
+        reportedViewportSelection = selection
+        viewportVisibleIndex = selection?.index
+        guard let selection else { return }
+        let pipeline = viewModel.pagePipeline
+        pipeline.updateVisibleIndex(selection.loadingAnchorIndex)
+        Task {
+            await viewModel.markImageVisible(
+                index: selection.index,
+                isReady: pipeline.states[selection.index]?.status == .ready,
+                pipelineID: selection.pipelineID
+            )
         }
     }
 
@@ -474,6 +512,14 @@ public struct ReaderView: View {
         viewModel.isChromeVisible ? "Hide Reader Controls" : "Show Reader Controls"
     }
 
+    private var readerMemoryPressureNotification: Notification.Name {
+        #if os(iOS)
+        UIApplication.didReceiveMemoryWarningNotification
+        #else
+        Notification.Name("ToonEdge.readerMemoryPressure")
+        #endif
+    }
+
     private func handleInteraction(_ source: ReaderInteractionSource) {
         guard ReaderGesturePolicy().togglesChrome(for: source) else { return }
         viewModel.toggleChrome()
@@ -679,62 +725,28 @@ struct ReaderAdjacentAnnouncementPolicy {
 }
 
 private struct ReaderImagePanel: View {
-    let imageURL: URL
     let index: Int
     let displayMode: ReaderDisplayMode
     let availableWidth: CGFloat
     let metadata: ReaderPageMetadata?
-    let sourceURL: URL
-    let assetCache: (any ChapterAssetCaching)?
     let palette: ReaderCanvasPaletteValues
-    let onImageLoaded: () -> Void
-    @StateObject private var loader: ReaderPageImageLoader
-
-    init(
-        imageURL: URL,
-        index: Int,
-        displayMode: ReaderDisplayMode,
-        availableWidth: CGFloat,
-        metadata: ReaderPageMetadata?,
-        sourceURL: URL,
-        assetCache: (any ChapterAssetCaching)?,
-        palette: ReaderCanvasPaletteValues,
-        requestContext: ReaderImageRequestContext?,
-        onImageLoaded: @escaping () -> Void
-    ) {
-        self.imageURL = imageURL
-        self.index = index
-        self.displayMode = displayMode
-        self.availableWidth = availableWidth
-        self.metadata = metadata
-        self.sourceURL = sourceURL
-        self.assetCache = assetCache
-        self.palette = palette
-        self.onImageLoaded = onImageLoaded
-        self._loader = StateObject(wrappedValue: ReaderPageImageLoader(
-            imageURL: imageURL,
-            sourceURL: sourceURL,
-            assetCache: assetCache,
-            requestContext: requestContext
-        ))
-    }
+    @ObservedObject var pipeline: ReaderPagePipeline
 
     var body: some View {
         Group {
-            switch loader.state {
-            case .idle, .loading:
+            switch state.status {
+            case .idle, .queued, .loading:
                 placeholder
                     .overlay {
                         ProgressView()
                             .tint(palette.foreground.color)
                     }
-            case .loaded(let data):
-                if let image = image(from: data) {
-                    image
+            case .ready:
+                if let decoded = state.image {
+                    Image(decoded.cgImage, scale: 1, label: Text("Reader image \(index + 1)"))
                         .resizable()
                         .scaledToFit()
                         .frame(maxWidth: imageWidth)
-                        .accessibilityLabel("Reader image \(index + 1)")
                 } else {
                     failurePlaceholder
                 }
@@ -743,15 +755,13 @@ private struct ReaderImagePanel: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .task(id: imageURL) {
-            await loader.load()
-        }
-        .onChange(of: loader.state) { _, state in
-            guard case .loaded(let data) = state, image(from: data) != nil else {
-                return
+        .background {
+            GeometryReader { geometry in
+                Color.clear.preference(
+                    key: ReaderPageFramePreferenceKey.self,
+                    value: [index: geometry.frame(in: .named("readerViewport"))]
+                )
             }
-
-            onImageLoaded()
         }
     }
 
@@ -767,29 +777,15 @@ private struct ReaderImagePanel: View {
                         .foregroundStyle(palette.foreground.color)
                         .accessibilityIdentifier("reader.page.failed.\(index + 1)")
                     Button("Retry") {
-                        Task {
-                            await loader.retry()
-                        }
+                        pipeline.retry(index: index)
                     }
                     .font(ToonEdgeTypography.caption)
                 }
             }
     }
 
-    private func image(from data: Data) -> Image? {
-        #if canImport(UIKit)
-        guard let platformImage = UIImage(data: data) else {
-            return nil
-        }
-        return Image(uiImage: platformImage)
-        #elseif canImport(AppKit)
-        guard let platformImage = NSImage(data: data) else {
-            return nil
-        }
-        return Image(nsImage: platformImage)
-        #else
-        return nil
-        #endif
+    private var state: ReaderPageState {
+        pipeline.states[index] ?? ReaderPageState(status: .idle, image: nil, failure: nil)
     }
 
     private var imageWidth: CGFloat {
@@ -809,7 +805,7 @@ private struct ReaderImagePanel: View {
                 height: ReaderPageLayout.placeholderHeight(
                     availableWidth: availableWidth,
                     displayMode: displayMode,
-                    metadata: metadata
+                    metadata: state.learnedMetadata ?? metadata
                 )
             )
             .overlay {
@@ -817,6 +813,67 @@ private struct ReaderImagePanel: View {
                     .font(ToonEdgeTypography.caption)
                     .foregroundStyle(palette.foreground.color)
             }
+    }
+}
+
+struct ReaderViewportSelection: Equatable {
+    let index: Int
+    let loadingAnchorIndex: Int
+    let pipelineID: ObjectIdentifier
+}
+
+struct ReaderViewportPageSelector {
+    static func selection(
+        frames: [Int: CGRect], viewportHeight: CGFloat, pipelineID: ObjectIdentifier,
+        lastPageIndex: Int? = nil
+    ) -> ReaderViewportSelection? {
+        guard let loadingAnchorIndex = topmostVisibleIndex(
+            frames: frames, viewportHeight: viewportHeight
+        ) else { return nil }
+        let progressIndex = finalPageAtViewportEnd(
+            frames: frames, viewportHeight: viewportHeight, lastPageIndex: lastPageIndex
+        ) ?? loadingAnchorIndex
+        return ReaderViewportSelection(
+            index: progressIndex, loadingAnchorIndex: loadingAnchorIndex, pipelineID: pipelineID
+        )
+    }
+
+    static func visibleIndex(
+        frames: [Int: CGRect], viewportHeight: CGFloat, lastPageIndex: Int? = nil
+    ) -> Int? {
+        finalPageAtViewportEnd(
+            frames: frames, viewportHeight: viewportHeight, lastPageIndex: lastPageIndex
+        ) ?? topmostVisibleIndex(frames: frames, viewportHeight: viewportHeight)
+    }
+
+    private static func finalPageAtViewportEnd(
+        frames: [Int: CGRect], viewportHeight: CGFloat, lastPageIndex: Int?
+    ) -> Int? {
+        guard viewportHeight > 0 else { return nil }
+        if let lastPageIndex, let finalFrame = frames[lastPageIndex],
+           finalFrame.height > 0, finalFrame.maxY > 0,
+           finalFrame.minY < viewportHeight, finalFrame.maxY <= viewportHeight {
+            return lastPageIndex
+        }
+        return nil
+    }
+
+    private static func topmostVisibleIndex(frames: [Int: CGRect], viewportHeight: CGFloat) -> Int? {
+        guard viewportHeight > 0 else { return nil }
+        return frames
+            .filter { _, frame in frame.maxY > 0 && frame.minY < viewportHeight }
+            .min { left, right in
+                if left.value.minY == right.value.minY { return left.key < right.key }
+                return left.value.minY < right.value.minY
+            }?.key
+    }
+}
+
+private struct ReaderPageFramePreferenceKey: PreferenceKey {
+    static let defaultValue: [Int: CGRect] = [:]
+
+    static func reduce(value: inout [Int: CGRect], nextValue: () -> [Int: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
     }
 }
 

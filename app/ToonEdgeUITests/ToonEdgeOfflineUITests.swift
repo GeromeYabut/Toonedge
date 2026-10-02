@@ -28,8 +28,9 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         app.launchArguments = ["-uiTesting", "-seedOfflineReader", "-resetOfflineFixture"]
         app.launch()
 
-        XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 5))
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let initialReader = app.descendants(matching: .any)["reader.root"]
+        XCTAssertTrue(initialReader.waitForExistence(timeout: 5))
+        initialReader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         let retain = app.buttons["Retain Chapter Offline"]
         XCTAssertTrue(retain.waitForExistence(timeout: 5))
         retain.tap()
@@ -40,7 +41,8 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         app.launchArguments = ["-uiTesting", "-seedOfflineReader"]
         app.launch()
 
-        let reader = app.scrollViews.firstMatch
+        let reader = app.descendants(matching: .any)["reader.root"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 5))
         for page in 1...3 {
             let image = app.images["Reader image \(page)"]
             for _ in 0..<4 where !image.exists {
@@ -53,6 +55,7 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-seedOfflineReader", "-uncachedOfflineFixture"]
         app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForExistence(timeout: 5))
         XCTAssertTrue(
             app.staticTexts["Page 1 unavailable. Connect to the internet and retry."].waitForExistence(timeout: 8)
         )
@@ -150,11 +153,26 @@ final class ToonEdgeLongChapterUITests: XCTestCase {
             )
         }
 
+        let lastImage = loadedImage(page: 40, in: app)
+        for _ in 0..<8 {
+            let imageBottom = lastImage.frame.maxY
+            if imageBottom > reader.frame.minY && imageBottom <= reader.frame.maxY {
+                break
+            }
+            surface.swipeUp()
+        }
+        XCTAssertGreaterThan(lastImage.frame.maxY, reader.frame.minY)
+        XCTAssertLessThanOrEqual(lastImage.frame.maxY, reader.frame.maxY)
+
         if !app.buttons["reader.back"].exists {
             reader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         }
         let progress = app.staticTexts["reader.progress.value"]
         XCTAssertTrue(progress.waitForExistence(timeout: 5))
+        let completed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", "100%"), object: progress
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [completed], timeout: 5), .completed)
         XCTAssertEqual(progress.label, "100%")
     }
 
