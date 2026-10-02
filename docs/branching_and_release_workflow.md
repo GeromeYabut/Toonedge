@@ -25,12 +25,33 @@ xcodebuild \
   -scheme ToonEdge \
   -configuration Debug \
   -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath /private/tmp/toonedge-pr-build \
+  -derivedDataPath "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/DerivedData/fix-def-036-vortex-parity" \
   build CODE_SIGNING_ALLOWED=NO
 git diff --check
 ```
 
 Run the complete two-device UI suite locally for release candidates and high-risk Reader, Browser, persistence, cache, or accessibility changes. Use only the dedicated iPhone 16e and iPhone 16 Pro Max simulators documented in the project instructions.
+
+## External Build Paths
+
+When `/Volumes/Seagate 2TB` is mounted with volume UUID `7C6E7CE1-D8D5-3041-AA58-DC000A724A29` and a directory-creation probe succeeds, keep disposable build output under `/Volumes/Seagate 2TB/ToonEdgeBuilds`. Use a filesystem-safe branch key and never share one mutable output directory between concurrent agents.
+
+```sh
+swift test \
+  --package-path app \
+  --scratch-path "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/SwiftPM/fix-def-036-vortex-parity" \
+  --jobs 1
+
+xcodebuild \
+  -project app/ToonEdge.xcodeproj \
+  -scheme ToonEdge \
+  -configuration Debug \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/DerivedData/fix-def-036-vortex-parity" \
+  build CODE_SIGNING_ALLOWED=NO
+```
+
+Store result bundles and sanitized logs under a date and branch-key subdirectory of `ToonEdgeBuilds/Results`; for example, `ToonEdgeBuilds/Results/2026-10-02/fix-def-036-vortex-parity/`. If the verified volume is unavailable, use a unique `/private/tmp/toonedge-...` path, report the fallback, and archive or remove it after verification. Never create `/Volumes/Seagate 2TB` when the drive is absent, and never place source worktrees or simulator data on the external drive.
 
 ## Pull Requests
 

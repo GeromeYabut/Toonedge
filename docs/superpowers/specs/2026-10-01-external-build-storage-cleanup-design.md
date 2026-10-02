@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-01
 
-**Status:** Approved concept; awaiting written-spec review
+**Status:** Implemented on 2026-10-02
 
 ## Goal
 
@@ -10,14 +10,13 @@ Reclaim approximately 16 GiB from the Mac's nearly full internal SSD without los
 
 ## Current Evidence
 
-- The internal APFS container has approximately 3.7 GB free and is 98.5% used.
+- The internal APFS container had 4,781,292 KiB free before migration and has 17,643,664 KiB free after migration.
 - The external volume is mounted at `/Volumes/Seagate 2TB`, uses Journaled HFS+, and has approximately 1.58 TB free.
 - The current connection is limited to USB 2.0 speed. This is adequate for archival storage but slower than the internal SSD for compilation.
-- macOS currently denies this Codex process write access to the removable volume with `Operation not permitted`. No migration may begin until a write preflight succeeds.
-- ToonEdge-named temporary artifacts under `/private/tmp` consume approximately 10.63 GiB.
-- SwiftPM `.build` directories in clean historical ToonEdge worktrees consume approximately 2.76 GiB in total.
-- The current Story 13.1 worktree has two uncommitted entries and is excluded from cleanup.
-- Xcode DerivedData consumes approximately 3.07 GiB. It is predominantly Chep and shared module data rather than ToonEdge data, but it is rebuildable and may be preserved externally as part of this user-authorized Mac cleanup.
+- The write preflight passed after Full Disk Access was enabled for the app. The external volume has 1.42 TiB free after the migration.
+- 164 verified ToonEdge temporary artifacts were copied to the archive and removed locally. Ten mismatched paths and thirteen result bundles with image attachments were retained locally; two transient agent report files disappeared independently and remained excluded.
+- Twelve clean, inactive historical worktree `.build` directories were archived and removed locally. The active DEF-020 worktree, primary checkout, and Story 13.1 worktree remained excluded.
+- Ten Xcode DerivedData children, including Chep and shared caches, were archive-copied and removed locally. The internal DerivedData parent is now empty.
 - The three protected screenshots in the primary ToonEdge checkout must remain untracked and byte-identical. They must not be copied to external build storage.
 
 ## Chosen Approach
@@ -82,7 +81,7 @@ Move the current contents of `~/Library/Developer/Xcode/DerivedData` into the da
 
 Potential recovery: approximately 3.07 GiB.
 
-Expected total recovery: approximately 16 GiB, subject to normal filesystem allocation differences.
+Observed total recovery: 12,862,372 KiB of internal free space. The lower-than-archive delta reflects filesystem allocation, retained temporary artifacts, and externally archived copies with filesystem metadata.
 
 ## Copy and Verification Rules
 
@@ -90,7 +89,7 @@ Expected total recovery: approximately 16 GiB, subject to normal filesystem allo
 - Use a metadata-preserving copy suitable for APFS-to-HFS+ migration.
 - Never overwrite an existing archive path. Abort on collision.
 - For every tree, record source and destination file counts and allocated/logical byte counts.
-- Run a read-only recursive comparison after copying. A mismatch blocks source removal.
+- Run a read-only comparison after copying. Use a symlink-preserving `rsync -ain --delete` comparison for trees containing recursive package links; a mismatch blocks source removal.
 - Delete only the exact source that passed verification. Never delete a parent directory, unresolved variable, wildcard expansion, worktree root, repository root, home directory, or volume root.
 - If copying is interrupted, retain both source and partial destination, mark the destination incomplete, and resume or restart without deletion.
 - After cleanup, record internal free space, external archive size, and the manifest path.
@@ -154,6 +153,14 @@ The cleanup is complete only when:
 - the shared simulator remains untouched;
 - future-agent instructions contain the external-path preflight, preferred paths, fallback, isolation, sanitization, and safety rules.
 
-## Known Limitation and Required User Action
+## Implementation Record
 
-The current Codex process cannot write to `/Volumes/Seagate 2TB` because macOS removable-volume privacy controls deny access. Before implementation, the user must grant the Codex application removable-volume access in macOS Privacy & Security settings, or otherwise provide an external directory that the process can write. The migration must remain blocked until a direct directory-creation preflight succeeds.
+- Preflight confirmed the expected volume UUID, Journaled HFS+ filesystem, writable status, and a successful visible-directory create/list/remove probe.
+- Archive root: `/Volumes/Seagate 2TB/ToonEdgeBuilds/Archive/2026-10-01-conservative-clean`.
+- Archive size: 17,355,716 KiB: `private-tmp` 11,644,960 KiB, `worktree-builds` 2,468,952 KiB, and `xcode-derived-data` 3,241,620 KiB.
+- The temporary-artifact archive was attachment-scanned before removal: 809 attachment files totaling 21,167 KiB, with JSON, XML, text, empty, or opaque diagnostic types and no image MIME types. Result bundles with attachment records were excluded before copying.
+- The DerivedData archive was attachment-scanned before removal: 372 attachment files totaling 15,049 KiB, with JSON, XML, text, empty, or opaque diagnostic types and no image MIME types.
+- All removed paths have corresponding manifests and verification logs under the archive `manifests/` directory. Worktree and DerivedData verification completed before their sources were removed.
+- `swift test --package-path app --scratch-path "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/SwiftPM/docs-external-build-storage-cleanup" --jobs 1` passed 433 tests with 0 failures.
+- The required Debug build passed using external DerivedData and the dedicated iPhone 16e destination: `xcodebuild -project app/ToonEdge.xcodeproj -scheme ToonEdge -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16e,OS=18.6' -derivedDataPath "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/DerivedData/docs-external-build-storage-cleanup" build CODE_SIGNING_ALLOWED=NO` produced `** BUILD SUCCEEDED **`.
+- Protected screenshot SHA-256 values and the primary-checkout status were captured before migration and must be revalidated after final build gates.
