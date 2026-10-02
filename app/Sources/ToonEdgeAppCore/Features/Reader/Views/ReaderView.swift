@@ -239,7 +239,7 @@ public struct ReaderView: View {
         viewportVisibleIndex = selection?.index
         guard let selection else { return }
         let pipeline = viewModel.pagePipeline
-        pipeline.updateVisibleIndex(selection.index)
+        pipeline.updateVisibleIndex(selection.loadingAnchorIndex)
         Task {
             await viewModel.markImageVisible(
                 index: selection.index,
@@ -818,6 +818,7 @@ private struct ReaderImagePanel: View {
 
 struct ReaderViewportSelection: Equatable {
     let index: Int
+    let loadingAnchorIndex: Int
     let pipelineID: ObjectIdentifier
 }
 
@@ -826,14 +827,27 @@ struct ReaderViewportPageSelector {
         frames: [Int: CGRect], viewportHeight: CGFloat, pipelineID: ObjectIdentifier,
         lastPageIndex: Int? = nil
     ) -> ReaderViewportSelection? {
-        guard let index = visibleIndex(
-            frames: frames, viewportHeight: viewportHeight, lastPageIndex: lastPageIndex
+        guard let loadingAnchorIndex = topmostVisibleIndex(
+            frames: frames, viewportHeight: viewportHeight
         ) else { return nil }
-        return ReaderViewportSelection(index: index, pipelineID: pipelineID)
+        let progressIndex = finalPageAtViewportEnd(
+            frames: frames, viewportHeight: viewportHeight, lastPageIndex: lastPageIndex
+        ) ?? loadingAnchorIndex
+        return ReaderViewportSelection(
+            index: progressIndex, loadingAnchorIndex: loadingAnchorIndex, pipelineID: pipelineID
+        )
     }
 
     static func visibleIndex(
         frames: [Int: CGRect], viewportHeight: CGFloat, lastPageIndex: Int? = nil
+    ) -> Int? {
+        finalPageAtViewportEnd(
+            frames: frames, viewportHeight: viewportHeight, lastPageIndex: lastPageIndex
+        ) ?? topmostVisibleIndex(frames: frames, viewportHeight: viewportHeight)
+    }
+
+    private static func finalPageAtViewportEnd(
+        frames: [Int: CGRect], viewportHeight: CGFloat, lastPageIndex: Int?
     ) -> Int? {
         guard viewportHeight > 0 else { return nil }
         if let lastPageIndex, let finalFrame = frames[lastPageIndex],
@@ -841,6 +855,11 @@ struct ReaderViewportPageSelector {
            finalFrame.minY < viewportHeight, finalFrame.maxY <= viewportHeight {
             return lastPageIndex
         }
+        return nil
+    }
+
+    private static func topmostVisibleIndex(frames: [Int: CGRect], viewportHeight: CGFloat) -> Int? {
+        guard viewportHeight > 0 else { return nil }
         return frames
             .filter { _, frame in frame.maxY > 0 && frame.minY < viewportHeight }
             .min { left, right in

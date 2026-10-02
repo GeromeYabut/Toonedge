@@ -384,6 +384,52 @@ private actor SequencedReaderHTTPClient: HTTPDataLoading {
     pipeline.cancel()
 }
 
+@Test @MainActor func finalProgressKeepsThreeVisibleReadyPagesInTheLoadingWindow() async throws {
+    let loader = SuspendedReaderAssetLoader()
+    let session = MockReaderSession.pipelineFixture(pageCount: 40)
+    let pipeline = ReaderPagePipeline(session: session, assetLoader: loader)
+    let viewModel = ReaderViewModel(session: session, pagePipelineFactory: { _ in pipeline })
+    pipeline.updateVisibleIndex(37)
+    try await loader.waitForRequestCount(3)
+    await loader.completeAll()
+    try await loader.waitForRequestCount(4)
+    await loader.completeAll()
+    try await waitForPipelineState { (36...39).allSatisfy { pipeline.states[$0]?.status == .ready } }
+
+    let frames = [
+        37: CGRect(x: 0, y: -270, width: 390, height: 390),
+        38: CGRect(x: 0, y: 120, width: 390, height: 390),
+        39: CGRect(x: 0, y: 510, width: 390, height: 390)
+    ]
+    let selection = try #require(ReaderViewportPageSelector.selection(
+        frames: frames, viewportHeight: 900,
+        pipelineID: ObjectIdentifier(pipeline), lastPageIndex: 39
+    ))
+    #expect(selection.index == 39)
+    #expect(selection.loadingAnchorIndex == 37)
+
+    pipeline.updateVisibleIndex(selection.loadingAnchorIndex)
+    await viewModel.markImageVisible(
+        index: selection.index, isReady: pipeline.states[selection.index]?.status == .ready,
+        pipelineID: selection.pipelineID
+    )
+    #expect(viewModel.progress.fractionComplete == 1)
+    #expect((37...39).allSatisfy { pipeline.states[$0]?.status == .ready && pipeline.states[$0]?.image != nil })
+
+    let laterFrames = [
+        38: CGRect(x: 0, y: -270, width: 390, height: 390),
+        39: CGRect(x: 0, y: 120, width: 390, height: 390)
+    ]
+    let laterSelection = try #require(ReaderViewportPageSelector.selection(
+        frames: laterFrames, viewportHeight: 900,
+        pipelineID: ObjectIdentifier(pipeline), lastPageIndex: 39
+    ))
+    #expect(laterSelection.index == 39)
+    #expect(laterSelection.loadingAnchorIndex == 38)
+    #expect(laterSelection != selection)
+    pipeline.cancel()
+}
+
 @Test @MainActor func readyBeforeVisibilityCallbackStillAdvancesProgress() async throws {
     let loader = SuspendedReaderAssetLoader()
     let session = MockReaderSession.pipelineFixture(pageCount: 3)
