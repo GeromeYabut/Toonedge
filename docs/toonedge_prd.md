@@ -186,6 +186,8 @@ Reader entry thresholds are:
 - manual-only: score `45-54`, no hard block, and a viable normalized Reader session
 - unavailable: score below `45`, nonviable output, or any hard block
 
+Architecture §9.5.1 also requires a global minimum before automatic, recommended, or manual entry: at least `4` candidate images, or exactly `3` whose combined actual rendered height is `>= 3.5x` the viewport height. The three-image exception requires finite positive viewport height and actual rendered heights for all three images; unknown, nonfinite, or nonpositive geometry cannot qualify, and natural image size is not rendered evidence. One or two candidates remain unavailable regardless of height. Each entry band must still meet its own viability constraints.
+
 The detector owns entry eligibility. Browser UI must not infer eligibility from score alone or bypass challenge, authentication, paywall, protected-viewer, browser-only, unsupported-paginated, DRM/canvas/blob, error-page, or other hard blocks.
 
 Detection features may include:

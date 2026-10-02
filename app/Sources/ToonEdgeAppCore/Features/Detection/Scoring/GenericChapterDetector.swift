@@ -38,7 +38,8 @@ public struct GenericChapterDetector: ChapterPageDetecting {
             candidateCount: normalizedCandidates.count,
             tallestHeightRatio: tallestHeightRatio,
             hardBlocks: hardBlocks,
-            hasViableSession: session != nil
+            hasViableSession: session != nil,
+            totalRenderedHeightRatio: totalRenderedHeightRatio(candidates: normalizedCandidates, viewportHeight: page.viewportHeight)
         )
         let disposition = entryPolicy.disposition(for: evidence)
         let confidence: DetectionConfidence
@@ -91,6 +92,15 @@ public struct GenericChapterDetector: ChapterPageDetecting {
                 normalized.srcset = nil
                 return normalized
             }
+    }
+
+    private func totalRenderedHeightRatio(candidates: [DetectionImageCandidate], viewportHeight: Double) -> Double {
+        guard viewportHeight.isFinite, viewportHeight > 0 else { return 0 }
+        let heights = candidates.compactMap(\.renderedHeight)
+        guard heights.count == candidates.count,
+              heights.allSatisfy({ $0.isFinite && $0 > 0 }) else { return 0 }
+        let ratio = heights.reduce(0, +) / viewportHeight
+        return ratio.isFinite ? ratio : 0
     }
 
     private func normalizedURL(for candidate: DetectionImageCandidate, pageURL: URL) -> URL? {
@@ -367,7 +377,8 @@ public struct GenericChapterDetector: ChapterPageDetecting {
             ],
             hardBlocks: evidence.hardBlocks,
             negativeScore: evidence.negativeScore,
-            tallestHeightRatio: evidence.tallestHeightRatio
+            tallestHeightRatio: evidence.tallestHeightRatio,
+            totalRenderedHeightRatio: evidence.totalRenderedHeightRatio
         )
     }
 

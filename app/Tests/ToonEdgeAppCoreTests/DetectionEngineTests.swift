@@ -38,16 +38,74 @@ import JavaScriptCore
     }
 }
 
-@Test func tallestImageRequiresActualViewportHeight() throws {
+@Test func globalCandidateFloorRejectsTwoTallImagesAtEveryViewportHeight() throws {
     var page = try entryPage(count: 2, width: 900, height: 4_500)
     page.documentHeight = 18_000
     let tallViewport = try pageWithPayloadFields(page, fields: ["viewportHeight": 1_500])
     let shortViewport = try pageWithPayloadFields(page, fields: ["viewportHeight": 800])
     #expect(GenericChapterDetector().detect(page: tallViewport).readerSession == nil)
-    #expect(GenericChapterDetector().detect(page: shortViewport).readerSession != nil)
-    #expect(GenericChapterDetector().detect(page: shortViewport).readerEntryDisposition == .recommended)
+    #expect(GenericChapterDetector().detect(page: shortViewport).readerSession == nil)
+    #expect(GenericChapterDetector().detect(page: shortViewport).readerEntryDisposition == .unavailable)
     #expect(GenericChapterDetector().detect(page: shortViewport).diagnostics.negativeScore == -16)
     #expect(GenericChapterDetector().detect(page: shortViewport).diagnostics.tallestHeightRatio == 5.625)
+}
+
+@Test(arguments: [ReaderEntryDisposition.manual, .recommended, .automatic])
+func detectorGlobalFloorUsesActualCombinedRenderedHeightAtEveryBand(band: ReaderEntryDisposition) throws {
+    let valid = try globalFloorPage(band: band, renderedHeights: [900, 950, 950])
+    let below = try globalFloorPage(band: band, renderedHeights: [900, 950, 949])
+    let unknown = try globalFloorPage(band: band, renderedHeights: [900, 950, nil])
+    let zero = try globalFloorPage(band: band, renderedHeights: [900, 1_900, 0])
+    let negative = try globalFloorPage(band: band, renderedHeights: [900, 1_900, -1])
+    for page in [below, unknown, zero, negative] {
+        for result in [GenericChapterDetector().detect(page: page), ProfileAwareChapterDetector().detect(page: page)] {
+            #expect(result.candidates.count == 3)
+            #expect(result.score == GenericChapterDetector().detect(page: valid).score)
+            #expect(result.readerEntryDisposition == .unavailable)
+            #expect(result.readerSession == nil)
+        }
+    }
+    let result = ProfileAwareChapterDetector().detect(page: valid)
+    #expect(result.diagnostics.totalRenderedHeightRatio == 3.5)
+    #expect(result.readerEntryDisposition == band)
+    #expect(result.readerSession?.imageURLs.count == 3)
+}
+
+@Test(arguments: [0.0, -1.0, Double.infinity, Double.nan])
+func detectorGlobalFloorRequiresFinitePositiveViewportForThreeImages(viewportHeight: Double) throws {
+    var page = try globalFloorPage(band: .manual, renderedHeights: [900, 950, 950])
+    page.viewportHeight = viewportHeight
+    let result = ProfileAwareChapterDetector().detect(page: page)
+    #expect(result.score == 47)
+    #expect(result.readerEntryDisposition == .unavailable)
+    #expect(result.readerSession == nil)
+}
+
+@Test(arguments: [Double.infinity, Double.nan, Double.greatestFiniteMagnitude])
+func detectorGlobalFloorRejectsInvalidRenderedHeightOrOverflow(height: Double) throws {
+    var page = try globalFloorPage(band: .manual, renderedHeights: [900, 950, 950])
+    for index in page.images.indices { page.images[index].renderedHeight = height }
+    let result = GenericChapterDetector().detect(page: page)
+    #expect(result.candidates.count == 3)
+    #expect(result.diagnostics.totalRenderedHeightRatio == 0)
+    #expect(result.readerEntryDisposition == .unavailable)
+    #expect(result.readerSession == nil)
+}
+
+private func globalFloorPage(band: ReaderEntryDisposition, renderedHeights: [Double?]) throws -> DetectionPageAnalysis {
+    var page = try entryPage(count: 3, width: band == .manual ? 320 : 900, height: band == .manual ? 500 : 4_500)
+    page.viewportHeight = 800
+    if band == .manual {
+        page.images[0].semanticHints = ["data-reader-page-image", "data-reader-index"]
+    }
+    if band == .automatic { page.documentHeight = 18_000 }
+    var payload = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(page)) as? [String: Any])
+    var images = try #require(payload["images"] as? [[String: Any]])
+    for index in images.indices {
+        if let height = renderedHeights[index] { images[index]["renderedHeight"] = height }
+    }
+    payload["images"] = images
+    return try JSONDecoder().decode(DetectionPageAnalysis.self, from: JSONSerialization.data(withJSONObject: payload))
 }
 
 @Test func unavailableResultsPreserveAllTypedBlocksThroughProfilesAndFollowUp() throws {
@@ -70,11 +128,13 @@ import JavaScriptCore
     let page = try detectionFixture(named: "mangapill_hydrated_dom")
     #expect(page.viewportHeight == 0)
     #expect(page.hardBlocks.isEmpty)
+    #expect(page.images.allSatisfy { $0.renderedHeight == nil })
     let json = Data(#"{"confidence":"low","score":0,"parserPath":"genericHeuristic","retryRecommendation":"none","candidateCount":0,"messages":[]}"#.utf8)
     let diagnostics = try JSONDecoder().decode(DetectionDiagnostics.self, from: json)
     #expect(diagnostics.hardBlocks.isEmpty)
     #expect(diagnostics.negativeScore == 0)
     #expect(diagnostics.tallestHeightRatio == 0)
+    #expect(diagnostics.totalRenderedHeightRatio == 0)
 }
 
 @Test func blockedResultInitializerCannotHonorAnExplicitEntryDisposition() throws {
@@ -116,6 +176,7 @@ import JavaScriptCore
 @Test func knownViewportAllowsAutomaticEntryForFiveActuallyTallImages() throws {
     var page = try entryPage(count: 5, width: 900, height: 4_500)
     page.viewportHeight = 800
+    for index in page.images.indices { page.images[index].renderedHeight = 4_500 }
     let result = GenericChapterDetector(entryPolicy: .architectureDefault).detect(page: page)
     #expect(result.score == 79)
     #expect(result.readerEntryDisposition == .automatic)
@@ -124,6 +185,17 @@ import JavaScriptCore
 }
 
 #if canImport(JavaScriptCore)
+@Test func renderedPayloadKeepsActualHeightSeparateFromNaturalSize() throws {
+    let payload = try renderedEntryPayload(mainText: "Chapter 1", hasNetworkImages: true)
+    let images = try #require(payload["images"] as? [[String: Any]])
+    let image = try #require(images.first)
+    #expect(image["height"] as? Double == 1_350)
+    #expect(image["renderedHeight"] as? Double == 844)
+    let unloaded = try renderedEntryPayload(mainText: "Chapter 1", readerTaggedUnloadedImages: true)
+    let unloadedImages = try #require(unloaded["images"] as? [[String: Any]])
+    #expect(unloadedImages.first?["renderedHeight"] as? Double == 0)
+}
+
 @Test func renderedGatesBlockCleanModeWithoutTreatingGlobalDecorationsAsProtection() throws {
     for (gate, expected) in [("Sign in to read this chapter", "authentication"), ("Subscribe to unlock this chapter", "paywall"), ("404 page not found", "errorPage")] {
         let payload = try renderedEntryPayload(mainText: gate)

@@ -41,14 +41,40 @@ func entryPolicyRejectsEveryHardBlock(block: DetectionHardBlock) {
     let insufficient = ReaderEntryEvidence.fixture(score: 78, candidateCount: 5, tallestHeightRatio: 4.99)
     #expect(ReaderEntryPolicy.architectureDefault.disposition(for: insufficient) == .unavailable)
     #expect(ReaderEntryPolicy.architectureDefault.disposition(for: .fixture(score: 78, candidateCount: 6, tallestHeightRatio: 0)) == .automatic)
-    #expect(ReaderEntryPolicy.architectureDefault.disposition(for: .fixture(score: 78, candidateCount: 0, tallestHeightRatio: 5)) == .automatic)
+    #expect(ReaderEntryPolicy.architectureDefault.disposition(for: .fixture(score: 78, candidateCount: 3, tallestHeightRatio: 5, totalRenderedHeightRatio: 5)) == .automatic)
+    #expect(ReaderEntryPolicy.architectureDefault.disposition(for: .fixture(score: 78, candidateCount: 0, tallestHeightRatio: 5)) == .unavailable)
 }
 
 @Test func entryPolicyRequiresMediumBandCandidateEvidenceWithoutFallingThrough() {
-    let insufficient = ReaderEntryEvidence.fixture(score: 55, candidateCount: 3, tallestHeightRatio: 3.49)
+    let insufficient = ReaderEntryEvidence.fixture(score: 55, candidateCount: 3, tallestHeightRatio: 3.49, totalRenderedHeightRatio: 3.5)
     #expect(ReaderEntryPolicy.architectureDefault.disposition(for: insufficient) == .unavailable)
     #expect(ReaderEntryPolicy.architectureDefault.disposition(for: .fixture(score: 55, candidateCount: 4, tallestHeightRatio: 0)) == .recommended)
-    #expect(ReaderEntryPolicy.architectureDefault.disposition(for: .fixture(score: 55, candidateCount: 0, tallestHeightRatio: 3.5)) == .recommended)
+    #expect(ReaderEntryPolicy.architectureDefault.disposition(for: .fixture(score: 55, candidateCount: 3, tallestHeightRatio: 3.5, totalRenderedHeightRatio: 3.5)) == .recommended)
+    #expect(ReaderEntryPolicy.architectureDefault.disposition(for: .fixture(score: 55, candidateCount: 0, tallestHeightRatio: 3.5)) == .unavailable)
+}
+
+@Test(arguments: [45, 54, 55, 77, 78, 100], [0, 1, 2])
+func entryPolicyGlobalFloorRejectsFewerThanThreeEvenWhenTall(score: Int, count: Int) {
+    let evidence = ReaderEntryEvidence.fixture(score: score, candidateCount: count, tallestHeightRatio: 100, totalRenderedHeightRatio: 100)
+    #expect(ReaderEntryPolicy.architectureDefault.disposition(for: evidence) == .unavailable)
+}
+
+@Test(arguments: [45, 55, 78])
+func entryPolicyGlobalFloorRejectsThreeWithoutMeasuredCombinedHeight(score: Int) {
+    let evidence = ReaderEntryEvidence.fixture(score: score, candidateCount: 3, tallestHeightRatio: 100)
+    #expect(ReaderEntryPolicy.architectureDefault.disposition(for: evidence) == .unavailable)
+}
+
+@Test(arguments: [(45, ReaderEntryDisposition.manual), (55, .recommended), (78, .automatic)])
+func entryPolicyGlobalFloorHonorsCombinedHeightBoundary(score: Int, expected: ReaderEntryDisposition) {
+    for ratio in [0, 3.499, Double.infinity, Double.nan] {
+        let evidence = ReaderEntryEvidence.fixture(score: score, candidateCount: 3, tallestHeightRatio: 100, totalRenderedHeightRatio: ratio)
+        #expect(ReaderEntryPolicy.architectureDefault.disposition(for: evidence) == .unavailable)
+    }
+    let boundary = ReaderEntryEvidence.fixture(score: score, candidateCount: 3, tallestHeightRatio: 100, totalRenderedHeightRatio: 3.5)
+    #expect(ReaderEntryPolicy.architectureDefault.disposition(for: boundary) == expected)
+    let four = ReaderEntryEvidence.fixture(score: score, candidateCount: 4, tallestHeightRatio: 100)
+    #expect(ReaderEntryPolicy.architectureDefault.disposition(for: four) == expected)
 }
 
 private extension ReaderEntryEvidence {
@@ -58,7 +84,8 @@ private extension ReaderEntryEvidence {
         candidateCount: Int = 6,
         tallestHeightRatio: Double = 6,
         hardBlocks: Set<DetectionHardBlock> = [],
-        hasViableSession: Bool = true
+        hasViableSession: Bool = true,
+        totalRenderedHeightRatio: Double = 0
     ) -> Self {
         Self(
             score: score,
@@ -66,7 +93,8 @@ private extension ReaderEntryEvidence {
             candidateCount: candidateCount,
             tallestHeightRatio: tallestHeightRatio,
             hardBlocks: hardBlocks,
-            hasViableSession: hasViableSession
+            hasViableSession: hasViableSession,
+            totalRenderedHeightRatio: totalRenderedHeightRatio
         )
     }
 }

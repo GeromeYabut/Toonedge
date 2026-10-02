@@ -1682,6 +1682,7 @@ As a reader on a plausible chapter page that ToonEdge will not open automaticall
 
 - Detection produces an explicit automatic, recommended, manual, or unavailable Reader-entry disposition.
 - High begins at score `78`, medium covers `55...77`, and manual-only covers `45...54`, subject to documented viability constraints.
+- Architecture §9.5.1's global candidate minimum applies to automatic, recommended, and manual entry: at least `4` candidates, or exactly `3` with combined actual rendered height `>= 3.5x` the viewport height. The three-image exception requires finite positive viewport and actual rendered heights for all three; unknown, nonfinite, or nonpositive geometry cannot qualify, and natural size cannot substitute. One or two candidates remain unavailable regardless of height; per-band viability constraints still apply.
 - Manual-only results require a viable normalized Reader session and no hard block.
 - Challenge, authentication, paywall, browser-only, unsupported pagination, protected viewer, canvas/blob, error, and nonviable results are unavailable regardless of score.
 - Browser renders `Try Clean Mode` as a secondary tool action only for manual disposition.

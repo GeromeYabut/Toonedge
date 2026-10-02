@@ -15,6 +15,11 @@ public struct ReaderEntryPolicy: Equatable, Sendable {
         guard evidence.hardBlocks.isEmpty, evidence.hasViableSession else {
             return .unavailable
         }
+        // Architecture §9.5.1 applies before every entry band, including manual attempts.
+        guard evidence.candidateCount >= 4 || (evidence.candidateCount == 3
+            && evidence.totalRenderedHeightRatio.isFinite && evidence.totalRenderedHeightRatio >= 3.5) else {
+            return .unavailable
+        }
 
         if evidence.score >= high {
             guard evidence.negativeScore > -20,

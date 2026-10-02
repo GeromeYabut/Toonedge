@@ -33,6 +33,8 @@ public struct ReaderEntryEvidence: Equatable, Sendable {
     public var tallestHeightRatio: Double
     public var hardBlocks: Set<DetectionHardBlock>
     public var hasViableSession: Bool
+    /// Zero means combined actual rendered geometry is unavailable or invalid.
+    public var totalRenderedHeightRatio: Double
 
     public init(
         score: Int,
@@ -40,7 +42,8 @@ public struct ReaderEntryEvidence: Equatable, Sendable {
         candidateCount: Int,
         tallestHeightRatio: Double,
         hardBlocks: Set<DetectionHardBlock>,
-        hasViableSession: Bool
+        hasViableSession: Bool,
+        totalRenderedHeightRatio: Double = 0
     ) {
         self.score = score
         self.negativeScore = negativeScore
@@ -48,6 +51,7 @@ public struct ReaderEntryEvidence: Equatable, Sendable {
         self.tallestHeightRatio = tallestHeightRatio
         self.hardBlocks = hardBlocks
         self.hasViableSession = hasViableSession
+        self.totalRenderedHeightRatio = totalRenderedHeightRatio
     }
 }
 
@@ -77,6 +81,8 @@ public struct DetectionImageCandidate: Codable, Equatable, Sendable {
     public var alt: String?
     public var parentSignature: String?
     public var semanticHints: [String]
+    /// Actual visible DOM height, separate from the natural/rendered maximum used by existing filters.
+    public var renderedHeight: Double?
 
     public init(
         src: String?,
@@ -90,7 +96,8 @@ public struct DetectionImageCandidate: Codable, Equatable, Sendable {
         id: String?,
         alt: String?,
         parentSignature: String?,
-        semanticHints: [String] = []
+        semanticHints: [String] = [],
+        renderedHeight: Double? = nil
     ) {
         self.src = src
         self.lazySources = lazySources
@@ -104,6 +111,7 @@ public struct DetectionImageCandidate: Codable, Equatable, Sendable {
         self.alt = alt
         self.parentSignature = parentSignature
         self.semanticHints = semanticHints
+        self.renderedHeight = renderedHeight
     }
 }
 
@@ -229,6 +237,7 @@ public struct DetectionDiagnostics: Codable, Equatable, Sendable {
     public var hardBlocks: Set<DetectionHardBlock>
     public var negativeScore: Int
     public var tallestHeightRatio: Double
+    public var totalRenderedHeightRatio: Double
 
     public init(
         confidence: DetectionConfidence,
@@ -242,7 +251,8 @@ public struct DetectionDiagnostics: Codable, Equatable, Sendable {
         messages: [String] = [],
         hardBlocks: Set<DetectionHardBlock> = [],
         negativeScore: Int = 0,
-        tallestHeightRatio: Double = 0
+        tallestHeightRatio: Double = 0,
+        totalRenderedHeightRatio: Double = 0
     ) {
         self.confidence = confidence
         self.score = score
@@ -256,11 +266,13 @@ public struct DetectionDiagnostics: Codable, Equatable, Sendable {
         self.hardBlocks = hardBlocks
         self.negativeScore = negativeScore
         self.tallestHeightRatio = tallestHeightRatio
+        self.totalRenderedHeightRatio = totalRenderedHeightRatio
     }
 
     private enum CodingKeys: String, CodingKey {
         case confidence, score, parserPath, profileDomain, supportTier, compatibilityClass
         case retryRecommendation, candidateCount, messages, hardBlocks, negativeScore, tallestHeightRatio
+        case totalRenderedHeightRatio
     }
 
     public init(from decoder: Decoder) throws {
@@ -277,7 +289,8 @@ public struct DetectionDiagnostics: Codable, Equatable, Sendable {
             messages: try values.decodeIfPresent([String].self, forKey: .messages) ?? [],
             hardBlocks: try values.decodeIfPresent(Set<DetectionHardBlock>.self, forKey: .hardBlocks) ?? [],
             negativeScore: try values.decodeIfPresent(Int.self, forKey: .negativeScore) ?? 0,
-            tallestHeightRatio: try values.decodeIfPresent(Double.self, forKey: .tallestHeightRatio) ?? 0
+            tallestHeightRatio: try values.decodeIfPresent(Double.self, forKey: .tallestHeightRatio) ?? 0,
+            totalRenderedHeightRatio: try values.decodeIfPresent(Double.self, forKey: .totalRenderedHeightRatio) ?? 0
         )
     }
 }

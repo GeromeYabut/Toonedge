@@ -73,6 +73,7 @@ public enum PageAnalysisScript {
           srcset: image.getAttribute('srcset') || image.getAttribute('data-srcset') || image.getAttribute('data-lazy-srcset'),
           width: Math.max(rect.width || 0, image.naturalWidth || 0),
           height: Math.max(rect.height || 0, image.naturalHeight || 0),
+          renderedHeight: toonEdgeIsVisible(image) && Number.isFinite(rect.height) ? rect.height : 0,
           top: rect.top + window.scrollY,
           left: rect.left + window.scrollX,
           className: image.className || null,
