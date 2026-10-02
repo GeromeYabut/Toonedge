@@ -1646,7 +1646,7 @@ Strengthen ToonEdge's core browser-to-reader and local-library loop with bounded
 
 ### Story 13.1 — Add chapter-scoped Reader continuity and bounded prefetch
 
-**Status:** planned
+**Status:** implemented locally; pending PR integration. [QA evidence](qa_evidence/2026-10-01-story-13.1-reader-continuity.md).
 
 **Dependencies:** Existing Reader session, page metadata, request-context, cache, and progress contracts.
 
