@@ -326,6 +326,7 @@ For series saved in the library, the app must:
 - Saved results should show useful local context such as lifecycle state and resume chapter
 - Selecting a saved result must open native Series Detail and must not submit a web search
 - An exact clipboard-link action remains first; exact and partial saved matches follow; the explicit web-search action remains visible
+- The final explicit web action is exempt from ordinary-result deduplication: when the query exactly matches a copied URL, retain both the first copied-link action and the final explicit web action, while suppressing duplicate ordinary results for that destination
 - Empty-query behavior must remain restrained and must not list the Library as a catalog
 - Opening a saved result must not create a web-search-history entry
 

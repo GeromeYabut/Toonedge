@@ -64,9 +64,74 @@ final class ToonEdgeHomeSearchUITests: XCTestCase {
         assertBrowserOpened(app)
     }
 
-    private func openSearch() -> XCUIApplication {
+    func testSavedSuggestionShowsLocalContextAndOpensNativeSeriesDetail() {
+        let app = openSearch()
+        app.textFields["search.input"].typeText("moonlit")
+        let saved = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Moonlit Edge")).firstMatch
+        XCTAssertTrue(saved.waitForExistence(timeout: 3))
+        XCTAssertTrue(saved.label.contains("Saved in Library"))
+        XCTAssertEqual(saved.identifier, "search.savedSeries.A4A029B1-778A-46DF-9B92-2E94378C8E11")
+        XCTAssertTrue(saved.label.contains("Reading"))
+        XCTAssertTrue(saved.label.contains("Chapter 12"))
+        XCTAssertTrue(saved.isHittable)
+        let layoutScreenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        layoutScreenshot.name = "synthetic-saved-search-layout"
+        layoutScreenshot.lifetime = .keepAlways
+        add(layoutScreenshot)
+        // The whole 44-point row remains actionable, including its padded edge.
+        saved.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5)).tap()
+
+        XCTAssertTrue(app.textFields["search.input"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Moonlit Edge"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Continue Chapter 12"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Close"].exists)
+        XCTAssertTrue(app.navigationBars.buttons["Library"].isHittable)
+        app.navigationBars.buttons["Library"].tap()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["Close"].exists)
+    }
+
+    func testStaleSavedSuggestionShowsNativeUnavailableAndReturnsToLibrary() {
+        let app = openSearch(additionalArguments: ["-seedStaleSavedSearch"])
+        app.textFields["search.input"].typeText("removed hero")
+        let saved = app.buttons["search.savedSeries.00000000-0000-0000-0000-000000000007"]
+        XCTAssertTrue(saved.waitForExistence(timeout: 3))
+        saved.tap()
+
+        XCTAssertTrue(app.textFields["search.input"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Series unavailable"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Close"].exists)
+        XCTAssertTrue(app.navigationBars.buttons["Library"].isHittable)
+        app.navigationBars.buttons["Library"].tap()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["Close"].exists)
+    }
+
+    func testSavedSuggestionRemainsActionableAtAccessibilityTextSize() {
+        let app = openSearch(additionalArguments: [
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"
+        ])
+        app.textFields["search.input"].typeText("moonlit")
+        let saved = app.buttons["search.savedSeries.A4A029B1-778A-46DF-9B92-2E94378C8E11"]
+        XCTAssertTrue(saved.waitForExistence(timeout: 3))
+        for _ in 0..<3 where !saved.isHittable {
+            app.scrollViews.firstMatch.swipeUp()
+        }
+        XCTAssertTrue(saved.isHittable)
+        XCTAssertGreaterThanOrEqual(saved.frame.height, 44)
+        XCTAssertTrue(saved.label.contains("Saved in Library"))
+        XCTAssertTrue(saved.label.contains("Reading"))
+        XCTAssertTrue(saved.label.contains("Chapter 12"))
+        saved.tap()
+
+        XCTAssertTrue(app.textFields["search.input"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Moonlit Edge"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Close"].exists)
+    }
+
+    private func openSearch(additionalArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-resetTestData"]
+        app.launchArguments = ["-uiTesting", "-resetTestData"] + additionalArguments
         app.launch()
         let entry = app.buttons["home.searchEntry"]
         XCTAssertTrue(entry.waitForExistence(timeout: 5))

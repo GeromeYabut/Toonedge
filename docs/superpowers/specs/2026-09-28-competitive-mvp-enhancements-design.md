@@ -280,7 +280,9 @@ Priority is:
 4. existing recent link/search and permitted site suggestions;
 5. explicit web-search action.
 
-Deduplication is by typed destination identity, not display text. Empty query behavior remains limited to the current restrained suggestions and history; it does not list the Library as a catalog.
+Ordinary saved, history, and site results are deduplicated by typed destination identity, not display text. The final explicit web action is a utility action exempt from ordinary-result deduplication. If the query exactly matches a copied URL, keep both `Open copied link` first and the explicit web action last, even when both have the same browser-input destination; duplicate ordinary rows for that destination remain suppressed. This exception was approved on 2026-10-02 and does not change URL/query classification or history-recording behavior.
+
+Empty query behavior remains limited to the current restrained suggestions and history; it does not list the Library as a catalog.
 
 #### Failure behavior
 

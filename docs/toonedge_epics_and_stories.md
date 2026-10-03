@@ -1670,7 +1670,7 @@ As a reader scrolling a long chapter, I want upcoming panels to be ready without
 
 ### Story 13.2 — Expose guarded manual Clean Mode eligibility
 
-**Status:** implemented and locally verified; pending PR integration. [QA evidence](qa_evidence/2026-10-02-story-13.2-guarded-clean-mode.md).
+**Status:** completed and merged in [PR #3](https://github.com/GeromeYabut/Toonedge/pull/3). [QA evidence](qa_evidence/2026-10-02-story-13.2-guarded-clean-mode.md).
 
 **Dependencies:** Existing detection scoring, profile hard blocks, Browser-owned Reader presentation, and source-page preservation.
 
@@ -1694,7 +1694,7 @@ As a reader on a plausible chapter page that ToonEdge will not open automaticall
 
 ### Story 13.3 — Add saved-Library matches to universal search
 
-**Status:** planned
+**Status:** implemented and locally verified; pending required PR CI and integration. [QA evidence](qa_evidence/2026-10-02-story-13.3-saved-library-search.md).
 
 **Dependencies:** Existing Search overlay, lightweight Library snapshots, seeded Series Detail routing, and search-history suggestions.
 
@@ -1708,6 +1708,7 @@ As a reader searching from Home, I want saved titles to appear alongside web opt
 - Matching supports normalized exact title, prefix, ordered token prefix, and all-token containment.
 - Results are deterministic, deduplicated, bounded, and available offline.
 - Exact clipboard link remains first; exact and partial Library matches follow; the explicit web-search action remains visible.
+- Ordinary results deduplicate by typed destination identity; the final explicit web action is exempt. An exact copied-URL query retains both the first copied-link action and the last explicit web action, while suppressing duplicate ordinary rows for that destination.
 - Saved results are labeled as Library content and show lifecycle/resume context where available.
 - Suggestion destinations are typed so a saved result opens seeded native Series Detail rather than Browser.
 - Opening a saved result does not create a web-search-history row.

@@ -227,21 +227,27 @@ Provide a fast, low-friction entry into web reading.
 - clear/cancel action
 - suggestions list
 - clipboard suggestion when available
+- bounded saved-Library matches for nonempty queries
 - recent searches
 - recent links
 - recent/common sites
 
 ## Suggestion priority order
 1. Open copied link
-2. Recent links
-3. Recent searches
-4. Recent/common sites
-5. Explicit “Search for …” action
+2. Exact saved-title match
+3. Prefix/token saved-title matches
+4. Recent links
+5. Recent searches
+6. Recent/common sites
+7. Explicit “Search for …” action
 
 ## Required suggestion behaviors
 - Clipboard suggestions must only appear when relevant.
 - Suggestions must be tappable rows.
 - Suggestions must be visually differentiated by type.
+- Ordinary saved, history, and site results are deduplicated by typed destination identity. The final explicit web action is exempt: when the query exactly matches a copied URL, keep `Open copied link` first and the explicit web action last, even if both have the same browser-input destination. Suppress duplicate ordinary rows for that destination.
+- Saved matches are labeled as Library content, show local lifecycle/resume context when available, and open native Series Detail without creating web-search history.
+- Empty queries do not list the Library as a catalog; saved matching is local and does not fetch details or make network requests per keystroke.
 
 ## Required states
 - idle focused state

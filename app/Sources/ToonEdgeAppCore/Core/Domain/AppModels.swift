@@ -202,10 +202,16 @@ public enum SearchInputClassifier {
 
 public enum SearchSuggestionKind: Equatable, Sendable {
     case clipboardLink
+    case librarySeries
     case recentLink
     case recentSearch
     case commonSite
     case searchAction
+}
+
+public enum SearchSuggestionDestination: Equatable, Sendable {
+    case browserInput(String)
+    case librarySeries(LibrarySearchItem)
 }
 
 public struct SearchSuggestion: Identifiable, Equatable, Sendable {
@@ -216,6 +222,23 @@ public struct SearchSuggestion: Identifiable, Equatable, Sendable {
     public var value: String
     public var systemImage: String
     public var sourceSupportTier: SiteProfileSupportTier?
+    private var libraryItem: LibrarySearchItem?
+
+    /// Browser inputs follow the legacy mutable value. A saved result retains its
+    /// typed identity even when a caller changes its legacy display value.
+    public var destination: SearchSuggestionDestination {
+        get { libraryItem.map(SearchSuggestionDestination.librarySeries) ?? .browserInput(value) }
+        set {
+            switch newValue {
+            case .browserInput(let input):
+                libraryItem = nil
+                value = input
+            case .librarySeries(let item):
+                libraryItem = item
+                value = item.title
+            }
+        }
+    }
 
     public init(
         id: UUID = UUID(),
@@ -233,6 +256,20 @@ public struct SearchSuggestion: Identifiable, Equatable, Sendable {
         self.value = value
         self.systemImage = systemImage
         self.sourceSupportTier = sourceSupportTier
+        self.libraryItem = nil
+    }
+
+    public init(
+        id: UUID = UUID(),
+        kind: SearchSuggestionKind,
+        title: String,
+        subtitle: String,
+        destination: SearchSuggestionDestination,
+        systemImage: String,
+        sourceSupportTier: SiteProfileSupportTier? = nil
+    ) {
+        self.init(id: id, kind: kind, title: title, subtitle: subtitle, value: "", systemImage: systemImage, sourceSupportTier: sourceSupportTier)
+        self.destination = destination
     }
 }
 
@@ -508,6 +545,42 @@ public struct LibrarySeriesSummary: Identifiable, Equatable, Sendable {
         } else {
             "\(chaptersRead) chapters read"
         }
+    }
+}
+
+public struct LibrarySearchItem: Identifiable, Equatable, Sendable {
+    public let id: UUID
+    public let title: String
+    public let sourceDomain: String
+    public let libraryState: LibraryCollectionState
+    public let currentChapterLabel: String?
+    public let coverImageURL: URL?
+
+    public init(
+        id: UUID,
+        title: String,
+        sourceDomain: String,
+        libraryState: LibraryCollectionState,
+        currentChapterLabel: String?,
+        coverImageURL: URL?
+    ) {
+        self.id = id
+        self.title = title
+        self.sourceDomain = sourceDomain
+        self.libraryState = libraryState
+        self.currentChapterLabel = currentChapterLabel
+        self.coverImageURL = coverImageURL
+    }
+
+    public init(summary: LibrarySeriesSummary) {
+        self.init(
+            id: summary.id,
+            title: summary.title,
+            sourceDomain: summary.sourceDomain,
+            libraryState: summary.libraryState,
+            currentChapterLabel: summary.currentChapterLabel,
+            coverImageURL: summary.coverImageURL
+        )
     }
 }
 

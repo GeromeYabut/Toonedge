@@ -106,6 +106,9 @@ struct ToonEdgeAppEntry: App {
         if arguments.contains("-seedDelayedLibrary") {
             dependencies.libraryService = DelayedUITestLibraryService()
         }
+        if arguments.contains("-seedStaleSavedSearch") {
+            dependencies.libraryService = StaleSavedSearchUITestLibraryService()
+        }
         if arguments.contains("-seedSeriesMutationRetry") {
             let service = RetrySeriesMutationUITestLibraryService()
             dependencies.libraryService = service
@@ -583,6 +586,11 @@ private actor UITestContinueJourneyLibraryService: LibraryLifecycleManaging, Rec
         )])
     }
 
+    func librarySearchItems() async -> [LibrarySearchItem] {
+        let snapshot = await librarySnapshot()
+        return snapshot.series.map(LibrarySearchItem.init(summary:))
+    }
+
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
         guard seriesID == Fixture.seriesID else { return nil }
         return SeriesDetailSnapshot(
@@ -945,12 +953,36 @@ private struct UITestFixtureAssetRetainer: ChapterAssetRetaining {
     }
 }
 
+/// Reproduces a title removed after Search captured its local projection.
+private struct StaleSavedSearchUITestLibraryService: LibraryProviding {
+    private static let staleID = UUID(uuidString: "00000000-0000-0000-0000-000000000007")!
+
+    func homeSnapshot() async -> HomeSnapshot { await MockLibraryService().homeSnapshot() }
+    func librarySnapshot() async -> LibrarySnapshot { await MockLibraryService().librarySnapshot() }
+
+    func librarySearchItems() async -> [LibrarySearchItem] {
+        [LibrarySearchItem(
+            id: Self.staleID, title: "Removed Hero", sourceDomain: "fixture.example",
+            libraryState: .planned, currentChapterLabel: nil, coverImageURL: nil
+        )]
+    }
+
+    func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
+        guard seriesID != Self.staleID else { return nil }
+        return await MockLibraryService().seriesDetail(for: seriesID)
+    }
+}
+
 private struct DelayedUITestLibraryService: LibraryProviding {
     func homeSnapshot() async -> HomeSnapshot { await MockLibraryService().homeSnapshot() }
 
     func librarySnapshot() async -> LibrarySnapshot {
         try? await Task.sleep(nanoseconds: 5_000_000_000)
         return await MockLibraryService().librarySnapshot()
+    }
+
+    func librarySearchItems() async -> [LibrarySearchItem] {
+        await MockLibraryService().librarySearchItems()
     }
 
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
@@ -969,6 +1001,10 @@ private actor RetrySeriesMutationUITestLibraryService: LibraryLifecycleManaging 
 
     func librarySnapshot() async -> LibrarySnapshot {
         await base.librarySnapshot()
+    }
+
+    func librarySearchItems() async -> [LibrarySearchItem] {
+        await base.librarySearchItems()
     }
 
     func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
