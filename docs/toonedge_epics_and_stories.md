@@ -1670,7 +1670,7 @@ As a reader scrolling a long chapter, I want upcoming panels to be ready without
 
 ### Story 13.2 — Expose guarded manual Clean Mode eligibility
 
-**Status:** implemented and locally verified; pending PR integration. [QA evidence](qa_evidence/2026-10-02-story-13.2-guarded-clean-mode.md).
+**Status:** completed and merged in [PR #3](https://github.com/GeromeYabut/Toonedge/pull/3). [QA evidence](qa_evidence/2026-10-02-story-13.2-guarded-clean-mode.md).
 
 **Dependencies:** Existing detection scoring, profile hard blocks, Browser-owned Reader presentation, and source-page preservation.
 
@@ -1694,7 +1694,7 @@ As a reader on a plausible chapter page that ToonEdge will not open automaticall
 
 ### Story 13.3 — Add saved-Library matches to universal search
 
-**Status:** planned
+**Status:** implemented and locally verified; pending required PR CI and integration. [QA evidence](qa_evidence/2026-10-02-story-13.3-saved-library-search.md).
 
 **Dependencies:** Existing Search overlay, lightweight Library snapshots, seeded Series Detail routing, and search-history suggestions.
 
