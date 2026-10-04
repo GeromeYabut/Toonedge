@@ -526,6 +526,12 @@ Each series card should support:
 - Tapping a card opens Series Detail.
 - Filter or segmented controls must change visible subsets clearly.
 
+## Library organization delivery
+
+Story 13.5 adds sorting only: recent activity, title, and fixed unread-updates-first order. Direction controls apply only to activity and title. Existing lifecycle segments, collection density, card navigation, and genuine empty states remain unchanged. Organization preferences persist locally; Reset restores Recent and activity descending without changing density. Sorting does not hide titles within the selected segment.
+
+Story 13.9 separately adds multi-select source filtering from the user's saved domains, an active-source summary, and Reset for source-filtered empty results. Do not show source controls as placeholders in Story 13.5. The split does not approve a particular control placement or sheet interaction; those UI proposals still require review.
+
 ## Acceptance criteria
 - Library communicates reading status, not just saved ownership.
 - Progress and update state are readable without entering the title.
