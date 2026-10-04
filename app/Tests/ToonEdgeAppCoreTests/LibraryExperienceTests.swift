@@ -188,9 +188,92 @@ import Testing
     #expect(!populated.isVisible)
 }
 
-@Test func libraryDistinguishesEmptyCollectionFromEmptyFilter() {
+@Test func libraryDistinguishesEmptyCollectionFromEmptySegment() {
     #expect(LibraryEmptyReason(totalCount: 0, visibleCount: 0) == .collection)
-    #expect(LibraryEmptyReason(totalCount: 4, visibleCount: 0) == .filter)
+    #expect(LibraryEmptyReason(totalCount: 4, visibleCount: 0) == .segment)
+    #expect(LibraryEmptyReason.segment.message == "No titles in this section")
+}
+
+@Test func librarySortChoicesExposeTheFiveApprovedVisibleValues() {
+    #expect(LibrarySortChoice.allCases.map(\.title) == [
+        "Recent activity · Newest",
+        "Recent activity · Oldest",
+        "Title · A–Z",
+        "Title · Z–A",
+        "Unread updates first"
+    ])
+}
+
+@Test func librarySortChoicesMapToQueryWithoutChangingTheSegment() {
+    let initial = LibraryCollectionQuery(segment: .completed, sortKey: .title, sortDirection: .descending)
+    let cases: [(LibrarySortChoice, LibrarySortKey, LibrarySortDirection)] = [
+        (.recentNewest, .activity, .descending),
+        (.recentOldest, .activity, .ascending),
+        (.titleAscending, .title, .ascending),
+        (.titleDescending, .title, .descending),
+        (.unreadUpdates, .unreadUpdates, .descending)
+    ]
+
+    for (choice, key, direction) in cases {
+        let query = choice.applying(to: initial)
+        #expect(query.segment == .completed)
+        #expect(query.sortKey == key)
+        #expect(query.sortDirection == direction)
+        #expect(LibrarySortChoice(query: query) == choice)
+    }
+}
+
+@Test func librarySortUnreadChoiceUsesOneFixedDirectionAndVisibleValue() {
+    for direction in LibrarySortDirection.allCases {
+        let query = LibraryCollectionQuery(segment: .planned, sortKey: .unreadUpdates, sortDirection: direction)
+        let layout = LibrarySortMenuLayout(query: query)
+        #expect(layout.selectedChoice == .unreadUpdates)
+        #expect(layout.accessibilityValue == "Unread updates first")
+        #expect(layout.selectedChoice.applying(to: query).sortDirection == .descending)
+    }
+}
+
+@Test func librarySortMenuExposesCurrentOrderingAndSelectedChoice() {
+    for choice in LibrarySortChoice.allCases {
+        let layout = LibrarySortMenuLayout(query: choice.applying(to: .default))
+        #expect(layout.accessibilityIdentifier == "library.sort")
+        #expect(layout.accessibilityLabel == "Sort library")
+        #expect(layout.accessibilityValue == choice.title)
+        #expect(layout.selectedChoice == choice)
+        #expect(layout.isSelected(choice))
+        #expect(LibrarySortChoice.allCases.filter(layout.isSelected) == [choice])
+    }
+    #expect(LibrarySortMenuLayout(query: .default).accessibilityValue == "Recent activity · Newest")
+}
+
+@Test func librarySortMenuAlwaysProvidesResetLibraryOrganization() {
+    for choice in LibrarySortChoice.allCases {
+        let layout = LibrarySortMenuLayout(query: choice.applying(to: .default))
+        #expect(layout.resetIsAvailable)
+        #expect(layout.resetTitle == "Reset Library organization")
+    }
+}
+
+@Test func libraryCollectionControlsAdaptCountAndSortWithSeparateDensityRefreshRow() {
+    let regular = LibraryCollectionControlsLayout(
+        visibleSeries: [LibrarySeriesSummary.mock()],
+        hasUpdateRefreshService: true,
+        isRefreshing: false,
+        accessibilityText: false
+    )
+    let accessible = LibraryCollectionControlsLayout(
+        visibleSeries: [LibrarySeriesSummary.mock()],
+        hasUpdateRefreshService: true,
+        isRefreshing: false,
+        accessibilityText: true
+    )
+
+    #expect(regular.countAndSortArrangements == [.horizontal, .stacked])
+    #expect(accessible.countAndSortArrangements == [.stacked])
+    #expect(regular.densityAndRefreshUseSeparateRow)
+    #expect(accessible.densityAndRefreshUseSeparateRow)
+    #expect(regular.countText == "1 title")
+    #expect(accessible.refreshButtonIsVisible)
 }
 
 @Test func accessibilityLayoutDoesNotOverwriteSavedDensity() {
