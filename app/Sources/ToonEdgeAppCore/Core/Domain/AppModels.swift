@@ -426,6 +426,9 @@ public enum LibraryViewMode: String, CaseIterable, Identifiable, Equatable, Send
 public struct LibraryViewPreferences {
     private let userDefaults: UserDefaults
     private let selectedViewModeKey = "ToonEdge.Library.selectedViewMode"
+    private let segmentKey = "ToonEdge.Library.segment"
+    private let sortKey = "ToonEdge.Library.sortKey"
+    private let sortDirectionKey = "ToonEdge.Library.sortDirection"
 
     public init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -442,6 +445,32 @@ public struct LibraryViewPreferences {
         nonmutating set {
             userDefaults.set(newValue.rawValue, forKey: selectedViewModeKey)
         }
+    }
+
+    public var collectionQuery: LibraryCollectionQuery {
+        let defaults = LibraryCollectionQuery.default
+        let segment = userDefaults.string(forKey: segmentKey)
+            .flatMap(LibrarySegment.init(rawValue:)) ?? defaults.segment
+        let key = userDefaults.string(forKey: sortKey)
+            .flatMap(LibrarySortKey.init(rawValue:)) ?? defaults.sortKey
+        let direction = userDefaults.string(forKey: sortDirectionKey)
+            .flatMap(LibrarySortDirection.init(rawValue:)) ?? defaults.sortDirection
+        return LibraryCollectionQuery(
+            segment: segment,
+            sortKey: key,
+            sortDirection: key == .unreadUpdates ? .descending : direction
+        )
+    }
+
+    public func save(collectionQuery query: LibraryCollectionQuery) {
+        userDefaults.set(query.segment.rawValue, forKey: segmentKey)
+        userDefaults.set(query.sortKey.rawValue, forKey: sortKey)
+        let direction: LibrarySortDirection = query.sortKey == .unreadUpdates ? .descending : query.sortDirection
+        userDefaults.set(direction.rawValue, forKey: sortDirectionKey)
+    }
+
+    public func resetOrganization() {
+        save(collectionQuery: .default)
     }
 }
 
