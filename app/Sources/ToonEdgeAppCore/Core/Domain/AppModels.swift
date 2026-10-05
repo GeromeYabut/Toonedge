@@ -429,6 +429,7 @@ public struct LibraryViewPreferences {
     private let segmentKey = "ToonEdge.Library.segment"
     private let sortKey = "ToonEdge.Library.sortKey"
     private let sortDirectionKey = "ToonEdge.Library.sortDirection"
+    private let selectedSourceDomainsKey = "ToonEdge.Library.selectedSourceDomains"
 
     public init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -458,11 +459,13 @@ public struct LibraryViewPreferences {
         return LibraryCollectionQuery(
             segment: segment,
             sortKey: key,
-            sortDirection: key == .unreadUpdates ? .descending : direction
+            sortDirection: key == .unreadUpdates ? .descending : direction,
+            selectedSourceDomains: Set(userDefaults.stringArray(forKey: selectedSourceDomainsKey) ?? [])
         )
     }
 
     public func save(collectionQuery query: LibraryCollectionQuery) {
+        userDefaults.set(Array(query.selectedSourceDomains).sorted(), forKey: selectedSourceDomainsKey)
         userDefaults.set(query.segment.rawValue, forKey: segmentKey)
         userDefaults.set(query.sortKey.rawValue, forKey: sortKey)
         let direction: LibrarySortDirection = query.sortKey == .unreadUpdates ? .descending : query.sortDirection
