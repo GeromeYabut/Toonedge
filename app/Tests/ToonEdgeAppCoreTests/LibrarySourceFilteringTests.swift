@@ -117,6 +117,62 @@ struct LibrarySourceFilteringTests {
         #expect(preferences.selectedViewMode == mode)
     }
 
+    @Test func librarySourceOrganizationSummaryAndActiveState() {
+        let all = LibraryOrganizationLayout(query: .default)
+        #expect(all.sourceSummary == "All Sources")
+        #expect(all.sortChoice == .recentNewest)
+        #expect(all.accessibilityValue == "Recent activity · Newest, All Sources")
+        #expect(!all.isActive)
+        var query = LibraryCollectionQuery.default
+        query.selectedSourceDomains = [" A.EXAMPLE.TEST "]
+        let single = LibraryOrganizationLayout(query: query)
+        #expect(single.sourceSummary == "a.example.test")
+        #expect(single.accessibilityValue == "Recent activity · Newest, a.example.test")
+        #expect(single.isActive)
+        query.selectedSourceDomains.insert("b.example.test")
+        #expect(LibraryOrganizationLayout(query: query).sourceSummary == "2 sources selected")
+        query.selectedSourceDomains = []
+        query.sortDirection = .ascending
+        #expect(LibraryOrganizationLayout(query: query).isActive)
+        query = .default
+        query.segment = .planned
+        #expect(!LibraryOrganizationLayout(query: query).isActive)
+    }
+
+    @Test func librarySourceSortChoicesPreserveSelection() {
+        let query = LibraryCollectionQuery(segment: .planned, sortKey: .activity, sortDirection: .descending, selectedSourceDomains: ["a.example.test", "b.example.test"])
+        for choice in LibrarySortChoice.allCases {
+            let sorted = choice.applying(to: query)
+            #expect(sorted.selectedSourceDomains == query.selectedSourceDomains)
+            #expect(sorted.segment == .planned)
+            #expect(LibraryOrganizationLayout(query: sorted).sortChoice == choice)
+        }
+    }
+
+    @Test func librarySourceEmptyReasonRequiresANonemptyUnfilteredSegment() {
+        #expect(LibraryEmptyReason(totalCount: 4, visibleCount: 0, segmentCount: 3, hasSourceSelection: true) == .sources)
+        #expect(LibraryEmptyReason(totalCount: 4, visibleCount: 0, segmentCount: 0, hasSourceSelection: true) == .segment)
+        #expect(LibraryEmptyReason(totalCount: 0, visibleCount: 0, segmentCount: 0, hasSourceSelection: true) == .collection)
+        #expect(LibraryEmptyReason(totalCount: 4, visibleCount: 0, segmentCount: 3, hasSourceSelection: false) == .segment)
+        #expect(LibraryEmptyReason.sources.message == "No titles match your sources")
+    }
+
+    @Test func librarySourceEmptyStateOffersResetOnlyForLoadedFilteredEmpty() {
+        let filtered = LibraryEmptyStateLayout(hasLoadedSnapshot: true, totalCount: 4, visibleSeries: [], segmentCount: 3, hasSourceSelection: true)
+        #expect(filtered.isVisible)
+        #expect(filtered.message == "No titles match your sources")
+        #expect(filtered.offersReset)
+        let loading = LibraryEmptyStateLayout(hasLoadedSnapshot: false, totalCount: 4, visibleSeries: [], segmentCount: 3, hasSourceSelection: true)
+        #expect(!loading.isVisible)
+        #expect(!loading.offersReset)
+        let collection = LibraryEmptyStateLayout(hasLoadedSnapshot: true, totalCount: 0, visibleSeries: [], segmentCount: 0, hasSourceSelection: true)
+        #expect(!collection.offersReset)
+        let segment = LibraryEmptyStateLayout(hasLoadedSnapshot: true, totalCount: 4, visibleSeries: [], segmentCount: 0, hasSourceSelection: true)
+        #expect(!segment.offersReset)
+        let populated = LibraryEmptyStateLayout(hasLoadedSnapshot: true, totalCount: 4, visibleSeries: [item(1, title: "Present", source: "a.example.test")], segmentCount: 3, hasSourceSelection: true)
+        #expect(!populated.offersReset)
+    }
+
     private func isolatedDefaults() throws -> (UserDefaults, String) {
         let name = "LibrarySourceFilteringTests.\(UUID().uuidString)"
         return (try #require(UserDefaults(suiteName: name)), name)

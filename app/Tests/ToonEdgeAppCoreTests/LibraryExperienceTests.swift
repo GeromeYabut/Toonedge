@@ -226,30 +226,28 @@ import Testing
 @Test func librarySortUnreadChoiceUsesOneFixedDirectionAndVisibleValue() {
     for direction in LibrarySortDirection.allCases {
         let query = LibraryCollectionQuery(segment: .planned, sortKey: .unreadUpdates, sortDirection: direction)
-        let layout = LibrarySortMenuLayout(query: query)
-        #expect(layout.selectedChoice == .unreadUpdates)
-        #expect(layout.accessibilityValue == "Unread updates first")
-        #expect(layout.selectedChoice.applying(to: query).sortDirection == .descending)
+        let layout = LibraryOrganizationLayout(query: query)
+        #expect(layout.sortChoice == .unreadUpdates)
+        #expect(layout.accessibilityValue == "Unread updates first, All Sources")
+        #expect(layout.sortChoice.applying(to: query).sortDirection == .descending)
     }
 }
 
-@Test func librarySortMenuExposesCurrentOrderingAndSelectedChoice() {
+@Test func librarySortSharedEntryExposesCurrentOrderingAndSources() {
     for choice in LibrarySortChoice.allCases {
-        let layout = LibrarySortMenuLayout(query: choice.applying(to: .default))
+        let layout = LibraryOrganizationLayout(query: choice.applying(to: .default))
         #expect(layout.accessibilityIdentifier == "library.sort")
-        #expect(layout.accessibilityLabel == "Sort library")
-        #expect(layout.accessibilityValue == choice.title)
-        #expect(layout.selectedChoice == choice)
-        #expect(layout.isSelected(choice))
-        #expect(LibrarySortChoice.allCases.filter(layout.isSelected) == [choice])
+        #expect(layout.accessibilityLabel == "Sort and filter library")
+        #expect(layout.accessibilityValue == "\(choice.title), All Sources")
+        #expect(layout.sortChoice == choice)
+        #expect(layout.sourceSummary == "All Sources")
     }
-    #expect(LibrarySortMenuLayout(query: .default).accessibilityValue == "Recent activity · Newest")
+    #expect(LibraryOrganizationLayout(query: .default).accessibilityValue == "Recent activity · Newest, All Sources")
 }
 
-@Test func librarySortMenuAlwaysProvidesResetLibraryOrganization() {
+@Test func librarySortOrganizationUsesConsistentResetCopy() {
     for choice in LibrarySortChoice.allCases {
-        let layout = LibrarySortMenuLayout(query: choice.applying(to: .default))
-        #expect(layout.resetIsAvailable)
+        let layout = LibraryOrganizationLayout(query: choice.applying(to: .default))
         #expect(layout.resetTitle == "Reset Library organization")
     }
 }

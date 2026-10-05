@@ -25,9 +25,16 @@ public enum LibraryContentPhase: Equatable, Sendable {
 enum LibraryEmptyReason: Equatable, Sendable {
     case collection
     case segment
+    case sources
 
-    init(totalCount: Int, visibleCount: Int) {
-        self = totalCount == 0 && visibleCount == 0 ? .collection : .segment
+    init(totalCount: Int, visibleCount: Int, segmentCount: Int? = nil, hasSourceSelection: Bool = false) {
+        if totalCount == 0 && visibleCount == 0 {
+            self = .collection
+        } else if visibleCount == 0, hasSourceSelection, let segmentCount, segmentCount > 0 {
+            self = .sources
+        } else {
+            self = .segment
+        }
     }
 
     var message: String {
@@ -36,6 +43,8 @@ enum LibraryEmptyReason: Equatable, Sendable {
             "Nothing saved"
         case .segment:
             "No titles in this section"
+        case .sources:
+            "No titles match your sources"
         }
     }
 }
@@ -58,6 +67,7 @@ public struct LibraryView: View {
     @State private var collectionQuery: LibraryCollectionQuery
     @State private var selectedViewMode: LibraryViewMode
     @State private var hasLoadedSnapshot = false
+    @State private var showsOrganization = false
     @State private var isRefreshingUpdates = false
     @State private var refreshFeedback: LibraryRefreshFeedback?
     @State private var navigationPath: [LibrarySeriesDetailRoute] = []
@@ -110,6 +120,20 @@ public struct LibraryView: View {
                 guard let pendingSeriesID else { return }
                 navigationPath = [LibrarySeriesDetailRoute(seriesID: pendingSeriesID)]
                 _ = router.consumePendingLibrarySeriesID()
+            }
+            .onChange(of: navigationPath) { previous, current in
+                guard !previous.isEmpty, current.isEmpty else { return }
+                Task { await reloadSnapshot() }
+            }
+            .sheet(isPresented: $showsOrganization) {
+                LibraryOrganizationSheet(
+                    query: collectionQuery,
+                    sourceOptions: LibraryCollectionQuery.sourceOptions(in: snapshot),
+                    selectSort: selectSort,
+                    toggleSource: toggleSource,
+                    selectAllSources: selectAllSources,
+                    reset: resetOrganization
+                )
             }
             .refreshable {
                 await refreshUpdates()
@@ -164,11 +188,10 @@ public struct LibraryView: View {
 
         return LibraryCollectionControls(
             layout: layout,
-            sortLayout: LibrarySortMenuLayout(query: collectionQuery),
+            organizationLayout: LibraryOrganizationLayout(query: collectionQuery),
             selection: $selectedViewMode,
             selectViewMode: { mode in selectViewMode(mode) },
-            selectSort: { choice in selectSort(choice) },
-            resetOrganization: { resetOrganization() }
+            showOrganization: { showsOrganization = true }
         ) {
             Task {
                 await refreshUpdates()
@@ -178,6 +201,11 @@ public struct LibraryView: View {
 
     private func reloadSnapshot() async {
         snapshot = await dependencies.libraryService.librarySnapshot()
+        let repaired = collectionQuery.repairingSources(in: snapshot)
+        if repaired != collectionQuery {
+            collectionQuery = repaired
+            libraryViewPreferences.save(collectionQuery: repaired)
+        }
         hasLoadedSnapshot = true
     }
 
@@ -217,7 +245,29 @@ public struct LibraryView: View {
         libraryViewPreferences.save(collectionQuery: collectionQuery)
     }
 
+    private func toggleSource(_ domain: String) {
+        let previous = collectionQuery.selectedSourceDomains
+        var selected = previous
+        if !selected.insert(domain).inserted { selected.remove(domain) }
+        collectionQuery.selectedSourceDomains = selected
+        InteractionFeedbackOutcomeReporter(feedback: dependencies.interactionFeedback)
+            .reportSelectionChange(from: previous, to: collectionQuery.selectedSourceDomains)
+        libraryViewPreferences.save(collectionQuery: collectionQuery)
+    }
+
+    private func selectAllSources() {
+        guard !collectionQuery.selectedSourceDomains.isEmpty else { return }
+        let previous = collectionQuery.selectedSourceDomains
+        collectionQuery.selectedSourceDomains = []
+        InteractionFeedbackOutcomeReporter(feedback: dependencies.interactionFeedback)
+            .reportSelectionChange(from: previous, to: collectionQuery.selectedSourceDomains)
+        libraryViewPreferences.save(collectionQuery: collectionQuery)
+    }
+
     private func resetOrganization() {
+        guard collectionQuery != .default else { return }
+        InteractionFeedbackOutcomeReporter(feedback: dependencies.interactionFeedback)
+            .reportSelectionChange(from: collectionQuery, to: LibraryCollectionQuery.default)
         libraryViewPreferences.resetOrganization()
         collectionQuery = .default
     }
@@ -235,7 +285,9 @@ public struct LibraryView: View {
         let emptyLayout = LibraryEmptyStateLayout(
             hasLoadedSnapshot: hasLoadedSnapshot,
             totalCount: snapshot.series.count,
-            visibleSeries: visible
+            visibleSeries: visible,
+            segmentCount: snapshot.series(for: collectionQuery.segment).count,
+            hasSourceSelection: !collectionQuery.selectedSourceDomains.isEmpty
         )
 
         switch LibraryContentPhase(hasLoadedSnapshot: hasLoadedSnapshot, visibleCount: visible.count) {
@@ -244,7 +296,9 @@ public struct LibraryView: View {
                 .frame(maxWidth: .infinity, minHeight: 180)
                 .accessibilityIdentifier("library.loading")
         case .empty:
-            LibraryEmptyStateView(layout: emptyLayout)
+            LibraryEmptyStateView(layout: emptyLayout,
+                sourceSummary: LibraryOrganizationLayout(query: collectionQuery).sourceSummary,
+                reset: resetOrganization)
                 .accessibilityIdentifier("library.empty")
         case .content:
             collection(visible, mode: LibraryDensityPresentation(
@@ -562,7 +616,6 @@ private struct LibraryViewModeControl: View {
         }
         .padding(ToonEdgeSpacing.xsmall)
         .background(ToonEdgeColor.elevated.opacity(0.72), in: RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
-        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 }
 
@@ -571,10 +624,15 @@ struct LibraryEmptyStateLayout: Equatable, Sendable {
     var message: String
     var imageName: String
     var imageURL: URL?
+    var offersReset: Bool
 
-    init(hasLoadedSnapshot: Bool, totalCount: Int = 0, visibleSeries: [LibrarySeriesSummary]) {
+    init(hasLoadedSnapshot: Bool, totalCount: Int = 0, visibleSeries: [LibrarySeriesSummary],
+         segmentCount: Int? = nil, hasSourceSelection: Bool = false) {
         self.isVisible = hasLoadedSnapshot && visibleSeries.isEmpty
-        self.message = LibraryEmptyReason(totalCount: totalCount, visibleCount: visibleSeries.count).message
+        let reason = LibraryEmptyReason(totalCount: totalCount, visibleCount: visibleSeries.count,
+            segmentCount: segmentCount, hasSourceSelection: hasSourceSelection)
+        self.message = reason.message
+        self.offersReset = self.isVisible && reason == .sources
         self.imageName = ToonEdgeAppCoreResources.sleepyLibraryEmptyImageName
         self.imageURL = ToonEdgeAppCoreResources.urlForImage(named: imageName, extension: "png")
     }
@@ -608,11 +666,10 @@ private struct LibraryRefreshFeedback: Equatable {
 
 private struct LibraryCollectionControls: View {
     let layout: LibraryCollectionControlsLayout
-    let sortLayout: LibrarySortMenuLayout
+    let organizationLayout: LibraryOrganizationLayout
     @Binding var selection: LibraryViewMode
     let selectViewMode: (LibraryViewMode) -> Void
-    let selectSort: (LibrarySortChoice) -> Void
-    let resetOrganization: () -> Void
+    let showOrganization: () -> Void
     let refresh: () -> Void
 
     var body: some View {
@@ -620,34 +677,62 @@ private struct LibraryCollectionControls: View {
             ViewThatFits(in: .horizontal) {
                 if layout.countAndSortArrangements.first == .horizontal {
                     HStack(spacing: ToonEdgeSpacing.small) {
-                        count
-                            .fixedSize(horizontal: true, vertical: true)
+                        count.fixedSize(horizontal: true, vertical: true)
                         Spacer(minLength: ToonEdgeSpacing.small)
-                        sortMenu
-                            .fixedSize(horizontal: true, vertical: true)
+                        summary.fixedSize(horizontal: true, vertical: true)
                     }
                 }
-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
                     count
-                    sortMenu
+                    summary
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(spacing: ToonEdgeSpacing.small) {
-                LibraryViewModeControl(selection: $selection, select: selectViewMode)
-
-                if layout.refreshButtonIsVisible {
-                    Button(action: refresh) {
-                        Image(systemName: layout.refreshSystemImage)
-                            .frame(width: 44, height: 44)
-                            .contentTransition(.symbolEffect(.replace))
+            ViewThatFits(in: .horizontal) {
+                if layout.countAndSortArrangements.first == .horizontal {
+                    HStack(spacing: 10) {
+                        density
+                        divider
+                        tools
                     }
-                    .buttonStyle(.plain)
-                    .disabled(layout.refreshSystemImage == "hourglass")
-                    .accessibilityLabel(layout.refreshAccessibilityLabel)
+                    .fixedSize(horizontal: true, vertical: false)
+                }
+                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                    density
+                    HStack(spacing: 10) {
+                        divider
+                        tools
+                    }
                 }
             }
+        }
+    }
+
+    private var density: some View {
+        LibraryViewModeControl(selection: $selection, select: selectViewMode)
+    }
+
+    private var divider: some View {
+        Divider()
+            .frame(width: 1, height: 20)
+            .overlay(ToonEdgeColor.border)
+            .accessibilityHidden(true)
+    }
+
+    private var tools: some View {
+        HStack(spacing: ToonEdgeSpacing.small) {
+            if layout.refreshButtonIsVisible {
+                Button(action: refresh) {
+                    Image(systemName: layout.refreshSystemImage)
+                        .frame(width: 44, height: 44)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .buttonStyle(.plain)
+                .disabled(layout.refreshSystemImage == "hourglass")
+                .accessibilityLabel(layout.refreshAccessibilityLabel)
+            }
+            LibraryOrganizationButton(layout: organizationLayout, show: showOrganization)
         }
     }
 
@@ -658,8 +743,15 @@ private struct LibraryCollectionControls: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    private var sortMenu: some View {
-        LibrarySortMenu(layout: sortLayout, select: selectSort, reset: resetOrganization)
+    private var summary: some View {
+        VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+            Text(organizationLayout.sourceSummary)
+                .accessibilityIdentifier("library.sources.summary")
+            Text(organizationLayout.sortChoice.title)
+        }
+        .font(ToonEdgeTypography.caption)
+        .foregroundStyle(ToonEdgeColor.textSecondary)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -716,19 +808,31 @@ private struct LibraryRefreshFeedbackView: View {
 
 private struct LibraryEmptyStateView: View {
     let layout: LibraryEmptyStateLayout
+    let sourceSummary: String
+    let reset: () -> Void
 
     var body: some View {
         VStack(spacing: ToonEdgeSpacing.medium) {
-            LibraryMascotImage(url: layout.imageURL)
-                .frame(width: 180, height: 160)
-
+            if !layout.offersReset {
+                LibraryMascotImage(url: layout.imageURL)
+                    .frame(width: 180, height: 160)
+            }
             Text(layout.message)
                 .font(ToonEdgeTypography.sectionTitle)
                 .foregroundStyle(ToonEdgeColor.textSecondary)
+            if layout.offersReset {
+                Text("Active sources: \(sourceSummary).")
+                    .font(ToonEdgeTypography.body)
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                Button("Reset Library organization", action: reset)
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("library.empty.reset")
+            }
         }
+        .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
         .frame(minHeight: 360)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 }
 
