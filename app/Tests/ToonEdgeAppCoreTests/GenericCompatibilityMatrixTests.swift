@@ -155,20 +155,17 @@ private func matrixTestRow() -> [String: Any] {
                                 bundledFiles: matrixBundledFixtureInventory())
 }
 
-@Test(arguments: try loadMatrixManifest().cases.filter {
-    $0.analysisFixture != nil && $0.registry == .default && $0.phase == .static
-})
-func matrixPayloadMatchesDeclaredProductionOutcome(row: CompatibilityMatrixCase) throws {
-    let name = try #require(row.analysisFixture)
-    let page = try loadMatrixAnalysis(named: name)
-    #expect(SiteProfileRegistry.default.profile(for: page.pageURL) == nil)
-    let result = ProfileAwareChapterDetector().detect(page: page)
+@Test(arguments: try loadMatrixManifest().cases.filter { $0.analysisFixture != nil })
+func matrixPayloadMatchesDeclaredOutcome(row: CompatibilityMatrixCase) throws {
+    let page = try loadMatrixAnalysis(named: #require(row.analysisFixture))
+    let result = matrixDetectorResult(page: page, row: row)
     let expected = row.expected
+    #expect(result.pageURL == page.pageURL)
     #expect(result.diagnostics.parserPath == expected.parserPath)
     #expect(result.readerEntryDisposition == expected.disposition)
     #expect(result.candidates.count == expected.candidateCount)
-    #expect(result.candidates.map { MatrixCandidateExpectation(id: $0.id ?? "", url: $0.src ?? "") }
-            == expected.orderedCandidates)
+    #expect(result.diagnostics.candidateCount == expected.candidateCount)
+    #expect(matrixCandidateOrder(result) == expected.orderedCandidates)
     #expect(result.readerSession?.imageURLs.map(\.absoluteString) ?? [] == expected.readerURLs)
     #expect(page.previousChapterURL?.absoluteString == expected.extractedPrevious)
     #expect(page.nextChapterURL?.absoluteString == expected.extractedNext)
@@ -177,5 +174,153 @@ func matrixPayloadMatchesDeclaredProductionOutcome(row: CompatibilityMatrixCase)
     #expect((result.readerSession != nil) == expected.readerAllowed)
     #expect(Set(expected.requiredHardBlocks).isSubset(of: result.diagnostics.hardBlocks))
     #expect(result.retryRecommendation == expected.retry)
+    #expect(result.diagnostics.retryRecommendation == expected.retry)
     if let session = result.readerSession { #expect(session.sourceURL == page.pageURL) }
+    if row.id == "recommended" { #expect(result.score == 58) }
+    if row.id == "manual" { #expect(result.score == 46) }
+    if row.registry == .default || row.registry == .empty {
+        #expect(result.diagnostics.profileDomain == nil)
+    } else {
+        #expect(result.diagnostics.profileDomain == page.pageURL.host())
+    }
+    switch row.capability {
+    case .challenge, .authentication, .paywall, .errorPage, .protectedViewer,
+         .canvasOrBlob, .unsupportedPagination, .browserOnly:
+        #expect(row.coverage == .unsupportedByPolicy)
+        #expect(!row.expected.readerAllowed)
+        #expect(!row.expected.requiredHardBlocks.isEmpty)
+    case .hydratedDOM, .browserSession, .requestContext:
+        #expect(row.coverage == .partial)
+    case .imageDelivery:
+        #expect(row.coverage == (row.id == "srcset" ? .partial : .covered))
+    case .embeddedHTML, .negativeDecorative:
+        #expect(row.coverage == .covered)
+    }
+    #expect(row.evidence.contains(.payloadDecoding))
+    #expect(row.evidence.contains(.browserModel))
+}
+
+@MainActor
+@Test(arguments: try loadMatrixManifest().cases.filter { $0.analysisFixture != nil })
+func matrixBrowserMatchesDeclaredDisposition(row: CompatibilityMatrixCase) throws {
+    let page = try loadMatrixAnalysis(named: #require(row.analysisFixture))
+    let result = matrixDetectorResult(page: page, row: row)
+    let model = BrowserViewModel(startPoint: .url(page.pageURL.absoluteString))
+    #expect(model.currentURL == page.pageURL)
+    model.updateNavigation(url: page.pageURL, title: page.title, canGoBack: true,
+                           canGoForward: false, isLoading: false)
+    model.handleDetectionResult(result)
+    #expect(model.detectionResult?.readerEntryDisposition == row.expected.disposition)
+    #expect(model.browserOwnedReaderSession == nil)
+    switch row.expected.disposition {
+    case .automatic:
+        #expect(model.cleanModePresentation == .hidden)
+        #expect(model.pendingReaderSession != nil)
+        #expect(!model.showsCleanModeCTA)
+    case .recommended, .manual:
+        #expect(model.cleanModePresentation == (row.expected.disposition == .recommended ? .recommendedBanner : .manualTool))
+        #expect(model.showsCleanModeCTA == (row.expected.disposition == .recommended))
+        #expect(model.pendingReaderSession == nil)
+        model.enterCleanModeManually()
+        #expect(model.pendingReaderSession != nil)
+        #expect(model.cleanModePresentation == .hidden)
+    case .unavailable:
+        #expect(model.cleanModePresentation == .hidden)
+        #expect(!model.showsCleanModeCTA)
+        #expect(model.pendingReaderSession == nil)
+        model.enterCleanModeManually()
+        #expect(model.pendingReaderSession == nil)
+        #expect(model.browserOwnedReaderSession == nil)
+    }
+    if row.expected.readerAllowed {
+        let session = try #require(model.pendingReaderSession)
+        #expect(session.sourceURL == page.pageURL)
+        #expect(session.imageURLs.map(\.absoluteString) == row.expected.readerURLs)
+        model.presentPendingReaderInsideBrowser(session)
+        #expect(model.pendingReaderSession == nil)
+        #expect(model.browserOwnedReaderSession == session)
+        #expect(model.readerPresentationState == .browserOwnedReaderVisible)
+        #expect(model.currentURL == page.pageURL)
+        #expect(model.canGoBack && !model.canGoForward)
+        model.dismissBrowserOwnedReader()
+        #expect(model.browserOwnedReaderSession == nil)
+        #expect(model.readerPresentationState == .none)
+        #expect(session.imageURLs.map(\.absoluteString) == row.expected.readerURLs)
+        #expect(model.detectionResult?.readerSession?.imageURLs.map(\.absoluteString) == row.expected.readerURLs)
+        #expect(model.currentURL == page.pageURL)
+        #expect(model.canGoBack && !model.canGoForward)
+        // Repopulate pending eligibility before navigation to prove stale sessions clear.
+        model.handleDetectionResult(result)
+        if row.expected.disposition != .automatic { model.enterCleanModeManually() }
+        #expect(model.pendingReaderSession != nil)
+    }
+    model.navigationDidStart()
+    #expect(model.detectionResult == nil)
+    #expect(model.pendingReaderSession == nil)
+    #expect(model.cleanModePresentation == .hidden)
+    model.enterCleanModeManually()
+    #expect(model.pendingReaderSession == nil)
+}
+
+@Test(arguments: try loadMatrixManifest().cases.filter {
+    $0.analysisFixture != nil && $0.registry == .default && $0.expected.readerAllowed
+})
+func matrixUnknownDomainUsesGenericRouting(row: CompatibilityMatrixCase) throws {
+    let page = try loadMatrixAnalysis(named: #require(row.analysisFixture))
+    #expect(SiteProfileRegistry.default.profile(for: page.pageURL) == nil)
+    let defaultResult = ProfileAwareChapterDetector().detect(page: page)
+    let emptyResult = ProfileAwareChapterDetector(registry: SiteProfileRegistry(profiles: [])).detect(page: page)
+    for result in [defaultResult, emptyResult] {
+        #expect(result.diagnostics.parserPath == .genericHeuristic)
+        #expect(result.diagnostics.profileDomain == nil)
+        #expect(matrixCandidateOrder(result) == row.expected.orderedCandidates)
+        #expect(result.readerSession?.imageURLs.map(\.absoluteString) ?? [] == row.expected.readerURLs)
+        #expect(result.readerEntryDisposition == row.expected.disposition)
+        #expect(result.readerSession?.sourceURL == page.pageURL)
+        #expect(result.readerSession?.previousChapter?.sourceURL.absoluteString == row.expected.sessionPrevious)
+        #expect(result.readerSession?.nextChapter?.sourceURL.absoluteString == row.expected.sessionNext)
+    }
+    // Session/chapter identities are freshly generated; compare the declared outcome and stable detector evidence.
+    #expect(defaultResult.candidates == emptyResult.candidates)
+    #expect(defaultResult.diagnostics == emptyResult.diagnostics)
+}
+
+@Test(arguments: try loadMatrixManifest().cases.filter {
+    $0.phase == .beforeHydration || $0.phase == .afterHydration ||
+    $0.phase == .profileInitial || $0.phase == .profileFollowUp
+})
+func matrixHydrationRetryEvidenceIsBounded(row: CompatibilityMatrixCase) throws {
+    let page = try loadMatrixAnalysis(named: #require(row.analysisFixture))
+    let result = matrixDetectorResult(page: page, row: row)
+    #expect(result.retryRecommendation == row.expected.retry)
+    #expect(row.coverage == .partial)
+    #expect(row.evidence.contains(.retryPolicy))
+    var policy = BrowserDetectionRetryPolicy()
+    let schedules = policy.shouldScheduleFollowUp(for: page.pageURL, recommendation: result.retryRecommendation,
+                                                 confidence: result.confidence)
+    #expect(schedules == (row.expected.retry == .browserSessionFollowUp))
+    let schedulesAgain = policy.shouldScheduleFollowUp(for: page.pageURL, recommendation: result.retryRecommendation,
+                                                       confidence: result.confidence)
+    #expect(!schedulesAgain)
+}
+
+private func matrixCandidateOrder(_ result: DetectionResult) -> [MatrixCandidateExpectation] {
+    result.candidates.map { MatrixCandidateExpectation(id: $0.id ?? "", url: $0.src ?? "") }
+}
+
+func matrixDetectorResult(page: DetectionPageAnalysis, row: CompatibilityMatrixCase) -> DetectionResult {
+    let registry: SiteProfileRegistry
+    switch row.registry {
+    case .default: registry = .default
+    case .empty: registry = SiteProfileRegistry(profiles: [])
+    case .syntheticBrowserSession, .syntheticPaginated, .syntheticBrowserOnly:
+        let template: SiteProfileTemplate = row.registry == .syntheticBrowserSession ? .browserSession
+            : row.registry == .syntheticPaginated ? .paginatedSinglePage : .browserOnly
+        let tier: SiteProfileSupportTier = row.registry == .syntheticBrowserOnly ? .browserOnly : .approvedNonPromoted
+        registry = SiteProfileRegistry(profiles: [SiteProfile(domain: page.pageURL.host() ?? "invalid.example.test",
+                                                             supportTier: tier, template: template)])
+    }
+    let detector = ProfileAwareChapterDetector(registry: registry)
+    // Initial profile detection and its explicitly requested follow-up are different APIs.
+    return row.phase == .profileFollowUp ? detector.detectBrowserSessionFollowUp(page: page) : detector.detect(page: page)
 }

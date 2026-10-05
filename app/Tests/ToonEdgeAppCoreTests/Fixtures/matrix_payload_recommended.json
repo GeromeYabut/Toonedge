@@ -1,0 +1,73 @@
+{
+  "pageURL": "https://unknown-reader.example.test/read/arrival",
+  "title": "Invented Chapter Arrival",
+  "documentHeight": 2000,
+  "viewportWidth": 390,
+  "viewportHeight": 844,
+  "previousChapterURL": null,
+  "nextChapterURL": null,
+  "challengeSignals": [],
+  "hardBlocks": [],
+  "images": [
+    {
+      "src": "https://cdn.example.test/pages/01.jpg",
+      "lazySources": [],
+      "srcset": null,
+      "width": 320,
+      "height": 500,
+      "renderedHeight": 500,
+      "top": 0,
+      "left": 0,
+      "className": null,
+      "id": "panel-01",
+      "alt": null,
+      "parentSignature": null,
+      "semanticHints": []
+    },
+    {
+      "src": "https://cdn.example.test/pages/02.jpg",
+      "lazySources": [],
+      "srcset": null,
+      "width": 320,
+      "height": 500,
+      "renderedHeight": 500,
+      "top": 500,
+      "left": 0,
+      "className": null,
+      "id": "panel-02",
+      "alt": null,
+      "parentSignature": null,
+      "semanticHints": []
+    },
+    {
+      "src": "https://cdn.example.test/pages/03.jpg",
+      "lazySources": [],
+      "srcset": null,
+      "width": 320,
+      "height": 500,
+      "renderedHeight": 500,
+      "top": 1000,
+      "left": 0,
+      "className": null,
+      "id": "panel-03",
+      "alt": null,
+      "parentSignature": null,
+      "semanticHints": []
+    },
+    {
+      "src": "https://cdn.example.test/pages/04.jpg",
+      "lazySources": [],
+      "srcset": null,
+      "width": 320,
+      "height": 500,
+      "renderedHeight": 500,
+      "top": 1500,
+      "left": 0,
+      "className": null,
+      "id": "panel-04",
+      "alt": null,
+      "parentSignature": null,
+      "semanticHints": []
+    }
+  ]
+}

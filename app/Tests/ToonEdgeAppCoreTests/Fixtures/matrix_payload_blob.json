@@ -1,0 +1,30 @@
+{
+  "pageURL": "https://unknown-reader.example.test/read/arrival",
+  "title": "Invented Chapter Arrival",
+  "documentHeight": 8400,
+  "viewportWidth": 390,
+  "viewportHeight": 844,
+  "previousChapterURL": null,
+  "nextChapterURL": null,
+  "challengeSignals": [],
+  "hardBlocks": [
+    "canvasOrBlob"
+  ],
+  "images": [
+    {
+      "src": "blob:https://unknown-reader.example.test/opaque-panel",
+      "lazySources": [],
+      "srcset": null,
+      "width": 900,
+      "height": 1350,
+      "renderedHeight": 1350,
+      "top": 0,
+      "left": 0,
+      "className": null,
+      "id": "panel-01",
+      "alt": null,
+      "parentSignature": null,
+      "semanticHints": []
+    }
+  ]
+}
