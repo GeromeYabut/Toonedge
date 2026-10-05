@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "unknown-embedded",
+      "capability": "embeddedHTML",
+      "coverage": "covered",
+      "analysisFixture": "matrix_payload_embedded.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding"
+      ],
+      "limits": "Synthetic payload decoding and detector behavior only; no real DOM extraction, Browser scheduling, remote image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": "https://unknown-reader.example.test/read/previous",
+        "extractedNext": "https://unknown-reader.example.test/read/next",
+        "sessionPrevious": "https://unknown-reader.example.test/read/previous",
+        "sessionNext": "https://unknown-reader.example.test/read/next",
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    }
+  ]
+}
