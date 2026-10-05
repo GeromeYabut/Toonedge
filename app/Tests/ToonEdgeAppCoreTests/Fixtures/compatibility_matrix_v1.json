@@ -1308,6 +1308,951 @@
         ],
         "retry": "none"
       }
+    },
+    {
+      "id": "dom-embedded",
+      "capability": "embeddedHTML",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_embedded.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": "https://unknown-reader.example.test/read/previous",
+        "extractedNext": "https://unknown-reader.example.test/read/next",
+        "sessionPrevious": "https://unknown-reader.example.test/read/previous",
+        "sessionNext": "https://unknown-reader.example.test/read/next",
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-lazy",
+      "capability": "imageDelivery",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_lazy.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "data-src",
+        "data-original",
+        "data-lazy-src",
+        "data-lazy",
+        "data-url",
+        "data-image",
+        "data-full",
+        "data-full-src",
+        "data-actualsrc"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": "https://unknown-reader.example.test/read/next",
+        "sessionPrevious": null,
+        "sessionNext": "https://unknown-reader.example.test/read/next",
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-srcset",
+      "capability": "imageDelivery",
+      "coverage": "partial",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_srcset.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "srcset",
+        "data-srcset",
+        "data-lazy-srcset"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established. Declared srcset variants prove the first usable listed source only, not optimal resolution selection.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-url-forms",
+      "capability": "imageDelivery",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_url_forms.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://unknown-reader.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://unknown-reader.example.test/read/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://unknown-reader.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://unknown-reader.example.test/pages/02.jpg",
+          "https://unknown-reader.example.test/read/pages/03.jpg",
+          "https://unknown-reader.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": "https://unknown-reader.example.test/previous",
+        "extractedNext": "https://unknown-reader.example.test/read/next",
+        "sessionPrevious": "https://unknown-reader.example.test/previous",
+        "sessionNext": "https://unknown-reader.example.test/read/next",
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-hydration-before",
+      "capability": "hydratedDOM",
+      "coverage": "partial",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_hydration.html",
+      "registry": "default",
+      "phase": "beforeHydration",
+      "variants": [],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established. Explicit fixture hydration preserves origin; generic retry remains none.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-hydration-after",
+      "capability": "hydratedDOM",
+      "coverage": "partial",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_hydration.html",
+      "registry": "default",
+      "phase": "afterHydration",
+      "variants": [],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established. Explicit fixture hydration preserves origin; generic retry remains none.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-thumbnails",
+      "capability": "negativeDecorative",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_decorative.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "thumbnails"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-ad-only",
+      "capability": "negativeDecorative",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_decorative.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "ad-only"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-ads-reader",
+      "capability": "negativeDecorative",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_decorative.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "ads-reader"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-gate-authentication",
+      "capability": "authentication",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_gates.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "authentication"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "authentication"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-gate-paywall",
+      "capability": "paywall",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_gates.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "paywall"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "paywall"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-gate-challenge",
+      "capability": "challenge",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_gates.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "challenge"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "challenge"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-gate-error",
+      "capability": "errorPage",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_gates.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "error"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "errorPage"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-gate-protected",
+      "capability": "protectedViewer",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_gates.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "protected"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "protectedViewer"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-gate-hidden",
+      "capability": "embeddedHTML",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_gates.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "hidden-authentication"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-opaque-canvas",
+      "capability": "canvasOrBlob",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_opaque.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "canvas"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "canvasOrBlob"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-opaque-blob",
+      "capability": "canvasOrBlob",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_opaque.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "blob"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "canvasOrBlob"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-small-canvas",
+      "capability": "embeddedHTML",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_opaque.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "small-canvas"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "pagination-dom-unclassified",
+      "capability": "unsupportedPagination",
+      "coverage": "partial",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_pagination.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established. One candidate prevents Reader entry; generic HTML emits no typed unsupportedPagination diagnosis and no stitching occurs.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 1,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": "https://unknown-reader.example.test/read/arrival?page=next",
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
     }
   ]
 }

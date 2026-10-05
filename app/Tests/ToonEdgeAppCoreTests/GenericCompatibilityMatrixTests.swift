@@ -286,8 +286,8 @@ func matrixUnknownDomainUsesGenericRouting(row: CompatibilityMatrixCase) throws 
 }
 
 @Test(arguments: try loadMatrixManifest().cases.filter {
-    $0.phase == .beforeHydration || $0.phase == .afterHydration ||
-    $0.phase == .profileInitial || $0.phase == .profileFollowUp
+    $0.analysisFixture != nil && ($0.phase == .beforeHydration || $0.phase == .afterHydration ||
+    $0.phase == .profileInitial || $0.phase == .profileFollowUp)
 })
 func matrixHydrationRetryEvidenceIsBounded(row: CompatibilityMatrixCase) throws {
     let page = try loadMatrixAnalysis(named: #require(row.analysisFixture))
