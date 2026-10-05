@@ -185,7 +185,14 @@ final class ToonEdgeBrowserReaderUITests: XCTestCase {
 
     private func launchBrowserFixture(_ fixture: String) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-browserFixture", fixture]
+        app.launchArguments = [
+            "-uiTesting", "-browserFixture", fixture,
+            "-resetLibraryOrganization",
+            "-ToonEdge.Library.segment", "recent",
+            "-ToonEdge.Library.sortKey", "activity",
+            "-ToonEdge.Library.sortDirection", "descending",
+            "-ToonEdge.Library.selectedViewMode", "comfortable"
+        ]
         app.launch()
         return app
     }

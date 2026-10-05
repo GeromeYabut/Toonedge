@@ -1,0 +1,14 @@
+{
+  "pageURL": "https://unknown-reader.example.test/read/arrival",
+  "title": "Invented Chapter Arrival",
+  "documentHeight": 8400,
+  "viewportWidth": 390,
+  "viewportHeight": 844,
+  "previousChapterURL": null,
+  "nextChapterURL": null,
+  "challengeSignals": [],
+  "hardBlocks": [
+    "canvasOrBlob"
+  ],
+  "images": []
+}

@@ -1,0 +1,2259 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "unknown-embedded",
+      "capability": "embeddedHTML",
+      "coverage": "covered",
+      "analysisFixture": "matrix_payload_embedded.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": "https://unknown-reader.example.test/read/previous",
+        "extractedNext": "https://unknown-reader.example.test/read/next",
+        "sessionPrevious": "https://unknown-reader.example.test/read/previous",
+        "sessionNext": "https://unknown-reader.example.test/read/next",
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "lazy",
+      "capability": "imageDelivery",
+      "coverage": "covered",
+      "analysisFixture": "matrix_payload_lazy.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": "https://unknown-reader.example.test/read/next",
+        "sessionPrevious": null,
+        "sessionNext": "https://unknown-reader.example.test/read/next",
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "url_forms",
+      "capability": "imageDelivery",
+      "coverage": "covered",
+      "analysisFixture": "matrix_payload_url_forms.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://unknown-reader.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://unknown-reader.example.test/read/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://unknown-reader.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://unknown-reader.example.test/pages/02.jpg",
+          "https://unknown-reader.example.test/read/pages/03.jpg",
+          "https://unknown-reader.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "srcset",
+      "capability": "imageDelivery",
+      "coverage": "partial",
+      "analysisFixture": "matrix_payload_srcset.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic first usable srcset candidate behavior only; no optimal resolution selection, browser currentSrc, DOM extraction or remote delivery guarantee.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "cdn_variation",
+      "capability": "imageDelivery",
+      "coverage": "covered",
+      "analysisFixture": "matrix_payload_cdn_variation.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic two-host normalization and order only; no cross-host cookies or actual image network delivery evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://alternate-cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://alternate-cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://alternate-cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://alternate-cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://alternate-cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://alternate-cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "ordering_duplicates",
+      "capability": "imageDelivery",
+      "coverage": "covered",
+      "analysisFixture": "matrix_payload_ordering_duplicates.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "recommended",
+      "capability": "imageDelivery",
+      "coverage": "covered",
+      "analysisFixture": "matrix_payload_recommended.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "recommended",
+        "candidateCount": 4,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "manual",
+      "capability": "imageDelivery",
+      "coverage": "covered",
+      "analysisFixture": "matrix_payload_manual.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "manual",
+        "candidateCount": 4,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "hydration_before",
+      "capability": "hydratedDOM",
+      "coverage": "partial",
+      "analysisFixture": "matrix_payload_hydration_before.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "beforeHydration",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel",
+        "retryPolicy"
+      ],
+      "limits": "Synthetic shell only; generic retry is none and late hydration is not automatically rescheduled by Browser.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "hydration_after",
+      "capability": "hydratedDOM",
+      "coverage": "partial",
+      "analysisFixture": "matrix_payload_hydration_after.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "afterHydration",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel",
+        "retryPolicy"
+      ],
+      "limits": "Synthetic hydrated snapshot analyzed explicitly; no automatic Browser rescheduling or coordinator timing evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "request_context",
+      "capability": "requestContext",
+      "coverage": "partial",
+      "analysisFixture": "matrix_payload_request_context.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel",
+        "requestHeaders"
+      ],
+      "limits": "Synthetic single-CDN detector-to-Browser metadata preservation and actual asset-loader request headers across one timeout retry only; Browser cookie-store collection, preflight, mixed-host cookie policy, and remote image delivery remain untested.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "thumbnail_grid",
+      "capability": "negativeDecorative",
+      "coverage": "covered",
+      "analysisFixture": "matrix_payload_thumbnail_grid.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "advertisement_reader",
+      "capability": "negativeDecorative",
+      "coverage": "covered",
+      "analysisFixture": "matrix_payload_advertisement_reader.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "advertisement_only",
+      "capability": "negativeDecorative",
+      "coverage": "covered",
+      "analysisFixture": "matrix_payload_advertisement_only.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "challenge",
+      "capability": "challenge",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": "matrix_payload_challenge.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "challenge"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "authentication",
+      "capability": "authentication",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": "matrix_payload_authentication.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "authentication"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "paywall",
+      "capability": "paywall",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": "matrix_payload_paywall.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "paywall"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "error",
+      "capability": "errorPage",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": "matrix_payload_error.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "errorPage"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "protected",
+      "capability": "protectedViewer",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": "matrix_payload_protected.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "protectedViewer"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "canvas",
+      "capability": "canvasOrBlob",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": "matrix_payload_canvas.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "canvasOrBlob"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "blob",
+      "capability": "canvasOrBlob",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": "matrix_payload_blob.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "canvasOrBlob"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "pagination",
+      "capability": "unsupportedPagination",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": "matrix_payload_pagination.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Typed synthetic pagination block only; generic DOM pagination diagnosis is not established, and no stitching occurs.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 1,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": "https://unknown-reader.example.test/read/arrival?page=next",
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "unsupportedPagination"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "inferred_links",
+      "capability": "imageDelivery",
+      "coverage": "covered",
+      "analysisFixture": "matrix_payload_inferred_links.json",
+      "htmlFixture": null,
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": "https://unknown-reader.example.test/chapter-2",
+        "sessionNext": "https://unknown-reader.example.test/chapter-4",
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "profile-session-initial",
+      "capability": "browserSession",
+      "coverage": "partial",
+      "analysisFixture": "matrix_payload_hydration_before.json",
+      "htmlFixture": null,
+      "registry": "syntheticBrowserSession",
+      "phase": "profileInitial",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel",
+        "retryPolicy"
+      ],
+      "limits": "Injected neutral session profile initial policy only; actual coordinator delay and scheduling are not established.",
+      "expected": {
+        "parserPath": "browserSessionProfile",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [],
+        "retry": "browserSessionFollowUp"
+      }
+    },
+    {
+      "id": "profile-session-follow-up",
+      "capability": "browserSession",
+      "coverage": "partial",
+      "analysisFixture": "matrix_payload_hydration_after.json",
+      "htmlFixture": null,
+      "registry": "syntheticBrowserSession",
+      "phase": "profileFollowUp",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel",
+        "retryPolicy"
+      ],
+      "limits": "Injected neutral session profile explicit follow-up API only; actual coordinator timing and stable DOM scheduling are not established.",
+      "expected": {
+        "parserPath": "siteProfile",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "profile-pagination",
+      "capability": "unsupportedPagination",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": "matrix_payload_pagination.json",
+      "htmlFixture": null,
+      "registry": "syntheticPaginated",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "unsupportedPaginatedProfile",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": "https://unknown-reader.example.test/read/arrival?page=next",
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "unsupportedPagination"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "profile-browser-only",
+      "capability": "browserOnly",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": "matrix_payload_embedded.json",
+      "htmlFixture": null,
+      "registry": "syntheticBrowserOnly",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "payloadDecoding",
+        "browserModel"
+      ],
+      "limits": "Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.",
+      "expected": {
+        "parserPath": "browserOnlyProfile",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": "https://unknown-reader.example.test/read/previous",
+        "extractedNext": "https://unknown-reader.example.test/read/next",
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "browserOnly"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-embedded",
+      "capability": "embeddedHTML",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_embedded.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": "https://unknown-reader.example.test/read/previous",
+        "extractedNext": "https://unknown-reader.example.test/read/next",
+        "sessionPrevious": "https://unknown-reader.example.test/read/previous",
+        "sessionNext": "https://unknown-reader.example.test/read/next",
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-lazy",
+      "capability": "imageDelivery",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_lazy.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "data-src",
+        "data-original",
+        "data-lazy-src",
+        "data-lazy",
+        "data-url",
+        "data-image",
+        "data-full",
+        "data-full-src",
+        "data-actualsrc"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": "https://unknown-reader.example.test/read/next",
+        "sessionPrevious": null,
+        "sessionNext": "https://unknown-reader.example.test/read/next",
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-srcset",
+      "capability": "imageDelivery",
+      "coverage": "partial",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_srcset.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "srcset",
+        "data-srcset",
+        "data-lazy-srcset"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established. Declared srcset variants prove the first usable listed source only, not optimal resolution selection.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-url-forms",
+      "capability": "imageDelivery",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_url_forms.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://unknown-reader.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://unknown-reader.example.test/read/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://unknown-reader.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://unknown-reader.example.test/pages/02.jpg",
+          "https://unknown-reader.example.test/read/pages/03.jpg",
+          "https://unknown-reader.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": "https://unknown-reader.example.test/previous",
+        "extractedNext": "https://unknown-reader.example.test/read/next",
+        "sessionPrevious": "https://unknown-reader.example.test/previous",
+        "sessionNext": "https://unknown-reader.example.test/read/next",
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-hydration-before",
+      "capability": "hydratedDOM",
+      "coverage": "partial",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_hydration.html",
+      "registry": "default",
+      "phase": "beforeHydration",
+      "variants": [],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established. Explicit fixture hydration preserves origin; generic retry remains none.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-hydration-after",
+      "capability": "hydratedDOM",
+      "coverage": "partial",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_hydration.html",
+      "registry": "default",
+      "phase": "afterHydration",
+      "variants": [],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established. Explicit fixture hydration preserves origin; generic retry remains none.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-thumbnails",
+      "capability": "negativeDecorative",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_decorative.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "thumbnails"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-ad-only",
+      "capability": "negativeDecorative",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_decorative.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "ad-only"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-ads-reader",
+      "capability": "negativeDecorative",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_decorative.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "ads-reader"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-gate-authentication",
+      "capability": "authentication",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_gates.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "authentication"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "authentication"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-gate-paywall",
+      "capability": "paywall",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_gates.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "paywall"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "paywall"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-gate-challenge",
+      "capability": "challenge",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_gates.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "challenge"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "challenge"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-gate-error",
+      "capability": "errorPage",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_gates.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "error"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "errorPage"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-gate-protected",
+      "capability": "protectedViewer",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_gates.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "protected"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "protectedViewer"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-gate-hidden",
+      "capability": "embeddedHTML",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_gates.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "hidden-authentication"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-opaque-canvas",
+      "capability": "canvasOrBlob",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_opaque.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "canvas"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "canvasOrBlob"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-opaque-blob",
+      "capability": "canvasOrBlob",
+      "coverage": "unsupported-by-policy",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_opaque.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "blob"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 0,
+        "orderedCandidates": [],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [
+          "canvasOrBlob"
+        ],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "dom-small-canvas",
+      "capability": "embeddedHTML",
+      "coverage": "covered",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_opaque.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [
+        "small-canvas"
+      ],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "automatic",
+        "candidateCount": 6,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          },
+          {
+            "id": "panel-02",
+            "url": "https://cdn.example.test/pages/02.jpg"
+          },
+          {
+            "id": "panel-03",
+            "url": "https://cdn.example.test/pages/03.jpg"
+          },
+          {
+            "id": "panel-04",
+            "url": "https://cdn.example.test/pages/04.jpg"
+          },
+          {
+            "id": "panel-05",
+            "url": "https://cdn.example.test/pages/05.jpg"
+          },
+          {
+            "id": "panel-06",
+            "url": "https://cdn.example.test/pages/06.jpg"
+          }
+        ],
+        "readerURLs": [
+          "https://cdn.example.test/pages/01.jpg",
+          "https://cdn.example.test/pages/02.jpg",
+          "https://cdn.example.test/pages/03.jpg",
+          "https://cdn.example.test/pages/04.jpg",
+          "https://cdn.example.test/pages/05.jpg",
+          "https://cdn.example.test/pages/06.jpg"
+        ],
+        "extractedPrevious": null,
+        "extractedNext": null,
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": true,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    },
+    {
+      "id": "pagination-dom-unclassified",
+      "capability": "unsupportedPagination",
+      "coverage": "partial",
+      "analysisFixture": null,
+      "htmlFixture": "matrix_dom_pagination.html",
+      "registry": "default",
+      "phase": "static",
+      "variants": [],
+      "evidence": [
+        "webKitDOM"
+      ],
+      "limits": "Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established. One candidate prevents Reader entry; generic HTML emits no typed unsupportedPagination diagnosis and no stitching occurs.",
+      "expected": {
+        "parserPath": "genericHeuristic",
+        "disposition": "unavailable",
+        "candidateCount": 1,
+        "orderedCandidates": [
+          {
+            "id": "panel-01",
+            "url": "https://cdn.example.test/pages/01.jpg"
+          }
+        ],
+        "readerURLs": [],
+        "extractedPrevious": null,
+        "extractedNext": "https://unknown-reader.example.test/read/arrival?page=next",
+        "sessionPrevious": null,
+        "sessionNext": null,
+        "readerAllowed": false,
+        "requiredHardBlocks": [],
+        "retry": "none"
+      }
+    }
+  ]
+}
