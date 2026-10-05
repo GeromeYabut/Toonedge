@@ -56,7 +56,7 @@ public struct LibraryCollectionQuery: Equatable, Sendable {
         init(_ summary: LibrarySeriesSummary) {
             self.summary = summary
             let locale = Locale(identifier: "en_US_POSIX")
-            title = summary.title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: locale)
+            title = summary.title.folding(options: [.caseInsensitive, .widthInsensitive, .diacriticInsensitive], locale: locale)
                 .lowercased(with: locale)
                 .split(whereSeparator: \.isWhitespace).joined(separator: " ")
             id = summary.id.uuidString.lowercased()

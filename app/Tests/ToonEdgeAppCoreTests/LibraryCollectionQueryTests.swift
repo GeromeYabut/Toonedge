@@ -57,6 +57,31 @@ struct LibraryCollectionQueryTests {
         #expect(query.apply(to: snapshot).map(\.id) == [unreadAlphaLow.id, unreadAlphaHigh.id, unreadNew.id, unreadOld.id, unreadUnknown.id, readNew.id, readUnknown.id])
     }
 
+    @Test(arguments: [LibrarySortDirection.ascending, .descending])
+    func titleWidthEquivalentTiesUseUUIDInBothDirections(direction: LibrarySortDirection) {
+        // Both UUID assignments matter: reversing title must never reverse a normalized tie.
+        let wideLow = item(1, title: "Ａｌｐｈａ")
+        let narrowHigh = item(2, title: "Alpha")
+        let narrowLow = item(3, title: "Alpha")
+        let wideHigh = item(4, title: "Ａｌｐｈａ")
+        let query = LibraryCollectionQuery(segment: .reading, sortKey: .title, sortDirection: direction)
+
+        #expect(query.apply(to: LibrarySnapshot(series: [narrowHigh, wideLow])).map(\.id)
+            == [wideLow.id, narrowHigh.id])
+        #expect(query.apply(to: LibrarySnapshot(series: [wideHigh, narrowLow])).map(\.id)
+            == [narrowLow.id, wideHigh.id])
+    }
+
+    @Test(arguments: [LibrarySortKey.activity, .unreadUpdates], [LibrarySortDirection.ascending, .descending])
+    func activityAndUnreadWidthEquivalentTiesUseUUID(key: LibrarySortKey, direction: LibrarySortDirection) {
+        let wideLow = item(1, title: "Ａｌｐｈａ", activity: 10, unread: true)
+        let narrowHigh = item(2, title: "Alpha", activity: 10, unread: true)
+        let query = LibraryCollectionQuery(segment: .reading, sortKey: key, sortDirection: direction)
+
+        #expect(query.apply(to: LibrarySnapshot(series: [narrowHigh, wideLow])).map(\.id)
+            == [wideLow.id, narrowHigh.id])
+    }
+
     @Test(arguments: LibrarySegment.allCases)
     func composesExistingSegmentMembershipAndLeavesSnapshotUnchanged(segment: LibrarySegment) {
         let reading = item(1, title: "Zulu", activity: 10)
