@@ -1639,10 +1639,11 @@ Strengthen ToonEdge's core browser-to-reader and local-library loop with bounded
 - Story 13.2: [Guarded manual Clean Mode](superpowers/plans/2026-09-28-story-13.2-guarded-manual-clean-mode.md)
 - Story 13.3: [Saved-Library search](superpowers/plans/2026-09-28-story-13.3-saved-library-search.md)
 - Story 13.4: [Reader zoom](superpowers/plans/2026-09-28-story-13.4-reader-zoom.md)
-- Story 13.5: [Library sort and source filter](superpowers/plans/2026-09-28-story-13.5-library-sort-filter.md)
+- Story 13.5: [Library sorting](superpowers/plans/2026-10-04-story-13.5-library-sorting.md); the [combined plan](superpowers/plans/2026-09-28-story-13.5-library-sort-filter.md) is superseded and must not be executed
 - Story 13.6: [Search-history controls](superpowers/plans/2026-09-28-story-13.6-search-history-controls.md)
 - Story 13.7: [Generic compatibility matrix](superpowers/plans/2026-09-28-story-13.7-generic-compatibility-matrix.md)
 - Story 13.8: [Live-device compatibility validation](superpowers/plans/2026-09-28-story-13.8-live-device-compatibility-validation.md)
+- Story 13.9: [Saved-source filtering](#story-139--add-saved-source-filtering-to-library); separate follow-up to Story 13.5
 
 ### Story 13.1 — Add chapter-scoped Reader continuity and bounded prefetch
 
@@ -1740,28 +1741,29 @@ As a reader viewing small text or artwork detail, I want to zoom and pan tempora
 - Reduce Motion avoids nonessential reset animation.
 - Unit and UI tests cover bounds, focal anchoring, gesture ownership, reset, chrome coexistence, and chapter replacement.
 
-### Story 13.5 — Complete Library sorting and saved-source filtering
+### Story 13.5 — Complete Library sorting
 
-**Status:** planned
+**Status:** implemented and locally verified; merged into local `main` at `e557c97`. Remote delivery through `feature/story-13.5-library-sorting` awaits the required PR `Simulator Build` and GitHub merge. [QA evidence](qa_evidence/2026-10-04-story-13.5-library-sorting.md).
 
-**Dependencies:** Existing `LibrarySnapshot`, lifecycle segments, view densities, domain normalization, and `LibraryViewPreferences`.
+**Dependencies:** Existing `LibrarySnapshot`, lifecycle segments, view densities, and `LibraryViewPreferences`. No dependency on Reader zoom or source filtering.
 
 **User story**
 
-As a reader with a growing Library, I want to order and narrow my saved titles without changing their metadata or being shown source recommendations.
+As a reader with a growing Library, I want to order my titles by activity, title, or unread updates without changing their metadata.
 
 **Acceptance criteria**
 
-- A pure collection query composes lifecycle segment, sort key, sort direction, source-domain selection, and view density.
+- A pure collection query composes the existing lifecycle segment with sort key and sort direction; presentation preserves the selected view density.
 - Sort options are recent activity, title, and unread updates first.
 - Direction is available only where meaningful; unread updates uses a fixed unread-first order.
-- Source choices are normalized and derived only from domains already in the complete local Library snapshot.
-- Empty source selection means All Sources; obsolete stored sources are removed safely.
-- Reset restores Recent, activity descending, all sources, and preserves the current density preference unless the user resets density explicitly.
-- Segment, sort, direction, source selection, and density persist locally.
-- Sorting/filtering does not mutate series, chapter, progress, or update metadata.
-- A filtered empty state explains that filters are active and offers Reset; a genuinely empty segment retains its existing state.
-- Tests cover all query dimensions, stable tie-breaking, nil dates, normalization, preference fallback, and removed-source repair.
+- Default organization is Recent with activity descending; Reset restores these values and preserves the current density preference.
+- Segment, sort, direction, and density persist locally.
+- Sorting is local and does not mutate series, chapter, progress, or update metadata.
+- Sorting never removes titles from the selected segment; existing genuine collection and segment empty states remain intact.
+- Tests cover segment/sort composition, both meaningful directions, fixed unread-first order, stable tie-breaking, nil dates, preference fallback, and density preservation.
+- Source selection, source preference keys and repair, active-source summaries, and source-filter empty-state recovery are excluded and belong to Story 13.9.
+
+**Planning:** The previous combined implementation plan is superseded. A sorting-only plan must be reviewed before implementation; this split does not approve the proposed UI layout.
 
 ### Story 13.6 — Add individual and clear-all local search-history controls
 
@@ -1810,7 +1812,7 @@ As the product team, we want evidence that generic Clean Mode handles diverse re
 
 **Status:** planned
 
-**Dependencies:** Stories 13.1–13.7 complete and their automated suites passing.
+**Dependencies:** Stories 13.1–13.7 and 13.9 complete and their automated suites passing. Story numbers are identifiers, not a requirement to execute 13.9 after this release-validation story.
 
 **User story**
 
@@ -1826,6 +1828,31 @@ As the release owner, I want dated device evidence across rendering capabilities
 - Reproducible generic gaps receive sanitized fixtures and regression-test references where legally and technically practical.
 - Named domains may appear only in internal research/QA evidence, never in the PRD or user-facing compatibility claims.
 - The report includes commands, device/OS, limitations, artifact-retention guidance, and a release recommendation without claiming universal compatibility.
+
+### Story 13.9 — Add saved-source filtering to Library
+
+**Status:** planned; split from Story 13.5 on 2026-10-04. Remains in MVP scope and is not required to complete sorting.
+
+**Dependencies:** Story 13.5 collection query and preferences, existing domain normalization, and the complete local Library snapshot.
+
+**User story**
+
+As a reader with a growing Library, I want to narrow my collection to selected saved sources without changing its metadata or being shown source recommendations.
+
+**Acceptance criteria**
+
+- Extend the collection query to compose lifecycle segment, sort, and multi-select source-domain filtering while preserving view density.
+- Source choices are normalized, deduplicated, and derived only from domains already in the complete saved Library snapshot, not the currently filtered subset.
+- Empty source selection means All Sources; selected sources are inclusive within the chosen lifecycle segment.
+- Source selection persists locally; obsolete stored sources are removed safely, falling back to All Sources when no selections remain.
+- Show an active-source summary so users can understand why titles are hidden.
+- A source-filtered empty state explains that filters are active and offers Reset; a genuinely empty collection or segment retains its appropriate existing state.
+- Reset restores Recent, activity descending, and all sources while preserving the density preference.
+- Source filtering is local and never mutates series, chapter, progress, or update metadata; update refresh continues to use the unfiltered Library service.
+- No source recommendations, discovery shortcuts, hardcoded catalog, or named-site compatibility promise is introduced.
+- Tests cover multi-source composition, normalization, persisted selection, removed-source repair, filtered versus genuine empty states, Reset, and density preservation.
+
+**Planning:** Source-control placement and sheet interaction require their own design review and implementation plan before execution. Implement after 13.5 and before the MVP release validation in 13.8.
 
 ---
 

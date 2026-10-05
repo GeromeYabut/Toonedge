@@ -188,9 +188,92 @@ import Testing
     #expect(!populated.isVisible)
 }
 
-@Test func libraryDistinguishesEmptyCollectionFromEmptyFilter() {
+@Test func libraryDistinguishesEmptyCollectionFromEmptySegment() {
     #expect(LibraryEmptyReason(totalCount: 0, visibleCount: 0) == .collection)
-    #expect(LibraryEmptyReason(totalCount: 4, visibleCount: 0) == .filter)
+    #expect(LibraryEmptyReason(totalCount: 4, visibleCount: 0) == .segment)
+    #expect(LibraryEmptyReason.segment.message == "No titles in this section")
+}
+
+@Test func librarySortChoicesExposeTheFiveApprovedVisibleValues() {
+    #expect(LibrarySortChoice.allCases.map(\.title) == [
+        "Recent activity · Newest",
+        "Recent activity · Oldest",
+        "Title · A–Z",
+        "Title · Z–A",
+        "Unread updates first"
+    ])
+}
+
+@Test func librarySortChoicesMapToQueryWithoutChangingTheSegment() {
+    let initial = LibraryCollectionQuery(segment: .completed, sortKey: .title, sortDirection: .descending)
+    let cases: [(LibrarySortChoice, LibrarySortKey, LibrarySortDirection)] = [
+        (.recentNewest, .activity, .descending),
+        (.recentOldest, .activity, .ascending),
+        (.titleAscending, .title, .ascending),
+        (.titleDescending, .title, .descending),
+        (.unreadUpdates, .unreadUpdates, .descending)
+    ]
+
+    for (choice, key, direction) in cases {
+        let query = choice.applying(to: initial)
+        #expect(query.segment == .completed)
+        #expect(query.sortKey == key)
+        #expect(query.sortDirection == direction)
+        #expect(LibrarySortChoice(query: query) == choice)
+    }
+}
+
+@Test func librarySortUnreadChoiceUsesOneFixedDirectionAndVisibleValue() {
+    for direction in LibrarySortDirection.allCases {
+        let query = LibraryCollectionQuery(segment: .planned, sortKey: .unreadUpdates, sortDirection: direction)
+        let layout = LibrarySortMenuLayout(query: query)
+        #expect(layout.selectedChoice == .unreadUpdates)
+        #expect(layout.accessibilityValue == "Unread updates first")
+        #expect(layout.selectedChoice.applying(to: query).sortDirection == .descending)
+    }
+}
+
+@Test func librarySortMenuExposesCurrentOrderingAndSelectedChoice() {
+    for choice in LibrarySortChoice.allCases {
+        let layout = LibrarySortMenuLayout(query: choice.applying(to: .default))
+        #expect(layout.accessibilityIdentifier == "library.sort")
+        #expect(layout.accessibilityLabel == "Sort library")
+        #expect(layout.accessibilityValue == choice.title)
+        #expect(layout.selectedChoice == choice)
+        #expect(layout.isSelected(choice))
+        #expect(LibrarySortChoice.allCases.filter(layout.isSelected) == [choice])
+    }
+    #expect(LibrarySortMenuLayout(query: .default).accessibilityValue == "Recent activity · Newest")
+}
+
+@Test func librarySortMenuAlwaysProvidesResetLibraryOrganization() {
+    for choice in LibrarySortChoice.allCases {
+        let layout = LibrarySortMenuLayout(query: choice.applying(to: .default))
+        #expect(layout.resetIsAvailable)
+        #expect(layout.resetTitle == "Reset Library organization")
+    }
+}
+
+@Test func libraryCollectionControlsAdaptCountAndSortWithSeparateDensityRefreshRow() {
+    let regular = LibraryCollectionControlsLayout(
+        visibleSeries: [LibrarySeriesSummary.mock()],
+        hasUpdateRefreshService: true,
+        isRefreshing: false,
+        accessibilityText: false
+    )
+    let accessible = LibraryCollectionControlsLayout(
+        visibleSeries: [LibrarySeriesSummary.mock()],
+        hasUpdateRefreshService: true,
+        isRefreshing: false,
+        accessibilityText: true
+    )
+
+    #expect(regular.countAndSortArrangements == [.horizontal, .stacked])
+    #expect(accessible.countAndSortArrangements == [.stacked])
+    #expect(regular.densityAndRefreshUseSeparateRow)
+    #expect(accessible.densityAndRefreshUseSeparateRow)
+    #expect(regular.countText == "1 title")
+    #expect(accessible.refreshButtonIsVisible)
 }
 
 @Test func accessibilityLayoutDoesNotOverwriteSavedDensity() {
@@ -1524,6 +1607,123 @@ import Testing
     #expect(LibraryViewPreferences(userDefaults: defaults).selectedViewMode == .compact)
 
     defaults.removePersistentDomain(forName: suiteName)
+}
+
+@Test func libraryOrganizationPreferencesDefaultToRecentActivityDescending() {
+    let suiteName = "ToonEdgeLibraryOrganization-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let query = LibraryViewPreferences(userDefaults: defaults).collectionQuery
+
+    #expect(query == .default)
+    #expect(query.segment == .recent)
+    #expect(query.sortKey == .activity)
+    #expect(query.sortDirection == .descending)
+}
+
+@Test func libraryOrganizationPreferencesPersistSegmentKeyAndDirection() {
+    let suiteName = "ToonEdgeLibraryOrganization-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    let preferences = LibraryViewPreferences(userDefaults: defaults)
+
+    for segment in LibrarySegment.allCases {
+        for key in [LibrarySortKey.activity, .title] {
+            for direction in LibrarySortDirection.allCases {
+                let query = LibraryCollectionQuery(segment: segment, sortKey: key, sortDirection: direction)
+                preferences.save(collectionQuery: query)
+
+                #expect(LibraryViewPreferences(userDefaults: defaults).collectionQuery == query)
+                #expect(defaults.string(forKey: "ToonEdge.Library.segment") == segment.rawValue)
+                #expect(defaults.string(forKey: "ToonEdge.Library.sortKey") == key.rawValue)
+                #expect(defaults.string(forKey: "ToonEdge.Library.sortDirection") == direction.rawValue)
+            }
+        }
+    }
+}
+
+@Test func libraryOrganizationPreferencesFallBackForEachInvalidFieldIndependently() {
+    let suiteName = "ToonEdgeLibraryOrganization-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    let preferences = LibraryViewPreferences(userDefaults: defaults)
+    let query = LibraryCollectionQuery(segment: .completed, sortKey: .title, sortDirection: .ascending)
+    let cases: [(String, LibraryCollectionQuery)] = [
+        ("ToonEdge.Library.segment", .init(segment: .recent, sortKey: .title, sortDirection: .ascending)),
+        ("ToonEdge.Library.sortKey", .init(segment: .completed, sortKey: .activity, sortDirection: .ascending)),
+        ("ToonEdge.Library.sortDirection", .init(segment: .completed, sortKey: .title, sortDirection: .descending))
+    ]
+
+    for (key, expected) in cases {
+        preferences.save(collectionQuery: query)
+        defaults.set("unknown", forKey: key)
+
+        #expect(LibraryViewPreferences(userDefaults: defaults).collectionQuery == expected)
+    }
+}
+
+@Test func libraryOrganizationPreferencesFallBackForMissingFieldsIndependently() {
+    let suiteName = "ToonEdgeLibraryOrganization-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    defaults.set(LibrarySegment.dropped.rawValue, forKey: "ToonEdge.Library.segment")
+
+    #expect(LibraryViewPreferences(userDefaults: defaults).collectionQuery ==
+        LibraryCollectionQuery(segment: .dropped, sortKey: .activity, sortDirection: .descending))
+
+    defaults.set(LibrarySortDirection.ascending.rawValue, forKey: "ToonEdge.Library.sortDirection")
+    #expect(LibraryViewPreferences(userDefaults: defaults).collectionQuery ==
+        LibraryCollectionQuery(segment: .dropped, sortKey: .activity, sortDirection: .ascending))
+}
+
+@Test func libraryOrganizationPreferencesCanonicalizeUnreadDirectionOnReadAndSave() {
+    let suiteName = "ToonEdgeLibraryOrganization-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    let preferences = LibraryViewPreferences(userDefaults: defaults)
+    let expected = LibraryCollectionQuery(segment: .reading, sortKey: .unreadUpdates, sortDirection: .descending)
+    defaults.set(LibrarySegment.reading.rawValue, forKey: "ToonEdge.Library.segment")
+    defaults.set(LibrarySortKey.unreadUpdates.rawValue, forKey: "ToonEdge.Library.sortKey")
+    defaults.set(LibrarySortDirection.ascending.rawValue, forKey: "ToonEdge.Library.sortDirection")
+
+    #expect(preferences.collectionQuery == expected)
+
+    preferences.save(collectionQuery: .init(segment: .reading, sortKey: .unreadUpdates, sortDirection: .ascending))
+
+    #expect(LibraryViewPreferences(userDefaults: defaults).collectionQuery == expected)
+    #expect(defaults.string(forKey: "ToonEdge.Library.sortDirection") == LibrarySortDirection.descending.rawValue)
+}
+
+@Test func libraryOrganizationPreferencesResetRestoresDefaults() {
+    let suiteName = "ToonEdgeLibraryOrganization-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    let preferences = LibraryViewPreferences(userDefaults: defaults)
+    preferences.save(collectionQuery: .init(segment: .planned, sortKey: .title, sortDirection: .ascending))
+
+    preferences.resetOrganization()
+
+    #expect(LibraryViewPreferences(userDefaults: defaults).collectionQuery == .default)
+    #expect(defaults.string(forKey: "ToonEdge.Library.segment") == LibrarySegment.recent.rawValue)
+    #expect(defaults.string(forKey: "ToonEdge.Library.sortKey") == LibrarySortKey.activity.rawValue)
+    #expect(defaults.string(forKey: "ToonEdge.Library.sortDirection") == LibrarySortDirection.descending.rawValue)
+    #expect(defaults.object(forKey: "ToonEdge.Library.selectedViewMode") == nil)
+}
+
+@Test(arguments: [LibraryViewMode.compact, .list])
+func libraryOrganizationPreferencesResetPreservesSelectedDensity(_ mode: LibraryViewMode) {
+    let suiteName = "ToonEdgeLibraryOrganization-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    let preferences = LibraryViewPreferences(userDefaults: defaults)
+    preferences.selectedViewMode = mode
+    preferences.save(collectionQuery: .init(segment: .dropped, sortKey: .unreadUpdates, sortDirection: .descending))
+
+    preferences.resetOrganization()
+
+    #expect(LibraryViewPreferences(userDefaults: defaults).selectedViewMode == mode)
+    #expect(defaults.string(forKey: "ToonEdge.Library.selectedViewMode") == mode.rawValue)
 }
 
 @Test func libraryNativeCollectionLayoutsUseDistinctGridDensity() {

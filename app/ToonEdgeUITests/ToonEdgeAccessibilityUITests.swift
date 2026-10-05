@@ -144,7 +144,7 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
         extraArguments: [String] = []
     ) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-resetTestData"] + extraArguments
+        app.launchArguments = ["-uiTesting", "-resetTestData", "-resetLibraryOrganization"] + extraArguments
         if let appearance {
             app.launchArguments += ["-AppleInterfaceStyle", appearance.rawValue]
         }

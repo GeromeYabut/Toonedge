@@ -24,17 +24,17 @@ public enum LibraryContentPhase: Equatable, Sendable {
 
 enum LibraryEmptyReason: Equatable, Sendable {
     case collection
-    case filter
+    case segment
 
     init(totalCount: Int, visibleCount: Int) {
-        self = totalCount == 0 && visibleCount == 0 ? .collection : .filter
+        self = totalCount == 0 && visibleCount == 0 ? .collection : .segment
     }
 
     var message: String {
         switch self {
         case .collection:
             "Nothing saved"
-        case .filter:
+        case .segment:
             "No titles in this section"
         }
     }
@@ -55,7 +55,7 @@ public struct LibraryView: View {
     private let dependencies: AppDependencies
     @Binding private var router: AppRouter
     @State private var snapshot = LibrarySnapshot(series: [])
-    @State private var selectedSegment: LibrarySegment = .recent
+    @State private var collectionQuery: LibraryCollectionQuery
     @State private var selectedViewMode: LibraryViewMode
     @State private var hasLoadedSnapshot = false
     @State private var isRefreshingUpdates = false
@@ -69,6 +69,7 @@ public struct LibraryView: View {
         self._router = router
         let preferences = LibraryViewPreferences()
         self.libraryViewPreferences = preferences
+        self._collectionQuery = State(initialValue: preferences.collectionQuery)
         self._selectedViewMode = State(initialValue: preferences.selectedViewMode)
     }
 
@@ -76,7 +77,7 @@ public struct LibraryView: View {
         NavigationStack(path: $navigationPath) {
             ScrollView {
                 VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
-                    LibraryFilterRow(selection: $selectedSegment) { segment in
+                    LibraryFilterRow(selection: collectionQuery.segment) { segment in
                         selectSegment(segment)
                     }
                     if hasLoadedSnapshot {
@@ -94,7 +95,7 @@ public struct LibraryView: View {
             .task {
                 await reloadSnapshot()
                 if let segment = router.consumePendingLibrarySegment() {
-                    selectedSegment = segment
+                    applyRoutedSegment(segment)
                 }
                 if let seriesID = router.consumePendingLibrarySeriesID() {
                     navigationPath = [LibrarySeriesDetailRoute(seriesID: seriesID)]
@@ -102,7 +103,7 @@ public struct LibraryView: View {
             }
             .onChange(of: router.pendingLibrarySegment) { _, pendingSegment in
                 guard let pendingSegment else { return }
-                selectedSegment = pendingSegment
+                applyRoutedSegment(pendingSegment)
                 _ = router.consumePendingLibrarySegment()
             }
             .onChange(of: router.pendingLibrarySeriesID) { _, pendingSeriesID in
@@ -153,17 +154,21 @@ public struct LibraryView: View {
     }
 
     private var collectionControls: some View {
-        let visible = snapshot.series(for: selectedSegment)
+        let visible = collectionQuery.apply(to: snapshot)
         let layout = LibraryCollectionControlsLayout(
             visibleSeries: visible,
             hasUpdateRefreshService: dependencies.updateRefreshService != nil,
-            isRefreshing: isRefreshingUpdates
+            isRefreshing: isRefreshingUpdates,
+            accessibilityText: dynamicTypeSize.isAccessibilitySize
         )
 
         return LibraryCollectionControls(
             layout: layout,
+            sortLayout: LibrarySortMenuLayout(query: collectionQuery),
             selection: $selectedViewMode,
-            selectViewMode: { mode in selectViewMode(mode) }
+            selectViewMode: { mode in selectViewMode(mode) },
+            selectSort: { choice in selectSort(choice) },
+            resetOrganization: { resetOrganization() }
         ) {
             Task {
                 await refreshUpdates()
@@ -191,10 +196,30 @@ public struct LibraryView: View {
     }
 
     private func selectSegment(_ segment: LibrarySegment) {
-        guard selectedSegment != segment else { return }
+        guard collectionQuery.segment != segment else { return }
         InteractionFeedbackOutcomeReporter(feedback: dependencies.interactionFeedback)
-            .reportSelectionChange(from: selectedSegment, to: segment)
-        selectedSegment = segment
+            .reportSelectionChange(from: collectionQuery.segment, to: segment)
+        collectionQuery.segment = segment
+        libraryViewPreferences.save(collectionQuery: collectionQuery)
+    }
+
+    private func applyRoutedSegment(_ segment: LibrarySegment) {
+        collectionQuery.segment = segment
+        libraryViewPreferences.save(collectionQuery: collectionQuery)
+    }
+
+    private func selectSort(_ choice: LibrarySortChoice) {
+        let previous = LibrarySortChoice(query: collectionQuery)
+        guard previous != choice else { return }
+        InteractionFeedbackOutcomeReporter(feedback: dependencies.interactionFeedback)
+            .reportSelectionChange(from: previous, to: choice)
+        collectionQuery = choice.applying(to: collectionQuery)
+        libraryViewPreferences.save(collectionQuery: collectionQuery)
+    }
+
+    private func resetOrganization() {
+        libraryViewPreferences.resetOrganization()
+        collectionQuery = .default
     }
 
     private func selectViewMode(_ mode: LibraryViewMode) {
@@ -206,7 +231,7 @@ public struct LibraryView: View {
 
     @ViewBuilder
     private var content: some View {
-        let visible = snapshot.series(for: selectedSegment)
+        let visible = collectionQuery.apply(to: snapshot)
         let emptyLayout = LibraryEmptyStateLayout(
             hasLoadedSnapshot: hasLoadedSnapshot,
             totalCount: snapshot.series.count,
@@ -319,20 +344,29 @@ struct LibraryCollectionControlsLayout: Equatable, Sendable {
     var refreshAccessibilityLabel: String
     var countText: String
     var usesLargeSummaryCard: Bool
+    var countAndSortArrangements: [LibraryCollectionControlsArrangement]
+    var densityAndRefreshUseSeparateRow: Bool
 
     init(
         visibleSeries: [LibrarySeriesSummary],
         hasUpdateRefreshService: Bool,
-        isRefreshing: Bool
+        isRefreshing: Bool,
+        accessibilityText: Bool = false
     ) {
         self.refreshButtonIsVisible = hasUpdateRefreshService
         self.refreshSystemImage = isRefreshing ? "hourglass" : "arrow.clockwise"
         self.refreshAccessibilityLabel = "Check for new chapters"
         self.countText = "\(visibleSeries.count) \(visibleSeries.count == 1 ? "title" : "titles")"
         self.usesLargeSummaryCard = false
+        self.countAndSortArrangements = accessibilityText ? [.stacked] : [.horizontal, .stacked]
+        self.densityAndRefreshUseSeparateRow = true
     }
 }
 
+enum LibraryCollectionControlsArrangement: Equatable, Sendable {
+    case horizontal
+    case stacked
+}
 
 struct LibraryRefreshFeedbackLayout: Equatable, Sendable {
     static let autoDismissDelay = 5
@@ -469,7 +503,7 @@ struct LibraryFilterChipLayout: Equatable, Sendable {
 }
 
 private struct LibraryFilterRow: View {
-    @Binding var selection: LibrarySegment
+    let selection: LibrarySegment
     let select: (LibrarySegment) -> Void
 
     var body: some View {
@@ -574,32 +608,58 @@ private struct LibraryRefreshFeedback: Equatable {
 
 private struct LibraryCollectionControls: View {
     let layout: LibraryCollectionControlsLayout
+    let sortLayout: LibrarySortMenuLayout
     @Binding var selection: LibraryViewMode
     let selectViewMode: (LibraryViewMode) -> Void
+    let selectSort: (LibrarySortChoice) -> Void
+    let resetOrganization: () -> Void
     let refresh: () -> Void
 
     var body: some View {
-        HStack(spacing: ToonEdgeSpacing.small) {
-            Text(layout.countText)
-                .font(ToonEdgeTypography.caption.weight(.semibold))
-                .foregroundStyle(ToonEdgeColor.textSecondary)
-                .lineLimit(1)
-
-            Spacer(minLength: ToonEdgeSpacing.small)
-
-            LibraryViewModeControl(selection: $selection, select: selectViewMode)
-
-            if layout.refreshButtonIsVisible {
-                Button(action: refresh) {
-                    Image(systemName: layout.refreshSystemImage)
-                        .frame(width: 44, height: 44)
-                        .contentTransition(.symbolEffect(.replace))
+        VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+            ViewThatFits(in: .horizontal) {
+                if layout.countAndSortArrangements.first == .horizontal {
+                    HStack(spacing: ToonEdgeSpacing.small) {
+                        count
+                            .fixedSize(horizontal: true, vertical: true)
+                        Spacer(minLength: ToonEdgeSpacing.small)
+                        sortMenu
+                            .fixedSize(horizontal: true, vertical: true)
+                    }
                 }
-                .buttonStyle(.plain)
-                .disabled(layout.refreshSystemImage == "hourglass")
-                .accessibilityLabel(layout.refreshAccessibilityLabel)
+                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                    count
+                    sortMenu
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: ToonEdgeSpacing.small) {
+                LibraryViewModeControl(selection: $selection, select: selectViewMode)
+
+                if layout.refreshButtonIsVisible {
+                    Button(action: refresh) {
+                        Image(systemName: layout.refreshSystemImage)
+                            .frame(width: 44, height: 44)
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(layout.refreshSystemImage == "hourglass")
+                    .accessibilityLabel(layout.refreshAccessibilityLabel)
+                }
             }
         }
+    }
+
+    private var count: some View {
+        Text(layout.countText)
+            .font(ToonEdgeTypography.caption.weight(.semibold))
+            .foregroundStyle(ToonEdgeColor.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var sortMenu: some View {
+        LibrarySortMenu(layout: sortLayout, select: selectSort, reset: resetOrganization)
     }
 }
 

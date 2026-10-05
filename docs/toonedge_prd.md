@@ -4,11 +4,13 @@
 **Platform:** iOS, iPhone-first  
 **Document Version:** v1.1
 **Status:** Draft for review
-**Last Revised:** 2026-09-28
+**Last Revised:** 2026-10-04
 
 ### Revision Summary
 
 Version 1.1 incorporates the approved requirements from the 2026-09-28 MangaPin competitive review. It adds six bounded MVP requirements: Reader continuity and prefetch, guarded manual Clean Mode, saved-library search matches, Reader zoom, operational Library sorting/source filtering, and local search-history controls. It also records the approved post-MVP opportunity backlog without promoting those items into the release commitment.
+
+The 2026-10-04 delivery revision separates Library sorting (Story 13.5) from saved-source filtering (Story 13.9). Both remain MVP requirements; source filtering is not a dependency of sorting.
 
 ## 1. Overview
 
@@ -292,6 +294,8 @@ The Library should support:
 - local persistence of selected segment, sort, source filter, and view density
 
 Sorting and filtering must not mutate saved series metadata. Source filters must not become source recommendations, discovery shortcuts, or a hardcoded source catalog. If active filters produce no results, Library must explain that filters are active and offer Reset.
+
+Deliver sorting first in Story 13.5: existing lifecycle segments, activity/title/unread ordering, meaningful directions, local presentation preferences, and Reset to Recent with activity descending while preserving density. Story 13.9 separately adds source multi-selection, source preference repair, active-source summaries, and source-filtered empty-state recovery. The sorting-only delivery must not expose a nonfunctional source control or add source preference state.
 
 ### 8.7 Add to Library Flow
 - After a user begins or completes reading a chapter, the app may prompt them to add the series to their library

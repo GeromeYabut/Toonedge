@@ -52,6 +52,10 @@ struct ToonEdgeAppEntry: App {
             return (try? AppDependencies.persistent()) ?? .mock()
         }
 
+        if arguments.contains("-resetLibraryOrganization") {
+            LibraryViewPreferences().resetOrganization()
+        }
+
         if let fixture = UITestCacheLifecycleFixture(arguments: arguments) {
             return try! fixture.dependencies(reset: arguments.contains("-resetTestData"))
         }

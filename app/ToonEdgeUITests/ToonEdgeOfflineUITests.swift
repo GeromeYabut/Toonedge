@@ -241,14 +241,14 @@ final class ToonEdgeAuthoritativeContinueUITests: XCTestCase {
     private func launchFixture(_ scenario: String) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-resetTestData", "-readerHardeningFixture", scenario]
+        app.launchArguments = ["-uiTesting", "-resetTestData", "-resetLibraryOrganization", "-readerHardeningFixture", scenario]
         app.launch()
         return app
     }
 
     private func relaunchFixture(_ scenario: String, in app: XCUIApplication) {
         app.terminate()
-        app.launchArguments = ["-uiTesting", "-readerHardeningFixture", scenario]
+        app.launchArguments = ["-uiTesting", "-resetLibraryOrganization", "-readerHardeningFixture", scenario]
         app.launch()
     }
 
