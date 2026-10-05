@@ -428,3 +428,97 @@ Findings:
 - Which domains have rebranded or moved since the original seed list was compiled?
 - Which sites need fixture capture because generic detection produces false positives or incomplete sessions?
 - Which sites require referer/header-aware image loading rather than plain native requests?
+
+
+## Story 13.7 synthetic capability evidence — 2026-10-05
+
+This appended section records synthetic rendering-pattern evidence verified on **2026-10-05** at Task 5 starting/tested HEAD `bdf48f516f995fd243e0cc577372cd13b3b7fcf8`. The named-site sections above retain their historical research observations, including the internally dated 2026-05-15 recheck; undated batch observations are left undated. No new named-site probe or runtime support promotion occurred. The classifications below describe only the declared fixture evidence.
+
+The final manifest contains **46 rows**, **23 payload JSON resources** and **nine HTML resources**; the manifest itself is a separate test resource. Coverage classifications are **19 covered, 10 partial, 17 unsupported-by-policy**. Source and packaged inventory both equal the 32 referenced fixture files; legacy resources are outside this explicit set.
+
+Final matrix verification selected **21 test definitions**, with **165 parameter argument invocations plus eight ordinary checks (173 total executions)** confirmed in the final log. Execution evidence includes **27 payload rows, 27 Browser rows, 12 unknown-domain routing controls, four hydration/retry controls, 58 real-WebKit DOM executions** (29 explicit combinations with sanitation off/on), **two paired hydration executions**, one DOM variant-inventory check, and **three request-context executions** (one populated context plus nil/empty Cookie variants). The 12 manifest-validation definitions include their own parameterized rejection cases; definition totals and argument executions are distinct units. All nine lazy attributes and three srcset attributes ran both sanitation states. Full package verification selected **593 definitions**, zero failures. Final successful UI runs selected **13 XCTest cases per dedicated simulator**, zero test-case failures; earlier failed installer attempts are recorded separately.
+
+
+URL-form evidence uses the fixed HTTPS fixture origin; protocol-relative HTTP inheritance is untested. Positive assertions compare exact ordered candidate identities/normalized URLs and full Reader URL arrays, with extracted and inferred session links checked separately. Unknown-domain positives prove default-registry absence and equivalent empty-registry fallback; neutral profile controls are test injections.
+
+Evidence kinds: `payloadDecoding` includes production decoding/detector assertions; `browserModel` exercises BrowserViewModel controls and session lifecycle; `webKitDOM` exercises production scripts against real synthetic HTML/layout; `requestHeaders` captures actual asset-loader URLRequests using runtime synthetic context; `retryPolicy` covers policy/explicit follow-up rather than automatic coordinator scheduling. `covered` applies only within the listed limit; `partial` preserves an unproved capability; `unsupported-by-policy` is an intentionally unavailable Reader outcome. UI injections are companion presentation evidence and are not manifest DOM/coordinator evidence.
+
+| Manifest row ID | Capability | Coverage | Evidence kinds | Variants | Limit |
+| --- | --- | --- | --- | --- | --- |
+| `unknown-embedded` | embeddedHTML | covered | payloadDecoding, browserModel | default | L1 |
+| `lazy` | imageDelivery | covered | payloadDecoding, browserModel | default | L1 |
+| `url_forms` | imageDelivery | covered | payloadDecoding, browserModel | default | L1 |
+| `srcset` | imageDelivery | partial | payloadDecoding, browserModel | default | L2 |
+| `cdn_variation` | imageDelivery | covered | payloadDecoding, browserModel | default | L3 |
+| `ordering_duplicates` | imageDelivery | covered | payloadDecoding, browserModel | default | L1 |
+| `recommended` | imageDelivery | covered | payloadDecoding, browserModel | default | L1 |
+| `manual` | imageDelivery | covered | payloadDecoding, browserModel | default | L1 |
+| `hydration_before` | hydratedDOM | partial | payloadDecoding, browserModel, retryPolicy | default | L4 |
+| `hydration_after` | hydratedDOM | partial | payloadDecoding, browserModel, retryPolicy | default | L5 |
+| `request_context` | requestContext | partial | payloadDecoding, browserModel, requestHeaders | default | L6 |
+| `thumbnail_grid` | negativeDecorative | covered | payloadDecoding, browserModel | default | L1 |
+| `advertisement_reader` | negativeDecorative | covered | payloadDecoding, browserModel | default | L1 |
+| `advertisement_only` | negativeDecorative | covered | payloadDecoding, browserModel | default | L1 |
+| `challenge` | challenge | unsupported-by-policy | payloadDecoding, browserModel | default | L1 |
+| `authentication` | authentication | unsupported-by-policy | payloadDecoding, browserModel | default | L1 |
+| `paywall` | paywall | unsupported-by-policy | payloadDecoding, browserModel | default | L1 |
+| `error` | errorPage | unsupported-by-policy | payloadDecoding, browserModel | default | L1 |
+| `protected` | protectedViewer | unsupported-by-policy | payloadDecoding, browserModel | default | L1 |
+| `canvas` | canvasOrBlob | unsupported-by-policy | payloadDecoding, browserModel | default | L1 |
+| `blob` | canvasOrBlob | unsupported-by-policy | payloadDecoding, browserModel | default | L1 |
+| `pagination` | unsupportedPagination | unsupported-by-policy | payloadDecoding, browserModel | default | L7 |
+| `inferred_links` | imageDelivery | covered | payloadDecoding, browserModel | default | L1 |
+| `profile-session-initial` | browserSession | partial | payloadDecoding, browserModel, retryPolicy | default | L8 |
+| `profile-session-follow-up` | browserSession | partial | payloadDecoding, browserModel, retryPolicy | default | L9 |
+| `profile-pagination` | unsupportedPagination | unsupported-by-policy | payloadDecoding, browserModel | default | L1 |
+| `profile-browser-only` | browserOnly | unsupported-by-policy | payloadDecoding, browserModel | default | L1 |
+| `dom-embedded` | embeddedHTML | covered | webKitDOM | default | L10 |
+| `dom-lazy` | imageDelivery | covered | webKitDOM | data-src, data-original, data-lazy-src, data-lazy, data-url, data-image, data-full, data-full-src, data-actualsrc | L10 |
+| `dom-srcset` | imageDelivery | partial | webKitDOM | srcset, data-srcset, data-lazy-srcset | L11 |
+| `dom-url-forms` | imageDelivery | covered | webKitDOM | default | L10 |
+| `dom-hydration-before` | hydratedDOM | partial | webKitDOM | default | L12 |
+| `dom-hydration-after` | hydratedDOM | partial | webKitDOM | default | L12 |
+| `dom-thumbnails` | negativeDecorative | covered | webKitDOM | thumbnails | L10 |
+| `dom-ad-only` | negativeDecorative | covered | webKitDOM | ad-only | L10 |
+| `dom-ads-reader` | negativeDecorative | covered | webKitDOM | ads-reader | L10 |
+| `dom-gate-authentication` | authentication | unsupported-by-policy | webKitDOM | authentication | L10 |
+| `dom-gate-paywall` | paywall | unsupported-by-policy | webKitDOM | paywall | L10 |
+| `dom-gate-challenge` | challenge | unsupported-by-policy | webKitDOM | challenge | L10 |
+| `dom-gate-error` | errorPage | unsupported-by-policy | webKitDOM | error | L10 |
+| `dom-gate-protected` | protectedViewer | unsupported-by-policy | webKitDOM | protected | L10 |
+| `dom-gate-hidden` | embeddedHTML | covered | webKitDOM | hidden-authentication | L10 |
+| `dom-opaque-canvas` | canvasOrBlob | unsupported-by-policy | webKitDOM | canvas | L10 |
+| `dom-opaque-blob` | canvasOrBlob | unsupported-by-policy | webKitDOM | blob | L10 |
+| `dom-small-canvas` | embeddedHTML | covered | webKitDOM | small-canvas | L10 |
+| `pagination-dom-unclassified` | unsupportedPagination | partial | webKitDOM | default | L13 |
+
+### Evidence limits
+
+- **L1:** Synthetic production-decoded payload and Browser model only; no real DOM extraction, coordinator timing, image delivery or live-site compatibility evidence.
+- **L2:** Synthetic first usable srcset candidate behavior only; no optimal resolution selection, browser currentSrc, DOM extraction or remote delivery guarantee.
+- **L3:** Synthetic two-host normalization and order only; no cross-host cookies or actual image network delivery evidence.
+- **L4:** Synthetic shell only; generic retry is none and late hydration is not automatically rescheduled by Browser.
+- **L5:** Synthetic hydrated snapshot analyzed explicitly; no automatic Browser rescheduling or coordinator timing evidence.
+- **L6:** Synthetic single-CDN detector-to-Browser metadata preservation and actual asset-loader request headers across one timeout retry only; Browser cookie-store collection, preflight, mixed-host cookie policy, and remote image delivery remain untested.
+- **L7:** Typed synthetic pagination block only; generic DOM pagination diagnosis is not established, and no stitching occurs.
+- **L8:** Injected neutral session profile initial policy only; actual coordinator delay and scheduling are not established.
+- **L9:** Injected neutral session profile explicit follow-up API only; actual coordinator timing and stable DOM scheduling are not established.
+- **L10:** Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established.
+- **L11:** Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established. Declared srcset variants prove the first usable listed source only, not optimal resolution selection.
+- **L12:** Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established. Explicit fixture hydration preserves origin; generic retry remains none.
+- **L13:** Synthetic real WebKit HTML/layout and production extraction only; CSP denies external resource bytes. No live-site compatibility, image delivery, currentSrc selection or Browser coordinator scheduling is established. One candidate prevents Reader entry; generic HTML emits no typed unsupportedPagination diagnosis and no stitching occurs.
+
+### Reproduction and handoff
+
+```sh
+swift test --package-path app --scratch-path '/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/story-13.7-generic-compatibility-matrix/root-01a10a57/SwiftPM' --jobs 1 list
+swift test --package-path app --scratch-path '/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/story-13.7-generic-compatibility-matrix/root-01a10a57/SwiftPM' --jobs 1 --filter '^.*matrix'
+swift test --package-path app --scratch-path '/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/story-13.7-generic-compatibility-matrix/root-01a10a57/SwiftPM' --jobs 1 --filter 'matrixManifestMatchesSourceAndBundledInventory'
+```
+
+Commands ran from `/Users/geromeyabut/.codex/worktrees/story-13-7-generic-compatibility-matrix/Toonedge`. The final matrix gate above selected 21 definitions; the inventory check is rerun after documentation edits. Full package, build, dedicated simulator commands, attachment inspection and their actual outcomes are in [dated QA evidence](qa_evidence/2026-10-05-story-13.7-compatibility-matrix.md). Production code never reads the matrix and SwiftPM resources remain outside the app/UI target.
+
+Tracker discrepancies are flagged without changing unrelated rows: Story 13.3 is remotely merged via PR #4 despite its pending-integration wording; Story 13.5 is remotely merged via PR #5 despite its awaiting-CI/merge wording; Story 13.4 is **paused** despite its planned wording. Story 13.6 remains deferred and its canonical/review artifacts are unchanged. Story 13.9 owns source filtering. Story 13.8 retains live/physical-device validation.
+
+
+Tasks 1–4 each received independent specification and code-quality approval; no actionable findings remain in their immutable review ranges. Task 5 and whole-branch independent reviews follow this local verification/commit handoff; this document records their sequencing and does not claim an unexecuted review passed. No push, PR, merge, GitHub-setting change or branch/worktree cleanup is authorized or performed.
