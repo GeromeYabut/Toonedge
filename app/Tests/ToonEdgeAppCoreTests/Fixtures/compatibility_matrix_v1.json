@@ -572,9 +572,10 @@
       "variants": [],
       "evidence": [
         "payloadDecoding",
-        "browserModel"
+        "browserModel",
+        "requestHeaders"
       ],
-      "limits": "Synthetic single-CDN eligibility only; request headers belong to separate evidence and Browser cookie-store collection and preflight are not established.",
+      "limits": "Synthetic single-CDN detector-to-Browser metadata preservation and actual asset-loader request headers across one timeout retry only; Browser cookie-store collection, preflight, mixed-host cookie policy, and remote image delivery remain untested.",
       "expected": {
         "parserPath": "genericHeuristic",
         "disposition": "automatic",
