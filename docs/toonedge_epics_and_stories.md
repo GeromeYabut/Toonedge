@@ -1743,7 +1743,7 @@ As a reader viewing small text or artwork detail, I want to zoom and pan tempora
 
 ### Story 13.5 — Complete Library sorting
 
-**Status:** implemented and locally verified on `feature/story-13.5-library-sorting`; not pushed, no PR opened, required CI `Simulator Build` not run, and not merged. [QA evidence](qa_evidence/2026-10-04-story-13.5-library-sorting.md).
+**Status:** implemented and locally verified; merged into local `main` at `e557c97`. Remote delivery through `feature/story-13.5-library-sorting` awaits the required PR `Simulator Build` and GitHub merge. [QA evidence](qa_evidence/2026-10-04-story-13.5-library-sorting.md).
 
 **Dependencies:** Existing `LibrarySnapshot`, lifecycle segments, view densities, and `LibraryViewPreferences`. No dependency on Reader zoom or source filtering.
 
