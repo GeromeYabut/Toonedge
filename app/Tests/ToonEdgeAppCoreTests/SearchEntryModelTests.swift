@@ -650,3 +650,245 @@ private actor SearchOverlayFailingHistoryManager: SearchHistoryManaging {
     let provider = SearchHistoryBackedSuggestionProvider(baseProvider: MockSearchSuggestionProvider(clipboardURL: nil, recentLinks: [], recentSearches: [], commonSites: []), history: entries)
     #expect(provider.suggestions(matching: "").map(\.id) == [entries[4].id, lower, higher, queryLower, queryHigher])
 }
+
+@Test @MainActor func searchHistoryRemovalEligibilityRequiresExactPersistedProvenance() async throws {
+    let entry = removalEntry("hero")
+    let manager = SearchRemovalFixture(entries: [entry])
+    let model = removalModel(manager)
+    await model.load()
+    for kind in [SearchSuggestionKind.recentSearch, .recentLink, .clipboardLink, .commonSite, .searchAction, .librarySeries] {
+        let row = SearchSuggestion(id: entry.id, kind: kind, title: "Hero", subtitle: "", value: "hero", systemImage: "clock", historyEntryID: entry.id)
+        #expect(model.canRemoveHistory(row) == (kind == .recentSearch || kind == .recentLink))
+        let synthetic = SearchSuggestion(id: entry.id, kind: kind, title: "Hero", subtitle: "", value: "hero", systemImage: "clock")
+        #expect(!model.canRemoveHistory(synthetic))
+        let fake = SearchSuggestion(kind: kind, title: "Hero", subtitle: "", value: "hero", systemImage: "clock", historyEntryID: UUID())
+        #expect(!model.canRemoveHistory(fake))
+        #expect(!removalModel(nil).canRemoveHistory(row))
+    }
+}
+
+@Test @MainActor func searchHistoryRemovalKeepsRowPendingAndRecomposesBeforeBackfill() async throws {
+    let entries = (0..<13).map { removalEntry("hero \($0)") }
+    let manager = SearchRemovalFixture(entries: entries)
+    let library = SearchOverlayLibrarySpy(items: [])
+    let model = removalModel(manager, library: library)
+    await model.load()
+    let row = try #require(model.suggestions.first { $0.historyEntryID == entries[0].id })
+    await manager.suspendRemoval()
+    let deleting = Task { await model.removeHistory(for: row) }
+    await manager.waitForRemoval()
+    #expect(model.isHistoryOperationInFlight)
+    #expect(model.history.contains { $0.id == entries[0].id })
+    await model.removeHistory(for: row)
+    await model.removeHistory(for: try #require(model.suggestions.first { $0.historyEntryID == entries[1].id }))
+    model.query = "hero"
+    var router = AppRouter(activeSheet: .search)
+    let recording = model.submit(router: &router)
+    #expect(router.presentedBrowser == .searchQuery("hero"))
+    await recording?.value
+    await manager.suspendNextRead()
+    await manager.finishRemoval()
+    await manager.waitForRead()
+    #expect(!model.history.contains { $0.id == entries[0].id })
+    #expect(!model.suggestions.contains { $0.historyEntryID == entries[0].id })
+    #expect(model.historyFeedback?.message == "Removed from Search History.")
+    model.query = "12"
+    #expect(model.historyFeedback == nil)
+    await manager.finishRead()
+    await deleting.value
+    #expect(model.query == "12")
+    #expect(model.suggestions.contains { $0.historyEntryID == entries[12].id })
+    #expect(await manager.removedIDs == [entries[0].id])
+    #expect(await manager.limits == [12, 12])
+    #expect(await library.fetchCount == 1)
+    #expect(model.historyFeedback == nil)
+    model.query = "another"
+    #expect(model.historyFeedback == nil)
+}
+
+@Test @MainActor func searchHistoryRemovalFailureRetriesOriginalUUIDAndDismissOnlyClearsFeedback() async throws {
+    let first = removalEntry("hero"), duplicate = removalEntry("hero")
+    let manager = SearchRemovalFixture(entries: [first, duplicate])
+    let model = removalModel(manager)
+    await model.load()
+    let row = SearchSuggestion(kind: .recentSearch, title: "Same", subtitle: "", value: "hero", systemImage: "clock", historyEntryID: duplicate.id)
+    await manager.failNextRemoval()
+    await model.removeHistory(for: row)
+    #expect(model.history == [first, duplicate])
+    #expect(model.historyFeedback?.message == "Couldn’t remove this item. Try again.")
+    model.query = "unrelated"
+    #expect(model.historyFeedback?.canRetry == true)
+    await model.retryHistoryOperation()
+    #expect(await manager.removedIDs == [duplicate.id, duplicate.id])
+    #expect(model.history == [first])
+    await manager.failNextRead()
+    await manager.failNextRemoval()
+    let firstRow = SearchSuggestion(kind: .recentSearch, title: "Same", subtitle: "", value: "hero", systemImage: "clock", historyEntryID: first.id)
+    await model.removeHistory(for: firstRow)
+    let snapshot = model.history
+    model.dismissHistoryFeedback()
+    #expect(model.historyFeedback == nil)
+    #expect(model.history == snapshot)
+}
+
+@Test @MainActor func searchHistoryRemovalCommittedBackfillFailureRetriesRefreshOnly() async throws {
+    let entry = removalEntry("hero")
+    let manager = SearchRemovalFixture(entries: [entry])
+    let model = removalModel(manager)
+    await model.load()
+    let row = try #require(model.suggestions.first { $0.historyEntryID == entry.id })
+    await manager.failNextRead()
+    await model.removeHistory(for: row)
+    #expect(model.history.isEmpty)
+    #expect(model.historyFeedback?.message == "Search history changed, but suggestions couldn’t be refreshed.")
+    await manager.failNextRead()
+    await model.retryHistoryOperation()
+    #expect(model.historyFeedback?.canRetry == true)
+    #expect(model.history.isEmpty)
+    await model.retryHistoryOperation()
+    #expect(await manager.removedIDs == [entry.id])
+    #expect(model.historyFeedback == nil)
+}
+
+@Test @MainActor func searchHistoryRemovalInvalidatesSuspendedRetryWithoutResurrection() async throws {
+    let entry = removalEntry("hero")
+    let manager = SearchRemovalFixture(entries: [entry])
+    let model = removalModel(manager)
+    await model.load()
+    let row = try #require(model.suggestions.first { $0.historyEntryID == entry.id })
+    await manager.failNextRemoval()
+    await model.removeHistory(for: row)
+    await manager.suspendRemoval()
+    let retry = Task { await model.retryHistoryOperation() }
+    await manager.waitForRemoval()
+    await model.retryHistoryOperation()
+    await model.removeHistory(for: row)
+    await manager.finishRemoval()
+    await retry.value
+    #expect(model.history.isEmpty)
+    #expect(await manager.removedIDs == [entry.id, entry.id])
+}
+
+@Test @MainActor func searchHistoryRemovalNewActionClearsSuccessAndRepeatedFailureAnnouncesAgain() async throws {
+    let first = removalEntry("hero one"), second = removalEntry("hero two")
+    let manager = SearchRemovalFixture(entries: [first, second])
+    let model = removalModel(manager)
+    await model.load()
+    await model.removeHistory(for: try #require(model.suggestions.first { $0.historyEntryID == first.id }))
+    #expect(model.historyFeedback?.canRetry == false)
+    await manager.suspendRemoval()
+    await manager.failNextRemoval()
+    let row = try #require(model.suggestions.first { $0.historyEntryID == second.id })
+    let deleting = Task { await model.removeHistory(for: row) }
+    await manager.waitForRemoval()
+    #expect(model.historyFeedback == nil)
+    await manager.finishRemoval()
+    await deleting.value
+    let announcement = model.historyFeedbackVersion
+    await manager.failNextRemoval()
+    await model.retryHistoryOperation()
+    #expect(model.historyFeedbackVersion > announcement)
+    #expect(model.historyFeedback?.canRetry == true)
+}
+
+private func removalEntry(_ value: String) -> SearchHistoryEntry {
+    SearchHistoryEntry(kind: .searchQuery, value: value, displayTitle: value, lastUsedAt: Date())
+}
+@MainActor private func removalModel(_ manager: SearchRemovalFixture?, library: (any LibrarySearchProviding)? = nil) -> SearchOverlayViewModel {
+    SearchOverlayViewModel(suggestionsProvider: MockSearchSuggestionProvider(clipboardURL: nil, recentLinks: [], recentSearches: [], commonSites: []), libraryProvider: library, searchHistoryManager: manager)
+}
+private actor SearchRemovalFixture: SearchHistoryManaging {
+    enum Failure: Error { case expected }
+    var entries: [SearchHistoryEntry]
+    private(set) var removedIDs: [UUID] = []
+    private(set) var limits: [Int] = []
+    private var removalPaused = false, readPaused = false, removalFails = false, readFails = false
+    private var removalContinuation: CheckedContinuation<Void, Never>?
+    private var readContinuation: CheckedContinuation<Void, Never>?
+    private var removalWaiter: CheckedContinuation<Void, Never>?
+    private var readWaiter: CheckedContinuation<Void, Never>?
+    init(entries: [SearchHistoryEntry]) { self.entries = entries }
+    func suspendRemoval() { removalPaused = true }
+    func suspendNextRead() { readPaused = true }
+    func failNextRemoval() { removalFails = true }
+    func failNextRead() { readFails = true }
+    func waitForRemoval() async { if removalContinuation == nil { await withCheckedContinuation { removalWaiter = $0 } } }
+    func waitForRead() async { if readContinuation == nil { await withCheckedContinuation { readWaiter = $0 } } }
+    func finishRemoval() { removalPaused = false; removalContinuation?.resume(); removalContinuation = nil }
+    func finishRead() { readPaused = false; readContinuation?.resume(); readContinuation = nil }
+    func recentSearchHistory(limit: Int) async throws -> [SearchHistoryEntry] {
+        limits.append(limit)
+        let snapshot = Array(entries.prefix(limit))
+        if readPaused { await withCheckedContinuation { readContinuation = $0; readWaiter?.resume(); readWaiter = nil } }
+        if readFails { readFails = false; throw Failure.expected }
+        return snapshot
+    }
+    func removeSearchHistory(id: UUID) async throws {
+        removedIDs.append(id)
+        if removalPaused { await withCheckedContinuation { removalContinuation = $0; removalWaiter?.resume(); removalWaiter = nil } }
+        if removalFails { removalFails = false; throw Failure.expected }
+        entries.removeAll { $0.id == id }
+    }
+    func recordSearchHistory(_ input: SearchHistoryInput) async throws {}
+    func clearSearchHistory() async throws {}
+}
+
+@Test @MainActor func searchHistoryRemovalInitialReadCannotAuthorizeSyntheticDeletion() async throws {
+    let entry = removalEntry("hero")
+    let manager = SearchRemovalFixture(entries: [entry])
+    await manager.suspendNextRead()
+    let model = removalModel(manager)
+    let loading = Task { await model.load() }
+    await manager.waitForRead()
+    let synthetic = SearchSuggestion(id: entry.id, kind: .recentSearch, title: "hero", subtitle: "", value: "hero", systemImage: "clock", historyEntryID: entry.id)
+    await model.removeHistory(for: synthetic)
+    #expect(await manager.removedIDs.isEmpty)
+    await manager.finishRead()
+    await loading.value
+    await model.removeHistory(for: synthetic)
+    #expect(model.history.isEmpty)
+    #expect(await manager.removedIDs == [entry.id])
+}
+
+@Test @MainActor func searchHistoryRemovalCancelledCallerStillReflectsCommittedDelete() async throws {
+    let first = removalEntry("hero one"), second = removalEntry("hero two")
+    let manager = SearchRemovalFixture(entries: [first, second])
+    let model = removalModel(manager)
+    await model.load()
+    let row = try #require(model.suggestions.first { $0.historyEntryID == first.id })
+    await manager.suspendRemoval()
+    let deleting = Task { await model.removeHistory(for: row) }
+    await manager.waitForRemoval()
+    deleting.cancel()
+    model.query = "two"
+    await manager.finishRemoval()
+    await deleting.value
+    #expect(model.history == [second])
+    #expect(model.suggestions.contains { $0.historyEntryID == second.id })
+    #expect(!model.isHistoryOperationInFlight)
+}
+
+@Test @MainActor func searchHistoryRemovalRefreshRetryKeepsKnownRowsAndSuppressesConcurrentReads() async throws {
+    let first = removalEntry("hero one"), second = removalEntry("hero two")
+    let manager = SearchRemovalFixture(entries: [first, second])
+    let model = removalModel(manager)
+    await model.load()
+    let row = try #require(model.suggestions.first { $0.historyEntryID == first.id })
+    await manager.failNextRead()
+    await model.removeHistory(for: row)
+    #expect(model.history == [second])
+    await manager.suspendNextRead()
+    await manager.failNextRead()
+    let retry = Task { await model.retryHistoryOperation() }
+    await manager.waitForRead()
+    await model.retryHistoryOperation()
+    let other = try #require(model.suggestions.first { $0.historyEntryID == second.id })
+    await model.removeHistory(for: other)
+    #expect(await manager.removedIDs == [first.id])
+    model.query = "two"
+    await manager.finishRead()
+    await retry.value
+    #expect(model.history == [second])
+    #expect(model.historyFeedback?.canRetry == true)
+    #expect(await manager.limits == [12, 12, 12])
+}
