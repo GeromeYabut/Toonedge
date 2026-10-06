@@ -1643,7 +1643,7 @@ Strengthen ToonEdge's core browser-to-reader and local-library loop with bounded
 - Story 13.6: [Search-history controls](superpowers/plans/2026-09-28-story-13.6-search-history-controls.md)
 - Story 13.7: [Generic compatibility matrix](superpowers/plans/2026-09-28-story-13.7-generic-compatibility-matrix.md)
 - Story 13.8: [Live-device compatibility validation](superpowers/plans/2026-09-28-story-13.8-live-device-compatibility-validation.md)
-- Story 13.9: [Saved-source filtering](#story-139--add-saved-source-filtering-to-library); separate follow-up to Story 13.5
+- Story 13.9: [Saved-source filtering](superpowers/plans/2026-10-05-story-13.9-library-source-filtering.md); [approved design](superpowers/specs/2026-10-05-story-13.9-library-source-filtering-design.md); delivered separately from Story 13.5
 
 ### Story 13.1 — Add chapter-scoped Reader continuity and bounded prefetch
 
@@ -1695,7 +1695,7 @@ As a reader on a plausible chapter page that ToonEdge will not open automaticall
 
 ### Story 13.3 — Add saved-Library matches to universal search
 
-**Status:** implemented and locally verified; pending required PR CI and integration. [QA evidence](qa_evidence/2026-10-02-story-13.3-saved-library-search.md).
+**Status:** completed and merged into `main` via [PR #4](https://github.com/GeromeYabut/Toonedge/pull/4). [QA evidence](qa_evidence/2026-10-02-story-13.3-saved-library-search.md).
 
 **Dependencies:** Existing Search overlay, lightweight Library snapshots, seeded Series Detail routing, and search-history suggestions.
 
@@ -1719,7 +1719,7 @@ As a reader searching from Home, I want saved titles to appear alongside web opt
 
 ### Story 13.4 — Add bounded pinch and double-tap zoom to Reader
 
-**Status:** planned
+**Status:** paused by user; existing Reader zoom work remains preserved. Do not resume or merge it without explicit user authorization.
 
 **Dependencies:** Story 13.1 pipeline-owned page state and the existing lazy long-strip Reader.
 
@@ -1743,7 +1743,7 @@ As a reader viewing small text or artwork detail, I want to zoom and pan tempora
 
 ### Story 13.5 — Complete Library sorting
 
-**Status:** implemented and locally verified; merged into local `main` at `e557c97`. Remote delivery through `feature/story-13.5-library-sorting` awaits the required PR `Simulator Build` and GitHub merge. [QA evidence](qa_evidence/2026-10-04-story-13.5-library-sorting.md).
+**Status:** completed and merged into `main` via [PR #5](https://github.com/GeromeYabut/Toonedge/pull/5). [QA evidence](qa_evidence/2026-10-04-story-13.5-library-sorting.md).
 
 **Dependencies:** Existing `LibrarySnapshot`, lifecycle segments, view densities, and `LibraryViewPreferences`. No dependency on Reader zoom or source filtering.
 
@@ -1763,11 +1763,11 @@ As a reader with a growing Library, I want to order my titles by activity, title
 - Tests cover segment/sort composition, both meaningful directions, fixed unread-first order, stable tie-breaking, nil dates, preference fallback, and density preservation.
 - Source selection, source preference keys and repair, active-source summaries, and source-filter empty-state recovery are excluded and belong to Story 13.9.
 
-**Planning:** The previous combined implementation plan is superseded. A sorting-only plan must be reviewed before implementation; this split does not approve the proposed UI layout.
+**Planning:** The combined implementation plan is superseded by the sorting-only plan delivered in PR #5. Source filtering and the shared organization UI were delivered separately in Story 13.9.
 
 ### Story 13.6 — Add individual and clear-all local search-history controls
 
-**Status:** planned
+**Status:** deferred by user; the existing canonical plan and review artifact remain unchanged. Implementation requires explicit re-prioritization.
 
 **Dependencies:** Existing `StoredSearchHistory`, Search overlay composition, Settings, and SwiftData repository.
 
@@ -1789,7 +1789,7 @@ As a privacy-conscious reader, I want to remove individual searches or clear all
 
 ### Story 13.7 — Build a rendering-pattern compatibility fixture matrix
 
-**Status:** planned
+**Status:** completed and merged into `main` via [PR #6](https://github.com/GeromeYabut/Toonedge/pull/6). [QA evidence](qa_evidence/2026-10-05-story-13.7-compatibility-matrix.md). Automated fixture evidence does not establish live-site or physical-device release claims.
 
 **Dependencies:** Story 13.2 entry disposition, existing page-analysis payloads, detector fixtures, and Browser presentation tests.
 
@@ -1810,7 +1810,7 @@ As the product team, we want evidence that generic Clean Mode handles diverse re
 
 ### Story 13.8 — Complete live-device generic compatibility release validation
 
-**Status:** planned
+**Status:** planned; release sign-off remains gated by paused Story 13.4 and deferred Story 13.6. Physical-device validation is outstanding.
 
 **Dependencies:** Stories 13.1–13.7 and 13.9 complete and their automated suites passing. Story numbers are identifiers, not a requirement to execute 13.9 after this release-validation story.
 
@@ -1831,7 +1831,7 @@ As the release owner, I want dated device evidence across rendering capabilities
 
 ### Story 13.9 — Add saved-source filtering to Library
 
-**Status:** planned; split from Story 13.5 on 2026-10-04. Remains in MVP scope and is not required to complete sorting.
+**Status:** completed and merged into `main` via [PR #7](https://github.com/GeromeYabut/Toonedge/pull/7), following user QA approval. [QA evidence](qa_evidence/2026-10-05-story-13.9-library-source-filtering.md). Split from Story 13.5 on 2026-10-04 and delivered separately.
 
 **Dependencies:** Story 13.5 collection query and preferences, existing domain normalization, and the complete local Library snapshot.
 
@@ -1852,7 +1852,7 @@ As a reader with a growing Library, I want to narrow my collection to selected s
 - No source recommendations, discovery shortcuts, hardcoded catalog, or named-site compatibility promise is introduced.
 - Tests cover multi-source composition, normalization, persisted selection, removed-source repair, filtered versus genuine empty states, Reset, and density preservation.
 
-**Planning:** Source-control placement and sheet interaction require their own design review and implementation plan before execution. Implement after 13.5 and before the MVP release validation in 13.8.
+**Planning:** The [approved design](superpowers/specs/2026-10-05-story-13.9-library-source-filtering-design.md) and [implementation plan](superpowers/plans/2026-10-05-story-13.9-library-source-filtering.md) were delivered in PR #7. Story 13.8 physical-device release validation remains outstanding.
 
 ---
 
