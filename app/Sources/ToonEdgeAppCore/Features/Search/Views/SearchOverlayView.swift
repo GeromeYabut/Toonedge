@@ -36,7 +36,7 @@ public struct SearchOverlayView: View {
     public init(
         suggestionsProvider: any SearchSuggestionProviding = MockSearchSuggestionProvider(),
         libraryProvider: (any LibrarySearchProviding)? = nil,
-        searchHistoryRecorder: (any SearchHistoryRecording)? = nil,
+        searchHistoryManager: (any SearchHistoryManaging)? = nil,
         interactionFeedback: (any InteractionFeedbackProviding)? = nil,
         firstOpenLayout: SearchOverlayFirstOpenLayout = .default,
         router: Binding<AppRouter>
@@ -44,7 +44,7 @@ public struct SearchOverlayView: View {
         self._viewModel = StateObject(wrappedValue: SearchOverlayViewModel(
             suggestionsProvider: suggestionsProvider,
             libraryProvider: libraryProvider,
-            searchHistoryRecorder: searchHistoryRecorder,
+            searchHistoryManager: searchHistoryManager,
             interactionFeedback: interactionFeedback
         ))
         self.firstOpenLayout = firstOpenLayout
@@ -170,6 +170,21 @@ public struct SearchOverlayView: View {
 
     private var suggestionsList: some View {
         VStack(spacing: ToonEdgeSpacing.small) {
+            if let feedback = viewModel.historyFeedback {
+                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                    Text(feedback.message)
+                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                    HStack {
+                        if feedback.canRetry {
+                            Button("Try again") { Task { await viewModel.retryHistoryOperation() } }
+                                .accessibilityIdentifier("search.history.retry")
+                        }
+                        Button("Dismiss") { viewModel.dismissHistoryFeedback() }
+                            .accessibilityIdentifier("search.history.dismiss")
+                    }
+                }
+                .accessibilityIdentifier("search.history.feedback")
+            }
             if viewModel.suggestions.isEmpty {
                 TEBanner(
                     title: "No local suggestions",

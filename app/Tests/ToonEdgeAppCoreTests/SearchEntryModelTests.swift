@@ -49,7 +49,7 @@ import Testing
 @Test @MainActor func savedSearchNativeRouteClearsExistingBrowserReaderAndConsumesSeriesOnce() async throws {
     let item = searchOverlayItem("Hero")
     let history = SearchOverlayHistorySpy(entries: [])
-    let model = SearchOverlayViewModel(libraryProvider: SearchOverlayLibrarySpy(items: [item]), searchHistoryRecorder: history)
+    let model = SearchOverlayViewModel(libraryProvider: SearchOverlayLibrarySpy(items: [item]), searchHistoryManager: history)
     await model.load()
     model.query = "hero"
     let suggestion = try #require(model.suggestions.first { $0.kind == .librarySeries })
@@ -88,7 +88,7 @@ import Testing
     let originalHistory = try await repository.recentSearchHistory(limit: 12)
     let model = SearchOverlayViewModel(
         suggestionsProvider: MockSearchSuggestionProvider(clipboardURL: nil, recentLinks: [], recentSearches: [], commonSites: []),
-        libraryProvider: repository, searchHistoryRecorder: repository
+        libraryProvider: repository, searchHistoryManager: repository
     )
     await model.load()
     model.query = "offline hero"
@@ -117,7 +117,7 @@ import Testing
         sourceDomain: "example.com", coverImageURL: nil, status: "Ongoing", synopsis: "Locally saved",
         latestKnownChapterLabel: nil, libraryState: .planned, chapters: []
     ), context: .seriesDetail)
-    let model = SearchOverlayViewModel(libraryProvider: repository, searchHistoryRecorder: repository)
+    let model = SearchOverlayViewModel(libraryProvider: repository, searchHistoryManager: repository)
     await model.load()
     model.query = "stale hero"
     let saved = try #require(model.suggestions.first { $0.kind == .librarySeries })
@@ -170,7 +170,7 @@ import Testing
             clipboardURL: copiedURL, recentLinks: [copiedURL, copiedURL],
             recentSearches: [copiedURL], commonSites: []
         ),
-        searchHistoryRecorder: history
+        searchHistoryManager: history
     )
     await model.load()
     model.query = copiedURL
@@ -206,7 +206,7 @@ import Testing
 @Test @MainActor func searchCompositionLoadsOnceAndReranksWithoutQueryIO() async {
     let library = SearchOverlayLibrarySpy(items: [searchOverlayItem("Hero")])
     let history = SearchOverlayHistorySpy(entries: [])
-    let model = SearchOverlayViewModel(libraryProvider: library, searchHistoryRecorder: history)
+    let model = SearchOverlayViewModel(libraryProvider: library, searchHistoryManager: history)
     await model.load()
     model.query = "her"
     #expect(model.suggestions.contains { $0.kind == .librarySeries })
@@ -266,7 +266,7 @@ import Testing
     // URL-shaped title proves saved destinations bypass browser classification.
     let item = searchOverlayItem("https://")
     let history = SearchOverlayHistorySpy(entries: [])
-    let model = SearchOverlayViewModel(libraryProvider: SearchOverlayLibrarySpy(items: [item]), searchHistoryRecorder: history)
+    let model = SearchOverlayViewModel(libraryProvider: SearchOverlayLibrarySpy(items: [item]), searchHistoryManager: history)
     await model.load()
     model.query = "https"
     let suggestion = try #require(model.suggestions.first { $0.kind == .librarySeries })
@@ -283,7 +283,7 @@ import Testing
 
 @Test @MainActor func selectingBrowserResultRoutesImmediatelyAndRecordsNormalizedHistory() async {
     let history = SearchOverlayHistorySpy(entries: [])
-    let model = SearchOverlayViewModel(searchHistoryRecorder: history)
+    let model = SearchOverlayViewModel(searchHistoryManager: history)
     let suggestion = SearchSuggestion(kind: .recentLink, title: "Example", subtitle: "", value: "example.com/hero", systemImage: "globe")
     var router = AppRouter(activeSheet: .search)
     let recording = model.select(suggestion, router: &router)
@@ -322,7 +322,7 @@ import Testing
 @Test @MainActor func searchSubmissionValidatesAndClearsFeedbackOnEditing() async {
     let history = SearchOverlayHistorySpy(entries: [])
     let feedback = RecordingInteractionFeedback()
-    let model = SearchOverlayViewModel(searchHistoryRecorder: history, interactionFeedback: feedback)
+    let model = SearchOverlayViewModel(searchHistoryManager: history, interactionFeedback: feedback)
     var router = AppRouter(activeSheet: .search)
     model.query = "https://"
     let invalid = model.submit(router: &router)
@@ -355,10 +355,12 @@ private actor SearchOverlayLibrarySpy: LibrarySearchProviding {
     }
 }
 
-private actor SearchOverlayHistorySpy: SearchHistoryRecording {
+private actor SearchOverlayHistorySpy: SearchHistoryManaging {
     let entries: [SearchHistoryEntry]
     private(set) var fetchCount = 0
     private(set) var recordedInputs: [SearchHistoryInput] = []
+    func removeSearchHistory(id: UUID) async throws {}
+    func clearSearchHistory() async throws {}
     init(entries: [SearchHistoryEntry]) { self.entries = entries }
     func recentSearchHistory(limit: Int) async throws -> [SearchHistoryEntry] {
         fetchCount += 1
@@ -576,4 +578,75 @@ private actor SearchOverlayHistorySpy: SearchHistoryRecording {
     cache.store(data, for: url)
 
     #expect(cache.data(for: url) == data)
+}
+
+@Test func searchSuggestionHistoryProvenanceDefaultsAndStablePersistedIdentity() {
+    let legacy = SearchSuggestion(kind: .recentSearch, title: "Hero", subtitle: "", value: "hero", systemImage: "clock")
+    let typed = SearchSuggestion(kind: .recentSearch, title: "Hero", subtitle: "", destination: .browserInput("hero"), systemImage: "clock")
+    #expect(legacy.historyEntryID == nil)
+    #expect(typed.historyEntryID == nil)
+    let entry = SearchHistoryEntry(kind: .searchQuery, value: "hero", displayTitle: "Hero", lastUsedAt: Date())
+    let provider = SearchHistoryBackedSuggestionProvider(baseProvider: MockSearchSuggestionProvider(), history: [entry], includeBaseHistory: false)
+    let rows = provider.suggestions(matching: "")
+    #expect(rows.filter { $0.kind == .recentSearch || $0.kind == .recentLink }.count == 1)
+    #expect(rows.first { $0.historyEntryID == entry.id }?.id == entry.id)
+    #expect(rows.contains { $0.kind == .clipboardLink })
+    #expect(rows.contains { $0.kind == .commonSite })
+    #expect(provider.suggestions(matching: "hero").last?.kind == .searchAction)
+    #expect(SearchHistoryBackedSuggestionProvider(baseProvider: MockSearchSuggestionProvider(), history: []).suggestions(matching: "").contains { $0.kind == .recentSearch && $0.historyEntryID == nil })
+}
+
+@MainActor
+@Test func searchCompositionHistoryLoadFailurePreservesLibraryAndRetryDoesNotRefetchIt() async {
+    let entry = SearchHistoryEntry(kind: .searchQuery, value: "hero old", displayTitle: "Hero old", lastUsedAt: Date())
+    let history = SearchOverlayFailingHistoryManager(entry: entry)
+    let library = SearchOverlayLibrarySpy(items: [searchOverlayItem("Hero")])
+    let model = SearchOverlayViewModel(libraryProvider: library, searchHistoryManager: history)
+    await model.load()
+    #expect(model.libraryItems.count == 1)
+    #expect(model.historyFeedback?.message == "Couldn’t load search history. Try again.")
+    #expect(model.historyFeedback?.canRetry == true)
+    #expect(!model.suggestions.contains { $0.kind == .recentSearch || $0.kind == .recentLink })
+    model.query = "hero"
+    #expect(model.suggestions.contains { $0.kind == .librarySeries })
+    #expect(model.suggestions.last?.kind == .searchAction)
+    await model.retryHistoryOperation()
+    #expect(model.historyFeedback == nil)
+    #expect(model.history == [entry])
+    #expect(model.suggestions.contains { $0.historyEntryID == entry.id })
+    #expect(await library.fetchCount == 1)
+    #expect(await history.fetchCount == 2)
+    model.dismissHistoryFeedback()
+}
+
+private actor SearchOverlayFailingHistoryManager: SearchHistoryManaging {
+    enum Failure: Error { case read }
+    let entry: SearchHistoryEntry
+    private(set) var fetchCount = 0
+    init(entry: SearchHistoryEntry) { self.entry = entry }
+    func recentSearchHistory(limit: Int) async throws -> [SearchHistoryEntry] {
+        fetchCount += 1
+        if fetchCount == 1 { throw Failure.read }
+        return [entry]
+    }
+    func recordSearchHistory(_ input: SearchHistoryInput) async throws {}
+    func removeSearchHistory(id: UUID) async throws {}
+    func clearSearchHistory() async throws {}
+}
+
+@Test func searchSuggestionHistoryUsesTimestampThenUUIDWithinKindGroups() {
+    let lower = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+    let higher = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
+    let queryLower = UUID(uuidString: "00000000-0000-0000-0000-000000000003")!
+    let queryHigher = UUID(uuidString: "00000000-0000-0000-0000-000000000004")!
+    let date = Date(timeIntervalSince1970: 10)
+    let entries = [
+        SearchHistoryEntry(id: higher, kind: .link, value: "https://example.com/b", displayTitle: "B", lastUsedAt: date),
+        SearchHistoryEntry(id: queryHigher, kind: .searchQuery, value: "query b", displayTitle: "B", lastUsedAt: Date(timeIntervalSince1970: 20)),
+        SearchHistoryEntry(id: lower, kind: .link, value: "https://example.com/a", displayTitle: "A", lastUsedAt: date),
+        SearchHistoryEntry(id: queryLower, kind: .searchQuery, value: "query a", displayTitle: "A", lastUsedAt: Date(timeIntervalSince1970: 20)),
+        SearchHistoryEntry(kind: .link, value: "https://example.com/new", displayTitle: "New", lastUsedAt: Date(timeIntervalSince1970: 15))
+    ]
+    let provider = SearchHistoryBackedSuggestionProvider(baseProvider: MockSearchSuggestionProvider(clipboardURL: nil, recentLinks: [], recentSearches: [], commonSites: []), history: entries)
+    #expect(provider.suggestions(matching: "").map(\.id) == [entries[4].id, lower, higher, queryLower, queryHigher])
 }

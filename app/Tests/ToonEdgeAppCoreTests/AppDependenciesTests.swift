@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
@@ -23,7 +24,7 @@ import Testing
     #expect(dependencies.libraryService is SwiftDataLibraryRepository)
     #expect(dependencies.libraryLifecycleService is SwiftDataLibraryRepository)
     #expect(dependencies.readerProgressRepository is SwiftDataLibraryRepository)
-    #expect(dependencies.searchHistoryRecorder is SwiftDataLibraryRepository)
+    #expect(dependencies.searchHistoryManager is SwiftDataLibraryRepository)
 }
 
 @MainActor
@@ -31,7 +32,7 @@ import Testing
     let dependencies = try AppDependencies.persistent(inMemory: true, usesModelContextIO: false)
 
     #expect(dependencies.libraryLifecycleService != nil)
-    #expect(dependencies.searchHistoryRecorder != nil)
+    #expect(dependencies.searchHistoryManager != nil)
     #expect(dependencies.recentReadingRecorder != nil)
 }
 
@@ -105,4 +106,20 @@ import Testing
     #expect(session.chapterTitle == MockChapter.sample.title)
     #expect(session.sourceURL == MockChapter.sample.sourceURL)
     #expect(session.imageURLs.count == MockReaderSession.sample.imageURLs.count)
+}
+
+@MainActor
+@Test func appDependenciesHistoryManagementSharesWritesWithSearch() async throws {
+    for dependencies in [AppDependencies.mock(), try AppDependencies.persistent(inMemory: true, usesModelContextIO: false)] {
+        let manager = try #require(dependencies.searchHistoryManager)
+        try await manager.recordSearchHistory(SearchHistoryInput(kind: .searchQuery, value: "shared history test", displayTitle: "Shared history test"))
+        let model = SearchOverlayViewModel(suggestionsProvider: dependencies.searchSuggestionProvider, searchHistoryManager: manager)
+        await model.load()
+        #expect(model.history.contains { $0.value == "shared history test" })
+        model.query = "search writes test"
+        var router = AppRouter()
+        await model.submit(router: &router)?.value
+        #expect(try await manager.recentSearchHistory(limit: 12).contains { $0.value == "search writes test" })
+    }
+    #expect(try await AppDependencies.mock().searchHistoryManager?.recentSearchHistory(limit: 12).isEmpty == false)
 }

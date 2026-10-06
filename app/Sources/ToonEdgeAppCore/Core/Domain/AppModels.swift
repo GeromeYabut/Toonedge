@@ -216,6 +216,7 @@ public enum SearchSuggestionDestination: Equatable, Sendable {
 
 public struct SearchSuggestion: Identifiable, Equatable, Sendable {
     public let id: UUID
+    public let historyEntryID: UUID?
     public var kind: SearchSuggestionKind
     public var title: String
     public var subtitle: String
@@ -247,9 +248,11 @@ public struct SearchSuggestion: Identifiable, Equatable, Sendable {
         subtitle: String,
         value: String,
         systemImage: String,
-        sourceSupportTier: SiteProfileSupportTier? = nil
+        sourceSupportTier: SiteProfileSupportTier? = nil,
+        historyEntryID: UUID? = nil
     ) {
         self.id = id
+        self.historyEntryID = historyEntryID
         self.kind = kind
         self.title = title
         self.subtitle = subtitle
@@ -266,9 +269,10 @@ public struct SearchSuggestion: Identifiable, Equatable, Sendable {
         subtitle: String,
         destination: SearchSuggestionDestination,
         systemImage: String,
-        sourceSupportTier: SiteProfileSupportTier? = nil
+        sourceSupportTier: SiteProfileSupportTier? = nil,
+        historyEntryID: UUID? = nil
     ) {
-        self.init(id: id, kind: kind, title: title, subtitle: subtitle, value: "", systemImage: systemImage, sourceSupportTier: sourceSupportTier)
+        self.init(id: id, kind: kind, title: title, subtitle: subtitle, value: "", systemImage: systemImage, sourceSupportTier: sourceSupportTier, historyEntryID: historyEntryID)
         self.destination = destination
     }
 }

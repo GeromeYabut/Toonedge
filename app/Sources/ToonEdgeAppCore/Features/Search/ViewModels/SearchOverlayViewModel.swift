@@ -1,6 +1,11 @@
 import Combine
 import Foundation
 
+public struct SearchHistoryFeedback: Equatable, Sendable {
+    public let message: String
+    public let canRetry: Bool
+}
+
 /// Owns one search presentation's local snapshot and synchronous result composition.
 @MainActor
 public final class SearchOverlayViewModel: ObservableObject {
@@ -12,13 +17,14 @@ public final class SearchOverlayViewModel: ObservableObject {
         }
     }
     @Published public private(set) var validationMessage: String?
+    @Published public private(set) var historyFeedback: SearchHistoryFeedback?
     @Published public private(set) var history: [SearchHistoryEntry] = []
     @Published public private(set) var libraryItems: [LibrarySearchItem] = []
     @Published public private(set) var suggestions: [SearchSuggestion] = []
 
     private let suggestionsProvider: any SearchSuggestionProviding
     private let libraryProvider: (any LibrarySearchProviding)?
-    private let searchHistoryRecorder: (any SearchHistoryRecording)?
+    private let searchHistoryManager: (any SearchHistoryManaging)?
     private let interactionFeedback: (any InteractionFeedbackProviding)?
     private let ranker = LibrarySuggestionRanker()
     private var hasStartedLoading = false
@@ -27,12 +33,12 @@ public final class SearchOverlayViewModel: ObservableObject {
     public init(
         suggestionsProvider: any SearchSuggestionProviding = MockSearchSuggestionProvider(),
         libraryProvider: (any LibrarySearchProviding)? = nil,
-        searchHistoryRecorder: (any SearchHistoryRecording)? = nil,
+        searchHistoryManager: (any SearchHistoryManaging)? = nil,
         interactionFeedback: (any InteractionFeedbackProviding)? = nil
     ) {
         self.suggestionsProvider = suggestionsProvider
         self.libraryProvider = libraryProvider
-        self.searchHistoryRecorder = searchHistoryRecorder
+        self.searchHistoryManager = searchHistoryManager
         self.interactionFeedback = interactionFeedback
         composeSuggestions()
     }
@@ -40,23 +46,37 @@ public final class SearchOverlayViewModel: ObservableObject {
     public func load() async {
         guard !hasStartedLoading else { return }
         hasStartedLoading = true
-        async let loadedHistory = loadRecentHistory()
+        async let loadedHistory: Void = refreshHistory()
         async let loadedLibrary = libraryProvider?.librarySearchItems() ?? []
-        let (recentHistory, savedItems) = await (loadedHistory, loadedLibrary)
+        let (_, savedItems) = await (loadedHistory, loadedLibrary)
         guard !Task.isCancelled else {
             hasStartedLoading = false
             return
         }
-        if let recentHistory { history = recentHistory }
         libraryItems = savedItems
         composeSuggestions()
     }
 
-    private func loadRecentHistory() async -> [SearchHistoryEntry]? {
+    public func retryHistoryOperation() async {
+        guard historyFeedback?.canRetry == true else { return }
+        await refreshHistory()
+    }
+
+    public func dismissHistoryFeedback() {
+        historyFeedback = nil
+    }
+
+    private func refreshHistory() async {
+        guard let searchHistoryManager else { return }
         do {
-            return try await searchHistoryRecorder?.recentSearchHistory(limit: 12) ?? []
+            let entries = try await searchHistoryManager.recentSearchHistory(limit: 12)
+            guard !Task.isCancelled else { return }
+            history = entries
+            historyFeedback = nil
+            composeSuggestions()
         } catch {
-            return nil
+            guard !Task.isCancelled else { return }
+            historyFeedback = SearchHistoryFeedback(message: "Couldn’t load search history. Try again.", canRetry: true)
         }
     }
 
@@ -96,19 +116,19 @@ public final class SearchOverlayViewModel: ObservableObject {
             input = validatedInput
         }
         router.presentBrowser(input.browserStartPoint)
-        guard let searchHistoryRecorder else { return nil }
+        guard let searchHistoryManager else { return nil }
         let historyInput = SearchHistoryInput(
             kind: input.kind == .url ? .link : .searchQuery,
             value: input.normalizedValue,
             displayTitle: title
         )
         return Task {
-            _ = try? await searchHistoryRecorder.recordSearchHistory(historyInput)
+            _ = try? await searchHistoryManager.recordSearchHistory(historyInput)
         }
     }
 
     private func composeSuggestions() {
-        let base = SearchHistoryBackedSuggestionProvider(baseProvider: suggestionsProvider, history: history)
+        let base = SearchHistoryBackedSuggestionProvider(baseProvider: suggestionsProvider, history: history, includeBaseHistory: searchHistoryManager == nil)
             .suggestions(matching: query)
         let saved = ranker.rank(query: query, items: libraryItems, limit: Self.savedResultLimit).map { item in
             SearchSuggestion(
