@@ -85,7 +85,7 @@ import Testing
         latestKnownChapterLabel: nil, libraryState: .planned, chapters: []
     ), context: .seriesDetail)
     try await repository.recordSearchHistory(SearchHistoryInput(kind: .searchQuery, value: "earlier query", displayTitle: "Earlier query"))
-    let originalHistory = await repository.recentSearchHistory(limit: 12)
+    let originalHistory = try await repository.recentSearchHistory(limit: 12)
     let model = SearchOverlayViewModel(
         suggestionsProvider: MockSearchSuggestionProvider(clipboardURL: nil, recentLinks: [], recentSearches: [], commonSites: []),
         libraryProvider: repository, searchHistoryRecorder: repository
@@ -104,7 +104,7 @@ import Testing
     #expect(router.activeSheet == nil)
     #expect(router.selectedTab == .library)
     #expect(router.presentedBrowser == nil)
-    #expect(await repository.recentSearchHistory(limit: 12) == originalHistory)
+    #expect(try await repository.recentSearchHistory(limit: 12) == originalHistory)
 }
 
 @Test @MainActor func staleSavedSearchRouteKeepsNativeRecoveryWithoutWebFallback() async throws {
@@ -133,7 +133,7 @@ import Testing
     #expect(router.selectedTab == .library)
     #expect(router.activeSheet == nil)
     #expect(router.presentedBrowser == nil)
-    #expect(await repository.recentSearchHistory(limit: 12).isEmpty)
+    #expect(try await repository.recentSearchHistory(limit: 12).isEmpty)
     router.openLibraryRoot()
     #expect(router.pendingLibrarySeriesID == nil)
     #expect(router.presentedBrowser == nil)
@@ -360,7 +360,7 @@ private actor SearchOverlayHistorySpy: SearchHistoryRecording {
     private(set) var fetchCount = 0
     private(set) var recordedInputs: [SearchHistoryInput] = []
     init(entries: [SearchHistoryEntry]) { self.entries = entries }
-    func recentSearchHistory(limit: Int) async -> [SearchHistoryEntry] {
+    func recentSearchHistory(limit: Int) async throws -> [SearchHistoryEntry] {
         fetchCount += 1
         return Array(entries.prefix(limit))
     }

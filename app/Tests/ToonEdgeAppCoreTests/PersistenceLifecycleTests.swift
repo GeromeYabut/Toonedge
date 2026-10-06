@@ -1246,7 +1246,7 @@ import Testing
         )
     )
 
-    let entries = await repository.recentSearchHistory(limit: 5)
+    let entries = try await repository.recentSearchHistory(limit: 5)
 
     #expect(entries.map(\.kind) == [.link, .searchQuery])
     #expect(entries.map(\.value) == ["https://example.com/chapter-1", "moonlit edge"])

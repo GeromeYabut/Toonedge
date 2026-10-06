@@ -40,16 +40,24 @@ public final class SearchOverlayViewModel: ObservableObject {
     public func load() async {
         guard !hasStartedLoading else { return }
         hasStartedLoading = true
-        async let loadedHistory = searchHistoryRecorder?.recentSearchHistory(limit: 12) ?? []
+        async let loadedHistory = loadRecentHistory()
         async let loadedLibrary = libraryProvider?.librarySearchItems() ?? []
         let (recentHistory, savedItems) = await (loadedHistory, loadedLibrary)
         guard !Task.isCancelled else {
             hasStartedLoading = false
             return
         }
-        history = recentHistory
+        if let recentHistory { history = recentHistory }
         libraryItems = savedItems
         composeSuggestions()
+    }
+
+    private func loadRecentHistory() async -> [SearchHistoryEntry]? {
+        do {
+            return try await searchHistoryRecorder?.recentSearchHistory(limit: 12) ?? []
+        } catch {
+            return nil
+        }
     }
 
     /// Routing is synchronous so an awaited history write cannot replace newer
