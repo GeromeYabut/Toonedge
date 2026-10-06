@@ -1073,6 +1073,10 @@ private actor RetrySeriesMutationUITestLibraryService: LibraryLifecycleManaging 
 }
 
 // Synthetic, no-art fixture only installed by the uiTesting launch path.
+// Delegates available mock snapshot/detail reads; search derives from the transformed snapshot.
+// Lifecycle support is bounded to in-memory removal/state changes: add is unsupported,
+// progress/update writes are no-ops, reading targets/sessions are nil, and isSaved is always true.
+// The separate mock refresh service is unchanged; this fixture does not validate those stubbed flows.
 private actor SourceLibraryUITestFixture: LibraryLifecycleManaging {
     private let base = MockLibraryService()
     private var removedIDs: Set<UUID> = []
