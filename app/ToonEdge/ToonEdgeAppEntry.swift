@@ -56,11 +56,29 @@ struct ToonEdgeAppEntry: App {
             LibraryViewPreferences().resetOrganization()
         }
 
+        if let marker = arguments.firstIndex(of: "-libraryDensity"),
+           arguments.indices.contains(marker + 1),
+           let density = LibraryViewMode(rawValue: arguments[marker + 1]) {
+            LibraryViewPreferences().selectedViewMode = density
+        }
+        if let marker = arguments.firstIndex(of: "-librarySources"),
+           arguments.indices.contains(marker + 1) {
+            let preferences = LibraryViewPreferences()
+            var query = preferences.collectionQuery
+            query.selectedSourceDomains = Set(arguments[marker + 1].split(separator: ",").map(String.init))
+            preferences.save(collectionQuery: query)
+        }
+
         if let fixture = UITestCacheLifecycleFixture(arguments: arguments) {
             return try! fixture.dependencies(reset: arguments.contains("-resetTestData"))
         }
 
         var dependencies = AppDependencies.mock()
+        if arguments.contains("-librarySourceFixture") {
+            let fixture = SourceLibraryUITestFixture()
+            dependencies.libraryService = fixture
+            dependencies.libraryLifecycleService = fixture
+        }
         if let marker = arguments.firstIndex(of: "-browserFixture"),
            arguments.indices.contains(marker + 1) {
             switch arguments[marker + 1] {
@@ -1048,6 +1066,74 @@ private actor RetrySeriesMutationUITestLibraryService: LibraryLifecycleManaging 
         at date: Date
     ) async throws {}
 
+    func continueReadingTarget(for seriesID: UUID) async -> ContinueReadingTarget? { nil }
+    func readerSession(forChapterID chapterID: UUID) async -> MockReaderSession? { nil }
+    func readerSession(forSourceURL sourceURL: URL) async -> MockReaderSession? { nil }
+    func isSaved(canonicalURL: URL) async -> Bool { true }
+}
+
+// Synthetic, no-art fixture only installed by the uiTesting launch path.
+// Delegates available mock snapshot/detail reads; search derives from the transformed snapshot.
+// Lifecycle support is bounded to in-memory removal/state changes: add is unsupported,
+// progress/update writes are no-ops, reading targets/sessions are nil, and isSaved is always true.
+// The separate mock refresh service is unchanged; this fixture does not validate those stubbed flows.
+private actor SourceLibraryUITestFixture: LibraryLifecycleManaging {
+    private let base = MockLibraryService()
+    private var removedIDs: Set<UUID> = []
+    private var states: [UUID: LibraryCollectionState] = [:]
+
+    private func domain(for title: String) -> String {
+        switch title {
+        case "Moonlit Edge", "North Star Courier": "panel.example.test"
+        case "Signal Tower": "scroll.example.test"
+        default: "ink.example.test"
+        }
+    }
+
+    func librarySnapshot() async -> LibrarySnapshot {
+        let original = await base.librarySnapshot()
+        func normalize(_ items: [LibrarySeriesSummary]) -> [LibrarySeriesSummary] {
+            items.filter { !removedIDs.contains($0.id) }.map { item in
+                var item = item
+                item.sourceDomain = domain(for: item.title)
+                item.coverImageURL = nil
+                if let state = states[item.id] { item.libraryState = state }
+                return item
+            }
+        }
+        return LibrarySnapshot(series: normalize(original.series), recentReadSeries: normalize(original.recentReadSeries))
+    }
+
+    func homeSnapshot() async -> HomeSnapshot {
+        var snapshot = await base.homeSnapshot()
+        snapshot.continueReading = snapshot.continueReading.filter { !removedIDs.contains($0.id) }.map { item in
+            var item = item; item.coverImageURL = nil; return item
+        }
+        snapshot.recentlyUpdated = snapshot.recentlyUpdated.filter { !removedIDs.contains($0.id) }.map { item in
+            var item = item; item.coverImageURL = nil; return item
+        }
+        snapshot.library = snapshot.library.filter { !removedIDs.contains($0.id) }.map { item in
+            var item = item; item.coverImageURL = nil; return item
+        }
+        return snapshot
+    }
+
+    func librarySearchItems() async -> [LibrarySearchItem] {
+        await librarySnapshot().series.map(LibrarySearchItem.init(summary:))
+    }
+    func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
+        guard var detail = await base.seriesDetail(for: seriesID) else { return nil }
+        detail.sourceDomain = domain(for: detail.title)
+        detail.coverImageURL = nil
+        detail.isSaved = !removedIDs.contains(seriesID)
+        if let state = states[seriesID] { detail.libraryState = state }
+        return detail
+    }
+    func removeFromLibrary(seriesID: UUID) async throws { removedIDs.insert(seriesID) }
+    func updateLibraryState(_ state: LibraryCollectionState, for seriesID: UUID) async throws { states[seriesID] = state }
+    func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws { throw URLError(.unsupportedURL) }
+    func recordUpdateCheckResult(seriesID: UUID, latestChapterLabel: String?, hasUnreadUpdates: Bool, checkedAt: Date) async throws {}
+    func recordReadingProgress(_ progress: ReaderProgress, forChapterID chapterID: UUID, at date: Date) async throws {}
     func continueReadingTarget(for seriesID: UUID) async -> ContinueReadingTarget? { nil }
     func readerSession(forChapterID chapterID: UUID) async -> MockReaderSession? { nil }
     func readerSession(forSourceURL sourceURL: URL) async -> MockReaderSession? { nil }

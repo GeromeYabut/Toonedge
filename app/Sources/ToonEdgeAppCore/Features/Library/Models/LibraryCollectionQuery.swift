@@ -11,16 +11,35 @@ public enum LibrarySortDirection: String, CaseIterable, Equatable, Sendable {
     case descending
 }
 
-/// Sorts an existing snapshot projection without changing its membership or storage.
+public struct LibrarySourceOption: Identifiable, Equatable, Sendable {
+    public let domain: String
+    public let titleCount: Int
+    public var id: String { domain }
+
+    public init(domain: String, titleCount: Int) {
+        self.domain = domain
+        self.titleCount = titleCount
+    }
+}
+
+/// Filters and sorts an existing snapshot projection without changing its storage.
 public struct LibraryCollectionQuery: Equatable, Sendable {
     public var segment: LibrarySegment
     public var sortKey: LibrarySortKey
     public var sortDirection: LibrarySortDirection
 
-    public init(segment: LibrarySegment, sortKey: LibrarySortKey, sortDirection: LibrarySortDirection) {
+    private var sourceDomains: Set<String>
+    public var selectedSourceDomains: Set<String> {
+        get { sourceDomains }
+        set { sourceDomains = Self.normalizedSources(newValue) }
+    }
+
+    public init(segment: LibrarySegment, sortKey: LibrarySortKey, sortDirection: LibrarySortDirection,
+                selectedSourceDomains: Set<String> = []) {
         self.segment = segment
         self.sortKey = sortKey
         self.sortDirection = sortDirection
+        self.sourceDomains = Self.normalizedSources(selectedSourceDomains)
     }
 
     public static let `default` = LibraryCollectionQuery(
@@ -30,7 +49,11 @@ public struct LibraryCollectionQuery: Equatable, Sendable {
     )
 
     public func apply(to snapshot: LibrarySnapshot) -> [LibrarySeriesSummary] {
-        snapshot.series(for: segment).map(Candidate.init).sorted { lhs, rhs in
+        let eligible = snapshot.series(for: segment).filter {
+            selectedSourceDomains.isEmpty || selectedSourceDomains.contains(
+                LibraryIdentityNormalizer.normalizedSourceDomain($0.sourceDomain))
+        }
+        return eligible.map(Candidate.init).sorted { lhs, rhs in
             switch sortKey {
             case .activity:
                 return Self.activityPrecedes(lhs, rhs, direction: sortDirection)
@@ -46,6 +69,25 @@ public struct LibraryCollectionQuery: Equatable, Sendable {
                 return Self.activityPrecedes(lhs, rhs, direction: .descending)
             }
         }.map(\.summary)
+    }
+
+    public static func sourceOptions(in snapshot: LibrarySnapshot) -> [LibrarySourceOption] {
+        var counts: [String: Int] = [:]
+        for summary in snapshot.series {
+            let domain = LibraryIdentityNormalizer.normalizedSourceDomain(summary.sourceDomain)
+            if !domain.isEmpty { counts[domain, default: 0] += 1 }
+        }
+        return counts.keys.sorted().map { LibrarySourceOption(domain: $0, titleCount: counts[$0]!) }
+    }
+
+    public func repairingSources(in snapshot: LibrarySnapshot) -> LibraryCollectionQuery {
+        var result = self
+        result.selectedSourceDomains.formIntersection(Self.sourceOptions(in: snapshot).map(\.domain))
+        return result
+    }
+
+    private static func normalizedSources(_ sources: Set<String>) -> Set<String> {
+        Set(sources.map(LibraryIdentityNormalizer.normalizedSourceDomain).filter { !$0.isEmpty })
     }
 
     private struct Candidate {

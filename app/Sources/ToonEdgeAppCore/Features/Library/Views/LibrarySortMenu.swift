@@ -53,59 +53,42 @@ enum LibrarySortChoice: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-struct LibrarySortMenuLayout: Equatable, Sendable {
-    let selectedChoice: LibrarySortChoice
+struct LibraryOrganizationLayout: Equatable, Sendable {
+    let sortChoice: LibrarySortChoice
+    let sourceSummary: String
     let accessibilityIdentifier = "library.sort"
-    let accessibilityLabel = "Sort library"
+    let accessibilityLabel = "Sort and filter library"
     let resetTitle = "Reset Library organization"
-    let resetIsAvailable = true
+    let isActive: Bool
 
-    var accessibilityValue: String { selectedChoice.title }
+    var accessibilityValue: String { "\(sortChoice.title), \(sourceSummary)" }
 
     init(query: LibraryCollectionQuery) {
-        selectedChoice = LibrarySortChoice(query: query)
-    }
-
-    func isSelected(_ choice: LibrarySortChoice) -> Bool {
-        choice == selectedChoice
+        sortChoice = LibrarySortChoice(query: query)
+        let sources = query.selectedSourceDomains
+        if sources.isEmpty {
+            sourceSummary = "All Sources"
+        } else if sources.count == 1, let domain = sources.first {
+            sourceSummary = domain
+        } else {
+            sourceSummary = "\(sources.count) sources selected"
+        }
+        isActive = sortChoice != .recentNewest || !sources.isEmpty
     }
 }
 
-struct LibrarySortMenu: View {
-    let layout: LibrarySortMenuLayout
-    let select: (LibrarySortChoice) -> Void
-    let reset: () -> Void
+struct LibraryOrganizationButton: View {
+    let layout: LibraryOrganizationLayout
+    let show: () -> Void
 
     var body: some View {
-        Menu {
-            ForEach(LibrarySortChoice.allCases) { choice in
-                Button {
-                    select(choice)
-                } label: {
-                    if layout.isSelected(choice) {
-                        Label(choice.title, systemImage: "checkmark")
-                    } else {
-                        Text(choice.title)
-                    }
-                }
-                .accessibilityAddTraits(layout.isSelected(choice) ? .isSelected : [])
-                .accessibilityIdentifier("library.sort.\(choice.rawValue)")
-            }
-            if layout.resetIsAvailable {
-                Divider()
-                Button(layout.resetTitle, action: reset)
-                    .accessibilityIdentifier("library.sort.reset")
-            }
-        } label: {
-            HStack(spacing: ToonEdgeSpacing.small) {
-                Text(layout.accessibilityValue)
-                    .fixedSize(horizontal: false, vertical: true)
-                Image(systemName: "arrow.up.arrow.down")
-            }
-            .font(ToonEdgeTypography.caption)
-            .foregroundStyle(ToonEdgeColor.textPrimary)
-            .padding(.vertical, ToonEdgeSpacing.small)
+        Button(action: show) {
+            Image(systemName: "slider.horizontal.3")
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+                .foregroundStyle(layout.isActive ? ToonEdgeColor.accent : ToonEdgeColor.textPrimary)
         }
+        .buttonStyle(.plain)
         .accessibilityIdentifier(layout.accessibilityIdentifier)
         .accessibilityLabel(layout.accessibilityLabel)
         .accessibilityValue(layout.accessibilityValue)
