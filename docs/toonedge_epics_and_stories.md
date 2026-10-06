@@ -1767,7 +1767,7 @@ As a reader with a growing Library, I want to order my titles by activity, title
 
 ### Story 13.6 — Add individual and clear-all local search-history controls
 
-**Status:** implemented and reviewed locally on `feature/story-13.6-search-history-controls`; pending integration and manual spoken VoiceOver verification. Focused package tests: 53 passed. Full UI: 75 passed on each dedicated simulator. The final full package retains pre-existing Reader timing failures. [QA evidence and exact commands](qa_evidence/2026-10-06-story-13.6-search-history-controls.md). No push, PR or merge performed.
+**Status:** implemented and reviewed on `feature/story-13.6-search-history-controls`; publication authorized, integration pending. Fresh publication package checks: 53 focused and 634 full-suite tests passed. Full UI: 75 passed on each dedicated simulator on unchanged production code. Earlier pre-existing Reader timing failures remain documented; no Reader fix is established. The user chose to skip manual spoken VoiceOver QA, which remains unverified. [QA evidence and exact commands](qa_evidence/2026-10-06-story-13.6-search-history-controls.md). Merge and cleanup remain unauthorized.
 
 **Dependencies:** Existing `StoredSearchHistory`, Search overlay composition, Settings, and SwiftData repository.
 
