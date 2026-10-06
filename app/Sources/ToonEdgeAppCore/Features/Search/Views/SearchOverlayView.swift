@@ -191,6 +191,7 @@ public struct SearchOverlayView: View {
                 VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
                     Text(feedback.message)
                         .foregroundStyle(ToonEdgeColor.textSecondary)
+                        .accessibilityIdentifier("search.history.feedback")
                     HStack {
                         if feedback.canRetry {
                             Button {
@@ -211,7 +212,6 @@ public struct SearchOverlayView: View {
                             .accessibilityIdentifier("search.history.dismiss")
                     }
                 }
-                .accessibilityIdentifier("search.history.feedback")
             }
             if viewModel.suggestions.isEmpty {
                 TEBanner(
