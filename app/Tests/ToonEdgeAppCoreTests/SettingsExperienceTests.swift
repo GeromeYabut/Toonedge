@@ -235,3 +235,145 @@ private actor SuspendedSettingsUpdateRefreshService: LibraryUpdateRefreshing {
         return LibraryUpdateRefreshResult(checkedCount: 2, updatedCount: 0, failedCount: 0)
     }
 }
+
+@MainActor
+@Test func settingsHistoryRequestCancelAndUnconfirmedClearMakeNoCalls() async {
+    let manager = SettingsHistorySpy()
+    let model = settingsHistoryModel(manager)
+    await model.confirmClearSearchHistory()
+    model.requestClearSearchHistory()
+    #expect(model.isClearSearchHistoryConfirmationPresented)
+    #expect(await manager.clearCalls == 0)
+    model.cancelClearSearchHistory()
+    await model.confirmClearSearchHistory()
+    #expect(!model.isClearSearchHistoryConfirmationPresented)
+    #expect(await manager.clearCalls == 0)
+}
+
+@MainActor
+@Test func settingsHistoryUnavailableAndFeedbackDismiss() async {
+    let model = settingsHistoryModel(nil)
+    #expect(!model.canClearSearchHistory)
+    #expect(model.searchHistoryUnavailableMessage == "Search history is unavailable.")
+    model.requestClearSearchHistory()
+    await model.confirmClearSearchHistory()
+    #expect(!model.isClearSearchHistoryConfirmationPresented)
+    let available = settingsHistoryModel(SettingsHistorySpy())
+    available.requestClearSearchHistory()
+    await available.confirmClearSearchHistory()
+    #expect(available.searchHistoryFeedback?.message == "Search history cleared.")
+    #expect(available.searchHistoryFeedback?.canRetry == false)
+    available.dismissSearchHistoryFeedback()
+    #expect(available.searchHistoryFeedback == nil)
+}
+
+@MainActor
+@Test func settingsHistorySuspendedClearSuppressesDuplicatesAndAlertDismissRace() async throws {
+    let manager = SettingsHistorySpy(suspended: true)
+    let model = settingsHistoryModel(manager)
+    model.requestClearSearchHistory()
+    let accepted = try #require(model.confirmClearSearchHistoryFromAlert())
+    // Native alerts dismiss their presentation binding after accepting the button.
+    model.cancelClearSearchHistory()
+    #expect(model.isClearingSearchHistory)
+    #expect(!model.isClearSearchHistoryConfirmationPresented)
+    model.requestClearSearchHistory()
+    #expect(!model.isClearSearchHistoryConfirmationPresented)
+    #expect(model.confirmClearSearchHistoryFromAlert() == nil)
+    await model.confirmClearSearchHistory()
+    await manager.waitForClear()
+    #expect(await manager.clearCalls == 1)
+    await manager.finish()
+    await accepted.value
+    #expect(!model.isClearingSearchHistory)
+    await model.confirmClearSearchHistory()
+    #expect(await manager.clearCalls == 1)
+}
+
+@MainActor
+@Test func settingsHistoryFailureRetryRequiresFreshConfirmationAndSharedSearchReload() async throws {
+    let manager = SettingsHistorySpy(fails: true)
+    try await manager.recordSearchHistory(.init(kind: .searchQuery, value: "moon", displayTitle: "moon", createdAt: Date()))
+    let protectedSettings = ReaderSettings(readerCanvas: .black, displayMode: .fitScreen,
+        isPageSpacingEnabled: true, brightnessAid: 0.3)
+    let settings = MockSettingsService(settings: protectedSettings)
+    let cacheEntry = CacheMetadataEntry(sourceURL: URL(string: "https://example.test/chapter/1")!,
+        seriesTitle: "Saved", chapterTitle: "Chapter 1", chapterLabel: "1", imageCount: 2,
+        estimatedStorageBytes: 42, retentionState: .retained, cachedAt: Date())
+    let cache = MockCacheMetadataService(entries: [cacheEntry])
+    let preferences = InMemoryInteractionPreferences(isHapticFeedbackEnabled: false)
+    let feedback = RecordingInteractionFeedback()
+    let model = SettingsViewModel(settingsManager: settings, cacheMetadataManager: cache,
+        interactionPreferences: preferences, interactionFeedback: feedback, searchHistoryManager: manager)
+    let before = SearchOverlayViewModel(searchHistoryManager: manager)
+    await before.load()
+    #expect(before.history.count == 1)
+    model.requestClearSearchHistory()
+    model.cancelClearSearchHistory()
+    let cancelled = SearchOverlayViewModel(searchHistoryManager: manager)
+    await cancelled.load()
+    #expect(cancelled.history == before.history)
+    model.requestClearSearchHistory()
+    await model.confirmClearSearchHistory()
+    #expect(model.searchHistoryFeedback?.message == "Couldn’t clear search history. Try again.")
+    #expect(model.searchHistoryFeedback?.canRetry == true)
+    #expect(!model.isClearSearchHistoryConfirmationPresented)
+    let failed = SearchOverlayViewModel(searchHistoryManager: manager)
+    await failed.load()
+    #expect(failed.history == before.history)
+    model.retryClearSearchHistory()
+    #expect(model.isClearSearchHistoryConfirmationPresented)
+    #expect(await manager.clearCalls == 1)
+    await manager.setFails(false)
+    await model.confirmClearSearchHistory()
+    let cleared = SearchOverlayViewModel(searchHistoryManager: manager)
+    await cleared.load()
+    #expect(cleared.history.isEmpty)
+    #expect(model.searchHistoryFeedback?.message == "Search history cleared.")
+    #expect(!model.isClearSearchHistoryConfirmationPresented)
+    #expect(settings.currentSettings() == protectedSettings)
+    #expect(!preferences.isHapticFeedbackEnabled())
+    #expect(feedback.events.isEmpty)
+    #expect(await cache.cacheMetadataEntries() == [cacheEntry])
+    // Confirming already empty history remains a successful operation.
+    model.requestClearSearchHistory()
+    await model.confirmClearSearchHistory()
+    #expect(model.searchHistoryFeedback?.canRetry == false)
+    #expect(await manager.clearCalls == 3)
+}
+
+@MainActor
+private func settingsHistoryModel(_ manager: (any SearchHistoryManaging)?) -> SettingsViewModel {
+    SettingsViewModel(settingsManager: MockSettingsService(), cacheMetadataManager: MockCacheMetadataService(),
+        interactionPreferences: InMemoryInteractionPreferences(), searchHistoryManager: manager)
+}
+
+private actor SettingsHistorySpy: SearchHistoryManaging {
+    private let history = InMemorySearchHistoryManager()
+    private var fails: Bool
+    private let suspended: Bool
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var startWaiter: CheckedContinuation<Void, Never>?
+    private(set) var clearCalls = 0
+    init(fails: Bool = false, suspended: Bool = false) { self.fails = fails; self.suspended = suspended }
+    func setFails(_ value: Bool) { fails = value }
+    func recordSearchHistory(_ input: SearchHistoryInput) async throws { try await history.recordSearchHistory(input) }
+    func recentSearchHistory(limit: Int) async throws -> [SearchHistoryEntry] { try await history.recentSearchHistory(limit: limit) }
+    func removeSearchHistory(id: UUID) async throws { try await history.removeSearchHistory(id: id) }
+    func waitForClear() async {
+        if continuation != nil { return }
+        await withCheckedContinuation { startWaiter = $0 }
+    }
+    func finish() { continuation?.resume(); continuation = nil }
+    func clearSearchHistory() async throws {
+        clearCalls += 1
+        if suspended {
+            await withCheckedContinuation {
+                continuation = $0
+                startWaiter?.resume(); startWaiter = nil
+            }
+        }
+        if fails { throw URLError(.cannotWriteToFile) }
+        try await history.clearSearchHistory()
+    }
+}

@@ -50,6 +50,16 @@ public final class SettingsViewModel: ObservableObject {
     @Published public private(set) var updateFeedback: SettingsUpdateFeedback?
     @Published public private(set) var isHapticFeedbackEnabled: Bool
 
+    @Published public private(set) var isClearSearchHistoryConfirmationPresented = false
+    @Published public private(set) var isClearingSearchHistory = false
+    @Published public private(set) var searchHistoryFeedback: SearchHistoryFeedback?
+
+    public var canClearSearchHistory: Bool { searchHistoryManager != nil && !isClearingSearchHistory }
+    public var searchHistoryUnavailableMessage: String? {
+        searchHistoryManager == nil ? "Search history is unavailable." : nil
+    }
+
+    private let searchHistoryManager: (any SearchHistoryManaging)?
     private let settingsManager: any SettingsManaging
     private let interactionPreferences: any InteractionPreferencesManaging
     private let interactionFeedback: (any InteractionFeedbackProviding)?
@@ -63,8 +73,10 @@ public final class SettingsViewModel: ObservableObject {
         interactionPreferences: any InteractionPreferencesManaging,
         interactionFeedback: (any InteractionFeedbackProviding)? = nil,
         storageMeasurementService: (any CacheStorageMeasuring)? = nil,
-        updateRefreshService: (any LibraryUpdateRefreshing)? = nil
+        updateRefreshService: (any LibraryUpdateRefreshing)? = nil,
+        searchHistoryManager: (any SearchHistoryManaging)? = nil
     ) {
+        self.searchHistoryManager = searchHistoryManager
         self.settingsManager = settingsManager
         self.interactionPreferences = interactionPreferences
         self.interactionFeedback = interactionFeedback
@@ -110,6 +122,56 @@ public final class SettingsViewModel: ObservableObject {
         isHapticFeedbackEnabled = interactionPreferences.isHapticFeedbackEnabled()
     }
 
+    public func requestClearSearchHistory() {
+        guard canClearSearchHistory else { return }
+        searchHistoryFeedback = nil
+        isClearSearchHistoryConfirmationPresented = true
+    }
+
+    public func cancelClearSearchHistory() {
+        isClearSearchHistoryConfirmationPresented = false
+    }
+
+    public func confirmClearSearchHistory() async {
+        guard let manager = consumeSearchHistoryConfirmation() else { return }
+        await clearSearchHistory(using: manager)
+    }
+
+    /// Consume authorization before SwiftUI dismisses the native alert binding.
+    @discardableResult
+    public func confirmClearSearchHistoryFromAlert() -> Task<Void, Never>? {
+        guard let manager = consumeSearchHistoryConfirmation() else { return nil }
+        return Task { await clearSearchHistory(using: manager) }
+    }
+
+    public func retryClearSearchHistory() {
+        guard searchHistoryFeedback?.canRetry == true else { return }
+        requestClearSearchHistory()
+    }
+
+    public func dismissSearchHistoryFeedback() {
+        searchHistoryFeedback = nil
+    }
+
+    private func consumeSearchHistoryConfirmation() -> (any SearchHistoryManaging)? {
+        guard isClearSearchHistoryConfirmationPresented, !isClearingSearchHistory,
+              let searchHistoryManager else { return nil }
+        isClearSearchHistoryConfirmationPresented = false
+        isClearingSearchHistory = true
+        searchHistoryFeedback = nil
+        return searchHistoryManager
+    }
+
+    private func clearSearchHistory(using manager: any SearchHistoryManaging) async {
+        defer { isClearingSearchHistory = false }
+        do {
+            try await manager.clearSearchHistory()
+            searchHistoryFeedback = SearchHistoryFeedback(message: "Search history cleared.", canRetry: false)
+        } catch {
+            searchHistoryFeedback = SearchHistoryFeedback(message: "Couldn’t clear search history. Try again.", canRetry: true)
+        }
+    }
+
     public func refreshUpdates() async {
         guard !isCheckingForUpdates else { return }
         guard let updateRefreshService else {
@@ -139,7 +201,8 @@ public struct SettingsView: View {
             interactionPreferences: dependencies.interactionPreferences,
             interactionFeedback: dependencies.interactionFeedback,
             storageMeasurementService: dependencies.cacheStorageMeasurementService,
-            updateRefreshService: dependencies.updateRefreshService
+            updateRefreshService: dependencies.updateRefreshService,
+            searchHistoryManager: dependencies.searchHistoryManager
         ))
         self.onShowDownloads = onShowDownloads
     }
@@ -175,6 +238,10 @@ public struct SettingsView: View {
                             .accessibilityHint("Opens downloaded data management")
                             .accessibilityIdentifier("settings.manageDownloads")
                         }
+                    }
+
+                    settingsSection("Search History") {
+                        searchHistoryControls
                     }
 
                     settingsSection("New Chapters") {
@@ -226,10 +293,74 @@ public struct SettingsView: View {
                 .padding(ToonEdgeSpacing.large)
                 .padding(.bottom, ToonEdgeSpacing.xlarge)
             }
+            .alert("Clear Search History?", isPresented: searchHistoryConfirmationBinding) {
+                Button("Clear Search History", role: .destructive) {
+                    viewModel.confirmClearSearchHistoryFromAlert()
+                }
+                Button("Cancel", role: .cancel) {
+                    viewModel.cancelClearSearchHistory()
+                }
+            } message: {
+                Text("This removes recent searches and links from ToonEdge. Your Library, reading progress, downloads, cookies, and website data are not changed.")
+            }
             .navigationTitle("Settings")
             .task { await viewModel.loadStorage() }
             .toonEdgeScreen()
         }
+    }
+
+    private var searchHistoryControls: some View {
+        VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
+            TEEditorialGroup([SettingsUtility.searchHistory]) { _ in
+                Button {
+                    viewModel.requestClearSearchHistory()
+                } label: {
+                    Label(viewModel.isClearingSearchHistory ? "Clearing…" : "Clear Search History",
+                          systemImage: "trash")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .buttonStyle(.plain)
+                .modifier(TEEditorialRowStyle())
+                .disabled(!viewModel.canClearSearchHistory)
+                .accessibilityIdentifier("settings.clearSearchHistory")
+            }
+
+            if let unavailable = viewModel.searchHistoryUnavailableMessage {
+                Text(unavailable)
+                    .font(ToonEdgeTypography.caption)
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, ToonEdgeSpacing.medium)
+            }
+
+            if let feedback = viewModel.searchHistoryFeedback {
+                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                    Text(feedback.message)
+                        .font(ToonEdgeTypography.caption)
+                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("settings.historyResult")
+                    HStack(spacing: ToonEdgeSpacing.medium) {
+                        if feedback.canRetry {
+                            Button("Retry") { viewModel.retryClearSearchHistory() }
+                                .accessibilityIdentifier("settings.historyRetry")
+                                .frame(minHeight: 44)
+                        }
+                        Button("Dismiss") { viewModel.dismissSearchHistoryFeedback() }
+                            .accessibilityIdentifier("settings.historyDismiss")
+                            .frame(minHeight: 44)
+                    }
+                }
+                .padding(.horizontal, ToonEdgeSpacing.medium)
+            }
+        }
+    }
+
+    private var searchHistoryConfirmationBinding: Binding<Bool> {
+        Binding(get: { viewModel.isClearSearchHistoryConfirmationPresented }, set: { presented in
+            if !presented { viewModel.cancelClearSearchHistory() }
+        })
     }
 
     private func settingsSection<Content: View>(
@@ -398,7 +529,7 @@ private enum SettingsPreference: String, CaseIterable, Identifiable {
 }
 
 private enum SettingsUtility: String, Identifiable {
-    case storage, updateCheck, about
+    case storage, searchHistory, updateCheck, about
 
     var id: String { rawValue }
 }
