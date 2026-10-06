@@ -2,10 +2,11 @@ import Foundation
 import SwiftData
 
 @MainActor
-public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, LibraryChapterIndexManaging, ReaderProgressStoring, SearchHistoryRecording, RecentReadingRecording, CacheMetadataManaging {
+public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, LibraryChapterIndexManaging, ReaderProgressStoring, SearchHistoryManaging, RecentReadingRecording, CacheMetadataManaging {
     private let modelContext: ModelContext
     private let modelContainer: ModelContainer?
     private let usesModelContextIO: Bool
+    private let historySave: (ModelContext) throws -> Void
     private var seriesStore: [UUID: StoredSeries] = [:]
     private var chapterStore: [UUID: StoredChapter] = [:]
     private var progressStore: [String: StoredProgress] = [:]
@@ -17,11 +18,13 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
     public init(
         modelContext: ModelContext,
         modelContainer: ModelContainer? = nil,
-        usesModelContextIO: Bool = true
+        usesModelContextIO: Bool = true,
+        historySave: @escaping (ModelContext) throws -> Void = { try $0.save() }
     ) {
         self.modelContext = modelContext
         self.modelContainer = modelContainer
         self.usesModelContextIO = usesModelContextIO
+        self.historySave = historySave
     }
 
     public func homeSnapshot() async -> HomeSnapshot {
@@ -349,36 +352,59 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
     }
 
     public func recordSearchHistory(_ input: SearchHistoryInput) async throws {
-        if let existing = fetchSearchHistory(value: input.value) {
+        let context = makeHistoryContext()
+        let entries = try fetchSearchHistory(in: context)
+        if let existing = entries.first(where: { $0.value == input.value }) {
+            guard existing.kindRaw != input.kind.rawValue || existing.displayTitle != input.displayTitle || existing.lastUsedAt != input.createdAt else { return }
             existing.kindRaw = input.kind.rawValue
             existing.displayTitle = input.displayTitle
             existing.lastUsedAt = input.createdAt
         } else {
             let entry = StoredSearchHistory(
-                id: UUID(),
-                kindRaw: input.kind.rawValue,
-                value: input.value,
-                displayTitle: input.displayTitle,
-                createdAt: input.createdAt,
-                lastUsedAt: input.createdAt
+                id: UUID(), kindRaw: input.kind.rawValue, value: input.value,
+                displayTitle: input.displayTitle, createdAt: input.createdAt, lastUsedAt: input.createdAt
             )
-            searchHistoryStore[input.value] = entry
-            insert(entry)
+            if let context {
+                context.insert(entry)
+            } else {
+                searchHistoryStore[input.value] = entry
+            }
         }
-
-        try saveContextIfNeeded()
+        try saveHistory(context)
     }
 
-    public func recentSearchHistory(limit: Int) async -> [SearchHistoryEntry] {
-        Array(fetchSearchHistory().prefix(max(0, limit))).map { stored in
+    public func recentSearchHistory(limit: Int) async throws -> [SearchHistoryEntry] {
+        guard limit > 0 else { return [] }
+        return Array(try fetchSearchHistory(in: makeHistoryContext()).prefix(limit)).map { stored in
             SearchHistoryEntry(
                 id: stored.id,
                 kind: SearchHistoryKind(rawValue: stored.kindRaw) ?? .searchQuery,
-                value: stored.value,
-                displayTitle: stored.displayTitle,
-                lastUsedAt: stored.lastUsedAt
+                value: stored.value, displayTitle: stored.displayTitle, lastUsedAt: stored.lastUsedAt
             )
         }
+    }
+
+    public func removeSearchHistory(id: UUID) async throws {
+        let context = makeHistoryContext()
+        guard let entry = try fetchSearchHistory(in: context).first(where: { $0.id == id }) else { return }
+        if let context {
+            context.delete(entry)
+        } else {
+            searchHistoryStore.removeValue(forKey: entry.value)
+        }
+        try saveHistory(context)
+    }
+
+    public func clearSearchHistory() async throws {
+        let context = makeHistoryContext()
+        let entries = try fetchSearchHistory(in: context)
+        guard !entries.isEmpty else { return }
+        if let context {
+            for entry in entries { context.delete(entry) }
+        } else {
+            searchHistoryStore.removeAll()
+        }
+        try saveHistory(context)
     }
 
     public func recordRecentReading(_ input: RecentReadingInput) async throws {
@@ -1249,27 +1275,35 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
         return progressStore[sourceURLString]
     }
 
-    private func fetchSearchHistory(value: String) -> StoredSearchHistory? {
-        if usesModelContextIO {
-            var descriptor = FetchDescriptor<StoredSearchHistory>(
-                predicate: #Predicate { $0.value == value }
-            )
-            descriptor.fetchLimit = 1
-            return try? modelContext.fetch(descriptor).first
-        }
-
-        return fetchSearchHistory().first { $0.value == value }
+    /// A fresh history-only context also prevents cached models from hiding another
+    /// history manager's committed changes. Library's pending edits stay isolated.
+    private func makeHistoryContext() -> ModelContext? {
+        guard usesModelContextIO else { return nil }
+        let context = ModelContext(modelContainer ?? modelContext.container)
+        context.autosaveEnabled = false
+        return context
     }
 
-    private func fetchSearchHistory() -> [StoredSearchHistory] {
-        if usesModelContextIO {
-            return (try? modelContext.fetch(FetchDescriptor<StoredSearchHistory>()))?.sorted { lhs, rhs in
-                lhs.lastUsedAt > rhs.lastUsedAt
-            } ?? []
+    private func fetchSearchHistory(in context: ModelContext?) throws -> [StoredSearchHistory] {
+        let entries: [StoredSearchHistory]
+        if let context {
+            entries = try context.fetch(FetchDescriptor<StoredSearchHistory>())
+        } else {
+            entries = Array(searchHistoryStore.values)
         }
+        return entries.sorted { lhs, rhs in
+            if lhs.lastUsedAt == rhs.lastUsedAt { return lhs.id.uuidString < rhs.id.uuidString }
+            return lhs.lastUsedAt > rhs.lastUsedAt
+        }
+    }
 
-        return searchHistoryStore.values.sorted { lhs, rhs in
-            lhs.lastUsedAt > rhs.lastUsedAt
+    private func saveHistory(_ context: ModelContext?) throws {
+        guard let context else { return }
+        do {
+            try historySave(context)
+        } catch {
+            context.rollback()
+            throw error
         }
     }
 

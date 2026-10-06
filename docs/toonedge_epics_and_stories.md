@@ -1767,7 +1767,7 @@ As a reader with a growing Library, I want to order my titles by activity, title
 
 ### Story 13.6 — Add individual and clear-all local search-history controls
 
-**Status:** deferred by user; the existing canonical plan and review artifact remain unchanged. Implementation requires explicit re-prioritization.
+**Status:** implemented and reviewed on `feature/story-13.6-search-history-controls`; publication authorized, integration pending. Fresh publication package checks: 53 focused and 634 full-suite tests passed. Full UI: 75 passed on each dedicated simulator on unchanged production code. Earlier pre-existing Reader timing failures remain documented; no Reader fix is established. The user chose to skip manual spoken VoiceOver QA, which remains unverified. [QA evidence and exact commands](qa_evidence/2026-10-06-story-13.6-search-history-controls.md). Merge and cleanup remain unauthorized.
 
 **Dependencies:** Existing `StoredSearchHistory`, Search overlay composition, Settings, and SwiftData repository.
 
@@ -1810,7 +1810,7 @@ As the product team, we want evidence that generic Clean Mode handles diverse re
 
 ### Story 13.8 — Complete live-device generic compatibility release validation
 
-**Status:** planned; release sign-off remains gated by paused Story 13.4 and deferred Story 13.6. Physical-device validation is outstanding.
+**Status:** planned; release sign-off remains gated by paused Story 13.4, Story 13.6 integration/manual VoiceOver verification, and the documented Reader package-test limitation. Physical-device validation is outstanding.
 
 **Dependencies:** Stories 13.1–13.7 and 13.9 complete and their automated suites passing. Story numbers are identifiers, not a requirement to execute 13.9 after this release-validation story.
 

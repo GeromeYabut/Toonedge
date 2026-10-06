@@ -1,6 +1,11 @@
 import Combine
 import Foundation
 
+public struct SearchHistoryFeedback: Equatable, Sendable {
+    public let message: String
+    public let canRetry: Bool
+}
+
 /// Owns one search presentation's local snapshot and synchronous result composition.
 @MainActor
 public final class SearchOverlayViewModel: ObservableObject {
@@ -8,31 +13,45 @@ public final class SearchOverlayViewModel: ObservableObject {
         didSet {
             guard query != oldValue else { return }
             validationMessage = nil
+            clearSuccessFeedback()
             composeSuggestions()
         }
     }
     @Published public private(set) var validationMessage: String?
+    @Published public private(set) var historyFeedback: SearchHistoryFeedback? {
+        didSet {
+            if historyFeedback != nil { historyFeedbackVersion += 1 }
+        }
+    }
+    /// Repeated outcomes still need distinct accessibility announcements.
+    @Published public private(set) var historyFeedbackVersion = 0
+    @Published public private(set) var isHistoryOperationInFlight = false
+    @Published public private(set) var removedHistoryID: UUID?
     @Published public private(set) var history: [SearchHistoryEntry] = []
     @Published public private(set) var libraryItems: [LibrarySearchItem] = []
     @Published public private(set) var suggestions: [SearchSuggestion] = []
 
     private let suggestionsProvider: any SearchSuggestionProviding
     private let libraryProvider: (any LibrarySearchProviding)?
-    private let searchHistoryRecorder: (any SearchHistoryRecording)?
+    private let searchHistoryManager: (any SearchHistoryManaging)?
     private let interactionFeedback: (any InteractionFeedbackProviding)?
     private let ranker = LibrarySuggestionRanker()
     private var hasStartedLoading = false
+    private enum HistoryRetry { case remove(UUID), refresh(changed: Bool) }
+    private var historyRetry: HistoryRetry?
+    private var historyGeneration = 0
+    private var removedIDs = Set<UUID>()
     private static let savedResultLimit = 5
 
     public init(
         suggestionsProvider: any SearchSuggestionProviding = MockSearchSuggestionProvider(),
         libraryProvider: (any LibrarySearchProviding)? = nil,
-        searchHistoryRecorder: (any SearchHistoryRecording)? = nil,
+        searchHistoryManager: (any SearchHistoryManaging)? = nil,
         interactionFeedback: (any InteractionFeedbackProviding)? = nil
     ) {
         self.suggestionsProvider = suggestionsProvider
         self.libraryProvider = libraryProvider
-        self.searchHistoryRecorder = searchHistoryRecorder
+        self.searchHistoryManager = searchHistoryManager
         self.interactionFeedback = interactionFeedback
         composeSuggestions()
     }
@@ -40,22 +59,104 @@ public final class SearchOverlayViewModel: ObservableObject {
     public func load() async {
         guard !hasStartedLoading else { return }
         hasStartedLoading = true
-        async let loadedHistory = searchHistoryRecorder?.recentSearchHistory(limit: 12) ?? []
+        async let loadedHistory: Void = refreshHistory()
         async let loadedLibrary = libraryProvider?.librarySearchItems() ?? []
-        let (recentHistory, savedItems) = await (loadedHistory, loadedLibrary)
+        let (_, savedItems) = await (loadedHistory, loadedLibrary)
         guard !Task.isCancelled else {
             hasStartedLoading = false
             return
         }
-        history = recentHistory
         libraryItems = savedItems
         composeSuggestions()
+    }
+
+    public func canRemoveHistory(_ suggestion: SearchSuggestion) -> Bool {
+        guard searchHistoryManager != nil,
+              suggestion.kind == .recentSearch || suggestion.kind == .recentLink,
+              let id = suggestion.historyEntryID else { return false }
+        return history.contains { $0.id == id }
+    }
+
+    public func removeHistory(for suggestion: SearchSuggestion) async {
+        guard canRemoveHistory(suggestion), let id = suggestion.historyEntryID,
+              !isHistoryOperationInFlight else { return }
+        await removeHistory(id: id)
+    }
+
+    public func retryHistoryOperation() async {
+        guard historyFeedback?.canRetry == true, let retry = historyRetry,
+              !isHistoryOperationInFlight else { return }
+        switch retry {
+        case .remove(let id):
+            await removeHistory(id: id)
+        case .refresh(let changed):
+            isHistoryOperationInFlight = true
+            defer { isHistoryOperationInFlight = false }
+            await refreshHistory(changed: changed)
+        }
+    }
+
+    public func dismissHistoryFeedback() {
+        historyFeedback = nil
+        historyRetry = nil
+    }
+
+    private func clearSuccessFeedback() {
+        if historyFeedback?.canRetry == false { dismissHistoryFeedback() }
+    }
+
+    private func removeHistory(id: UUID) async {
+        guard let searchHistoryManager else { return }
+        clearSuccessFeedback()
+        isHistoryOperationInFlight = true
+        // Invalidate older reads before the repository suspends.
+        historyGeneration += 1
+        defer { isHistoryOperationInFlight = false }
+        do {
+            try await searchHistoryManager.removeSearchHistory(id: id)
+        } catch {
+            historyRetry = .remove(id)
+            historyFeedback = SearchHistoryFeedback(message: "Couldn’t remove this item. Try again.", canRetry: true)
+            return
+        }
+        // A committed mutation must be reflected even if its caller was cancelled.
+        removedIDs.insert(id)
+        history.removeAll { $0.id == id }
+        composeSuggestions()
+        removedHistoryID = id
+        historyRetry = nil
+        historyFeedback = SearchHistoryFeedback(message: "Removed from Search History.", canRetry: false)
+        await refreshHistory(changed: true, preserveSuccess: true)
+    }
+
+    private func refreshHistory(changed: Bool = false, preserveSuccess: Bool = false) async {
+        guard let searchHistoryManager else { return }
+        historyGeneration += 1
+        let generation = historyGeneration
+        do {
+            let entries = try await searchHistoryManager.recentSearchHistory(limit: 12)
+            guard generation == historyGeneration else { return }
+            history = entries.filter { !removedIDs.contains($0.id) }
+            if !preserveSuccess {
+                historyFeedback = nil
+                historyRetry = nil
+            }
+            composeSuggestions()
+        } catch {
+            guard generation == historyGeneration else { return }
+            historyRetry = .refresh(changed: changed)
+            historyFeedback = SearchHistoryFeedback(
+                message: changed ? "Search history changed, but suggestions couldn’t be refreshed." : "Couldn’t load search history. Try again.",
+                canRetry: true
+            )
+        }
     }
 
     /// Routing is synchronous so an awaited history write cannot replace newer
     /// AppRouter state. The returned task is only the optional history side effect.
     @discardableResult
     public func select(_ suggestion: SearchSuggestion, router: inout AppRouter) -> Task<Void, Never>? {
+        clearSuccessFeedback()
         switch suggestion.destination {
         case .librarySeries(let item):
             router.dismissSheet()
@@ -68,6 +169,7 @@ public final class SearchOverlayViewModel: ObservableObject {
 
     @discardableResult
     public func submit(router: inout AppRouter) -> Task<Void, Never>? {
+        clearSuccessFeedback()
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         return openBrowserInput(trimmed, title: trimmed, router: &router)
     }
@@ -88,19 +190,19 @@ public final class SearchOverlayViewModel: ObservableObject {
             input = validatedInput
         }
         router.presentBrowser(input.browserStartPoint)
-        guard let searchHistoryRecorder else { return nil }
+        guard let searchHistoryManager else { return nil }
         let historyInput = SearchHistoryInput(
             kind: input.kind == .url ? .link : .searchQuery,
             value: input.normalizedValue,
             displayTitle: title
         )
         return Task {
-            _ = try? await searchHistoryRecorder.recordSearchHistory(historyInput)
+            _ = try? await searchHistoryManager.recordSearchHistory(historyInput)
         }
     }
 
     private func composeSuggestions() {
-        let base = SearchHistoryBackedSuggestionProvider(baseProvider: suggestionsProvider, history: history)
+        let base = SearchHistoryBackedSuggestionProvider(baseProvider: suggestionsProvider, history: history, includeBaseHistory: searchHistoryManager == nil)
             .suggestions(matching: query)
         let saved = ranker.rank(query: query, items: libraryItems, limit: Self.savedResultLimit).map { item in
             SearchSuggestion(

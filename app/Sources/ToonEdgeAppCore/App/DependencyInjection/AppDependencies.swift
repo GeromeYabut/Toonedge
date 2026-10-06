@@ -7,7 +7,7 @@ public struct AppDependencies: Sendable {
     public var librarySearchProvider: any LibrarySearchProviding { libraryService }
     public var libraryLifecycleService: (any LibraryLifecycleManaging)?
     public var searchSuggestionProvider: any SearchSuggestionProviding
-    public var searchHistoryRecorder: (any SearchHistoryRecording)?
+    public var searchHistoryManager: (any SearchHistoryManaging)?
     public var recentReadingRecorder: (any RecentReadingRecording)?
     public var downloadService: any DownloadProviding
     public var cacheMetadataService: any CacheMetadataManaging
@@ -33,7 +33,7 @@ public struct AppDependencies: Sendable {
         libraryService: any LibraryProviding,
         libraryLifecycleService: (any LibraryLifecycleManaging)? = nil,
         searchSuggestionProvider: any SearchSuggestionProviding,
-        searchHistoryRecorder: (any SearchHistoryRecording)? = nil,
+        searchHistoryManager: (any SearchHistoryManaging)? = nil,
         recentReadingRecorder: (any RecentReadingRecording)? = nil,
         downloadService: any DownloadProviding,
         cacheMetadataService: any CacheMetadataManaging,
@@ -57,7 +57,7 @@ public struct AppDependencies: Sendable {
         self.libraryService = libraryService
         self.libraryLifecycleService = libraryLifecycleService
         self.searchSuggestionProvider = searchSuggestionProvider
-        self.searchHistoryRecorder = searchHistoryRecorder
+        self.searchHistoryManager = searchHistoryManager
         self.recentReadingRecorder = recentReadingRecorder
         self.downloadService = downloadService
         self.cacheMetadataService = cacheMetadataService
@@ -94,6 +94,10 @@ public struct AppDependencies: Sendable {
         return AppDependencies(
             libraryService: MockLibraryService(),
             searchSuggestionProvider: MockSearchSuggestionProvider(),
+            searchHistoryManager: InMemorySearchHistoryManager(entries: MockSearchSuggestionProvider().suggestions(matching: "").compactMap { suggestion in
+                guard suggestion.kind == .recentLink || suggestion.kind == .recentSearch else { return nil }
+                return SearchHistoryEntry(kind: suggestion.kind == .recentLink ? .link : .searchQuery, value: suggestion.value, displayTitle: suggestion.title, lastUsedAt: Date())
+            }),
             downloadService: cacheService,
             cacheMetadataService: cacheService,
             cacheStorageMeasurementService: assetCache.map(CacheStorageMeasurementService.init(assetCache:)),
@@ -157,7 +161,7 @@ public struct AppDependencies: Sendable {
             libraryService: repository,
             libraryLifecycleService: repository,
             searchSuggestionProvider: MockSearchSuggestionProvider(),
-            searchHistoryRecorder: repository,
+            searchHistoryManager: repository,
             recentReadingRecorder: repository,
             downloadService: cacheService,
             cacheMetadataService: cacheService,

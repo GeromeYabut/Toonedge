@@ -55,7 +55,7 @@ public struct AppShellView: View {
             SearchOverlayView(
                 suggestionsProvider: dependencies.searchSuggestionProvider,
                 libraryProvider: dependencies.librarySearchProvider,
-                searchHistoryRecorder: dependencies.searchHistoryRecorder,
+                searchHistoryManager: dependencies.searchHistoryManager,
                 interactionFeedback: dependencies.interactionFeedback,
                 router: $router
             )

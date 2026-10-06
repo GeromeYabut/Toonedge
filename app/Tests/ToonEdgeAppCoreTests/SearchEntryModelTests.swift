@@ -49,7 +49,7 @@ import Testing
 @Test @MainActor func savedSearchNativeRouteClearsExistingBrowserReaderAndConsumesSeriesOnce() async throws {
     let item = searchOverlayItem("Hero")
     let history = SearchOverlayHistorySpy(entries: [])
-    let model = SearchOverlayViewModel(libraryProvider: SearchOverlayLibrarySpy(items: [item]), searchHistoryRecorder: history)
+    let model = SearchOverlayViewModel(libraryProvider: SearchOverlayLibrarySpy(items: [item]), searchHistoryManager: history)
     await model.load()
     model.query = "hero"
     let suggestion = try #require(model.suggestions.first { $0.kind == .librarySeries })
@@ -85,10 +85,10 @@ import Testing
         latestKnownChapterLabel: nil, libraryState: .planned, chapters: []
     ), context: .seriesDetail)
     try await repository.recordSearchHistory(SearchHistoryInput(kind: .searchQuery, value: "earlier query", displayTitle: "Earlier query"))
-    let originalHistory = await repository.recentSearchHistory(limit: 12)
+    let originalHistory = try await repository.recentSearchHistory(limit: 12)
     let model = SearchOverlayViewModel(
         suggestionsProvider: MockSearchSuggestionProvider(clipboardURL: nil, recentLinks: [], recentSearches: [], commonSites: []),
-        libraryProvider: repository, searchHistoryRecorder: repository
+        libraryProvider: repository, searchHistoryManager: repository
     )
     await model.load()
     model.query = "offline hero"
@@ -104,7 +104,7 @@ import Testing
     #expect(router.activeSheet == nil)
     #expect(router.selectedTab == .library)
     #expect(router.presentedBrowser == nil)
-    #expect(await repository.recentSearchHistory(limit: 12) == originalHistory)
+    #expect(try await repository.recentSearchHistory(limit: 12) == originalHistory)
 }
 
 @Test @MainActor func staleSavedSearchRouteKeepsNativeRecoveryWithoutWebFallback() async throws {
@@ -117,7 +117,7 @@ import Testing
         sourceDomain: "example.com", coverImageURL: nil, status: "Ongoing", synopsis: "Locally saved",
         latestKnownChapterLabel: nil, libraryState: .planned, chapters: []
     ), context: .seriesDetail)
-    let model = SearchOverlayViewModel(libraryProvider: repository, searchHistoryRecorder: repository)
+    let model = SearchOverlayViewModel(libraryProvider: repository, searchHistoryManager: repository)
     await model.load()
     model.query = "stale hero"
     let saved = try #require(model.suggestions.first { $0.kind == .librarySeries })
@@ -133,7 +133,7 @@ import Testing
     #expect(router.selectedTab == .library)
     #expect(router.activeSheet == nil)
     #expect(router.presentedBrowser == nil)
-    #expect(await repository.recentSearchHistory(limit: 12).isEmpty)
+    #expect(try await repository.recentSearchHistory(limit: 12).isEmpty)
     router.openLibraryRoot()
     #expect(router.pendingLibrarySeriesID == nil)
     #expect(router.presentedBrowser == nil)
@@ -170,7 +170,7 @@ import Testing
             clipboardURL: copiedURL, recentLinks: [copiedURL, copiedURL],
             recentSearches: [copiedURL], commonSites: []
         ),
-        searchHistoryRecorder: history
+        searchHistoryManager: history
     )
     await model.load()
     model.query = copiedURL
@@ -206,7 +206,7 @@ import Testing
 @Test @MainActor func searchCompositionLoadsOnceAndReranksWithoutQueryIO() async {
     let library = SearchOverlayLibrarySpy(items: [searchOverlayItem("Hero")])
     let history = SearchOverlayHistorySpy(entries: [])
-    let model = SearchOverlayViewModel(libraryProvider: library, searchHistoryRecorder: history)
+    let model = SearchOverlayViewModel(libraryProvider: library, searchHistoryManager: history)
     await model.load()
     model.query = "her"
     #expect(model.suggestions.contains { $0.kind == .librarySeries })
@@ -266,7 +266,7 @@ import Testing
     // URL-shaped title proves saved destinations bypass browser classification.
     let item = searchOverlayItem("https://")
     let history = SearchOverlayHistorySpy(entries: [])
-    let model = SearchOverlayViewModel(libraryProvider: SearchOverlayLibrarySpy(items: [item]), searchHistoryRecorder: history)
+    let model = SearchOverlayViewModel(libraryProvider: SearchOverlayLibrarySpy(items: [item]), searchHistoryManager: history)
     await model.load()
     model.query = "https"
     let suggestion = try #require(model.suggestions.first { $0.kind == .librarySeries })
@@ -283,7 +283,7 @@ import Testing
 
 @Test @MainActor func selectingBrowserResultRoutesImmediatelyAndRecordsNormalizedHistory() async {
     let history = SearchOverlayHistorySpy(entries: [])
-    let model = SearchOverlayViewModel(searchHistoryRecorder: history)
+    let model = SearchOverlayViewModel(searchHistoryManager: history)
     let suggestion = SearchSuggestion(kind: .recentLink, title: "Example", subtitle: "", value: "example.com/hero", systemImage: "globe")
     var router = AppRouter(activeSheet: .search)
     let recording = model.select(suggestion, router: &router)
@@ -322,7 +322,7 @@ import Testing
 @Test @MainActor func searchSubmissionValidatesAndClearsFeedbackOnEditing() async {
     let history = SearchOverlayHistorySpy(entries: [])
     let feedback = RecordingInteractionFeedback()
-    let model = SearchOverlayViewModel(searchHistoryRecorder: history, interactionFeedback: feedback)
+    let model = SearchOverlayViewModel(searchHistoryManager: history, interactionFeedback: feedback)
     var router = AppRouter(activeSheet: .search)
     model.query = "https://"
     let invalid = model.submit(router: &router)
@@ -355,12 +355,14 @@ private actor SearchOverlayLibrarySpy: LibrarySearchProviding {
     }
 }
 
-private actor SearchOverlayHistorySpy: SearchHistoryRecording {
+private actor SearchOverlayHistorySpy: SearchHistoryManaging {
     let entries: [SearchHistoryEntry]
     private(set) var fetchCount = 0
     private(set) var recordedInputs: [SearchHistoryInput] = []
+    func removeSearchHistory(id: UUID) async throws {}
+    func clearSearchHistory() async throws {}
     init(entries: [SearchHistoryEntry]) { self.entries = entries }
-    func recentSearchHistory(limit: Int) async -> [SearchHistoryEntry] {
+    func recentSearchHistory(limit: Int) async throws -> [SearchHistoryEntry] {
         fetchCount += 1
         return Array(entries.prefix(limit))
     }
@@ -576,4 +578,317 @@ private actor SearchOverlayHistorySpy: SearchHistoryRecording {
     cache.store(data, for: url)
 
     #expect(cache.data(for: url) == data)
+}
+
+@Test func searchSuggestionHistoryProvenanceDefaultsAndStablePersistedIdentity() {
+    let legacy = SearchSuggestion(kind: .recentSearch, title: "Hero", subtitle: "", value: "hero", systemImage: "clock")
+    let typed = SearchSuggestion(kind: .recentSearch, title: "Hero", subtitle: "", destination: .browserInput("hero"), systemImage: "clock")
+    #expect(legacy.historyEntryID == nil)
+    #expect(typed.historyEntryID == nil)
+    let entry = SearchHistoryEntry(kind: .searchQuery, value: "hero", displayTitle: "Hero", lastUsedAt: Date())
+    let provider = SearchHistoryBackedSuggestionProvider(baseProvider: MockSearchSuggestionProvider(), history: [entry], includeBaseHistory: false)
+    let rows = provider.suggestions(matching: "")
+    #expect(rows.filter { $0.kind == .recentSearch || $0.kind == .recentLink }.count == 1)
+    #expect(rows.first { $0.historyEntryID == entry.id }?.id == entry.id)
+    #expect(rows.contains { $0.kind == .clipboardLink })
+    #expect(rows.contains { $0.kind == .commonSite })
+    #expect(provider.suggestions(matching: "hero").last?.kind == .searchAction)
+    #expect(SearchHistoryBackedSuggestionProvider(baseProvider: MockSearchSuggestionProvider(), history: []).suggestions(matching: "").contains { $0.kind == .recentSearch && $0.historyEntryID == nil })
+}
+
+@MainActor
+@Test func searchCompositionHistoryLoadFailurePreservesLibraryAndRetryDoesNotRefetchIt() async {
+    let entry = SearchHistoryEntry(kind: .searchQuery, value: "hero old", displayTitle: "Hero old", lastUsedAt: Date())
+    let history = SearchOverlayFailingHistoryManager(entry: entry)
+    let library = SearchOverlayLibrarySpy(items: [searchOverlayItem("Hero")])
+    let model = SearchOverlayViewModel(libraryProvider: library, searchHistoryManager: history)
+    await model.load()
+    #expect(model.libraryItems.count == 1)
+    #expect(model.historyFeedback?.message == "Couldn’t load search history. Try again.")
+    #expect(model.historyFeedback?.canRetry == true)
+    #expect(!model.suggestions.contains { $0.kind == .recentSearch || $0.kind == .recentLink })
+    model.query = "hero"
+    #expect(model.suggestions.contains { $0.kind == .librarySeries })
+    #expect(model.suggestions.last?.kind == .searchAction)
+    await model.retryHistoryOperation()
+    #expect(model.historyFeedback == nil)
+    #expect(model.history == [entry])
+    #expect(model.suggestions.contains { $0.historyEntryID == entry.id })
+    #expect(await library.fetchCount == 1)
+    #expect(await history.fetchCount == 2)
+    model.dismissHistoryFeedback()
+}
+
+private actor SearchOverlayFailingHistoryManager: SearchHistoryManaging {
+    enum Failure: Error { case read }
+    let entry: SearchHistoryEntry
+    private(set) var fetchCount = 0
+    init(entry: SearchHistoryEntry) { self.entry = entry }
+    func recentSearchHistory(limit: Int) async throws -> [SearchHistoryEntry] {
+        fetchCount += 1
+        if fetchCount == 1 { throw Failure.read }
+        return [entry]
+    }
+    func recordSearchHistory(_ input: SearchHistoryInput) async throws {}
+    func removeSearchHistory(id: UUID) async throws {}
+    func clearSearchHistory() async throws {}
+}
+
+@Test func searchSuggestionHistoryUsesTimestampThenUUIDWithinKindGroups() {
+    let lower = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+    let higher = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
+    let queryLower = UUID(uuidString: "00000000-0000-0000-0000-000000000003")!
+    let queryHigher = UUID(uuidString: "00000000-0000-0000-0000-000000000004")!
+    let date = Date(timeIntervalSince1970: 10)
+    let entries = [
+        SearchHistoryEntry(id: higher, kind: .link, value: "https://example.com/b", displayTitle: "B", lastUsedAt: date),
+        SearchHistoryEntry(id: queryHigher, kind: .searchQuery, value: "query b", displayTitle: "B", lastUsedAt: Date(timeIntervalSince1970: 20)),
+        SearchHistoryEntry(id: lower, kind: .link, value: "https://example.com/a", displayTitle: "A", lastUsedAt: date),
+        SearchHistoryEntry(id: queryLower, kind: .searchQuery, value: "query a", displayTitle: "A", lastUsedAt: Date(timeIntervalSince1970: 20)),
+        SearchHistoryEntry(kind: .link, value: "https://example.com/new", displayTitle: "New", lastUsedAt: Date(timeIntervalSince1970: 15))
+    ]
+    let provider = SearchHistoryBackedSuggestionProvider(baseProvider: MockSearchSuggestionProvider(clipboardURL: nil, recentLinks: [], recentSearches: [], commonSites: []), history: entries)
+    #expect(provider.suggestions(matching: "").map(\.id) == [entries[4].id, lower, higher, queryLower, queryHigher])
+}
+
+@Test @MainActor func searchHistoryRemovalEligibilityRequiresExactPersistedProvenance() async throws {
+    let entry = removalEntry("hero")
+    let manager = SearchRemovalFixture(entries: [entry])
+    let model = removalModel(manager)
+    await model.load()
+    for kind in [SearchSuggestionKind.recentSearch, .recentLink, .clipboardLink, .commonSite, .searchAction, .librarySeries] {
+        let row = SearchSuggestion(id: entry.id, kind: kind, title: "Hero", subtitle: "", value: "hero", systemImage: "clock", historyEntryID: entry.id)
+        #expect(model.canRemoveHistory(row) == (kind == .recentSearch || kind == .recentLink))
+        let synthetic = SearchSuggestion(id: entry.id, kind: kind, title: "Hero", subtitle: "", value: "hero", systemImage: "clock")
+        #expect(!model.canRemoveHistory(synthetic))
+        let fake = SearchSuggestion(kind: kind, title: "Hero", subtitle: "", value: "hero", systemImage: "clock", historyEntryID: UUID())
+        #expect(!model.canRemoveHistory(fake))
+        #expect(!removalModel(nil).canRemoveHistory(row))
+    }
+}
+
+@Test @MainActor func searchHistoryRemovalKeepsRowPendingAndRecomposesBeforeBackfill() async throws {
+    let entries = (0..<13).map { removalEntry("hero \($0)") }
+    let manager = SearchRemovalFixture(entries: entries)
+    let library = SearchOverlayLibrarySpy(items: [])
+    let model = removalModel(manager, library: library)
+    await model.load()
+    let row = try #require(model.suggestions.first { $0.historyEntryID == entries[0].id })
+    await manager.suspendRemoval()
+    let deleting = Task { await model.removeHistory(for: row) }
+    await manager.waitForRemoval()
+    #expect(model.isHistoryOperationInFlight)
+    #expect(model.history.contains { $0.id == entries[0].id })
+    await model.removeHistory(for: row)
+    await model.removeHistory(for: try #require(model.suggestions.first { $0.historyEntryID == entries[1].id }))
+    model.query = "hero"
+    var router = AppRouter(activeSheet: .search)
+    let recording = model.submit(router: &router)
+    #expect(router.presentedBrowser == .searchQuery("hero"))
+    await recording?.value
+    await manager.suspendNextRead()
+    await manager.finishRemoval()
+    await manager.waitForRead()
+    #expect(!model.history.contains { $0.id == entries[0].id })
+    #expect(!model.suggestions.contains { $0.historyEntryID == entries[0].id })
+    #expect(model.historyFeedback?.message == "Removed from Search History.")
+    model.query = "12"
+    #expect(model.historyFeedback == nil)
+    await manager.finishRead()
+    await deleting.value
+    #expect(model.query == "12")
+    #expect(model.suggestions.contains { $0.historyEntryID == entries[12].id })
+    #expect(await manager.removedIDs == [entries[0].id])
+    #expect(await manager.limits == [12, 12])
+    #expect(await library.fetchCount == 1)
+    #expect(model.historyFeedback == nil)
+    model.query = "another"
+    #expect(model.historyFeedback == nil)
+}
+
+@Test @MainActor func searchHistoryRemovalFailureRetriesOriginalUUIDAndDismissOnlyClearsFeedback() async throws {
+    let first = removalEntry("hero"), duplicate = removalEntry("hero")
+    let manager = SearchRemovalFixture(entries: [first, duplicate])
+    let model = removalModel(manager)
+    await model.load()
+    let row = SearchSuggestion(kind: .recentSearch, title: "Same", subtitle: "", value: "hero", systemImage: "clock", historyEntryID: duplicate.id)
+    await manager.failNextRemoval()
+    await model.removeHistory(for: row)
+    #expect(model.history == [first, duplicate])
+    #expect(model.historyFeedback?.message == "Couldn’t remove this item. Try again.")
+    model.query = "unrelated"
+    #expect(model.historyFeedback?.canRetry == true)
+    await model.retryHistoryOperation()
+    #expect(await manager.removedIDs == [duplicate.id, duplicate.id])
+    #expect(model.history == [first])
+    await manager.failNextRead()
+    await manager.failNextRemoval()
+    let firstRow = SearchSuggestion(kind: .recentSearch, title: "Same", subtitle: "", value: "hero", systemImage: "clock", historyEntryID: first.id)
+    await model.removeHistory(for: firstRow)
+    let snapshot = model.history
+    model.dismissHistoryFeedback()
+    #expect(model.historyFeedback == nil)
+    #expect(model.history == snapshot)
+}
+
+@Test @MainActor func searchHistoryRemovalCommittedBackfillFailureRetriesRefreshOnly() async throws {
+    let entry = removalEntry("hero")
+    let manager = SearchRemovalFixture(entries: [entry])
+    let model = removalModel(manager)
+    await model.load()
+    let row = try #require(model.suggestions.first { $0.historyEntryID == entry.id })
+    await manager.failNextRead()
+    await model.removeHistory(for: row)
+    #expect(model.history.isEmpty)
+    #expect(model.historyFeedback?.message == "Search history changed, but suggestions couldn’t be refreshed.")
+    await manager.failNextRead()
+    await model.retryHistoryOperation()
+    #expect(model.historyFeedback?.canRetry == true)
+    #expect(model.history.isEmpty)
+    await model.retryHistoryOperation()
+    #expect(await manager.removedIDs == [entry.id])
+    #expect(model.historyFeedback == nil)
+}
+
+@Test @MainActor func searchHistoryRemovalInvalidatesSuspendedRetryWithoutResurrection() async throws {
+    let entry = removalEntry("hero")
+    let manager = SearchRemovalFixture(entries: [entry])
+    let model = removalModel(manager)
+    await model.load()
+    let row = try #require(model.suggestions.first { $0.historyEntryID == entry.id })
+    await manager.failNextRemoval()
+    await model.removeHistory(for: row)
+    await manager.suspendRemoval()
+    let retry = Task { await model.retryHistoryOperation() }
+    await manager.waitForRemoval()
+    await model.retryHistoryOperation()
+    await model.removeHistory(for: row)
+    await manager.finishRemoval()
+    await retry.value
+    #expect(model.history.isEmpty)
+    #expect(await manager.removedIDs == [entry.id, entry.id])
+}
+
+@Test @MainActor func searchHistoryRemovalNewActionClearsSuccessAndRepeatedFailureAnnouncesAgain() async throws {
+    let first = removalEntry("hero one"), second = removalEntry("hero two")
+    let manager = SearchRemovalFixture(entries: [first, second])
+    let model = removalModel(manager)
+    await model.load()
+    await model.removeHistory(for: try #require(model.suggestions.first { $0.historyEntryID == first.id }))
+    #expect(model.historyFeedback?.canRetry == false)
+    await manager.suspendRemoval()
+    await manager.failNextRemoval()
+    let row = try #require(model.suggestions.first { $0.historyEntryID == second.id })
+    let deleting = Task { await model.removeHistory(for: row) }
+    await manager.waitForRemoval()
+    #expect(model.historyFeedback == nil)
+    await manager.finishRemoval()
+    await deleting.value
+    let announcement = model.historyFeedbackVersion
+    await manager.failNextRemoval()
+    await model.retryHistoryOperation()
+    #expect(model.historyFeedbackVersion > announcement)
+    #expect(model.historyFeedback?.canRetry == true)
+}
+
+private func removalEntry(_ value: String) -> SearchHistoryEntry {
+    SearchHistoryEntry(kind: .searchQuery, value: value, displayTitle: value, lastUsedAt: Date())
+}
+@MainActor private func removalModel(_ manager: SearchRemovalFixture?, library: (any LibrarySearchProviding)? = nil) -> SearchOverlayViewModel {
+    SearchOverlayViewModel(suggestionsProvider: MockSearchSuggestionProvider(clipboardURL: nil, recentLinks: [], recentSearches: [], commonSites: []), libraryProvider: library, searchHistoryManager: manager)
+}
+private actor SearchRemovalFixture: SearchHistoryManaging {
+    enum Failure: Error { case expected }
+    var entries: [SearchHistoryEntry]
+    private(set) var removedIDs: [UUID] = []
+    private(set) var limits: [Int] = []
+    private var removalPaused = false, readPaused = false, removalFails = false, readFails = false
+    private var removalContinuation: CheckedContinuation<Void, Never>?
+    private var readContinuation: CheckedContinuation<Void, Never>?
+    private var removalWaiter: CheckedContinuation<Void, Never>?
+    private var readWaiter: CheckedContinuation<Void, Never>?
+    init(entries: [SearchHistoryEntry]) { self.entries = entries }
+    func suspendRemoval() { removalPaused = true }
+    func suspendNextRead() { readPaused = true }
+    func failNextRemoval() { removalFails = true }
+    func failNextRead() { readFails = true }
+    func waitForRemoval() async { if removalContinuation == nil { await withCheckedContinuation { removalWaiter = $0 } } }
+    func waitForRead() async { if readContinuation == nil { await withCheckedContinuation { readWaiter = $0 } } }
+    func finishRemoval() { removalPaused = false; removalContinuation?.resume(); removalContinuation = nil }
+    func finishRead() { readPaused = false; readContinuation?.resume(); readContinuation = nil }
+    func recentSearchHistory(limit: Int) async throws -> [SearchHistoryEntry] {
+        limits.append(limit)
+        let snapshot = Array(entries.prefix(limit))
+        if readPaused { await withCheckedContinuation { readContinuation = $0; readWaiter?.resume(); readWaiter = nil } }
+        if readFails { readFails = false; throw Failure.expected }
+        return snapshot
+    }
+    func removeSearchHistory(id: UUID) async throws {
+        removedIDs.append(id)
+        if removalPaused { await withCheckedContinuation { removalContinuation = $0; removalWaiter?.resume(); removalWaiter = nil } }
+        if removalFails { removalFails = false; throw Failure.expected }
+        entries.removeAll { $0.id == id }
+    }
+    func recordSearchHistory(_ input: SearchHistoryInput) async throws {}
+    func clearSearchHistory() async throws {}
+}
+
+@Test @MainActor func searchHistoryRemovalInitialReadCannotAuthorizeSyntheticDeletion() async throws {
+    let entry = removalEntry("hero")
+    let manager = SearchRemovalFixture(entries: [entry])
+    await manager.suspendNextRead()
+    let model = removalModel(manager)
+    let loading = Task { await model.load() }
+    await manager.waitForRead()
+    let synthetic = SearchSuggestion(id: entry.id, kind: .recentSearch, title: "hero", subtitle: "", value: "hero", systemImage: "clock", historyEntryID: entry.id)
+    await model.removeHistory(for: synthetic)
+    #expect(await manager.removedIDs.isEmpty)
+    await manager.finishRead()
+    await loading.value
+    await model.removeHistory(for: synthetic)
+    #expect(model.history.isEmpty)
+    #expect(await manager.removedIDs == [entry.id])
+}
+
+@Test @MainActor func searchHistoryRemovalCancelledCallerStillReflectsCommittedDelete() async throws {
+    let first = removalEntry("hero one"), second = removalEntry("hero two")
+    let manager = SearchRemovalFixture(entries: [first, second])
+    let model = removalModel(manager)
+    await model.load()
+    let row = try #require(model.suggestions.first { $0.historyEntryID == first.id })
+    await manager.suspendRemoval()
+    let deleting = Task { await model.removeHistory(for: row) }
+    await manager.waitForRemoval()
+    deleting.cancel()
+    model.query = "two"
+    await manager.finishRemoval()
+    await deleting.value
+    #expect(model.history == [second])
+    #expect(model.suggestions.contains { $0.historyEntryID == second.id })
+    #expect(!model.isHistoryOperationInFlight)
+}
+
+@Test @MainActor func searchHistoryRemovalRefreshRetryKeepsKnownRowsAndSuppressesConcurrentReads() async throws {
+    let first = removalEntry("hero one"), second = removalEntry("hero two")
+    let manager = SearchRemovalFixture(entries: [first, second])
+    let model = removalModel(manager)
+    await model.load()
+    let row = try #require(model.suggestions.first { $0.historyEntryID == first.id })
+    await manager.failNextRead()
+    await model.removeHistory(for: row)
+    #expect(model.history == [second])
+    await manager.suspendNextRead()
+    await manager.failNextRead()
+    let retry = Task { await model.retryHistoryOperation() }
+    await manager.waitForRead()
+    await model.retryHistoryOperation()
+    let other = try #require(model.suggestions.first { $0.historyEntryID == second.id })
+    await model.removeHistory(for: other)
+    #expect(await manager.removedIDs == [first.id])
+    model.query = "two"
+    await manager.finishRead()
+    await retry.value
+    #expect(model.history == [second])
+    #expect(model.historyFeedback?.canRetry == true)
+    #expect(await manager.limits == [12, 12, 12])
 }

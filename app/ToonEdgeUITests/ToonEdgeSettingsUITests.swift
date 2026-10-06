@@ -5,7 +5,7 @@ final class ToonEdgeSettingsUITests: XCTestCase {
     func testReaderSettingsControlsAndDoneRemainReachableAtAccessibilityTextSize() {
         let app = XCUIApplication()
         app.launchArguments = [
-            "-uiTesting",
+            "-uiTesting", "-resetLibraryOrganization", "-libraryDensity", "comfortable",
             "-browserFixture", "medium",
             "-UIPreferredContentSizeCategoryName",
             "UICTContentSizeCategoryAccessibilityXXXL"
@@ -60,7 +60,7 @@ final class ToonEdgeSettingsUITests: XCTestCase {
     func testAccessibilityTextUsesAdaptivePickersAndKeepsUtilitiesReachable() {
         let app = XCUIApplication()
         app.launchArguments = [
-            "-uiTesting",
+            "-uiTesting", "-resetLibraryOrganization", "-libraryDensity", "comfortable",
             "-UIPreferredContentSizeCategoryName",
             "UICTContentSizeCategoryAccessibilityXXXL"
         ]
@@ -83,7 +83,7 @@ final class ToonEdgeSettingsUITests: XCTestCase {
 
     func testReaderFitPersistsAcrossRelaunchAndStorageOpensDownloads() {
         var app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-resetSettings"]
+        app.launchArguments = ["-uiTesting", "-resetSettings", "-resetLibraryOrganization", "-libraryDensity", "comfortable"]
         app.launch()
 
         app.tabBars.buttons["tab.settings"].tap()
@@ -113,7 +113,7 @@ final class ToonEdgeSettingsUITests: XCTestCase {
 
     func testHapticFeedbackDefaultsEnabledAndPersistsAcrossRelaunch() {
         var app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-resetSettings"]
+        app.launchArguments = ["-uiTesting", "-resetSettings", "-resetLibraryOrganization", "-libraryDensity", "comfortable"]
         app.launch()
         app.tabBars.buttons["tab.settings"].tap()
 
@@ -137,7 +137,7 @@ final class ToonEdgeSettingsUITests: XCTestCase {
 
     private func verifyUpdateResult(launchArgument: String, expected: String) {
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", launchArgument]
+        app.launchArguments = ["-uiTesting", "-resetLibraryOrganization", "-libraryDensity", "comfortable", launchArgument]
         app.launch()
         app.tabBars.buttons["tab.settings"].tap()
 

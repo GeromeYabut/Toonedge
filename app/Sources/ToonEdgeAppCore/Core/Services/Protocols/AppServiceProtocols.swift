@@ -49,9 +49,14 @@ public protocol LibraryLifecycleManaging: LibraryProviding {
     func isSaved(canonicalURL: URL) async -> Bool
 }
 
+public protocol SearchHistoryManaging: SearchHistoryRecording {
+    func removeSearchHistory(id: UUID) async throws
+    func clearSearchHistory() async throws
+}
+
 public protocol SearchHistoryRecording: Sendable {
     func recordSearchHistory(_ input: SearchHistoryInput) async throws
-    func recentSearchHistory(limit: Int) async -> [SearchHistoryEntry]
+    func recentSearchHistory(limit: Int) async throws -> [SearchHistoryEntry]
 }
 
 public protocol RecentReadingRecording: Sendable {

@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 public enum SearchOverlayControlPlacement: Equatable, Sendable {
     case navigationToolbar
@@ -32,11 +35,13 @@ public struct SearchOverlayView: View {
     @Binding private var router: AppRouter
     @StateObject private var viewModel: SearchOverlayViewModel
     @FocusState private var isSearchFocused: Bool
+    private enum AccessibilityTarget: Hashable { case input, suggestion(UUID), delete(UUID) }
+    @AccessibilityFocusState(for: .voiceOver) private var accessibilityFocus: AccessibilityTarget?
 
     public init(
         suggestionsProvider: any SearchSuggestionProviding = MockSearchSuggestionProvider(),
         libraryProvider: (any LibrarySearchProviding)? = nil,
-        searchHistoryRecorder: (any SearchHistoryRecording)? = nil,
+        searchHistoryManager: (any SearchHistoryManaging)? = nil,
         interactionFeedback: (any InteractionFeedbackProviding)? = nil,
         firstOpenLayout: SearchOverlayFirstOpenLayout = .default,
         router: Binding<AppRouter>
@@ -44,7 +49,7 @@ public struct SearchOverlayView: View {
         self._viewModel = StateObject(wrappedValue: SearchOverlayViewModel(
             suggestionsProvider: suggestionsProvider,
             libraryProvider: libraryProvider,
-            searchHistoryRecorder: searchHistoryRecorder,
+            searchHistoryManager: searchHistoryManager,
             interactionFeedback: interactionFeedback
         ))
         self.firstOpenLayout = firstOpenLayout
@@ -91,6 +96,17 @@ public struct SearchOverlayView: View {
         }
         .task {
             await viewModel.load()
+        }
+        .onChange(of: viewModel.historyFeedbackVersion) { _, _ in
+            #if os(iOS)
+            if let feedback = viewModel.historyFeedback {
+                UIAccessibility.post(notification: .announcement, argument: feedback.message)
+            }
+            #endif
+        }
+        .onChange(of: viewModel.removedHistoryID) { _, removedID in
+            guard let removedID, accessibilityFocus == .suggestion(removedID) || accessibilityFocus == .delete(removedID) else { return }
+            accessibilityFocus = viewModel.suggestions.first.map { .suggestion($0.id) } ?? .input
         }
         .toonEdgeScreen()
     }
@@ -140,6 +156,7 @@ public struct SearchOverlayView: View {
                 TextField("", text: $viewModel.query)
                     .foregroundStyle(ToonEdgeColor.textPrimary)
                     .focused($isSearchFocused)
+                    .accessibilityFocused($accessibilityFocus, equals: .input)
                     .submitLabel(.go)
                     .onSubmit(openCurrentQuery)
                     .accessibilityLabel("Search the web or paste a chapter link")
@@ -170,6 +187,32 @@ public struct SearchOverlayView: View {
 
     private var suggestionsList: some View {
         VStack(spacing: ToonEdgeSpacing.small) {
+            if let feedback = viewModel.historyFeedback {
+                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                    Text(feedback.message)
+                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                        .accessibilityIdentifier("search.history.feedback")
+                    HStack {
+                        if feedback.canRetry {
+                            Button {
+                                Task { await viewModel.retryHistoryOperation() }
+                            } label: {
+                                Text("Retry")
+                                    .frame(minWidth: TEActionMetrics.minimumHitSize, minHeight: TEActionMetrics.minimumHitSize)
+                            }
+                                .buttonStyle(TEActionStyle())
+                                .disabled(viewModel.isHistoryOperationInFlight)
+                                .accessibilityIdentifier("search.history.retry")
+                        }
+                        Button { viewModel.dismissHistoryFeedback() } label: {
+                            Text("Dismiss")
+                                .frame(minWidth: TEActionMetrics.minimumHitSize, minHeight: TEActionMetrics.minimumHitSize)
+                        }
+                            .buttonStyle(TEActionStyle())
+                            .accessibilityIdentifier("search.history.dismiss")
+                    }
+                }
+            }
             if viewModel.suggestions.isEmpty {
                 TEBanner(
                     title: "No local suggestions",
@@ -178,16 +221,48 @@ public struct SearchOverlayView: View {
                 )
             } else {
                 TEEditorialGroup(viewModel.suggestions, spacing: 0, separatorInset: SearchSuggestionRowLayout().separatorInset) { suggestion in
-                    Button {
-                        open(suggestion)
-                    } label: {
-                        SearchSuggestionRow(suggestion: suggestion)
+                    HStack(spacing: 0) {
+                        if viewModel.canRemoveHistory(suggestion), let id = suggestion.historyEntryID {
+                            suggestionOpenButton(suggestion)
+                                .accessibilityAction(named: "Remove from Search History") {
+                                    Task { await viewModel.removeHistory(for: suggestion) }
+                                }
+                            Button {
+                                Task { await viewModel.removeHistory(for: suggestion) }
+                            } label: {
+                                Image(systemName: "trash")
+                                    .frame(minWidth: TEActionMetrics.minimumHitSize, minHeight: TEActionMetrics.minimumHitSize)
+                            }
+                            .buttonStyle(TEActionStyle())
+                            .foregroundStyle(ToonEdgeColor.textSecondary)
+                            .disabled(viewModel.isHistoryOperationInFlight)
+                            .accessibilityLabel("Remove \(removalTitle(for: suggestion)) from Search History")
+                            .accessibilityValue(viewModel.isHistoryOperationInFlight ? "Updating Search History" : "")
+                            .accessibilityIdentifier("search.history.delete.\(id.uuidString)")
+                            .accessibilityFocused($accessibilityFocus, equals: .delete(id))
+                        } else {
+                            suggestionOpenButton(suggestion)
+                        }
                     }
-                    .buttonStyle(TEActionStyle())
-                    .accessibilityIdentifier(accessibilityIdentifier(for: suggestion))
                 }
             }
         }
+    }
+
+    private func suggestionOpenButton(_ suggestion: SearchSuggestion) -> some View {
+        Button { open(suggestion) } label: { SearchSuggestionRow(suggestion: suggestion) }
+            .buttonStyle(TEActionStyle())
+            .frame(maxWidth: .infinity)
+            .accessibilityIdentifier(accessibilityIdentifier(for: suggestion))
+            .accessibilityFocused($accessibilityFocus, equals: .suggestion(suggestion.id))
+    }
+
+    private func removalTitle(for suggestion: SearchSuggestion) -> String {
+        let title = suggestion.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if SearchInputClassifier.classify(title).kind == .url {
+            return URL(string: SearchInputClassifier.classify(title).normalizedValue)?.host ?? "link"
+        }
+        return title.isEmpty ? "item" : title
     }
 
     private func open(_ suggestion: SearchSuggestion) {
@@ -198,6 +273,9 @@ public struct SearchOverlayView: View {
     private func accessibilityIdentifier(for suggestion: SearchSuggestion) -> String {
         if case .librarySeries(let item) = suggestion.destination {
             return "search.savedSeries.\(item.id.uuidString)"
+        }
+        if viewModel.canRemoveHistory(suggestion), let id = suggestion.historyEntryID {
+            return "search.history.\(id.uuidString)"
         }
         return suggestion.kind == .searchAction ? "search.submitSuggestion" : "search.suggestion"
     }

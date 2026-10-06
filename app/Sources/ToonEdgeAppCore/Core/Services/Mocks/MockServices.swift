@@ -367,48 +367,36 @@ public struct MockSearchSuggestionProvider: SearchSuggestionProviding {
 public struct SearchHistoryBackedSuggestionProvider: SearchSuggestionProviding {
     private let baseProvider: any SearchSuggestionProviding
     private let history: [SearchHistoryEntry]
+    private let includeBaseHistory: Bool
 
-    public init(baseProvider: any SearchSuggestionProviding, history: [SearchHistoryEntry]) {
+    public init(baseProvider: any SearchSuggestionProviding, history: [SearchHistoryEntry], includeBaseHistory: Bool = true) {
         self.baseProvider = baseProvider
-        self.history = history.sorted { $0.lastUsedAt > $1.lastUsedAt }
+        self.includeBaseHistory = includeBaseHistory
+        self.history = history.sorted {
+            if $0.lastUsedAt == $1.lastUsedAt { return $0.id.uuidString < $1.id.uuidString }
+            return $0.lastUsedAt > $1.lastUsedAt
+        }
     }
 
     public func suggestions(matching query: String) -> [SearchSuggestion] {
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        func matches(_ value: String) -> Bool {
-            normalizedQuery.isEmpty || value.lowercased().contains(normalizedQuery)
-        }
-
         let base = baseProvider.suggestions(matching: query)
         let nonHistoryBase = base.filter { $0.kind != .recentLink && $0.kind != .recentSearch }
-        let baseHistory = base.filter { $0.kind == .recentLink || $0.kind == .recentSearch }
-
-        let persistedSearches = history
-            .filter { $0.kind == .searchQuery && matches($0.value) }
-            .map {
-                SearchSuggestion(
-                    kind: .recentSearch,
-                    title: $0.displayTitle,
-                    subtitle: "Recent search",
-                    value: $0.value,
-                    systemImage: "magnifyingglass"
-                )
-            }
-        let persistedLinks = history
-            .filter { $0.kind == .link && matches($0.value) }
-            .map {
-                SearchSuggestion(
-                    kind: .recentLink,
-                    title: URL(string: $0.value)?.host() ?? $0.displayTitle,
-                    subtitle: $0.value,
-                    value: $0.value,
-                    systemImage: "clock.arrow.circlepath"
-                )
-            }
-
+        let baseHistory = includeBaseHistory ? base.filter { $0.kind == .recentLink || $0.kind == .recentSearch } : []
+        let persisted = history.filter { normalizedQuery.isEmpty || $0.value.lowercased().contains(normalizedQuery) }.map { entry in
+            SearchSuggestion(
+                id: entry.id,
+                kind: entry.kind == .link ? .recentLink : .recentSearch,
+                title: entry.kind == .link ? (URL(string: entry.value)?.host() ?? entry.displayTitle) : entry.displayTitle,
+                subtitle: entry.kind == .link ? entry.value : "Recent search",
+                value: entry.value,
+                systemImage: entry.kind == .link ? "clock.arrow.circlepath" : "magnifyingglass",
+                historyEntryID: entry.id
+            )
+        }
         let clipboard = nonHistoryBase.filter { $0.kind == .clipboardLink }
         let others = nonHistoryBase.filter { $0.kind != .clipboardLink }
-        return clipboard + persistedLinks + persistedSearches + baseHistory + others
+        return clipboard + persisted.filter { $0.kind == .recentLink } + persisted.filter { $0.kind == .recentSearch } + baseHistory + others
     }
 }
 

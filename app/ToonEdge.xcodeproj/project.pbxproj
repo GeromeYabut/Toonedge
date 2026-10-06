@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B13600000000000000000003 /* SearchHistoryUITestFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B13600000000000000000004 /* SearchHistoryUITestFixture.swift */; };
+		B13600000000000000000001 /* InMemorySearchHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B13600000000000000000002 /* InMemorySearchHistoryManager.swift */; };
 		A10000000000000000000033 /* ToonEdgeHomeSearchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000033 /* ToonEdgeHomeSearchUITests.swift */; };
 		A10000000000000000000001 /* ToonEdgeAppEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* ToonEdgeAppEntry.swift */; };
 		A10000000000000000000002 /* AppShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* AppShellView.swift */; };
@@ -76,6 +78,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		B13600000000000000000004 /* SearchHistoryUITestFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchHistoryUITestFixture.swift; sourceTree = "<group>"; };
+		B13600000000000000000002 /* InMemorySearchHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Mocks/InMemorySearchHistoryManager.swift; sourceTree = "<group>"; };
 		A20000000000000000000033 /* ToonEdgeHomeSearchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToonEdgeUITests/ToonEdgeHomeSearchUITests.swift; sourceTree = "<group>"; };
 		A20000000000000000000001 /* ToonEdgeAppEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToonEdgeAppEntry.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* AppShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/App/AppShell/AppShellView.swift; sourceTree = "<group>"; };
@@ -151,6 +155,7 @@
 			isa = PBXGroup;
 			children = (
 				A20000000000000000000001 /* ToonEdgeAppEntry.swift */,
+				B13600000000000000000004 /* SearchHistoryUITestFixture.swift */,
 			);
 			path = ToonEdge;
 			sourceTree = "<group>";
@@ -174,6 +179,7 @@
 				A20000000000000000000005 /* ToonEdgeApp.swift */,
 				A20000000000000000000006 /* AppModels.swift */,
 				A20000000000000000000007 /* MockServices.swift */,
+				B13600000000000000000002 /* InMemorySearchHistoryManager.swift */,
 				A20000000000000000000036 /* InteractionFeedbackProviding.swift */,
 				A20000000000000000000018 /* UserDefaultsReaderProgressRepository.swift */,
 				A2000000000000000000002E /* UserDefaultsSettingsRepository.swift */,
@@ -396,12 +402,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000001 /* ToonEdgeAppEntry.swift in Sources */,
+				B13600000000000000000003 /* SearchHistoryUITestFixture.swift in Sources */,
 				A10000000000000000000002 /* AppShellView.swift in Sources */,
 				A10000000000000000000003 /* AppDependencies.swift in Sources */,
 				A10000000000000000000004 /* AppRouter.swift in Sources */,
 				A10000000000000000000005 /* ToonEdgeApp.swift in Sources */,
 				A10000000000000000000006 /* AppModels.swift in Sources */,
 				A10000000000000000000007 /* MockServices.swift in Sources */,
+				B13600000000000000000001 /* InMemorySearchHistoryManager.swift in Sources */,
 				A10000000000000000000036 /* InteractionFeedbackProviding.swift in Sources */,
 				A10000000000000000000018 /* UserDefaultsReaderProgressRepository.swift in Sources */,
 				A1000000000000000000002E /* UserDefaultsSettingsRepository.swift in Sources */,
