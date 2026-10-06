@@ -85,6 +85,7 @@ struct LibraryOrganizationButton: View {
         Button(action: show) {
             Image(systemName: "slider.horizontal.3")
                 .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
                 .foregroundStyle(layout.isActive ? ToonEdgeColor.accent : ToonEdgeColor.textPrimary)
         }
         .buttonStyle(.plain)

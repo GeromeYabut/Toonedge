@@ -82,7 +82,6 @@ struct LibraryOrganizationSheet: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
         .accessibilityLabel(count.map { "\(title), \($0) \($0 == 1 ? "title" : "titles")" } ?? title)
         .accessibilityValue(selected ? "Selected" : "Not selected")
         .accessibilityAddTraits(selected ? .isSelected : [])

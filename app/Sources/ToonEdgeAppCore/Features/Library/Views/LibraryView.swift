@@ -606,6 +606,7 @@ private struct LibraryViewModeControl: View {
                         .frame(width: 44, height: 44)
                         .background(selection == mode ? ToonEdgeColor.panel : Color.clear)
                         .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(selection == mode ? ToonEdgeColor.textPrimary : ToonEdgeColor.textSecondary)
@@ -726,6 +727,7 @@ private struct LibraryCollectionControls: View {
                 Button(action: refresh) {
                     Image(systemName: layout.refreshSystemImage)
                         .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                         .contentTransition(.symbolEffect(.replace))
                 }
                 .buttonStyle(.plain)
