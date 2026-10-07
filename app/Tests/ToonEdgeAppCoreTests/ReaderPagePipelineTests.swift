@@ -2,11 +2,168 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@Test @MainActor func pipelineStateWaitAllowsScheduledWorkBeyondOldFixtureDeadline() async throws {
+    var ready = false
+    let release = Task { @MainActor in
+        try await Task.sleep(for: .milliseconds(2_200))
+        ready = true
+    }
+    do { try await waitForPipelineState { ready } }
+    catch {
+        release.cancel()
+        _ = await release.result
+        throw error
+    }
+    #expect(ready)
+    try await release.value
+}
+
 @Test func prefetchWindowIncludesOneBehindAndTwoAhead() {
     let policy = ReaderPrefetchPolicy(behind: 1, ahead: 2, maximumConcurrentLoads: 3)
 
     #expect(policy.targetIndexes(current: 4, pageCount: 10) == [4, 5, 6, 3])
     #expect(policy.targetIndexes(current: 0, pageCount: 2) == [0, 1])
+}
+
+@Test @MainActor func readerPipelineCleanupPreservesFailureAndDrainsPendingWork() async throws {
+    let loader = SuspendedReaderAssetLoader()
+    let pipeline = ReaderPagePipeline(session: .pipelineFixture(pageCount: 1), assetLoader: loader)
+    let injected = ReaderTestWaitError.timedOut("injected prerequisite")
+    do {
+        try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+            pipeline.updateVisibleIndex(0)
+            try await loader.waitForRequestCount(1)
+            throw injected
+        }
+        Issue.record("Expected the prerequisite failure")
+    } catch let error as ReaderTestWaitError {
+        #expect(error == injected)
+    }
+    #expect(await pipeline.waitForWorkToDrain())
+    await loader.finish()
+    try await loader.waitForNoActiveRequests()
+}
+
+@MainActor private func withReaderPipelineCleanup(
+    pipeline: ReaderPagePipeline,
+    cleanup: @escaping @MainActor () async -> Void,
+    body: @MainActor () async throws -> Void
+) async throws {
+    let result: Result<Void, Error>
+    do { try await body(); result = .success(()) }
+    catch { result = .failure(error) }
+    // A fresh owned task keeps drain sleeps effective even when the caller is cancelled.
+    let teardown = Task { @MainActor in
+        pipeline.cancel()
+        await cleanup()
+        #expect(await pipeline.waitForWorkToDrain())
+    }
+    await teardown.value
+    try result.get()
+}
+
+private func withReaderOwnedTaskCleanup<Value: Sendable>(
+    _ task: Task<Value, Error>,
+    cleanup: @escaping @Sendable () async -> Void = {},
+    isolation: isolated (any Actor)? = #isolation,
+    body: () async throws -> Void
+) async throws {
+    let result: Result<Void, Error>
+    do { try await body(); result = .success(()) }
+    catch { result = .failure(error) }
+    let teardown = Task {
+        task.cancel()
+        await cleanup()
+        _ = await task.result
+    }
+    await teardown.value
+    try result.get()
+}
+
+@Test @MainActor func readerPipelineCleanupRejectsWorkQueuedAfterTerminalFinish() async throws {
+    let loader = SuspendedReaderAssetLoader()
+    await loader.finish()
+    await loader.finish()
+    let pipeline = ReaderPagePipeline(session: .pipelineFixture(pageCount: 1), assetLoader: loader)
+    try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+        pipeline.updateVisibleIndex(0)
+        try await waitForPipelineState { pipeline.states[0]?.status == .failed }
+        #expect(await loader.requestCount == 0)
+    }
+    #expect(await pipeline.waitForWorkToDrain())
+    try await loader.waitForNoActiveRequests()
+}
+
+@Test @MainActor func readerPipelineCleanupDrainsSuspendedRetryAndPreservesFailure() async throws {
+    let session = MockReaderSession.pipelineFixture(pageCount: 2)
+    let http = RetryGateReaderHTTPClient(firstURL: session.imageURLs[0], imageData: try #require(validPNGData))
+    let pipeline = ReaderPagePipeline(
+        session: session,
+        assetLoader: DefaultReaderPageAssetLoader(httpClient: http, retryDelayNanoseconds: 0),
+        policy: .init(behind: 0, ahead: 1, maximumConcurrentLoads: 1)
+    )
+    let injected = ReaderTestWaitError.timedOut("retry prerequisite")
+    do {
+        try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await http.finish() }) {
+            pipeline.updateVisibleIndex(0)
+            try await http.waitForRequestCount(2)
+            throw injected
+        }
+        Issue.record("Expected retry prerequisite failure")
+    } catch let error as ReaderTestWaitError {
+        #expect(error == injected)
+    }
+    #expect(await pipeline.waitForWorkToDrain())
+    await http.finish()
+    await #expect(throws: CancellationError.self) { _ = try await http.data(from: session.imageURLs[1]) }
+    #expect(await http.requestedURLs == [session.imageURLs[0], session.imageURLs[0]])
+}
+
+@Test @MainActor func readerPipelineCleanupDrainsWhenCallerIsCancelled() async throws {
+    let loader = SuspendedReaderAssetLoader()
+    let pipeline = ReaderPagePipeline(session: .pipelineFixture(pageCount: 1), assetLoader: loader)
+    let task = Task { @MainActor in
+        try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+            pipeline.updateVisibleIndex(0)
+            try await loader.waitForRequestCount(1)
+            withUnsafeCurrentTask { $0?.cancel() }
+            try Task.checkCancellation()
+        }
+    }
+    await #expect(throws: CancellationError.self) { try await task.value }
+    #expect(await pipeline.waitForWorkToDrain())
+    try await loader.waitForNoActiveRequests()
+}
+
+@Test func decoderOwnedTaskCleanupReleasesGateBeforeWaitRegistration() async throws {
+    let gate = ReaderImageDecoderReturnGate()
+    await gate.release()
+    let decoder = ImageIOReaderImageDecoder(beforeReturning: { await gate.waitForRelease() })
+    let data = try #require(validPNGData)
+    let task = Task { try await decoder.decode(data) }
+    try await withReaderOwnedTaskCleanup(task, cleanup: { await gate.release() }) {
+        try await gate.waitUntilDecoderIsReadyToReturn()
+        let image = try await task.value
+        #expect(image.pixelWidth == 1)
+    }
+}
+
+@Test func decoderOwnedTaskCleanupPreservesPrerequisiteFailure() async throws {
+    let gate = ReaderImageDecoderReturnGate()
+    let decoder = ImageIOReaderImageDecoder(beforeReturning: { await gate.waitForRelease() })
+    let data = try #require(validPNGData)
+    let task = Task { try await decoder.decode(data) }
+    let injected = ReaderTestWaitError.timedOut("decoder prerequisite")
+    do {
+        try await withReaderOwnedTaskCleanup(task, cleanup: { await gate.release() }) {
+            try await gate.waitUntilDecoderIsReadyToReturn()
+            throw injected
+        }
+        Issue.record("Expected decoder prerequisite failure")
+    } catch let error as ReaderTestWaitError {
+        #expect(error == injected)
+    }
+    await #expect(throws: CancellationError.self) { _ = try await task.value }
 }
 
 @Test func assetLoaderUsesCacheWithoutNetwork() async throws {
@@ -57,12 +214,14 @@ import Testing
         try await loader.load(imageURL: imageURL, sourceURL: sourceURL, requestContext: nil)
     }
 
-    try await http.waitForRequestCount(1)
-    try await Task.sleep(for: .milliseconds(30))
-    #expect(await http.requests.count == 1)
-    task.cancel()
-    await #expect(throws: CancellationError.self) { _ = try await task.value }
-    #expect(await http.requests.count == 1)
+    try await withReaderOwnedTaskCleanup(task) {
+        try await http.waitForRequestCount(1)
+        try await Task.sleep(for: .milliseconds(30))
+        #expect(await http.requests.count == 1)
+        task.cancel()
+        await #expect(throws: CancellationError.self) { _ = try await task.value }
+        #expect(await http.requests.count == 1)
+    }
 }
 
 @Test func imageDecoderRejectsNonImageBytes() async {
@@ -93,12 +252,14 @@ import Testing
         try await decoder.decode(data)
     }
 
-    await gate.waitUntilDecoderIsReadyToReturn()
-    task.cancel()
-    await gate.release()
+    try await withReaderOwnedTaskCleanup(task, cleanup: { await gate.release() }) {
+        try await gate.waitUntilDecoderIsReadyToReturn()
+        task.cancel()
+        await gate.release()
 
-    await #expect(throws: CancellationError.self) {
-        _ = try await task.value
+        await #expect(throws: CancellationError.self) {
+            _ = try await task.value
+        }
     }
 }
 
@@ -115,26 +276,23 @@ private let validPNGData = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB
 
 private actor ReaderImageDecoderReturnGate {
     private var isDecoderReadyToReturn = false
-    private var readyContinuation: CheckedContinuation<Void, Never>?
+    private var isReleased = false
     private var releaseContinuation: CheckedContinuation<Void, Never>?
 
-    func waitUntilDecoderIsReadyToReturn() async {
-        guard !isDecoderReadyToReturn else { return }
-        await withCheckedContinuation { continuation in
-            readyContinuation = continuation
-        }
+    func waitUntilDecoderIsReadyToReturn() async throws {
+        try await waitForReaderTestCondition("decoder ready to return") { self.isDecoderReadyToReturn }
     }
 
     func waitForRelease() async {
         isDecoderReadyToReturn = true
-        readyContinuation?.resume()
-        readyContinuation = nil
+        guard !isReleased else { return }
         await withCheckedContinuation { continuation in
             releaseContinuation = continuation
         }
     }
 
     func release() {
+        isReleased = true
         releaseContinuation?.resume()
         releaseContinuation = nil
     }
@@ -189,10 +347,7 @@ private actor SequencedReaderHTTPClient: HTTPDataLoading {
     }
 
     func waitForRequestCount(_ count: Int) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
-        while requests.count < count && ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
+        try await waitForReaderTestCondition("HTTP requests: expected at least \(count)") { self.requests.count >= count }
         #expect(requests.count >= count)
     }
 }
@@ -206,16 +361,18 @@ private actor SequencedReaderHTTPClient: HTTPDataLoading {
         policy: .init(behind: 1, ahead: 2, maximumConcurrentLoads: 3)
     )
 
-    pipeline.updateVisibleIndex(3)
-    try await loader.waitForRequestCount(3)
-    #expect(await loader.maximumConcurrentRequests == 3)
-    pipeline.cancel()
-    try await loader.waitForCancellationCount(3)
-    await loader.completeAll()
-    try await loader.waitForNoActiveRequests()
-    let didDrain = await pipeline.waitForWorkToDrain()
-    #expect(didDrain)
-    #expect(pipeline.states.values.allSatisfy { $0.status == .idle })
+    try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+        pipeline.updateVisibleIndex(3)
+        try await loader.waitForRequestCount(3)
+        #expect(await loader.maximumConcurrentRequests == 3)
+        pipeline.cancel()
+        try await loader.waitForCancellationCount(3)
+        await loader.completeAll()
+        try await loader.waitForNoActiveRequests()
+        let didDrain = await pipeline.waitForWorkToDrain()
+        #expect(didDrain)
+        #expect(pipeline.states.values.allSatisfy { $0.status == .idle })
+    }
 }
 
 @Test @MainActor func pipelineEnforcesGlobalConcurrencyCapWhenPolicyRequestsMore() async throws {
@@ -226,16 +383,18 @@ private actor SequencedReaderHTTPClient: HTTPDataLoading {
         policy: .init(behind: 2, ahead: 4, maximumConcurrentLoads: 7)
     )
 
-    pipeline.updateVisibleIndex(3)
-    try await loader.waitForRequestCount(3)
-    #expect(await loader.requestCount == 3)
-    #expect(await loader.maximumConcurrentRequests == 3)
-    pipeline.cancel()
-    try await loader.waitForCancellationCount(3)
-    await loader.completeAll()
-    try await loader.waitForNoActiveRequests()
-    let didDrain = await pipeline.waitForWorkToDrain()
-    #expect(didDrain)
+    try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+        pipeline.updateVisibleIndex(3)
+        try await loader.waitForRequestCount(3)
+        #expect(await loader.requestCount == 3)
+        #expect(await loader.maximumConcurrentRequests == 3)
+        pipeline.cancel()
+        try await loader.waitForCancellationCount(3)
+        await loader.completeAll()
+        try await loader.waitForNoActiveRequests()
+        let didDrain = await pipeline.waitForWorkToDrain()
+        #expect(didDrain)
+    }
 }
 
 @Test @MainActor func pipelineDeduplicatesRepeatedURLsWithinTheWorkingWindow() async throws {
@@ -247,14 +406,16 @@ private actor SequencedReaderHTTPClient: HTTPDataLoading {
         policy: .init(behind: 0, ahead: 2, maximumConcurrentLoads: 3)
     )
 
-    pipeline.updateVisibleIndex(0)
-    try await loader.waitForRequestCount(2)
-    #expect(await loader.requestedURLs.filter { $0 == session.imageURLs[0] }.count == 1)
-    await loader.completeAll()
-    try await waitForPipelineState { pipeline.states[0]?.status == .ready && pipeline.states[1]?.status == .ready }
-    #expect(pipeline.states[0]?.image != nil)
-    #expect(pipeline.states[1]?.image != nil)
-    pipeline.cancel()
+    try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+        pipeline.updateVisibleIndex(0)
+        try await loader.waitForRequestCount(2)
+        #expect(await loader.requestedURLs.filter { $0 == session.imageURLs[0] }.count == 1)
+        await loader.completeAll()
+        try await waitForPipelineState { pipeline.states[0]?.status == .ready && pipeline.states[1]?.status == .ready }
+        #expect(pipeline.states[0]?.image != nil)
+        #expect(pipeline.states[1]?.image != nil)
+        pipeline.cancel()
+    }
 }
 
 @Test @MainActor func reversedVisibilityWaitsForCancelledFetchBeforeStartingNewWork() async throws {
@@ -265,21 +426,23 @@ private actor SequencedReaderHTTPClient: HTTPDataLoading {
         policy: .init(behind: 1, ahead: 2, maximumConcurrentLoads: 1)
     )
 
-    pipeline.updateVisibleIndex(3)
-    try await loader.waitForRequestCount(1)
-    pipeline.updateVisibleIndex(0)
-    try await loader.waitForCancellationCount(1)
-    #expect(await loader.requestedURLs == [session.imageURLs[3]])
-    await loader.complete(url: session.imageURLs[3])
-    try await loader.waitForRequestCount(2)
-    #expect(await loader.requestedURLs[1] == session.imageURLs[0])
-    #expect(await loader.maximumConcurrentRequests == 1)
-    pipeline.cancel()
-    try await loader.waitForCancellationCount(2)
-    await loader.completeAll()
-    try await loader.waitForNoActiveRequests()
-    let didDrain = await pipeline.waitForWorkToDrain()
-    #expect(didDrain)
+    try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+        pipeline.updateVisibleIndex(3)
+        try await loader.waitForRequestCount(1)
+        pipeline.updateVisibleIndex(0)
+        try await loader.waitForCancellationCount(1)
+        #expect(await loader.requestedURLs == [session.imageURLs[3]])
+        await loader.complete(url: session.imageURLs[3])
+        try await loader.waitForRequestCount(2)
+        #expect(await loader.requestedURLs[1] == session.imageURLs[0])
+        #expect(await loader.maximumConcurrentRequests == 1)
+        pipeline.cancel()
+        try await loader.waitForCancellationCount(2)
+        await loader.completeAll()
+        try await loader.waitForNoActiveRequests()
+        let didDrain = await pipeline.waitForWorkToDrain()
+        #expect(didDrain)
+    }
 }
 
 @Test @MainActor func revisitedCancelledURLDoesNotStartDuplicateWhileOldFetchRuns() async throws {
@@ -290,23 +453,25 @@ private actor SequencedReaderHTTPClient: HTTPDataLoading {
         policy: .init(behind: 0, ahead: 1, maximumConcurrentLoads: 2)
     )
 
-    pipeline.updateVisibleIndex(3)
-    try await loader.waitForRequestCount(2)
-    pipeline.updateVisibleIndex(0)
-    try await loader.waitForCancellationCount(2)
-    pipeline.updateVisibleIndex(3)
-    try await waitForPipelineState {
-        pipeline.states[3]?.status == .queued && pipeline.states[4]?.status == .queued
+    try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+        pipeline.updateVisibleIndex(3)
+        try await loader.waitForRequestCount(2)
+        pipeline.updateVisibleIndex(0)
+        try await loader.waitForCancellationCount(2)
+        pipeline.updateVisibleIndex(3)
+        try await waitForPipelineState {
+            pipeline.states[3]?.status == .queued && pipeline.states[4]?.status == .queued
+        }
+        await loader.complete(url: session.imageURLs[4])
+        try await loader.waitForRequestCount(3)
+        #expect(await loader.requestedURLs.filter { $0 == session.imageURLs[3] }.count == 1)
+        pipeline.cancel()
+        try await loader.waitForCancellationCount(3)
+        await loader.completeAll()
+        try await loader.waitForNoActiveRequests()
+        let didDrain = await pipeline.waitForWorkToDrain()
+        #expect(didDrain)
     }
-    await loader.complete(url: session.imageURLs[4])
-    try await loader.waitForRequestCount(3)
-    #expect(await loader.requestedURLs.filter { $0 == session.imageURLs[3] }.count == 1)
-    pipeline.cancel()
-    try await loader.waitForCancellationCount(3)
-    await loader.completeAll()
-    try await loader.waitForNoActiveRequests()
-    let didDrain = await pipeline.waitForWorkToDrain()
-    #expect(didDrain)
 }
 
 @Test @MainActor func memoryPressureKeepsOnlyVisibleDecodedImage() async throws {
@@ -316,16 +481,18 @@ private actor SequencedReaderHTTPClient: HTTPDataLoading {
         policy: .init(behind: 1, ahead: 2, maximumConcurrentLoads: 3)
     )
 
-    pipeline.updateVisibleIndex(2)
-    try await loader.waitForRequestCount(3)
-    await loader.completeAll()
-    try await loader.waitForRequestCount(4)
-    await loader.completeAll()
-    try await waitForPipelineState { [1, 2, 3, 4].allSatisfy { pipeline.states[$0]?.status == .ready } }
-    pipeline.handleMemoryPressure()
-    try await waitForPipelineState { [1, 3, 4].allSatisfy { pipeline.states[$0]?.image == nil } }
-    #expect(pipeline.states[2]?.image != nil)
-    pipeline.cancel()
+    try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+        pipeline.updateVisibleIndex(2)
+        try await loader.waitForRequestCount(3)
+        await loader.completeAll()
+        try await loader.waitForRequestCount(4)
+        await loader.completeAll()
+        try await waitForPipelineState { [1, 2, 3, 4].allSatisfy { pipeline.states[$0]?.status == .ready } }
+        pipeline.handleMemoryPressure()
+        try await waitForPipelineState { [1, 3, 4].allSatisfy { pipeline.states[$0]?.image == nil } }
+        #expect(pipeline.states[2]?.image != nil)
+        pipeline.cancel()
+    }
 }
 
 @Test @MainActor func learnedTallDimensionsSurviveEvictionAndRevisitWithoutPixels() async throws {
@@ -337,27 +504,29 @@ private actor SequencedReaderHTTPClient: HTTPDataLoading {
         policy: .init(behind: 0, ahead: 0, maximumConcurrentLoads: 1)
     )
 
-    pipeline.updateVisibleIndex(0)
-    try await loader.waitForRequestCount(1)
-    await loader.completeAll()
-    try await waitForPipelineState { pipeline.states[0]?.status == .ready }
-    pipeline.updateVisibleIndex(2)
-    try await waitForPipelineState { pipeline.states[0]?.status == .idle }
-    try await loader.waitForRequestCount(2)
-    #expect(pipeline.states[0]?.image == nil)
-    #expect(ReaderPageLayout.placeholderHeight(
-        availableWidth: 390, displayMode: .fitWidth,
-        metadata: pipeline.states[0]?.learnedMetadata
-    ) == 6_825)
+    try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+        pipeline.updateVisibleIndex(0)
+        try await loader.waitForRequestCount(1)
+        await loader.completeAll()
+        try await waitForPipelineState { pipeline.states[0]?.status == .ready }
+        pipeline.updateVisibleIndex(2)
+        try await waitForPipelineState { pipeline.states[0]?.status == .idle }
+        try await loader.waitForRequestCount(2)
+        #expect(pipeline.states[0]?.image == nil)
+        #expect(ReaderPageLayout.placeholderHeight(
+            availableWidth: 390, displayMode: .fitWidth,
+            metadata: pipeline.states[0]?.learnedMetadata
+        ) == 6_825)
 
-    pipeline.updateVisibleIndex(0)
-    await loader.complete(url: session.imageURLs[2])
-    try await waitForPipelineState { pipeline.states[0]?.status == .loading }
-    #expect(pipeline.states[0]?.image == nil)
-    #expect(pipeline.states[0]?.learnedMetadata?.pixelHeight == 14_000)
-    pipeline.cancel()
-    await loader.completeAll()
-    _ = await pipeline.waitForWorkToDrain()
+        pipeline.updateVisibleIndex(0)
+        await loader.complete(url: session.imageURLs[2])
+        try await waitForPipelineState { pipeline.states[0]?.status == .loading }
+        #expect(pipeline.states[0]?.image == nil)
+        #expect(pipeline.states[0]?.learnedMetadata?.pixelHeight == 14_000)
+        pipeline.cancel()
+        await loader.completeAll()
+        _ = await pipeline.waitForWorkToDrain()
+    }
 }
 
 @Test @MainActor func stationaryVisiblePageReadyTransitionAdvancesProgress() async throws {
@@ -373,15 +542,17 @@ private actor SequencedReaderHTTPClient: HTTPDataLoading {
         frames: frames, viewportHeight: 600, pipelineID: ObjectIdentifier(pipeline)
     ))
 
-    await viewModel.markImageVisible(index: selection.index, isReady: false, pipelineID: selection.pipelineID)
-    pipeline.updateVisibleIndex(selection.index)
-    try await loader.waitForRequestCount(1)
-    #expect(viewModel.progress.currentImageIndex == 0)
-    await loader.completeAll()
-    try await waitForPipelineState { pipeline.states[1]?.status == .ready }
-    try await waitForPipelineState { viewModel.progress.currentImageIndex == 1 }
-    #expect(frames[1]?.height == 390)
-    pipeline.cancel()
+    try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+        await viewModel.markImageVisible(index: selection.index, isReady: false, pipelineID: selection.pipelineID)
+        pipeline.updateVisibleIndex(selection.index)
+        try await loader.waitForRequestCount(1)
+        #expect(viewModel.progress.currentImageIndex == 0)
+        await loader.completeAll()
+        try await waitForPipelineState { pipeline.states[1]?.status == .ready }
+        try await waitForPipelineState { viewModel.progress.currentImageIndex == 1 }
+        #expect(frames[1]?.height == 390)
+        pipeline.cancel()
+    }
 }
 
 @Test @MainActor func finalProgressKeepsThreeVisibleReadyPagesInTheLoadingWindow() async throws {
@@ -389,45 +560,47 @@ private actor SequencedReaderHTTPClient: HTTPDataLoading {
     let session = MockReaderSession.pipelineFixture(pageCount: 40)
     let pipeline = ReaderPagePipeline(session: session, assetLoader: loader)
     let viewModel = ReaderViewModel(session: session, pagePipelineFactory: { _ in pipeline })
-    pipeline.updateVisibleIndex(37)
-    try await loader.waitForRequestCount(3)
-    await loader.completeAll()
-    try await loader.waitForRequestCount(4)
-    await loader.completeAll()
-    try await waitForPipelineState { (36...39).allSatisfy { pipeline.states[$0]?.status == .ready } }
+    try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+        pipeline.updateVisibleIndex(37)
+        try await loader.waitForRequestCount(3)
+        await loader.completeAll()
+        try await loader.waitForRequestCount(4)
+        await loader.completeAll()
+        try await waitForPipelineState { (36...39).allSatisfy { pipeline.states[$0]?.status == .ready } }
 
-    let frames = [
-        37: CGRect(x: 0, y: -270, width: 390, height: 390),
-        38: CGRect(x: 0, y: 120, width: 390, height: 390),
-        39: CGRect(x: 0, y: 510, width: 390, height: 390)
-    ]
-    let selection = try #require(ReaderViewportPageSelector.selection(
-        frames: frames, viewportHeight: 900,
-        pipelineID: ObjectIdentifier(pipeline), lastPageIndex: 39
-    ))
-    #expect(selection.index == 39)
-    #expect(selection.loadingAnchorIndex == 37)
+        let frames = [
+            37: CGRect(x: 0, y: -270, width: 390, height: 390),
+            38: CGRect(x: 0, y: 120, width: 390, height: 390),
+            39: CGRect(x: 0, y: 510, width: 390, height: 390)
+        ]
+        let selection = try #require(ReaderViewportPageSelector.selection(
+            frames: frames, viewportHeight: 900,
+            pipelineID: ObjectIdentifier(pipeline), lastPageIndex: 39
+        ))
+        #expect(selection.index == 39)
+        #expect(selection.loadingAnchorIndex == 37)
 
-    pipeline.updateVisibleIndex(selection.loadingAnchorIndex)
-    await viewModel.markImageVisible(
-        index: selection.index, isReady: pipeline.states[selection.index]?.status == .ready,
-        pipelineID: selection.pipelineID
-    )
-    #expect(viewModel.progress.fractionComplete == 1)
-    #expect((37...39).allSatisfy { pipeline.states[$0]?.status == .ready && pipeline.states[$0]?.image != nil })
+        pipeline.updateVisibleIndex(selection.loadingAnchorIndex)
+        await viewModel.markImageVisible(
+            index: selection.index, isReady: pipeline.states[selection.index]?.status == .ready,
+            pipelineID: selection.pipelineID
+        )
+        #expect(viewModel.progress.fractionComplete == 1)
+        #expect((37...39).allSatisfy { pipeline.states[$0]?.status == .ready && pipeline.states[$0]?.image != nil })
 
-    let laterFrames = [
-        38: CGRect(x: 0, y: -270, width: 390, height: 390),
-        39: CGRect(x: 0, y: 120, width: 390, height: 390)
-    ]
-    let laterSelection = try #require(ReaderViewportPageSelector.selection(
-        frames: laterFrames, viewportHeight: 900,
-        pipelineID: ObjectIdentifier(pipeline), lastPageIndex: 39
-    ))
-    #expect(laterSelection.index == 39)
-    #expect(laterSelection.loadingAnchorIndex == 38)
-    #expect(laterSelection != selection)
-    pipeline.cancel()
+        let laterFrames = [
+            38: CGRect(x: 0, y: -270, width: 390, height: 390),
+            39: CGRect(x: 0, y: 120, width: 390, height: 390)
+        ]
+        let laterSelection = try #require(ReaderViewportPageSelector.selection(
+            frames: laterFrames, viewportHeight: 900,
+            pipelineID: ObjectIdentifier(pipeline), lastPageIndex: 39
+        ))
+        #expect(laterSelection.index == 39)
+        #expect(laterSelection.loadingAnchorIndex == 38)
+        #expect(laterSelection != selection)
+        pipeline.cancel()
+    }
 }
 
 @Test @MainActor func readyBeforeVisibilityCallbackStillAdvancesProgress() async throws {
@@ -438,15 +611,17 @@ private actor SequencedReaderHTTPClient: HTTPDataLoading {
         policy: .init(behind: 0, ahead: 0, maximumConcurrentLoads: 1)
     )
     let viewModel = ReaderViewModel(session: session, pagePipelineFactory: { _ in pipeline })
-    pipeline.updateVisibleIndex(1)
-    try await loader.waitForRequestCount(1)
-    await loader.completeAll()
-    try await waitForPipelineState { pipeline.states[1]?.status == .ready }
+    try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+        pipeline.updateVisibleIndex(1)
+        try await loader.waitForRequestCount(1)
+        await loader.completeAll()
+        try await waitForPipelineState { pipeline.states[1]?.status == .ready }
 
-    await viewModel.markImageVisible(index: 1, isReady: false, pipelineID: ObjectIdentifier(pipeline))
+        await viewModel.markImageVisible(index: 1, isReady: false, pipelineID: ObjectIdentifier(pipeline))
 
-    #expect(viewModel.progress.currentImageIndex == 1)
-    pipeline.cancel()
+        #expect(viewModel.progress.currentImageIndex == 1)
+        pipeline.cancel()
+    }
 }
 
 @Test @MainActor func retryHoldsItsConcurrencySlotUntilSecondAttemptCompletes() async throws {
@@ -458,13 +633,15 @@ private actor SequencedReaderHTTPClient: HTTPDataLoading {
         policy: .init(behind: 0, ahead: 1, maximumConcurrentLoads: 1)
     )
 
-    pipeline.updateVisibleIndex(0)
-    try await http.waitForRequestCount(2)
-    #expect(await http.requestedURLs == [session.imageURLs[0], session.imageURLs[0]])
-    await http.releaseSecondAttempt()
-    try await waitForPipelineState { pipeline.states[0]?.status == .ready && pipeline.states[1]?.status == .ready }
-    #expect(await http.requestedURLs == [session.imageURLs[0], session.imageURLs[0], session.imageURLs[1]])
-    pipeline.cancel()
+    try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await http.finish() }) {
+        pipeline.updateVisibleIndex(0)
+        try await http.waitForRequestCount(2)
+        #expect(await http.requestedURLs == [session.imageURLs[0], session.imageURLs[0]])
+        await http.releaseSecondAttempt()
+        try await waitForPipelineState { pipeline.states[0]?.status == .ready && pipeline.states[1]?.status == .ready }
+        #expect(await http.requestedURLs == [session.imageURLs[0], session.imageURLs[0], session.imageURLs[1]])
+        pipeline.cancel()
+    }
 }
 
 @Test @MainActor func terminalLoaderFailureStaysPageLocalAndRequiresExplicitRetry() async throws {
@@ -525,6 +702,7 @@ private actor RetryGateReaderHTTPClient: HTTPDataLoading {
     let imageData: Data
     private(set) var requestedURLs: [URL] = []
     private var secondAttemptContinuation: CheckedContinuation<Void, Never>?
+    private var isFinished = false
 
     init(firstURL: URL, imageData: Data) {
         self.firstURL = firstURL
@@ -532,6 +710,7 @@ private actor RetryGateReaderHTTPClient: HTTPDataLoading {
     }
 
     func data(from url: URL) async throws -> HTTPDataResponse {
+        guard !isFinished else { throw CancellationError() }
         requestedURLs.append(url)
         if url == firstURL && requestedURLs.count == 1 {
             throw URLError(.timedOut)
@@ -539,7 +718,14 @@ private actor RetryGateReaderHTTPClient: HTTPDataLoading {
         if url == firstURL && requestedURLs.count == 2 {
             await withCheckedContinuation { secondAttemptContinuation = $0 }
         }
+        try Task.checkCancellation()
+        guard !isFinished else { throw CancellationError() }
         return HTTPDataResponse(data: imageData, statusCode: 200)
+    }
+
+    func finish() {
+        isFinished = true
+        releaseSecondAttempt()
     }
 
     func releaseSecondAttempt() {
@@ -548,10 +734,7 @@ private actor RetryGateReaderHTTPClient: HTTPDataLoading {
     }
 
     func waitForRequestCount(_ count: Int) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
-        while requestedURLs.count < count && ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
+        try await waitForReaderTestCondition("retry requests: expected at least \(count)") { self.requestedURLs.count >= count }
         #expect(requestedURLs.count >= count)
     }
 }
@@ -564,18 +747,20 @@ private actor RetryGateReaderHTTPClient: HTTPDataLoading {
         policy: .init(behind: 0, ahead: 1, maximumConcurrentLoads: 2)
     )
 
-    pipeline.updateVisibleIndex(0)
-    try await loader.waitForRequestCount(2)
-    await loader.fail(url: session.imageURLs[0], error: ReaderPageFailure.invalidResponse)
-    await loader.complete(url: session.imageURLs[1])
-    try await waitForPipelineState { pipeline.states[0]?.status == .failed && pipeline.states[1]?.status == .ready }
-    #expect(pipeline.states[0]?.failure == .invalidResponse)
-    pipeline.retry(index: 0)
-    try await loader.waitForRequestCount(3)
-    await loader.complete(url: session.imageURLs[0])
-    try await waitForPipelineState { pipeline.states[0]?.status == .ready }
-    #expect(pipeline.states[1]?.status == .ready)
-    pipeline.cancel()
+    try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+        pipeline.updateVisibleIndex(0)
+        try await loader.waitForRequestCount(2)
+        await loader.fail(url: session.imageURLs[0], error: ReaderPageFailure.invalidResponse)
+        await loader.complete(url: session.imageURLs[1])
+        try await waitForPipelineState { pipeline.states[0]?.status == .failed && pipeline.states[1]?.status == .ready }
+        #expect(pipeline.states[0]?.failure == .invalidResponse)
+        pipeline.retry(index: 0)
+        try await loader.waitForRequestCount(3)
+        await loader.complete(url: session.imageURLs[0])
+        try await waitForPipelineState { pipeline.states[0]?.status == .ready }
+        #expect(pipeline.states[1]?.status == .ready)
+        pipeline.cancel()
+    }
 }
 
 private extension MockReaderSession {
@@ -591,6 +776,7 @@ private extension MockReaderSession {
 
 private actor SuspendedReaderAssetLoader: ReaderPageAssetLoading {
     private var continuations: [URL: [CheckedContinuation<Data, Error>]] = [:]
+    private var isFinished = false
     private(set) var requestCount = 0
     private var concurrentRequests = 0
     private var cancellationCount = 0
@@ -598,6 +784,7 @@ private actor SuspendedReaderAssetLoader: ReaderPageAssetLoading {
     private(set) var requestedURLs: [URL] = []
 
     func load(imageURL: URL, sourceURL: URL, requestContext: ReaderImageRequestContext?) async throws -> Data {
+        guard !isFinished else { throw CancellationError() }
         requestCount += 1
         requestedURLs.append(imageURL)
         concurrentRequests += 1
@@ -613,27 +800,25 @@ private actor SuspendedReaderAssetLoader: ReaderPageAssetLoading {
     }
 
     func waitForRequestCount(_ count: Int) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
-        while requestCount < count && ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
+        try await waitForReaderTestCondition("asset requests: expected at least \(count)") { self.requestCount >= count }
         #expect(requestCount >= count)
     }
 
     func waitForCancellationCount(_ count: Int) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
-        while cancellationCount < count && ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
+        try await waitForReaderTestCondition("asset cancellations: expected at least \(count)") { self.cancellationCount >= count }
         #expect(cancellationCount >= count)
     }
 
     func waitForNoActiveRequests() async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
-        while concurrentRequests > 0 && ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
+        try await waitForReaderTestCondition("active asset requests to drain") { self.concurrentRequests == 0 }
         #expect(concurrentRequests == 0)
+    }
+
+    func finish() {
+        isFinished = true
+        let pending = continuations.values.flatMap { $0 }
+        continuations.removeAll()
+        for continuation in pending { continuation.resume(throwing: CancellationError()) }
     }
 
     func completeAll() {
@@ -658,9 +843,6 @@ private actor SuspendedReaderAssetLoader: ReaderPageAssetLoading {
 }
 
 @MainActor private func waitForPipelineState(_ condition: () -> Bool) async throws {
-    let deadline = ContinuousClock.now.advanced(by: .seconds(2))
-    while !condition() && ContinuousClock.now < deadline {
-        try await Task.sleep(for: .milliseconds(10))
-    }
+    try await waitForReaderTestCondition("pipeline state") { condition() }
     #expect(condition())
 }

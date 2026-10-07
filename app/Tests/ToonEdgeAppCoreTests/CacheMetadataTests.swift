@@ -252,6 +252,30 @@ import Testing
 }
 
 @MainActor
+@Test func keyedCacheLookupPreservesUpdatesDistinctURLsAndRemoval() async throws {
+    let repository = try makeRepository()
+    let first = try #require(URL(string: "https://example.com/keyed/chapter-a"))
+    let second = try #require(URL(string: "https://example.com/keyed/chapter-b"))
+    let missing = try #require(URL(string: "https://example.com/keyed/missing"))
+    #expect(try await repository.removeCacheMetadata(for: missing) == .notFound)
+    #expect(try await repository.recordCacheMetadata(.fixture(sourceURL: first, estimatedStorageBytes: 100, retentionState: .recent)) == .recent)
+    #expect(try await repository.recordCacheMetadata(.fixture(sourceURL: second, estimatedStorageBytes: 200, retentionState: .retained)) == .retained)
+    #expect(try await repository.recordCacheMetadata(.fixture(sourceURL: first, estimatedStorageBytes: 300, retentionState: .retained)) == .retained)
+    #expect(try await repository.recordCacheMetadata(.fixture(sourceURL: first, estimatedStorageBytes: 300, retentionState: .retained)) == .unchanged)
+    let entries = await repository.cacheMetadataEntries()
+    #expect(entries.count == 2)
+    #expect(entries.first { $0.sourceURL == first }?.estimatedStorageBytes == 300)
+    #expect(entries.first { $0.sourceURL == second }?.estimatedStorageBytes == 200)
+    let summary = await repository.downloadSummary()
+    #expect(summary.cachedItemCount == 2)
+    #expect(summary.retainedItemCount == 2)
+    #expect(summary.totalEstimatedBytes == 500)
+    #expect(try await repository.removeCacheMetadata(for: first) == .removed)
+    #expect(try await repository.removeCacheMetadata(for: first) == .notFound)
+    #expect(await repository.cacheMetadataEntries().map(\.sourceURL) == [second])
+}
+
+@MainActor
 @Test func largeCacheSummaryAggregatesCountsAndStorageInOnePass() async throws {
     let repository = try makeRepository()
 

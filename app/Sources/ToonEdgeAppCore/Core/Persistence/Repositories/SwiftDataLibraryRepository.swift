@@ -1426,7 +1426,7 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
             return try? modelContext.fetch(descriptor).first
         }
 
-        return fetchCacheEntries().first { $0.sourceURLString == sourceURLString }
+        return cacheEntryStore[sourceURLString]
     }
 
     private func cacheRetentionState(for entry: StoredCacheEntry) -> CacheRetentionState {
