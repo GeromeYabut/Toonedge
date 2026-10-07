@@ -1719,7 +1719,7 @@ As a reader searching from Home, I want saved titles to appear alongside web opt
 
 ### Story 13.4 — Add persistent zoom with a sticky fitted-size baseline
 
-**Status:** resumed for design revision by user on 2026-10-06. Same-pinch breakthrough direction approved; detailed design review and replacement implementation plan pending. Existing research is preserved, not production-approved or merged. No closed timebox is reopened.
+**Status:** written sticky-baseline design approved by user on 2026-10-06; pure-policy implementation planned first. Existing research is preserved, not production-approved or merged. No closed timebox is reopened.
 
 **Design:** [Sticky Baseline Reader Zoom](superpowers/specs/2026-10-06-story-13.4-sticky-baseline-zoom-design.md).
 
@@ -1733,8 +1733,8 @@ As a reader viewing small text or artwork detail, I want to zoom and pan tempora
 
 - Reader supports focal-point persistent pinch zoom up to `3x`; releasing does not reset it.
 - Inward pinch snaps to the fitted-size `1x` baseline and resists accidental shrinkage. Deliberate continued contraction crosses below it within the same gesture.
-- Proposed review defaults are a `0.75x` floor, downward snap entry at `1.03x`, and post-engagement inward ratio `0.88`. The first engagement sample cannot bypass the stop; post-engagement breakthrough is distance-based rather than callback-count-based, and preserves excess contraction beyond the threshold. Discarded engagement overshoot is an explicit sampling trade-off. Release does not reset zoom.
-- Below-baseline zoom is proposed to persist until another zoom/reset action or Reader exit/chapter change. It does not introduce full-chapter overview loading.
+- Approved prototype defaults are a `0.75x` floor, downward snap entry at `1.03x`, and post-engagement inward ratio `0.88`. The first engagement sample cannot bypass the stop; post-engagement breakthrough is distance-based rather than callback-count-based, and preserves excess contraction beyond the threshold. Discarded engagement overshoot is an explicit sampling trade-off. Release does not reset zoom.
+- Below-baseline zoom persists until another zoom/reset action or Reader exit/chapter change. It does not introduce full-chapter overview loading.
 - The chapter has one scroll owner. During interaction, off-baseline presentation, and reconciliation, progress and ordinary chapter scrolling pause; pan remains bounded.
 - Returning to baseline restores the frozen semantic reading position. Exact `1x` alone cannot release progress or scrolling before gesture completion and measured reconciliation.
 - Spatial double tap at idle `1x` zooms to `2x`; double tap at any off-baseline scale resets to `1x`.
@@ -1816,7 +1816,7 @@ As the product team, we want evidence that generic Clean Mode handles diverse re
 
 ### Story 13.8 — Complete live-device generic compatibility release validation
 
-**Status:** planned; release sign-off remains gated by incomplete Story 13.4 (revised detailed-design and implementation gates pending), Story 13.6 integration/manual VoiceOver verification, and the documented Reader package-test limitation. Physical-device validation is outstanding.
+**Status:** planned; release sign-off remains gated by incomplete Story 13.4 (written design approved; implementation and native acceptance pending), Story 13.6 integration/manual VoiceOver verification, and the documented Reader package-test limitation. Physical-device validation is outstanding.
 
 **Dependencies:** Stories 13.1–13.7 and 13.9 complete and their automated suites passing. Story numbers are identifiers, not a requirement to execute 13.9 after this release-validation story.
 

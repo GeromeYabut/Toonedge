@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-28
 
-**Status:** Approved overall; Reader same-pinch direction approved on 2026-10-06, with detailed sticky-baseline design and proposed tuning awaiting user review
+**Status:** Approved overall; detailed Reader sticky-baseline design approved on 2026-10-06, with prototype tuning subject to usability validation
 
 **Decision owner:** Product/engineering review
 
@@ -61,7 +61,7 @@ Protected, authenticated, paywalled, challenged, browser-only, DRM/canvas/blob, 
 | Reader loading | Per-panel lazy loader, cache-first read, retry, metadata-sized placeholders, progress only after successful load | Coordinate the chapter as one bounded pipeline, prefetch ahead, decode off the main actor, cancel stale work, and retain page-local failure |
 | Detection/browser | High auto-open, medium CTA, low remains in Browser, profile and challenge hard blocks, browser-owned Reader presentation | Represent automatic/recommended/manual/unavailable as an explicit detector output; expose a secondary manual action only for viable `45...54` results |
 | Search | URL/query classification, clipboard/history/site suggestions, explicit web-search action | Add a lightweight local Library projection, deterministic ranking, and a typed native Series Detail destination |
-| Reader interaction | Native vertical long strip, fit modes, spacing, canvas, brightness, tap-to-toggle chrome | Add persistent session-local zoom with a sticky `1x` baseline and deliberate same-pinch breakthrough; proposed `0.75x...3x` tuning awaits review |
+| Reader interaction | Native vertical long strip, fit modes, spacing, canvas, brightness, tap-to-toggle chrome | Add persistent session-local zoom with a sticky `1x` baseline and deliberate same-pinch breakthrough; approved prototype `0.75x...3x` tuning requires usability validation |
 | Library | Lifecycle segments, comfortable/compact/list density, local snapshots, native Series Detail routing | Add a pure collection query for sort/direction/source filters plus locally persisted view preferences |
 | Search history | Existing `StoredSearchHistory`, record/update, recent read, suggestions | Add delete-one and clear-all repository operations, immediate Search refresh, and confirmed Settings action |
 
@@ -293,9 +293,9 @@ Empty query behavior remains limited to the current restrained suggestions and h
 
 ### 6.4 Persistent Reader zoom with a sticky fitted-size baseline
 
-The 2026-10-06 same-pinch interaction supersedes the original hard `1x` minimum and the assumption that a lazy-strip transform was production-validated. The detailed replacement is [Story 13.4 Sticky Baseline Reader Zoom Design](2026-10-06-story-13.4-sticky-baseline-zoom-design.md); its proposed floor and tuning await user review.
+The 2026-10-06 same-pinch interaction supersedes the original hard `1x` minimum and the assumption that a lazy-strip transform was production-validated. The detailed replacement is [Story 13.4 Sticky Baseline Reader Zoom Design](2026-10-06-story-13.4-sticky-baseline-zoom-design.md); its prototype floor and tuning were approved on 2026-10-06 and still require usability validation.
 
-Pinch zoom stays at the chosen scale after release. Pinching inward near the normal fitted size snaps to exactly `1x`; deliberate further contraction crosses the resistance in that same gesture. Proposed prototype range is `0.75x...3x`. Below-baseline zoom persists, but cannot induce eager whole-chapter loading.
+Pinch zoom stays at the chosen scale after release. Pinching inward near the normal fitted size snaps to exactly `1x`; deliberate further contraction crosses the resistance in that same gesture. Approved prototype range is `0.75x...3x`. Below-baseline zoom persists, but cannot induce eager whole-chapter loading.
 
 Keep the interaction policy pure, presentation geometry separate, one chapter-scroll owner, and one existing image pipeline. Do not nest competing scroll owners or select the unapproved native candidate as production architecture. The first slice is a deterministic detent policy with tests; rendering acceptance remains a separate gate.
 
