@@ -1638,7 +1638,7 @@ Strengthen ToonEdge's core browser-to-reader and local-library loop with bounded
 - Story 13.1: [Reader continuity and bounded prefetch](superpowers/plans/2026-09-28-story-13.1-reader-continuity-prefetch.md)
 - Story 13.2: [Guarded manual Clean Mode](superpowers/plans/2026-09-28-story-13.2-guarded-manual-clean-mode.md)
 - Story 13.3: [Saved-Library search](superpowers/plans/2026-09-28-story-13.3-saved-library-search.md)
-- Story 13.4: [Reader zoom](superpowers/plans/2026-09-28-story-13.4-reader-zoom.md)
+- Story 13.4: [Reader zoom](superpowers/plans/2026-10-06-story-13.4-sticky-baseline-policy.md)
 - Story 13.5: [Library sorting](superpowers/plans/2026-10-04-story-13.5-library-sorting.md); the [combined plan](superpowers/plans/2026-09-28-story-13.5-library-sort-filter.md) is superseded and must not be executed
 - Story 13.6: [Search-history controls](superpowers/plans/2026-09-28-story-13.6-search-history-controls.md)
 - Story 13.7: [Generic compatibility matrix](superpowers/plans/2026-09-28-story-13.7-generic-compatibility-matrix.md)
