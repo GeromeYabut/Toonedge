@@ -1,6 +1,6 @@
 # Reader baseline hardening verification
 
-The cache optimization and Reader test harness repair passed three consecutive default-parallel full package runs, each with 645 tests, and generic iOS Simulator compilation. Production Reader behavior, schemas and public interfaces are unchanged. Both task reviews approved spec compliance and code quality without findings; whole-branch review is pending.
+The cache optimization and Reader test harness repair passed three consecutive default-parallel full package runs, each with 645 tests, and generic iOS Simulator compilation. Production Reader behavior, schemas and public interfaces are unchanged. Both task reviews and the final whole-branch review approved the repair without blocking findings.
 
 ## Scope and cause
 
@@ -63,6 +63,6 @@ The production diff is one in-memory lookup return in `SwiftDataLibraryRepositor
 
 ## Review and delivery
 
-Cache task commit: `dd3b8a0`. Harness task commit: `5d4bcec`. Independent task reviews approved both spec compliance and code quality with no findings. Root directly verified their historical RED and command-status qualifications; whole-branch gates are recorded above. The existing AppIntents build warning is a non-blocking follow-up outside this repair.
+Cache task commit: `dd3b8a0`. Harness task commit: `5d4bcec`. Independent task reviews approved both spec compliance and code quality with no findings. Root directly verified their historical RED and command-status qualifications; whole-branch gates are recorded above. Final whole-branch review on October 7 approved the code as technically ready to merge with no findings. The existing AppIntents build warning remains a non-blocking follow-up outside this repair. Technical approval does not grant delivery authorization.
 
 The branch remains local. No push, PR, merge, remote branch deletion or renewed native zoom experiment occurred. Three passing full runs support baseline stability but cannot prove absence of every scheduling-related failure. Zoom remains paused pending the separate next step.

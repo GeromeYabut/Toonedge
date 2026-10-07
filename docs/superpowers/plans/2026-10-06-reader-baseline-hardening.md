@@ -39,7 +39,7 @@ Tasks produce separate local commits and independent spec/quality reviews. Root 
 
 **Interfaces:** Existing `recordCacheMetadata`, `removeCacheMetadata`, `cacheMetadataEntries` and `downloadSummary`; no new production API.
 
-- [ ] Add this characterization test before the optimization:
+- [x] Add this characterization test before the optimization:
 
 ```swift
 @MainActor
@@ -67,19 +67,19 @@ Tasks produce separate local commits and independent spec/quality reviews. Root 
 }
 ```
 
-- [ ] Run `--filter 'keyedCacheLookup|largeCacheSummary'` before the optimization. These characterize unchanged semantics, so a pass is expected; do not claim a behavioral RED. Run this structural complexity guard, expected exit 1 before the fix:
+- [x] Run `--filter 'keyedCacheLookup|largeCacheSummary'` before the optimization. These characterize unchanged semantics, so a pass is expected; do not claim a behavioral RED. Run this structural complexity guard, expected exit 1 before the fix:
 
 ```sh
 ruby -e 's=File.read(ARGV[0]); m=s.split("private func fetchCacheEntry(sourceURLString:",2).last.split("private func cacheRetentionState",2).first; abort "single cache lookup still scans sorted entries" unless m.include?("return cacheEntryStore[sourceURLString]") && !m.include?("fetchCacheEntries()"); puts "keyed cache lookup guard passed"' app/Sources/ToonEdgeAppCore/Core/Persistence/Repositories/SwiftDataLibraryRepository.swift
 ```
 
-- [ ] Change only the in-memory return:
+- [x] Change only the in-memory return:
 
 ```swift
 return cacheEntryStore[sourceURLString]
 ```
 
-- [ ] Re-run the structural guard, expected exit 0, and `--filter 'CacheMetadataTests|keyedCacheLookup'`, expected all pass. Record the existing 1,000-entry test duration as diagnostic context, not a latency assertion. Root commits the two files with `fix: use keyed in-memory cache lookups`, then obtains task review.
+- [x] Re-run the structural guard, expected exit 0, and `--filter 'CacheMetadataTests|keyedCacheLookup'`, expected all pass. Record the existing 1,000-entry test duration as diagnostic context, not a latency assertion. Root commits the two files with `fix: use keyed in-memory cache lookups`, then obtains task review.
 
 ### Task 2: Bounded prerequisites and owned fixture cleanup
 
@@ -90,7 +90,7 @@ return cacheEntryStore[sourceURLString]
 
 **Interfaces:** `waitForReaderTestCondition(_:timeout:isolation:condition:) async throws`; test-only `ReaderTestWaitError.timedOut(String)`. Private test fixtures gain terminal teardown that rejects late work. No production hooks.
 
-- [ ] Add the scheduled readiness regression to the existing test file only:
+- [x] Add the scheduled readiness regression to the existing test file only:
 
 ```swift
 @Test @MainActor func pipelineStateWaitAllowsScheduledWorkBeyondOldFixtureDeadline() async throws {
@@ -110,9 +110,9 @@ return cacheEntryStore[sourceURLString]
 }
 ```
 
-- [ ] Run `--filter pipelineStateWaitAllowsScheduledWorkBeyondOldFixtureDeadline`; expected exit 1 with the original state/ready assertions failing before the scheduled release. Keep this evidence distinct from missing-symbol compilation errors.
+- [x] Run `--filter pipelineStateWaitAllowsScheduledWorkBeyondOldFixtureDeadline`; expected exit 1 with the original state/ready assertions failing before the scheduled release. Keep this evidence distinct from missing-symbol compilation errors.
 
-- [ ] Add waiter tests before the helper: immediate success at zero timeout, timeout with contextual error and dependent action not executed, cancellation throwing `CancellationError`. For example:
+- [x] Add waiter tests before the helper: immediate success at zero timeout, timeout with contextual error and dependent action not executed, cancellation throwing `CancellationError`. For example:
 
 ```swift
 @Test func readerTestWaitTimeoutStopsDependentActions() async throws {
@@ -128,7 +128,7 @@ return cacheEntryStore[sourceURLString]
 }
 ```
 
-- [ ] Implement the helper after RED, preserving caller isolation:
+- [x] Implement the helper after RED, preserving caller isolation:
 
 ```swift
 import Foundation
@@ -151,9 +151,9 @@ func waitForReaderTestCondition(
 
 Replace each existing loop with `try await waitForReaderTestCondition(description) { predicate }`, retaining its final original `#expect`. The six predicates are `requests.count >= count`, `requestedURLs.count >= count`, `requestCount >= count`, `cancellationCount >= count`, `concurrentRequests == 0`, and the main-actor `condition()` respectively. Use descriptions identifying HTTP requests, retry requests, asset requests, asset cancellations, active requests and pipeline state.
 
-- [ ] Before implementing cleanup, add a real-pipeline regression that injects `ReaderTestWaitError.timedOut` after a suspended request begins. The test must verify the same error reaches the caller and all owned work drains. Also exercise terminal cleanup before a queued load starts, repeated cleanup, and cleanup while the retry HTTP continuation is suspended. Observe RED before adding terminal fixture behavior. Missing-helper compilation is API RED; the behavioral RED must use an executable regression with pending work still active or late work incorrectly admitted.
+- [x] Before implementing cleanup, add a real-pipeline regression that injects `ReaderTestWaitError.timedOut` after a suspended request begins. The test must verify the same error reaches the caller and all owned work drains. Also exercise terminal cleanup before a queued load starts, repeated cleanup, and cleanup while the retry HTTP continuation is suspended. Observe RED before adding terminal fixture behavior. Missing-helper compilation is API RED; the behavioral RED must use an executable regression with pending work still active or late work incorrectly admitted.
 
-- [ ] Add a private cleanup boundary to the pipeline test file:
+- [x] Add a private cleanup boundary to the pipeline test file:
 
 The failure-path regression must preserve this contract:
 
@@ -198,16 +198,16 @@ For executable cleanup RED, temporarily use the old failure behavior in the test
 
 Wrap the work after construction in each suspended-loader pipeline test and the retry-gate pipeline test using this boundary. Keep original body actions/assertions in order, including explicit release of intentionally cancelled fetches. For suspended loaders the cleanup closure is `await loader.finish()`. For retry gates it is `await http.finish()`. Ensure cleanup waits remain bounded under task cancellation; if cancellation would cause immediate busy polling in the existing production drain helper, run the test-only cleanup in a fresh owned task and await it.
 
-- [ ] Add terminal fixture state. In `SuspendedReaderAssetLoader`, `finish()` sets `isFinished = true`, removes all pending continuations, and resumes them throwing `CancellationError`. `load` rejects `isFinished` before incrementing counters or suspending. Removing continuations before resuming makes repeated cleanup safe. In `RetryGateReaderHTTPClient`, `finish()` sets its terminal state and releases the pending second attempt; future requests reject terminal state, and resumed work checks cancellation/terminal state before returning. Keep ordinary `complete`, `completeAll`, `fail`, and `releaseSecondAttempt` semantics unchanged for the existing test bodies.
+- [x] Add terminal fixture state. In `SuspendedReaderAssetLoader`, `finish()` sets `isFinished = true`, removes all pending continuations, and resumes them throwing `CancellationError`. `load` rejects `isFinished` before incrementing counters or suspending. Removing continuations before resuming makes repeated cleanup safe. In `RetryGateReaderHTTPClient`, `finish()` sets its terminal state and releases the pending second attempt; future requests reject terminal state, and resumed work checks cancellation/terminal state before returning. Keep ordinary `complete`, `completeAll`, `fail`, and `releaseSecondAttempt` semantics unchanged for the existing test bodies.
 
-- [ ] Apply the same ownership discipline to the two tests owning standalone load/decode tasks. On failure, cancel and await the owned task; release a decoder return gate before awaiting a task that may be suspended there. A decoder gate release must be sticky if cleanup occurs before its wait is registered, preventing late suspension. Use a shared test-only cleanup boundary rather than duplicate error-handling blocks. Add a regression that forces the early-release path. Await the scheduled readiness release task on both paths.
+- [x] Apply the same ownership discipline to the two tests owning standalone load/decode tasks. On failure, cancel and await the owned task; release a decoder return gate before awaiting a task that may be suspended there. A decoder gate release must be sticky if cleanup occurs before its wait is registered, preventing late suspension. Use a shared test-only cleanup boundary rather than duplicate error-handling blocks. Add a regression that forces the early-release path. Await the scheduled readiness release task on both paths.
 
-- [ ] Run `--filter 'ReaderPagePipelineTests|ReaderTestConditionWaitTests'`, expected all pass. Inspect original assertions and production Reader source diff for preservation. Root commits test-only changes with `fix: bound reader test prerequisites and clean up owned work`, then obtains task review.
+- [x] Run `--filter 'ReaderPagePipelineTests|ReaderTestConditionWaitTests'`, expected all pass. Inspect original assertions and production Reader source diff for preservation. Root commits test-only changes with `fix: bound reader test prerequisites and clean up owned work`, then obtains task review.
 
 ## Whole branch gates
 
-- [ ] Run three predeclared consecutive default-parallel full package runs using the common command. Any failing run stops acceptance and returns to diagnosis. Do not skip DOM/cache tests or keep retrying for a green run.
-- [ ] Run the generic simulator build:
+- [x] Run three predeclared consecutive default-parallel full package runs using the common command. Any failing run stops acceptance and returns to diagnosis. Do not skip DOM/cache tests or keep retrying for a green run.
+- [x] Run the generic simulator build:
 
 ```sh
 xcodebuild -project app/ToonEdge.xcodeproj -scheme ToonEdge -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath '/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/DerivedData/fix-reader-baseline-hardening' build CODE_SIGNING_ALLOWED=NO
@@ -216,5 +216,5 @@ git diff --check
 
 Expected: exit 0 and `BUILD SUCCEEDED`; report warnings exactly. Compilation does not certify simulator UI behavior. If scope changes, reassess device/UI gates before claiming completion.
 
-- [ ] Root saves sanitized receipts to `docs/qa_evidence/2026-10-06-reader-baseline-hardening.md`, records no schema/API/UI changes, and checks logs for credentials or sensitive URLs before retention.
-- [ ] Dispatch an independent whole-branch reviewer over the original base to final HEAD, with this plan, approved spec, task receipts and minor findings. Resolve all blocking findings, re-run covering tests after fixes and the full declared gates if verification no longer covers final source. Keep the branch local pending explicit delivery authority.
+- [x] Root saves sanitized receipts to `docs/qa_evidence/2026-10-06-reader-baseline-hardening.md`, records no schema/API/UI changes, and checks logs for credentials or sensitive URLs before retention.
+- [x] Dispatch an independent whole-branch reviewer over the original base to final HEAD, with this plan, approved spec, task receipts and minor findings. Resolve all blocking findings, re-run covering tests after fixes and the full declared gates if verification no longer covers final source. Keep the branch local pending explicit delivery authority.
