@@ -550,6 +550,12 @@ Medium-confidence entry:
 - settings
 - view original page
 
+### 10.5 Reader zoom policy and reconciliation
+
+Story 13.4 uses a pure transient interaction policy for persistent scale, sticky fitted-size baseline, and deliberate same-pinch breakthrough. Presentation applies policy output; progress and layout reconciliation remain separate responsibilities. No zoom persistence or schema change is required.
+
+Exactly one chapter-scroll owner and one existing image pipeline are permitted. Progress permission depends on idle, measured baseline reconciliation, not scale alone. Gate asynchronous readiness and repository effects in the feature layer. Do not select a production rendering mechanism or copy the unapproved research host merely to implement the new gesture. See [the revised design](superpowers/specs/2026-10-06-story-13.4-sticky-baseline-zoom-design.md).
+
 ## 11. Persistence Architecture
 
 Series-level reading metadata must be persisted and queryable to support segmented Library views, recent sorting, progress visualization, completion states and update badges

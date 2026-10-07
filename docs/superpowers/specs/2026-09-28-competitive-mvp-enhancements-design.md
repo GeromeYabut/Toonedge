@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-28
 
-**Status:** Approved; amended with capability-based validation stories
+**Status:** Approved overall; detailed Reader sticky-baseline design approved on 2026-10-06, with prototype tuning subject to usability validation
 
 **Decision owner:** Product/engineering review
 
@@ -61,7 +61,7 @@ Protected, authenticated, paywalled, challenged, browser-only, DRM/canvas/blob, 
 | Reader loading | Per-panel lazy loader, cache-first read, retry, metadata-sized placeholders, progress only after successful load | Coordinate the chapter as one bounded pipeline, prefetch ahead, decode off the main actor, cancel stale work, and retain page-local failure |
 | Detection/browser | High auto-open, medium CTA, low remains in Browser, profile and challenge hard blocks, browser-owned Reader presentation | Represent automatic/recommended/manual/unavailable as an explicit detector output; expose a secondary manual action only for viable `45...54` results |
 | Search | URL/query classification, clipboard/history/site suggestions, explicit web-search action | Add a lightweight local Library projection, deterministic ranking, and a typed native Series Detail destination |
-| Reader interaction | Native vertical long strip, fit modes, spacing, canvas, brightness, tap-to-toggle chrome | Add transient `1x...3x` pinch/pan and double-tap behavior without changing the content or progress models |
+| Reader interaction | Native vertical long strip, fit modes, spacing, canvas, brightness, tap-to-toggle chrome | Add persistent session-local zoom with a sticky `1x` baseline and deliberate same-pinch breakthrough; approved prototype `0.75x...3x` tuning requires usability validation |
 | Library | Lifecycle segments, comfortable/compact/list density, local snapshots, native Series Detail routing | Add a pure collection query for sort/direction/source filters plus locally persisted view preferences |
 | Search history | Existing `StoredSearchHistory`, record/update, recent read, suggestions | Add delete-one and clear-all repository operations, immediate Search refresh, and confirmed Settings action |
 
@@ -291,44 +291,17 @@ Empty query behavior remains limited to the current restrained suggestions and h
 - A removed series selected from a stale result attempts the normal local route; if no detail exists, Library shows its existing recoverable state rather than opening a web search.
 - Search-history recording applies only to browser inputs. Opening a saved Library result does not create a fake web-history row.
 
-### 6.4 Bounded pinch zoom in the long-strip Reader
+### 6.4 Persistent Reader zoom with a sticky fitted-size baseline
 
-#### Chosen approach
+The 2026-10-06 same-pinch interaction supersedes the original hard `1x` minimum and the assumption that a lazy-strip transform was production-validated. The detailed replacement is [Story 13.4 Sticky Baseline Reader Zoom Design](2026-10-06-story-13.4-sticky-baseline-zoom-design.md); its prototype floor and tuning were approved on 2026-10-06 and still require usability validation.
 
-Keep the existing SwiftUI `ScrollView` and `LazyVStack` as the sole vertical-scroll owner. Add a `ReaderZoomState` and a focused `ZoomableReaderContent` modifier around the rendered strip rather than nesting a second `UIScrollView` or replacing the Reader with a nonlazy hosted stack.
+Pinch zoom stays at the chosen scale after release. Pinching inward near the normal fitted size snaps to exactly `1x`; deliberate further contraction crosses the resistance in that same gesture. Approved prototype range is `0.75x...3x`. Below-baseline zoom persists, but cannot induce eager whole-chapter loading.
 
-This choice preserves lazy page creation, progress visibility callbacks, stable scroll restoration, and the current reader chrome. A full UIKit collection/zoom rewrite would be disproportionate to the MVP interaction.
+Keep the interaction policy pure, presentation geometry separate, one chapter-scroll owner, and one existing image pipeline. Do not nest competing scroll owners or select the unapproved native candidate as production architecture. The first slice is a deterministic detent policy with tests; rendering acceptance remains a separate gate.
 
-#### State model
+During pinch, detent hold, off-baseline presentation, or pending reconciliation, freeze chapter progress and ordinary scrolling. Gate asynchronous readiness/repository effects, not only view callbacks. Restore the frozen semantic reading anchor and measure current geometry before idle `1x` resumes normal reading. Chrome stays fixed; double tap and Reset return any off-baseline view to normal. Accessible enlargement/shrink actions and VoiceOver focus remain independent of progress permission. Reduce Motion removes nonessential animation.
 
-`ReaderZoomState` owns only transient interaction state:
-
-- committed scale and in-progress magnification;
-- gesture focal anchor;
-- committed and in-progress translation;
-- viewport and rendered-content geometry used for clamping.
-
-Scale is clamped to `1x...3x`. Translation is clamped so content cannot be permanently moved beyond the viewport. The model is pure and unit-testable.
-
-#### Gesture behavior
-
-- At `1x`, the existing vertical ScrollView remains enabled and owns drag gestures.
-- A magnify gesture uses its start anchor to keep the focal area under the user's fingers.
-- Above `1x`, normal chapter scrolling is temporarily disabled and drag pans the scaled content in both axes.
-- Returning to `1x` zeroes translation and immediately restores vertical scrolling at the prior chapter position.
-- A spatial double tap at `1x` zooms to `2x` around the tap location.
-- A double tap at any zoomed scale returns to `1x`.
-- The single-tap chrome gesture is made mutually exclusive with double tap so one double tap does not toggle chrome twice.
-- Changing `session.id`, navigating to an adjacent chapter, or dismissing Reader resets zoom.
-
-Zoom applies to the rendered strip only. Reader chrome remains fixed and usable. Canvas, page order, placeholder aspect ratios, settings, and progress data are unchanged.
-
-#### Accessibility and reduced motion
-
-- When zoom is above `1x`, chrome exposes an accessibility-labeled `Reset Zoom` action.
-- VoiceOver users do not need to perform a pinch to recover the default view.
-- Reset animation is disabled under Reduce Motion.
-- Zoom state changes do not post reading progress or settings writes.
+Reviewed research foundations are reusable evidence, not native acceptance. Native anchoring, ordered deferred geometry, loading bounds, actual VoiceOver/Reduce Motion, and the existing container-count conflict remain mandatory. The iOS 17 runtime waiver does not waive deployment compatibility or the two dedicated current-runtime iPhone gates. iPad viewport considerations do not change the iPhone-only target or approve tablet reading modes.
 
 ### 6.5 Operational Library sorting and source filtering
 
@@ -616,7 +589,7 @@ Rejected for MVP. A lightweight projection loaded once gives immediate local ran
 
 ### Wrap the existing long strip in a second zooming `UIScrollView`
 
-Rejected. Nested scroll ownership creates gesture conflicts and risks defeating `LazyVStack` behavior. The proposed transform keeps one vertical-scroll owner.
+Rejected. Nested scroll ownership creates gesture conflicts and risks defeating lazy behavior. The original transform did not establish native anchor acceptance; the 2026-10-06 revision retains the single-owner requirement without selecting an unapproved production mechanism.
 
 ### Sort/filter in the repository
 
@@ -634,7 +607,7 @@ Approval is requested for the following implementation decisions:
 2. Use a chapter-scoped actor with three-operation concurrency and a default current/two-ahead/one-behind working set.
 3. Keep network-prefetched images memory-scoped rather than treating them as explicit offline downloads.
 4. Load a lightweight Library search projection once per Search presentation and rank it locally.
-5. Implement zoom as a transient transform around the existing lazy strip, with vertical scroll paused only while zoomed.
+5. Implement a pure same-pinch sticky-baseline policy first; select a production rendering mechanism only after measured native anchoring, bounded loading, progress isolation, and accessibility validation.
 6. Apply Library sort/filter in a pure snapshot query and persist only the presentation preferences.
 7. Limit history clearing strictly to `StoredSearchHistory`.
 8. Validate best-effort compatibility by rendering pattern; keep named-domain observations internal and out of product claims.
