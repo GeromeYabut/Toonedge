@@ -155,6 +155,31 @@ Replace each existing loop with `try await waitForReaderTestCondition(descriptio
 
 - [ ] Add a private cleanup boundary to the pipeline test file:
 
+The failure-path regression must preserve this contract:
+
+```swift
+@Test @MainActor func readerPipelineCleanupPreservesFailureAndDrainsPendingWork() async throws {
+    let loader = SuspendedReaderAssetLoader()
+    let pipeline = ReaderPagePipeline(session: .pipelineFixture(pageCount: 1), assetLoader: loader)
+    let injected = ReaderTestWaitError.timedOut("injected prerequisite")
+    do {
+        try await withReaderPipelineCleanup(pipeline: pipeline, cleanup: { await loader.finish() }) {
+            pipeline.updateVisibleIndex(0)
+            try await loader.waitForRequestCount(1)
+            throw injected
+        }
+        Issue.record("Expected the prerequisite failure")
+    } catch let error as ReaderTestWaitError {
+        #expect(error == injected)
+    }
+    #expect(await pipeline.waitForWorkToDrain())
+    await loader.finish()
+    try await loader.waitForNoActiveRequests()
+}
+```
+
+For executable cleanup RED, temporarily use the old failure behavior in the test boundary: `try await body()` without teardown. After the drain expectation fails, manually cancel and release pending work in the RED test so the run exits without leaking continuations. In GREEN remove this emergency-only RED teardown once the boundary owns cleanup. Keep the error and drain assertions identical. This is test scaffolding, not production implementation or a replacement for behavioral RED.
+
 ```swift
 @MainActor private func withReaderPipelineCleanup(
     pipeline: ReaderPagePipeline,
