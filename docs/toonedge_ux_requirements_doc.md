@@ -370,6 +370,20 @@ Provide the cleanest possible mobile reading experience for extracted chapter co
 - settings entry point
 - explicit “View Original Page” action
 
+## Sticky baseline zoom
+
+The same-pinch direction is approved; the proposed lower bound and detailed contract remain under review in [Story 13.4 Sticky Baseline Reader Zoom Design](superpowers/specs/2026-10-06-story-13.4-sticky-baseline-zoom-design.md).
+
+- Pinch enlargement remains after release; it is not a temporary hold-to-inspect effect.
+- 100 percent means the current normal fitted reading size, not source pixel size or progress.
+- Inward pinch snaps to exact `1x` near baseline. Deliberate further contraction in that same pinch crosses the resistance; a second gesture is not required.
+- Proposed prototype tuning: `0.75x...3x`, downward snap entry at `1.03x`, and an additional inward ratio of `0.88` measured only after engagement. A first overshooting sample cannot immediately cross the stop. Thresholds require usability validation.
+- The proposed below-baseline view persists after release. Reset and off-baseline double tap restore `1x` at the frozen reading anchor; idle baseline double tap enlarges to `2x`.
+- Suspend chapter scrolling and progress during any pinch, held detent, off-baseline presentation, or unfinished reset/reconciliation. Baseline scrolling resumes only after actual anchor reconciliation and gesture completion.
+- Preserve aspect ratio, page order, canvas, chapter position, and fixed chrome. Consumed zoom gestures do not toggle chrome. Smaller scale cannot trigger eager whole-chapter loading.
+- Reset is accessible above and below baseline; provide non-pinch enlargement/shrink actions. VoiceOver focus is not tied to permission to save progress. Reduce Motion removes nonessential animation without changing behavior.
+- Use viewport-based geometry on future iPad layouts; native iPad support, spreads, and device-family changes are not included in this revision.
+
 ## Required default behavior
 - Reader content is the primary focus.
 - Chrome should be minimal or hidden by default.
