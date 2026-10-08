@@ -19,6 +19,8 @@ public final class UserDefaultsReaderProgressRepository: ReaderProgressStoring, 
     private func key(for sourceURL: URL) -> String { "\(keyPrefix):\(sourceURL.absoluteString)" }
 }
 
+// Foundation contracts are SwiftPM-only until separately authorized Xcode registration and adoption.
+#if SWIFT_PACKAGE
 extension UserDefaultsReaderProgressRepository: ReaderEffectsCommitting {
     @MainActor
     public func commit(_ effect: ReaderReadingEffect,
@@ -33,3 +35,4 @@ extension UserDefaultsReaderProgressRepository: ReaderEffectsCommitting {
         return .committed
     }
 }
+#endif
