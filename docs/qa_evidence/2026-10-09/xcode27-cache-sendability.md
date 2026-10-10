@@ -58,3 +58,9 @@ Result: exit 0; `BUILD SUCCEEDED`, with arm64 and x86_64 compiled. The sole warn
 ## Limits
 
 No runtime persistence validation was run. No remote writes, push, pull request, or merge were performed. Independent task review and final review remained pending when this evidence was prepared.
+
+## Fresh persistence validation dependency
+
+Only after the compatibility gates and independent task and broad final reviews pass may a separate, fresh bounded persistence validation be prepared. That run must retain the approved diagnostic predicates, seven-row seed controls, privacy checks, runtime budget, and stop conditions. Keep the stopped persistence worktrees and their evidence unchanged; do not resume or modify a stopped investigation in place.
+
+The fresh investigation must record the exact compatibility commit it consumes (the implementation commit at this record is `423e86d3054a6150b656fbb5b61c9bb31c608b3e`). If that commit has not been integrated into `main`, resolve the dependency against the requirement for a current-main worktree before execution. Do not silently use an unapproved stacked branch. The compatibility gates do not establish SwiftData identity-comparison safety or authorize production adoption.
