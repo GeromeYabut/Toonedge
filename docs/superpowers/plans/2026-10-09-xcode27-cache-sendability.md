@@ -39,7 +39,7 @@ Controller relays apply_patch, test/build, and local commit commands when the ma
 - Consumes: existing `ChapterAssetCaching` and `ChapterAssetRemoving`, public `init(rootDirectory: URL) throws`, and all existing cache methods unchanged.
 - Produces: internal `CacheFileOperating: Sendable`, internal final `CacheFileOperations`, and internal `init(rootDirectory: URL, fileManager: any CacheFileOperating) throws`.
 
-- [ ] **Step 1: Add real filesystem tests before production edits.** Insert the following before the existing cache tests, reusing their `temporaryDirectory()` helper:
+- [x] **Step 1: Add real filesystem tests before production edits.** Insert the following before the existing cache tests, reusing their `temporaryDirectory()` helper:
 
 ```swift
 @Test func cacheFileOperationsCreatesNestedDirectory() throws {
@@ -88,7 +88,7 @@ Controller relays apply_patch, test/build, and local commit commands when the ma
 }
 ```
 
-- [ ] **Step 2: Run focused RED, retaining complete output.**
+- [x] **Step 2: Run focused RED, retaining complete output.**
 
 ```sh
 set -o pipefail
@@ -97,7 +97,7 @@ swift test --package-path app --scratch-path '/Volumes/Seagate 2TB/ToonEdgeBuild
 
 Expected: nonzero compile failure from the unchanged unavailable FileManager conformance and/or the not-yet-defined wrapper. No runtime assertion is expected at this compatibility RED gate. Report the actual diagnostics; do not describe this as executed failing tests.
 
-- [ ] **Step 3: Implement the approved wrapper and adapt the existing test double.** Change the cache's private `fileManager` type and its internal initializer parameter to `any CacheFileOperating`. The public initializer constructs `CacheFileOperations()`. Replace the old subclass with:
+- [x] **Step 3: Implement the approved wrapper and adapt the existing test double.** Change the cache's private `fileManager` type and its internal initializer parameter to `any CacheFileOperating`. The public initializer constructs `CacheFileOperations()`. Replace the old subclass with:
 
 ```swift
 protocol CacheFileOperating: Sendable {
@@ -158,7 +158,7 @@ private final class PausingChapterDirectoryFileOperations: CacheFileOperating {
 }
 ```
 
-- [ ] **Step 4: Run focused GREEN, then full SwiftPM and Simulator build gates.**
+- [x] **Step 4: Run focused GREEN, then full SwiftPM and Simulator build gates.**
 
 ```sh
 set -o pipefail
@@ -182,7 +182,7 @@ git diff --check
 
 Expected: BUILD SUCCEEDED and clean diff. This is a compile gate, not simulator UI testing. Never mask a nonzero build exit with a later command's success.
 
-- [ ] **Step 5: Record QA, self-review, and commit only this outcome.** Write the QA document using the exact executed commands, source hashes, exit codes, test counts, warning summaries, verified environment, and remaining persistence scope. State whether UI tests were run. Include evidence paths and the fresh-run dependency condition from the approved spec; do not claim persistence safety. The controller verifies the evidence before relaying the local commit:
+- [x] **Step 5: Record QA, self-review, and commit only this outcome.** Write the QA document using the exact executed commands, source hashes, exit codes, test counts, warning summaries, verified environment, and remaining persistence scope. State whether UI tests were run. Include evidence paths and the fresh-run dependency condition from the approved spec; do not claim persistence safety. The controller verifies the evidence before relaying the local commit:
 
 ```sh
 git diff --check
@@ -193,4 +193,4 @@ git rev-parse HEAD
 git status --short --untracked-files=all
 ```
 
-- [ ] **Step 6: Require task and final reviews.** A fresh task reviewer checks spec compliance and code quality from the diff, brief, and evidence report. A separate final reviewer checks the whole branch. Reviewers do not repeat passed test suites. Critical or Important findings receive one focused fix wave and covering-test evidence before re-review. Record Minor findings in the progress ledger. Do not start fresh persistence diagnostics while a compatibility gate or review remains unresolved.
+- [x] **Step 6: Require task and final reviews.** A fresh task reviewer checks spec compliance and code quality from the diff, brief, and evidence report. A separate final reviewer checks the whole branch. Reviewers do not repeat passed test suites. Critical or Important findings receive one focused fix wave and covering-test evidence before re-review. Record Minor findings in the progress ledger. Do not start fresh persistence diagnostics while a compatibility gate or review remains unresolved.
