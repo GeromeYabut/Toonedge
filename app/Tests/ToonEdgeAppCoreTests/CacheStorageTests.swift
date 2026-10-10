@@ -2,6 +2,51 @@ import Foundation
 import Testing
 @testable import ToonEdgeAppCore
 
+@Test func cacheFileOperationsCreatesNestedDirectory() throws {
+    let root = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let files = CacheFileOperations()
+    let nested = root.appendingPathComponent("nested/child", isDirectory: true)
+    #expect(!files.fileExists(atPath: nested.path))
+    try files.createDirectory(at: nested, withIntermediateDirectories: true)
+    #expect(files.fileExists(atPath: nested.path))
+}
+
+@Test func cacheFileOperationsRemovesRealFile() throws {
+    let root = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let files = CacheFileOperations()
+    let file = root.appendingPathComponent("panel.asset")
+    try Data([1, 2, 3]).write(to: file)
+    #expect(files.fileExists(atPath: file.path))
+    try files.removeItem(at: file)
+    #expect(!files.fileExists(atPath: file.path))
+}
+
+@Test func cacheFileOperationsPropagatesCreationErrorAndReleasesLock() throws {
+    let root = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let files = CacheFileOperations()
+    let blocker = root.appendingPathComponent("file")
+    try Data([1]).write(to: blocker)
+    #expect(throws: CocoaError.self) {
+        try files.createDirectory(at: blocker.appendingPathComponent("child"), withIntermediateDirectories: true)
+    }
+    let valid = root.appendingPathComponent("valid", isDirectory: true)
+    try files.createDirectory(at: valid, withIntermediateDirectories: true)
+    #expect(files.fileExists(atPath: valid.path))
+}
+
+@Test func cacheFileOperationsPropagatesRemovalErrorAndReleasesLock() throws {
+    let root = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let files = CacheFileOperations()
+    #expect(throws: CocoaError.self) { try files.removeItem(at: root.appendingPathComponent("missing")) }
+    let valid = root.appendingPathComponent("valid", isDirectory: true)
+    try files.createDirectory(at: valid, withIntermediateDirectories: true)
+    #expect(files.fileExists(atPath: valid.path))
+}
+
 @MainActor
 @Test func persistentDownloadsRemovalDeletesChapterFilesAndRecalculatesStorage() async throws {
     let dependencies = try AppDependencies.persistent(inMemory: true, usesModelContextIO: false)
@@ -99,7 +144,7 @@ import Testing
     let neighborURL = URL(string: "https://fixture.example/chapter-2")!
     let assetURL = URL(string: "https://fixture.example/panel.png")!
     let directory = try FileBackedChapterAssetCache(rootDirectory: root).chapterDirectory(for: sourceURL)
-    let files = PausingChapterDirectoryFileManager(pausedDirectory: directory)
+    let files = PausingChapterDirectoryFileOperations(pausedDirectory: directory)
     let cache = try FileBackedChapterAssetCache(rootDirectory: root, fileManager: files)
     let removalCopy = cache
     try cache.store(Data([2]), for: assetURL, sourceURL: neighborURL)
@@ -134,7 +179,7 @@ import Testing
     let sourceURL = URL(string: "https://fixture.example/chapter-1")!
     let assetURL = URL(string: "https://fixture.example/panel.png")!
     let directory = try FileBackedChapterAssetCache(rootDirectory: root).chapterDirectory(for: sourceURL)
-    let files = PausingChapterDirectoryFileManager(pausedDirectory: directory)
+    let files = PausingChapterDirectoryFileOperations(pausedDirectory: directory)
     let cache = try FileBackedChapterAssetCache(rootDirectory: root, fileManager: files)
     let lookupCopy = cache
     let store = Task.detached { try cache.store(Data([1]), for: assetURL, sourceURL: sourceURL) }
@@ -166,28 +211,28 @@ private func waitForCacheSignal(_ signal: DispatchSemaphore, timeout: Double = 5
     }
 }
 
-private final class PausingChapterDirectoryFileManager: FileManager, @unchecked Sendable {
+private final class PausingChapterDirectoryFileOperations: CacheFileOperating {
     let pausedDirectory: URL
     let storeEntered = DispatchSemaphore(value: 0)
     let resumeStore = DispatchSemaphore(value: 0)
+    private let files = CacheFileOperations()
 
     init(pausedDirectory: URL) {
         self.pausedDirectory = pausedDirectory
-        super.init()
     }
 
-    override func createDirectory(
-        at url: URL, withIntermediateDirectories createIntermediates: Bool,
-        attributes: [FileAttributeKey: Any]? = nil
-    ) throws {
+    func createDirectory(at url: URL, withIntermediateDirectories: Bool) throws {
         if url == pausedDirectory {
             storeEntered.signal()
             guard resumeStore.wait(timeout: .now() + 5) == .success else {
                 throw URLError(.timedOut)
             }
         }
-        try super.createDirectory(at: url, withIntermediateDirectories: createIntermediates, attributes: attributes)
+        try files.createDirectory(at: url, withIntermediateDirectories: withIntermediateDirectories)
     }
+
+    func fileExists(atPath path: String) -> Bool { files.fileExists(atPath: path) }
+    func removeItem(at url: URL) throws { try files.removeItem(at: url) }
 }
 
 private struct FailingAssetRemoval: ChapterAssetRemoving {

@@ -1,6 +1,6 @@
 # Xcode 27 Cache Sendability Design
 
-The cache must compile under Xcode 27 without changing storage behavior or weakening its concurrency guarantees. Use an internal, lock-protected file-operations wrapper instead of declaring a `FileManager` subclass `Sendable`. The user approved this approach; this written specification awaits review before implementation.
+The cache must compile under Xcode 27 without changing storage behavior or weakening its concurrency guarantees. Use an internal, lock-protected file-operations wrapper instead of declaring a `FileManager` subclass `Sendable`. The user approved the approach and subsequently approved this written specification with “looks good!”.
 
 ## Scope and dependencies
 

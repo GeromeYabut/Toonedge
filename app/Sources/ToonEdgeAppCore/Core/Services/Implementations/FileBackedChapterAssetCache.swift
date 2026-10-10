@@ -2,17 +2,17 @@ import Foundation
 
 public struct FileBackedChapterAssetCache: ChapterAssetCaching, ChapterAssetRemoving {
     public let rootDirectory: URL
-    private let fileManager: FileManager & Sendable
+    private let fileManager: any CacheFileOperating
     // A reference shared by value-type copies injected into Reader, retention and removal.
     // A store owns the lock through directory creation AND atomic write, so removal
     // cannot finish while that store can still recreate its chapter directory.
     private let lifecycleLock = NSLock()
 
     public init(rootDirectory: URL) throws {
-        try self.init(rootDirectory: rootDirectory, fileManager: CacheFileManager())
+        try self.init(rootDirectory: rootDirectory, fileManager: CacheFileOperations())
     }
 
-    init(rootDirectory: URL, fileManager: FileManager & Sendable) throws {
+    init(rootDirectory: URL, fileManager: any CacheFileOperating) throws {
         self.rootDirectory = rootDirectory
         self.fileManager = fileManager
         try fileManager.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
@@ -87,5 +87,33 @@ public struct FileBackedChapterAssetCache: ChapterAssetCaching, ChapterAssetRemo
     }
 }
 
-// Only FileManager's thread-safe file operations are used; no delegate or mutable configuration.
-private final class CacheFileManager: FileManager, @unchecked Sendable {}
+protocol CacheFileOperating: Sendable {
+    func createDirectory(at url: URL, withIntermediateDirectories: Bool) throws
+    func fileExists(atPath path: String) -> Bool
+    func removeItem(at url: URL) throws
+}
+
+// The owned manager never escapes or receives a delegate/configuration change.
+// Every manager access is serialized; the cache separately locks whole transactions.
+final class CacheFileOperations: CacheFileOperating, @unchecked Sendable {
+    private let fileManager = FileManager()
+    private let lock = NSLock()
+
+    func createDirectory(at url: URL, withIntermediateDirectories: Bool) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        try fileManager.createDirectory(at: url, withIntermediateDirectories: withIntermediateDirectories)
+    }
+
+    func fileExists(atPath path: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return fileManager.fileExists(atPath: path)
+    }
+
+    func removeItem(at url: URL) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        try fileManager.removeItem(at: url)
+    }
+}
