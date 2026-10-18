@@ -180,6 +180,8 @@ UX goals:
 - make the chapter feel native to the phone
 - make controls discoverable but unobtrusive
 - support uninterrupted long-session reading
+- allow persistent detail inspection with a sticky normal-size zoom baseline; intentional continued pinch may shrink below baseline without losing the reading position
+- consider tablet-sized viewports in Reader interaction design without treating native iPad layouts or additional reading modes as delivered MVP scope
 
 ### Downloads
 Downloads should primarily support reassurance and utility:

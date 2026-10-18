@@ -4,13 +4,15 @@
 **Platform:** iOS, iPhone-first  
 **Document Version:** v1.1
 **Status:** Draft for review
-**Last Revised:** 2026-10-04
+**Last Revised:** 2026-10-06
 
 ### Revision Summary
 
 Version 1.1 incorporates the approved requirements from the 2026-09-28 MangaPin competitive review. It adds six bounded MVP requirements: Reader continuity and prefetch, guarded manual Clean Mode, saved-library search matches, Reader zoom, operational Library sorting/source filtering, and local search-history controls. It also records the approved post-MVP opportunity backlog without promoting those items into the release commitment.
 
 The 2026-10-04 delivery revision separates Library sorting (Story 13.5) from saved-source filtering (Story 13.9). Both remain MVP requirements; source filtering is not a dependency of sorting.
+
+The 2026-10-06 Reader revision approves persistent pinch zoom with a sticky fitted-size baseline that can be crossed by continuing the same inward pinch. The 0.75x prototype lower bound and detailed interaction were approved on 2026-10-06 in [Story 13.4 Sticky Baseline Reader Zoom Design](superpowers/specs/2026-10-06-story-13.4-sticky-baseline-zoom-design.md). This is not a claim of implementation or native iPad support.
 
 ## 1. Overview
 
@@ -214,9 +216,12 @@ Detection features may include:
 - Reuse available cached assets before requesting the network
 - Preserve the selected Reader canvas and page geometry while images load or fail
 - Keep a failed page isolated and retryable without resetting the chapter
-- Support pinch zoom from `1x` through `3x`
-- Support double tap to toggle between `1x` and `2x`, with a zoomed double tap returning to `1x`
-- Allow panning while zoomed and immediately restore normal vertical scrolling at `1x`
+- Support persistent pinch zoom up to `3x`, with the normal fitted size defined as `1x`
+- On inward pinch, snap to exactly `1x` and resist accidental shrinkage; deliberate continued movement in the same pinch may cross below baseline
+- Approved prototype floor is `0.75x`; the chosen smaller view remains until another zoom/reset action or Reader exit/chapter change; tuning requires usability validation
+- Support double tap from idle `1x` to `2x`; double tap at any off-baseline scale returns to `1x`
+- Allow bounded panning off-baseline; restore normal vertical scrolling only after the gesture ends and the original reading position is reconciled at `1x`
+- Freeze reading progress during inspection, detent hold, and reconciliation, including asynchronous image-readiness callbacks
 - Reset transient zoom when changing chapters or leaving Reader
 - Automatically save reading progress
 - Restore the user to their last reading position
@@ -230,7 +235,7 @@ Reader controls must provide:
 - reader settings entry point
 - “View Original Page” action
 - Library action that always opens the Library root
-- an accessible Reset Zoom action while content is zoomed
+- an accessible Reset Zoom action above or below baseline and during pending baseline reconciliation
 
 Reader prefetch must not imply explicit offline retention. Network-prefetched content may remain memory-scoped; user-requested offline retention continues to use the existing download/cache lifecycle.
 
@@ -498,7 +503,7 @@ Entities should include:
 11. Users must always be able to return to the original webpage.
 12. The product stores library data locally and checks saved series for new chapters.
 13. Saved Library results are included in universal search but open native Series Detail rather than Browser.
-14. Reader zoom is transient and bounded to `1x...3x`.
+14. Reader zoom is transient per Reader session, persists after gesture release, and has a sticky `1x` fitted-size baseline that deliberate same-pinch contraction can cross; the approved prototype `0.75x...3x` range requires usability validation.
 15. Reader prefetch is bounded and does not imply an offline download.
 16. Library sort and source filters are presentation preferences and do not mutate collection metadata.
 17. Search-history clearing affects only locally stored search/link history.

@@ -1638,7 +1638,7 @@ Strengthen ToonEdge's core browser-to-reader and local-library loop with bounded
 - Story 13.1: [Reader continuity and bounded prefetch](superpowers/plans/2026-09-28-story-13.1-reader-continuity-prefetch.md)
 - Story 13.2: [Guarded manual Clean Mode](superpowers/plans/2026-09-28-story-13.2-guarded-manual-clean-mode.md)
 - Story 13.3: [Saved-Library search](superpowers/plans/2026-09-28-story-13.3-saved-library-search.md)
-- Story 13.4: [Reader zoom](superpowers/plans/2026-09-28-story-13.4-reader-zoom.md)
+- Story 13.4: [Reader zoom](superpowers/plans/2026-10-06-story-13.4-sticky-baseline-policy.md)
 - Story 13.5: [Library sorting](superpowers/plans/2026-10-04-story-13.5-library-sorting.md); the [combined plan](superpowers/plans/2026-09-28-story-13.5-library-sort-filter.md) is superseded and must not be executed
 - Story 13.6: [Search-history controls](superpowers/plans/2026-09-28-story-13.6-search-history-controls.md)
 - Story 13.7: [Generic compatibility matrix](superpowers/plans/2026-09-28-story-13.7-generic-compatibility-matrix.md)
@@ -1717,9 +1717,11 @@ As a reader searching from Home, I want saved titles to appear alongside web opt
 - Failure to load Library data preserves existing clipboard/history/site/web suggestions.
 - Tests cover ranking, normalization, deduplication, offline results, routing, history isolation, and graceful degradation.
 
-### Story 13.4 — Add bounded pinch and double-tap zoom to Reader
+### Story 13.4 — Add persistent zoom with a sticky fitted-size baseline
 
-**Status:** paused by user; existing Reader zoom work remains preserved. Do not resume or merge it without explicit user authorization.
+**Status:** written sticky-baseline design approved by user on 2026-10-06; pure-policy implementation planned first. Existing research is preserved, not production-approved or merged. No closed timebox is reopened.
+
+**Design:** [Sticky Baseline Reader Zoom](superpowers/specs/2026-10-06-story-13.4-sticky-baseline-zoom-design.md).
 
 **Dependencies:** Story 13.1 pipeline-owned page state and the existing lazy long-strip Reader.
 
@@ -1729,17 +1731,21 @@ As a reader viewing small text or artwork detail, I want to zoom and pan tempora
 
 **Acceptance criteria**
 
-- Reader content supports focal-point pinch zoom from `1x` through `3x`.
-- At `1x`, the existing vertical ScrollView remains the sole drag owner.
-- Above `1x`, chapter scrolling pauses and drag pans the scaled strip within recoverable bounds.
-- Returning to `1x` clears translation and restores vertical scrolling at the prior chapter position.
-- Spatial double tap at `1x` zooms to `2x`; double tap while zoomed resets to `1x`.
+- Reader supports focal-point persistent pinch zoom up to `3x`; releasing does not reset it.
+- Inward pinch snaps to the fitted-size `1x` baseline and resists accidental shrinkage. Deliberate continued contraction crosses below it within the same gesture.
+- Approved prototype defaults are a `0.75x` floor, downward snap entry at `1.03x`, and post-engagement inward ratio `0.88`. The first engagement sample cannot bypass the stop; post-engagement breakthrough is distance-based rather than callback-count-based, and preserves excess contraction beyond the threshold. Discarded engagement overshoot is an explicit sampling trade-off. Release does not reset zoom.
+- Below-baseline zoom persists until another zoom/reset action or Reader exit/chapter change. It does not introduce full-chapter overview loading.
+- The chapter has one scroll owner. During interaction, off-baseline presentation, and reconciliation, progress and ordinary chapter scrolling pause; pan remains bounded.
+- Returning to baseline restores the frozen semantic reading position. Exact `1x` alone cannot release progress or scrolling before gesture completion and measured reconciliation.
+- Spatial double tap at idle `1x` zooms to `2x`; double tap at any off-baseline scale resets to `1x`.
 - Double tap and the existing single-tap chrome gesture do not trigger each other.
 - Zoom resets on session replacement, adjacent-chapter navigation, and Reader dismissal.
 - Zoom does not change progress, page order, aspect ratio, canvas, or stored Reader settings.
-- Chrome provides an accessible Reset Zoom action while zoomed.
+- Chrome provides an accessible Reset Zoom action above/below baseline and while baseline reconciliation is pending, plus non-pinch enlargement/shrink actions.
 - Reduce Motion avoids nonessential reset animation.
-- Unit and UI tests cover bounds, focal anchoring, gesture ownership, reset, chrome coexistence, and chapter replacement.
+- Unit tests cover detent engagement/hold/breakthrough, overshoot, equivalent post-engagement sample subdivision, reversal, cancellation, and scale bounds. Native tests independently prove anchor fidelity within 2 points on both axes with at least one second of settled stability, real image-loading bounds, strict progress isolation, reset, chrome coexistence, chapter replacement, actual VoiceOver, and Reduce Motion. Invalid decoded/hittable or reachability preconditions remain inconclusive.
+- iOS 17 runtime coverage remains waived; deployment/API availability and both dedicated current-runtime iPhone gates remain. Tablet-sized policy/layout tests are not native iPad acceptance.
+- Implement and review the pure-policy slice first. Native host fixes and the unresolved zero-visible container-limit conflict remain separate blockers; no production adoption follows from a policy pass.
 
 ### Story 13.5 — Complete Library sorting
 
@@ -1810,7 +1816,7 @@ As the product team, we want evidence that generic Clean Mode handles diverse re
 
 ### Story 13.8 — Complete live-device generic compatibility release validation
 
-**Status:** planned; release sign-off remains gated by paused Story 13.4, Story 13.6 integration/manual VoiceOver verification, and the documented Reader package-test limitation. Physical-device validation is outstanding.
+**Status:** planned; release sign-off remains gated by incomplete Story 13.4 (written design approved; implementation and native acceptance pending), Story 13.6 integration/manual VoiceOver verification, and the documented Reader package-test limitation. Physical-device validation is outstanding.
 
 **Dependencies:** Stories 13.1–13.7 and 13.9 complete and their automated suites passing. Story numbers are identifiers, not a requirement to execute 13.9 after this release-validation story.
 
