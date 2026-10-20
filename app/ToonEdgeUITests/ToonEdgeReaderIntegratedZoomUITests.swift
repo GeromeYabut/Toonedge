@@ -216,6 +216,37 @@ final class ToonEdgeReaderIntegratedZoomUITests: XCTestCase {
         assertBound(data)
     }
 
+    func testProductionZoomBadgeShowsAppliedCommandsAndFades() {
+        let app = launch()
+        let badge = app.staticTexts["reader.zoom.percentage"]
+        app.buttons["reader.zoom.enlarge"].tap()
+        XCTAssertTrue(badge.waitForExistence(timeout: 0.6), "Production applied zoom badge is missing")
+        XCTAssertEqual(badge.label, "200%")
+        let hidden = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: badge)
+        XCTAssertEqual(XCTWaiter.wait(for: [hidden], timeout: 2), .completed)
+        app.buttons["reader.zoom.reset"].tap()
+        XCTAssertTrue(badge.waitForExistence(timeout: 0.6))
+        XCTAssertEqual(badge.label, "100%")
+        app.buttons["reader.zoom.shrink"].tap()
+        XCTAssertTrue(badge.waitForExistence(timeout: 0.6))
+        XCTAssertEqual(badge.label, "75%")
+    }
+
+    func testProductionZoomBadgeWithHiddenChromeDoesNotConsumeDoubleTap() {
+        let app = launch()
+        let canvas = app.scrollViews["reader.readingSurface"]
+        setChromeForPinchCase(app, visible: false)
+        canvas.doubleTap()
+        let badge = app.staticTexts["reader.zoom.percentage"]
+        XCTAssertTrue(badge.waitForExistence(timeout: 0.6), "Hidden chrome must not suppress zoom feedback")
+        XCTAssertEqual(badge.label, "200%")
+        XCTAssertFalse(app.buttons["reader.zoom.reset"].isHittable)
+        canvas.doubleTap()
+        XCTAssertTrue(badge.waitForExistence(timeout: 0.6))
+        XCTAssertEqual(badge.label, "100%")
+        XCTAssertFalse(app.buttons["reader.zoom.reset"].isHittable)
+    }
+
     private func gateSnapshot(_ app: XCUIApplication) -> [String: Any] {
         guard let raw = app.staticTexts["reader.zoom.restoreGate"].value as? String,
               let bytes = raw.data(using: .utf8),
