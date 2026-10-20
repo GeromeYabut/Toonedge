@@ -1,0 +1,16 @@
+{
+  "status": "runtime-complete-final-review-pending",
+  "planBlob": "b94a31121583458be0a7ed2bfeffbd5b62285d27",
+  "runtimeEndUTC": "2026-10-20T17:43:52.900252+00:00",
+  "cutoffUTC": "2026-10-20T17:48:22.702026+00:00",
+  "packageStarts": 2,
+  "buildStarts": 2,
+  "uiStarts": 3,
+  "deviceCaseExecutions": 8,
+  "passedCaseExecutions": 7,
+  "failedObservationExecutions": 1,
+  "final16e": "one case passed",
+  "proMax": "six cases passed",
+  "authority": "No more source edits, package/build/test commands or reruns; evidence/reviews and approved local metadata-only commit may finish.",
+  "persistence": "parked"
+}

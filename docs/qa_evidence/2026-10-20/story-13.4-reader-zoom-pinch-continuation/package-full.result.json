@@ -1,0 +1,47 @@
+{
+  "label": "package-full",
+  "command": [
+    "/usr/bin/xcrun",
+    "swift",
+    "test",
+    "--package-path",
+    "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app",
+    "--scratch-path",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-story-13.4-reader-zoom-pinch-continuation-20261020a/SwiftPM",
+    "--jobs",
+    "1"
+  ],
+  "startUTC": "2026-10-20T17:30:02.193278+00:00",
+  "endUTC": "2026-10-20T17:30:09.613351+00:00",
+  "exit": 0,
+  "timedout": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/docs/qa_evidence/2026-10-20/story-13.4-reader-zoom-pinch-continuation/package-full.log",
+  "bytes": 287002,
+  "sha256": "562fdc282d3cd32aaac615a132614f3dea37a17416deefae9173b456ec7f64ed",
+  "kind": "package",
+  "casesReserved": 0,
+  "accounting": {
+    "packageStarts": 2,
+    "buildStarts": 0,
+    "uiStarts": 0,
+    "caseStarts": 0,
+    "maxPackageStarts": 2,
+    "maxBuildStarts": 2,
+    "maxUIStarts": 3,
+    "maxCaseStarts": 8,
+    "dispatches": [
+      {
+        "label": "package-focused",
+        "kind": "package",
+        "casesReserved": 0,
+        "startEpoch": 1792517302.702538
+      },
+      {
+        "label": "package-full",
+        "kind": "package",
+        "casesReserved": 0,
+        "startEpoch": 1792517402.193123
+      }
+    ]
+  }
+}

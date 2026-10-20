@@ -14,6 +14,9 @@ public struct ReaderView: View {
     @State private var adjacentAnnouncementPolicy = ReaderAdjacentAnnouncementPolicy()
     @State private var viewportVisibleIndex: Int?
     @State private var reportedViewportSelection: ReaderViewportSelection?
+    #if canImport(UIKit)
+    @State private var zoomRequest: ReaderSurfaceRequest?
+    #endif
     @State private var pageFrames: [Int: CGRect] = [:]
     private let readerService: any ReaderSessionProviding
     private let adjacentLoader: (any AdjacentReaderSessionLoading)?
@@ -182,7 +185,35 @@ public struct ReaderView: View {
         }
     }
 
+    @ViewBuilder
     private var readerStrip: some View {
+        #if canImport(UIKit)
+        ReaderSurfaceHost(session: viewModel.session, pipeline: viewModel.pagePipeline,
+            settings: viewModel.settings, palette: canvasPalette, request: zoomRequest,
+            restoreIndex: {
+                await viewModel.restoreProgress()
+                return viewModel.progress.currentImageIndex
+            }, onSingleTap: { handleInteraction(.readingSurfaceTap) },
+            onBaselineSelection: { selection in
+                guard selection.pipelineID == ObjectIdentifier(viewModel.pagePipeline) else { return }
+                viewportVisibleIndex = selection.loadingAnchorIndex
+                let pipeline = viewModel.pagePipeline
+                Task {
+                    await viewModel.markImageVisible(index: selection.index,
+                        isReady: pipeline.states[selection.index]?.status == .ready,
+                        pipelineID: selection.pipelineID)
+                }
+            })
+            .id(ObjectIdentifier(viewModel.pagePipeline))
+            .accessibilityAction(named: Text("Reset Zoom")) { zoomRequest = ReaderSurfaceRequest(sessionID: viewModel.session.id, pipelineID: ObjectIdentifier(viewModel.pagePipeline), command: .reset) }
+            .accessibilityAction(named: Text("Enlarge")) { zoomRequest = ReaderSurfaceRequest(sessionID: viewModel.session.id, pipelineID: ObjectIdentifier(viewModel.pagePipeline), command: .enlarge) }
+            .accessibilityAction(named: Text("Shrink")) { zoomRequest = ReaderSurfaceRequest(sessionID: viewModel.session.id, pipelineID: ObjectIdentifier(viewModel.pagePipeline), command: .shrink) }
+        #else
+        legacyReaderStrip
+        #endif
+    }
+
+    private var legacyReaderStrip: some View {
         GeometryReader { geometry in
             ScrollViewReader { proxy in
                 ScrollView {
@@ -310,6 +341,11 @@ public struct ReaderView: View {
 
     private var floatingActionRail: some View {
         VStack(spacing: ToonEdgeSpacing.small) {
+            #if canImport(UIKit)
+            ReaderIconButton(systemImage: "arrow.counterclockwise", label: "Reset Zoom", identifier: "reader.zoom.reset") {
+                zoomRequest = ReaderSurfaceRequest(sessionID: viewModel.session.id, pipelineID: ObjectIdentifier(viewModel.pagePipeline), command: .reset)
+            }
+            #endif
             ReaderIconButton(
                 systemImage: "arrow.down.circle",
                 label: "Retain Chapter Offline",
@@ -352,6 +388,23 @@ public struct ReaderView: View {
 
     private var bottomChrome: some View {
         VStack(spacing: ToonEdgeSpacing.medium) {
+            #if DEBUG && canImport(UIKit)
+            if ProcessInfo.processInfo.arguments.contains("-uiTesting"),
+               ProcessInfo.processInfo.arguments.contains("-readerIntegratedZoomFixture") {
+                HStack {
+                    Button("First") { zoomRequest = ReaderSurfaceRequest(sessionID: viewModel.session.id, pipelineID: ObjectIdentifier(viewModel.pagePipeline), command: .first) }
+                        .accessibilityIdentifier("reader.zoom.first")
+                    Button("Middle") { zoomRequest = ReaderSurfaceRequest(sessionID: viewModel.session.id, pipelineID: ObjectIdentifier(viewModel.pagePipeline), command: .middle) }
+                        .accessibilityIdentifier("reader.zoom.middle")
+                    Button("Last") { zoomRequest = ReaderSurfaceRequest(sessionID: viewModel.session.id, pipelineID: ObjectIdentifier(viewModel.pagePipeline), command: .last) }
+                        .accessibilityIdentifier("reader.zoom.last")
+                    Button("Enlarge") { zoomRequest = ReaderSurfaceRequest(sessionID: viewModel.session.id, pipelineID: ObjectIdentifier(viewModel.pagePipeline), command: .enlarge) }
+                        .accessibilityIdentifier("reader.zoom.enlarge")
+                    Button("Shrink") { zoomRequest = ReaderSurfaceRequest(sessionID: viewModel.session.id, pipelineID: ObjectIdentifier(viewModel.pagePipeline), command: .shrink) }
+                        .accessibilityIdentifier("reader.zoom.shrink")
+                }.font(.caption2).frame(minHeight: 44)
+            }
+            #endif
             HStack(spacing: ToonEdgeSpacing.medium) {
                 Button {
                     navigate(.previous)
