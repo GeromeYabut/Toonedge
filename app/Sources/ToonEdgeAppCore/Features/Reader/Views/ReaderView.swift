@@ -25,6 +25,7 @@ public struct ReaderView: View {
     private let dismissAction: (() -> Void)?
     private let viewOriginalPageAction: (() -> Void)?
     private let backAction: (() -> Void)?
+    private let searchAction: (() -> Void)?
     private let adjacentSessionDidChange: ((MockReaderSession) -> Void)?
     private let openAdjacentOriginalPageAction: ((URL) -> Void)?
 
@@ -46,6 +47,7 @@ public struct ReaderView: View {
         backAction: (() -> Void)? = nil,
         adjacentSessionDidChange: ((MockReaderSession) -> Void)? = nil,
         openAdjacentOriginalPageAction: ((URL) -> Void)? = nil,
+        searchAction: (() -> Void)? = nil,
         router: Binding<AppRouter>
     ) {
         var preparedSession = session
@@ -77,6 +79,7 @@ public struct ReaderView: View {
         self.dismissAction = dismissAction
         self.viewOriginalPageAction = viewOriginalPageAction
         self.backAction = backAction
+        self.searchAction = searchAction
         self.adjacentSessionDidChange = adjacentSessionDidChange
         self.openAdjacentOriginalPageAction = openAdjacentOriginalPageAction
         self._router = router
@@ -330,6 +333,11 @@ public struct ReaderView: View {
 
             Spacer(minLength: ToonEdgeSpacing.small)
 
+            if let searchAction {
+                ReaderIconButton(systemImage: "magnifyingglass", label: "Search or enter URL",
+                                 identifier: "reader.search", action: searchAction)
+                    .disabled(viewModel.isSettingsPresented || isSaveStatePickerPresented)
+            }
             ReaderIconButton(systemImage: "books.vertical", label: "Open Library", identifier: "reader.library") {
                 router.openLibraryRoot()
             }
@@ -466,7 +474,8 @@ public struct ReaderView: View {
                 Text(viewModel.progressDisplay)
                     .font(ToonEdgeTypography.caption)
                     .monospacedDigit()
-                    .frame(width: 44, alignment: .trailing)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .frame(minWidth: 44, alignment: .trailing)
                     .accessibilityIdentifier("reader.progress.value")
             }
         }

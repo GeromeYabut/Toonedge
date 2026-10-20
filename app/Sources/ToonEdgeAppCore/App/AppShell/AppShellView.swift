@@ -25,14 +25,14 @@ public struct AppShellView: View {
                 }
                 .tag(AppTab.library)
 
-            DownloadsView(dependencies: dependencies)
+            DownloadsView(dependencies: dependencies, onSearch: { router.presentSearch() })
                 .tabItem {
                     Label(AppTab.downloads.title, systemImage: "arrow.down.circle")
                         .accessibilityIdentifier("tab.downloads")
                 }
                 .tag(AppTab.downloads)
 
-            SettingsView(dependencies: dependencies) {
+            SettingsView(dependencies: dependencies, onSearch: { router.presentSearch() }) {
                 router.selectedTab = .downloads
             }
                 .tabItem {
@@ -42,55 +42,39 @@ public struct AppShellView: View {
                 .tag(AppTab.settings)
         }
         .tint(ToonEdgeColor.accent)
-        .sheet(
-            isPresented: Binding(
-                get: { router.activeSheet == .search },
-                set: { isPresented in
-                    if !isPresented {
-                        router.dismissSheet()
-                    }
-                }
-            )
-        ) {
-            SearchOverlayView(
-                suggestionsProvider: dependencies.searchSuggestionProvider,
-                libraryProvider: dependencies.librarySearchProvider,
-                searchHistoryManager: dependencies.searchHistoryManager,
-                interactionFeedback: dependencies.interactionFeedback,
-                router: $router
-            )
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+        .preferredColorScheme(ToonEdgeAppearancePolicy.default.forcedColorScheme)
+        .universalSearch(isPresented: rootSearchPresentation, dependencies: dependencies) {
+            $0.apply(to: &router)
         }
         .toonEdgeFullScreenCover(
             isPresented: Binding(
-                get: { router.presentedBrowser != nil },
+                get: { router.presentedBrowser != nil || router.presentedReader != nil },
                 set: { isPresented in
                     if !isPresented {
+                        router.dismissReader()
                         router.dismissBrowser()
                     }
                 }
             )
         ) {
-            BrowserView(
-                startPoint: router.presentedBrowser ?? .searchQuery(""),
-                readerLaunchOriginOverride: router.presentedBrowserReaderLaunchOrigin,
-                dependencies: dependencies,
-                router: $router
-            )
+            modalContent
+                .preferredColorScheme(ToonEdgeAppearancePolicy.default.forcedColorScheme)
         }
-        .toonEdgeFullScreenCover(
-            isPresented: Binding(
-                get: { router.presentedReader != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        router.dismissReader()
-                    }
-                }
-            )
-        ) {
+    }
+
+    private var rootSearchPresentation: Binding<Bool> {
+        Binding(
+            get: { router.activeSheet == .search &&
+                router.presentedReader == nil && router.presentedBrowser == nil },
+            set: { if !$0 { router.dismissSheet() } }
+        )
+    }
+
+    @ViewBuilder
+    private var modalContent: some View {
+        if let session = router.presentedReader {
             ReaderView(
-                session: router.presentedReader ?? .sample,
+                session: session,
                 readerService: dependencies.readerService,
                 adjacentLoader: dependencies.adjacentReaderSessionLoader,
                 progressRepository: dependencies.readerProgressRepository,
@@ -102,9 +86,24 @@ public struct AppShellView: View {
                 libraryLifecycleService: dependencies.libraryLifecycleService,
                 settingsManager: dependencies.settingsService,
                 interactionFeedback: dependencies.interactionFeedback,
+                searchAction: { router.presentSearch() },
                 router: $router
             )
-            .id(router.presentedReader?.id)
+            .id(session.id)
+            .universalSearch(
+                isPresented: Binding(
+                    get: { router.activeSheet == .search },
+                    set: { if !$0 { router.dismissSheet() } }
+                ),
+                dependencies: dependencies
+            ) { $0.apply(to: &router) }
+        } else if let startPoint = router.presentedBrowser {
+            BrowserView(
+                startPoint: startPoint,
+                readerLaunchOriginOverride: router.presentedBrowserReaderLaunchOrigin,
+                dependencies: dependencies,
+                router: $router
+            )
         }
     }
 }

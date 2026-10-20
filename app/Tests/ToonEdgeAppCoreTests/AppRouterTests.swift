@@ -248,3 +248,99 @@ import Testing
     #expect(router.pendingLibrarySeriesID == nil)
     #expect(router.pendingLibrarySegment == nil)
 }
+
+@Test func task3BrowserSelectionReplacesPresentedReader() {
+    var router = AppRouter(selectedTab: .downloads, presentedReader: .sample)
+    router.presentSearch()
+    router.presentBrowser(.searchQuery("owned search"))
+    #expect(router.presentedReader == nil)
+    #expect(router.presentedBrowser == .searchQuery("owned search"))
+    #expect(router.selectedTab == .downloads)
+    #expect(router.activeSheet == nil)
+}
+
+@Test func task3LibrarySelectionClearsSearchAndModalHosts() {
+    var router = AppRouter(presentedBrowser: .searchQuery("old"), presentedReader: .sample)
+    let id = UUID()
+    router.presentSearch()
+    router.openLibraryDetail(seriesID: id)
+    #expect(router.activeSheet == nil)
+    #expect(router.presentedBrowser == nil)
+    #expect(router.presentedReader == nil)
+    #expect(router.pendingLibrarySeriesID == id)
+}
+
+@Test func task3SearchCancelPreservesOriginatingRoute() {
+    for tab in AppTab.allCases {
+        let original = AppRouter(selectedTab: tab, presentedReader: .sample,
+            pendingLibrarySeriesID: UUID(), pendingLibrarySegment: .recent)
+        var router = original
+        router.presentSearch()
+        router.dismissSheet()
+        #expect(router == original)
+    }
+}
+
+@MainActor @Test func task3SharedSearchDraftStagesValidSelectionAndRejectsInvalidInput() {
+    let model = SearchOverlayViewModel()
+    var draft = AppRouter(activeSheet: .search)
+    model.query = "https://"
+    model.submit(router: &draft)
+    #expect(draft.activeSheet == .search)
+    #expect(UniversalSearchSelection(draft: draft) == nil)
+    model.query = "owned search"
+    model.submit(router: &draft)
+    #expect(draft.activeSheet == nil)
+    #expect(UniversalSearchSelection(draft: draft) == .browser(.searchQuery("owned search")))
+
+    var origin = AppRouter(selectedTab: .settings, presentedReader: .sample)
+    UniversalSearchSelection(draft: draft)?.apply(to: &origin)
+    #expect(origin.selectedTab == .settings)
+    #expect(origin.presentedReader == nil)
+    #expect(origin.presentedBrowser == .searchQuery("owned search"))
+}
+
+@Test func task3CancelledDraftHasNoSelection() {
+    var draft = AppRouter(activeSheet: .search)
+    draft.dismissSheet()
+    #expect(UniversalSearchSelection(draft: draft) == nil)
+}
+
+@MainActor @Test func task3RepeatedBrowserRequestsLoadAgainAndKeepHistory() throws {
+    var router = AppRouter(presentedBrowser: .searchQuery("owned"))
+    let model = BrowserViewModel(startPoint: .searchQuery("owned"))
+    model.updateNavigation(url: nil, title: "Owned", canGoBack: true, canGoForward: true, isLoading: false)
+    let originalRevision = router.browserRequestRevision
+    UniversalSearchSelection.browser(.searchQuery("owned")).apply(to: &router)
+    let firstRevision = router.browserRequestRevision
+    #expect(firstRevision != originalRevision)
+    #expect(model.openRequestedPage(try #require(router.presentedBrowser)))
+    let firstCommand = try #require(model.pendingCommand)
+
+    UniversalSearchSelection.browser(.searchQuery("owned")).apply(to: &router)
+    #expect(router.browserRequestRevision != firstRevision)
+    #expect(model.openRequestedPage(try #require(router.presentedBrowser)))
+    let secondCommand = try #require(model.pendingCommand)
+    #expect(firstCommand.id != secondCommand.id)
+    #expect(firstCommand.action == secondCommand.action)
+    #expect(model.canGoBack && model.canGoForward)
+}
+
+@MainActor @Test func task3BrowserSearchCommitClearsOwnedReaderAndOldOrigin() throws {
+    let result = BrowserPresentationFixture.mediumConfidence.detectionResult
+    let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString),
+                                readerLaunchOriginOverride: .homeContinueReading)
+    model.handleDetectionResult(result)
+    model.enterCleanModeManually()
+    model.presentPendingReaderInsideBrowser(try #require(model.pendingReaderSession))
+    #expect(model.browserOwnedReaderSession?.launchOrigin == .homeContinueReading)
+    #expect(model.openRequestedPage(.url(result.pageURL.absoluteString)))
+    #expect(model.browserOwnedReaderSession == nil)
+    let command = try #require(model.pendingCommand)
+    #expect(command.action == .loadURL(result.pageURL))
+    model.clearCommand(command)
+    model.handleDetectionResult(result)
+    model.enterCleanModeManually()
+    model.presentPendingReaderInsideBrowser(try #require(model.pendingReaderSession))
+    #expect(model.browserOwnedReaderSession?.launchOrigin == .browser)
+}

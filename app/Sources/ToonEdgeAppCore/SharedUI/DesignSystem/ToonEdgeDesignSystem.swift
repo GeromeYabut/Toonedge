@@ -10,7 +10,7 @@ public enum ToonEdgeAppearance: CaseIterable, Sendable {
 }
 
 public struct ToonEdgeAppearancePolicy: Equatable, Sendable {
-    public var forcedColorScheme: ColorScheme? = nil
+    public var forcedColorScheme: ColorScheme? = .dark
     public var readerCanvasIsIndependent = true
     public static let `default` = Self()
 }
@@ -108,9 +108,9 @@ public struct ToonEdgePaletteValues: Equatable, Sendable {
             )
         case .dark, .darkIncreasedContrast:
             return Self(
-                canvas: increased ? .black : .init(red: 0.05, green: 0.055, blue: 0.075),
-                raised: .init(red: 0.09, green: 0.095, blue: 0.13),
-                panel: .init(red: 0.12, green: 0.125, blue: 0.17),
+                canvas: .black,
+                raised: .init(white: 0.08),
+                panel: .init(white: 0.12),
                 textPrimary: increased ? .white : .init(red: 0.96, green: 0.96, blue: 0.98),
                 textSecondary: .init(white: increased ? 0.86 : 0.72),
                 accent: .init(red: increased ? 0.77 : 0.68, green: 0.55, blue: 1),

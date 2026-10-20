@@ -327,7 +327,22 @@ public extension BrowserWebView {
             case .reload:
                 webView?.reload()
             case .loadURL(let url):
+                #if DEBUG
+                if presentationFixture != nil,
+                   ProcessInfo.processInfo.arguments.contains("-uiTesting"),
+                   ProcessInfo.processInfo.arguments.contains("-sharedSearchFixture") {
+                    webView?.loadSimulatedRequest(URLRequest(url: url), responseHTML: """
+                        <!doctype html><meta name="viewport" content="width=device-width">
+                        <body style="background:#000;color:#fff;font:20px system-ui;padding:24px">
+                        Owned search destination
+                        </body>
+                        """)
+                } else {
+                    webView?.load(URLRequest(url: url))
+                }
+                #else
                 webView?.load(URLRequest(url: url))
+                #endif
             }
 
             viewModel.clearCommand(command)

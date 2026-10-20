@@ -99,13 +99,15 @@ public struct TEActionStyle: ButtonStyle {
     }
 
     private let surface: Surface
+    private let verticalPadding: CGFloat
 
-    public init(surface: Surface = .plain) {
+    public init(surface: Surface = .plain, verticalPadding: CGFloat = ToonEdgeSpacing.small) {
         self.surface = surface
+        self.verticalPadding = verticalPadding
     }
 
     public func makeBody(configuration: Configuration) -> some View {
-        TEActionLabel(surface: surface, isPressed: configuration.isPressed) {
+        TEActionLabel(surface: surface, isPressed: configuration.isPressed, verticalPadding: verticalPadding) {
             configuration.label
         }
     }
@@ -117,6 +119,7 @@ private struct TEActionLabel<Label: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let surface: TEActionStyle.Surface
     let isPressed: Bool
+    var verticalPadding: CGFloat = ToonEdgeSpacing.small
     @ViewBuilder let label: () -> Label
 
     var body: some View {
@@ -124,7 +127,7 @@ private struct TEActionLabel<Label: View>: View {
         label()
             .font(ToonEdgeTypography.body.weight(.semibold))
             .padding(.horizontal, ToonEdgeSpacing.medium)
-            .padding(.vertical, ToonEdgeSpacing.small)
+            .padding(.vertical, verticalPadding)
             .frame(minWidth: TEActionMetrics.minimumHitSize, minHeight: TEActionMetrics.minimumHitSize)
             .foregroundStyle(surface == .filled ? ToonEdgeColor.filledActionForeground : ToonEdgeColor.textPrimary)
             .background(background, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.small))

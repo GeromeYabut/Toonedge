@@ -363,3 +363,66 @@ private struct SearchSuggestionRow: View {
         }
     }
 }
+
+/// The same overlay and dependencies are presented by the visible modal host.
+/// A private draft prevents selection from tearing down its own presenting view.
+private struct UniversalSearchPresenter: ViewModifier {
+    @Binding var isPresented: Bool
+    let dependencies: AppDependencies
+    let commit: (UniversalSearchSelection) -> Void
+    @State private var draft = AppRouter(activeSheet: .search)
+    @State private var pendingSelection: UniversalSearchSelection?
+
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: $isPresented, onDismiss: {
+            let selection = pendingSelection
+            pendingSelection = nil
+            draft = AppRouter(activeSheet: .search)
+            if let selection { commit(selection) }
+        }) {
+            SearchOverlayView(
+                suggestionsProvider: dependencies.searchSuggestionProvider,
+                libraryProvider: dependencies.librarySearchProvider,
+                searchHistoryManager: dependencies.searchHistoryManager,
+                interactionFeedback: dependencies.interactionFeedback,
+                router: Binding(get: { draft }, set: { next in
+                    draft = next
+                    guard next.activeSheet == nil else { return }
+                    pendingSelection = UniversalSearchSelection(draft: next)
+                    isPresented = false
+                })
+            )
+            .preferredColorScheme(ToonEdgeAppearancePolicy.default.forcedColorScheme)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+}
+
+extension View {
+    func universalSearch(
+        isPresented: Binding<Bool>,
+        dependencies: AppDependencies,
+        commit: @escaping (UniversalSearchSelection) -> Void
+    ) -> some View {
+        modifier(UniversalSearchPresenter(
+            isPresented: isPresented, dependencies: dependencies, commit: commit
+        ))
+    }
+}
+
+struct UniversalSearchButton: View {
+    let identifier: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "magnifyingglass")
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Search or enter URL")
+        .accessibilityIdentifier(identifier)
+    }
+}

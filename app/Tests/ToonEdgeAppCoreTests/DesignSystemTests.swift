@@ -5,8 +5,8 @@ import AppKit
 #endif
 @testable import ToonEdgeAppCore
 
-@Test func applicationAppearanceFollowsTheSystem() {
-    #expect(ToonEdgeAppearancePolicy.default.forcedColorScheme == nil)
+@Test func applicationAppearanceDefaultsToDark() {
+    #expect(ToonEdgeAppearancePolicy.default.forcedColorScheme == .dark)
     #expect(ToonEdgeAppearancePolicy.default.readerCanvasIsIndependent)
 }
 
@@ -125,3 +125,8 @@ import AppKit
     }
 }
 #endif
+
+@Test func task3DarkCanvasIsPureBlackInBothContrastModes() {
+    #expect(ToonEdgePaletteValues.resolve(.dark).canvas == .black)
+    #expect(ToonEdgePaletteValues.resolve(.darkIncreasedContrast).canvas == .black)
+}

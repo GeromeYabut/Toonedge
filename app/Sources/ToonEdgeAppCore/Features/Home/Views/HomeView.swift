@@ -20,13 +20,15 @@ public struct HomeView: View {
     public var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.xlarge) {
+                VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
                     ForEach(layout.contentPriority, id: \.self) { section in
                         dashboardSection(section)
                     }
                 }
-                .padding(ToonEdgeSpacing.large)
+                .padding(.horizontal, ToonEdgeSpacing.large)
+                .padding(.vertical, ToonEdgeSpacing.medium)
             }
+            .navigationTitle("Home")
             .task {
                 await reloadSnapshot()
             }
@@ -89,10 +91,9 @@ public struct HomeView: View {
             .padding(.horizontal, layout.horizontalPadding)
             .frame(minHeight: layout.height)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, ToonEdgeSpacing.small)
             .background(ToonEdgeColor.panel, in: RoundedRectangle(cornerRadius: layout.cornerRadius))
         }
-        .buttonStyle(TEActionStyle())
+        .buttonStyle(TEActionStyle(verticalPadding: 0))
         .accessibilityLabel("Search the web or paste a chapter link")
         .accessibilityIdentifier("home.searchEntry")
     }
@@ -346,7 +347,7 @@ struct HomeSearchEntryLayout: Equatable, Sendable {
     var horizontalPadding: CGFloat
 
     init() {
-        self.placeholder = "Search the web or paste a chapter link"
+        self.placeholder = "Search or enter URL"
         self.height = 44
         self.cornerRadius = 10
         self.usesCapsuleShape = false
