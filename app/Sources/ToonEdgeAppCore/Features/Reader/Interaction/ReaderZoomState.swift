@@ -318,9 +318,13 @@ private struct ReaderZoomCore: Sendable {
         committed = nextCommitted
         pinchRollback = nextPinchRollback
         panRollback = nextPanRollback
-        if let activeAnchor, let activeViewport, isPinching {
-            focalPoint = next.geometry.point(for: activeAnchor)
-            focalViewportPoint = project(activeViewport)
+        if isPinching, let activeViewport {
+            let projected = project(activeViewport)
+            // A gap or gutter has no semantic anchor. Rebase through the bounded
+            // remapped presentation so the next sample continues without a jump.
+            focalPoint = activeAnchor.flatMap { next.geometry.point(for: $0) }
+                ?? logicalPoint(at: projected)
+            focalViewportPoint = projected
         } else {
             focalPoint = nil
             focalViewportPoint = nil
