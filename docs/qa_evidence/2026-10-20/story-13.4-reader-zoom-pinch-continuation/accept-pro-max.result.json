@@ -1,0 +1,91 @@
+{
+  "label": "accept-pro-max",
+  "command": [
+    "/usr/bin/xcodebuild",
+    "test-without-building",
+    "-xctestrun",
+    "/private/tmp/toonedge-reader-pinch-products-2.W8NX4y/Products/ToonEdge_ToonEdge_iphonesimulator27.0-arm64.xctestrun",
+    "-destination",
+    "platform=iOS Simulator,arch=arm64,id=29E33EEE-8A11-457F-8F7F-BDF2D44A9FE4",
+    "-derivedDataPath",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-story-13.4-reader-zoom-pinch-continuation-20261020a/DerivedData",
+    "-resultBundlePath",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-story-13.4-reader-zoom-pinch-continuation-20261020a/accept-pro-max.xcresult",
+    "-parallel-testing-enabled",
+    "NO",
+    "-maximum-concurrent-test-simulator-destinations",
+    "1",
+    "-only-testing:ToonEdgeUITests/ToonEdgeReaderIntegratedZoomUITests",
+    "-collect-test-diagnostics",
+    "never",
+    "-test-timeouts-enabled",
+    "YES",
+    "-default-test-execution-time-allowance",
+    "120",
+    "-maximum-test-execution-time-allowance",
+    "150"
+  ],
+  "startUTC": "2026-10-20T17:40:54.825525+00:00",
+  "endUTC": "2026-10-20T17:43:52.900252+00:00",
+  "exit": 0,
+  "timedout": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/docs/qa_evidence/2026-10-20/story-13.4-reader-zoom-pinch-continuation/accept-pro-max.log",
+  "bytes": 44115,
+  "sha256": "e7844f4c069140c1da3d638f87e21464ccc2b637cb1d410b8848cb067c78c868",
+  "kind": "ui",
+  "casesReserved": 6,
+  "accounting": {
+    "packageStarts": 2,
+    "buildStarts": 2,
+    "uiStarts": 3,
+    "caseStarts": 8,
+    "maxPackageStarts": 2,
+    "maxBuildStarts": 2,
+    "maxUIStarts": 3,
+    "maxCaseStarts": 8,
+    "dispatches": [
+      {
+        "label": "package-focused",
+        "kind": "package",
+        "casesReserved": 0,
+        "startEpoch": 1792517302.702538
+      },
+      {
+        "label": "package-full",
+        "kind": "package",
+        "casesReserved": 0,
+        "startEpoch": 1792517402.193123
+      },
+      {
+        "label": "native-build-1",
+        "kind": "build",
+        "casesReserved": 0,
+        "startEpoch": 1792517418.475925
+      },
+      {
+        "label": "observe-16e",
+        "kind": "ui",
+        "casesReserved": 1,
+        "startEpoch": 1792517473.562328
+      },
+      {
+        "label": "native-build-2",
+        "kind": "build",
+        "casesReserved": 0,
+        "startEpoch": 1792517821.061484
+      },
+      {
+        "label": "accept-16e",
+        "kind": "ui",
+        "casesReserved": 1,
+        "startEpoch": 1792517897.295645
+      },
+      {
+        "label": "accept-pro-max",
+        "kind": "ui",
+        "casesReserved": 6,
+        "startEpoch": 1792518054.825296
+      }
+    ]
+  }
+}

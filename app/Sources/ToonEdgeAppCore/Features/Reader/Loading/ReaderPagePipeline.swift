@@ -54,6 +54,22 @@ public final class ReaderPagePipeline: ObservableObject {
         Task { await coordinator.reprioritize(visibleIndex: index, generation: generation) }
     }
 
+    /// Prioritize every visible page, then the existing small prefetch margins.
+    public func updateVisibleIndexes(_ indexes: [Int], loadingAnchorIndex: Int) {
+        guard !isCancelled, imageURLs.indices.contains(loadingAnchorIndex) else { return }
+        let visible = Array(Set(indexes.filter { imageURLs.indices.contains($0) })).sorted()
+        guard !visible.isEmpty else { return }
+        let coordinator = coordinator
+        let generation = generation
+        Task { await coordinator.reprioritize(visibleIndexes: visible,
+            loadingAnchorIndex: loadingAnchorIndex, generation: generation) }
+    }
+
+    #if DEBUG
+    /// Read-only coordinator observation for explicitly enabled owned native tests.
+    func debugPeakActiveLoadCount() async -> Int { await coordinator.observedPeakActiveLoadCount() }
+    #endif
+
     public func retry(index: Int) {
         guard !isCancelled, imageURLs.indices.contains(index) else { return }
         let coordinator = coordinator
@@ -116,9 +132,14 @@ private actor ReaderPageWorkCoordinator {
 
     private var generation: UUID
     private var visibleIndex: Int?
+    private var visibleIndexes: [Int] = []
     private var targetIndexes: [Int] = []
     private var queuedIndexes: [Int] = []
     private var activeByURL: [URL: ActiveWork] = [:]
+    #if DEBUG
+    private var peakActiveLoadCount = 0
+    func observedPeakActiveLoadCount() -> Int { peakActiveLoadCount }
+    #endif
     private var decodedByURL: [URL: ReaderDecodedImage] = [:]
     private var states: [Int: ReaderPageState] = [:]
     private var revision = 0
@@ -146,12 +167,24 @@ private actor ReaderPageWorkCoordinator {
     func reprioritize(visibleIndex: Int, generation: UUID) {
         guard generation == self.generation, imageURLs.indices.contains(visibleIndex) else { return }
         self.visibleIndex = visibleIndex
+        self.visibleIndexes = [visibleIndex]
         setTargets(policy.targetIndexes(current: visibleIndex, pageCount: imageURLs.count))
+    }
+
+    func reprioritize(visibleIndexes: [Int], loadingAnchorIndex: Int, generation: UUID) {
+        guard generation == self.generation, imageURLs.indices.contains(loadingAnchorIndex) else { return }
+        let visible = Array(Set(visibleIndexes.filter { imageURLs.indices.contains($0) })).sorted()
+        guard let first = visible.first, let last = visible.last else { return }
+        self.visibleIndex = loadingAnchorIndex
+        self.visibleIndexes = visible
+        let ahead = policy.targetIndexes(current: last, pageCount: imageURLs.count).filter { $0 > last }
+        let behind = policy.targetIndexes(current: first, pageCount: imageURLs.count).filter { $0 < first }
+        setTargets(visible + ahead + behind)
     }
 
     func reduceToVisibleWork(generation: UUID) {
         guard generation == self.generation, let visibleIndex else { return }
-        setTargets([visibleIndex])
+        setTargets(visibleIndexes.isEmpty ? [visibleIndex] : visibleIndexes)
     }
 
     func retry(index: Int, generation: UUID) {
@@ -167,6 +200,7 @@ private actor ReaderPageWorkCoordinator {
     func cancelAll(newGeneration: UUID) {
         generation = newGeneration
         visibleIndex = nil
+        visibleIndexes = []
         targetIndexes = []
         queuedIndexes = []
         decodedByURL.removeAll()
@@ -259,6 +293,9 @@ private actor ReaderPageWorkCoordinator {
                 self.finish(url: url, token: token, generation: launchGeneration, result: result)
             }
             activeByURL[url] = ActiveWork(token: token, task: task, isCancelling: false)
+            #if DEBUG
+            peakActiveLoadCount = max(peakActiveLoadCount, activeByURL.count)
+            #endif
         }
     }
 

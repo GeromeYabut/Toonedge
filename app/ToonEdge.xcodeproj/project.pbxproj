@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		67577384A1D662DC54A4E7EB /* ToonEdgeReaderIntegratedZoomUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38098F5BF3788A0CA4DC7408 /* ToonEdgeReaderIntegratedZoomUITests.swift */; };
+		7FD5ACD4946019CF5ACAC887 /* ReaderSurfaceHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 283A7F693339078EAFB96727 /* ReaderSurfaceHost.swift */; };
+		DBCA74E60414AFBAE85427D6 /* ReaderSurfaceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC9B97EDF5712499EBD3EA9 /* ReaderSurfaceViewController.swift */; };
+		8CEF94FF6EEF9E3F0D78C97B /* ReaderSurfacePageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5EFDB635CFD4BC88FD210A2 /* ReaderSurfacePageView.swift */; };
+		D8C7D3B99F67723AE1602F1A /* ReaderSurfaceContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 436AE18D1DAF77953915D0EF /* ReaderSurfaceContract.swift */; };
+		E238FF82A852544CE439AB1D /* ReaderZoomState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7875656718E019F3126B44E3 /* ReaderZoomState.swift */; };
 		B13600000000000000000003 /* SearchHistoryUITestFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B13600000000000000000004 /* SearchHistoryUITestFixture.swift */; };
 		B13600000000000000000001 /* InMemorySearchHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B13600000000000000000002 /* InMemorySearchHistoryManager.swift */; };
 		A10000000000000000000033 /* ToonEdgeHomeSearchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000033 /* ToonEdgeHomeSearchUITests.swift */; };
@@ -87,6 +93,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		38098F5BF3788A0CA4DC7408 /* ToonEdgeReaderIntegratedZoomUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToonEdgeUITests/ToonEdgeReaderIntegratedZoomUITests.swift; sourceTree = "<group>"; };
+		283A7F693339078EAFB96727 /* ReaderSurfaceHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Presentation/ReaderSurfaceHost.swift; sourceTree = "<group>"; };
+		5EC9B97EDF5712499EBD3EA9 /* ReaderSurfaceViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Presentation/ReaderSurfaceViewController.swift; sourceTree = "<group>"; };
+		B5EFDB635CFD4BC88FD210A2 /* ReaderSurfacePageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Presentation/ReaderSurfacePageView.swift; sourceTree = "<group>"; };
+		436AE18D1DAF77953915D0EF /* ReaderSurfaceContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Interaction/ReaderSurfaceContract.swift; sourceTree = "<group>"; };
+		7875656718E019F3126B44E3 /* ReaderZoomState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Interaction/ReaderZoomState.swift; sourceTree = "<group>"; };
 		B13600000000000000000004 /* SearchHistoryUITestFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchHistoryUITestFixture.swift; sourceTree = "<group>"; };
 		B13600000000000000000002 /* InMemorySearchHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Core/Services/Mocks/InMemorySearchHistoryManager.swift; sourceTree = "<group>"; };
 		A20000000000000000000033 /* ToonEdgeHomeSearchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToonEdgeUITests/ToonEdgeHomeSearchUITests.swift; sourceTree = "<group>"; };
@@ -242,6 +254,11 @@
 				6685E3D13E203E2695A9427D /* ReaderPageMaterializationPolicy.swift */,
 				800E422F588678330C439E78 /* ReaderStickyBaselineZoomPolicy.swift */,
 				35261E3286B04275FCAC91F8 /* ReaderZoomFixtureState.swift */,
+				283A7F693339078EAFB96727 /* ReaderSurfaceHost.swift */,
+				5EC9B97EDF5712499EBD3EA9 /* ReaderSurfaceViewController.swift */,
+				B5EFDB635CFD4BC88FD210A2 /* ReaderSurfacePageView.swift */,
+				436AE18D1DAF77953915D0EF /* ReaderSurfaceContract.swift */,
+				7875656718E019F3126B44E3 /* ReaderZoomState.swift */,
 				08E862ABBC98447BDB206AA8 /* ReaderZoomFixtureViewController.swift */,
 				A20000000000000000000032 /* ReaderCanvasPalette.swift */,
 				A20000000000000000000026 /* ReaderPageImageLoader.swift */,
@@ -281,6 +298,7 @@
 				A20000000000000000000031 /* ToonEdgeOfflineUITests.swift */,
 				A20000000000000000000034 /* ToonEdgeBrowserReaderUITests.swift */,
 				065E356662CC783C5D0A1C76 /* ToonEdgeReaderZoomUITests.swift */,
+				38098F5BF3788A0CA4DC7408 /* ToonEdgeReaderIntegratedZoomUITests.swift */,
 				A20000000000000000000035 /* ToonEdgeLibraryUITests.swift */,
 			);
 			name = ToonEdgeUITests;
@@ -418,6 +436,7 @@
 				A10000000000000000000031 /* ToonEdgeOfflineUITests.swift in Sources */,
 				A10000000000000000000034 /* ToonEdgeBrowserReaderUITests.swift in Sources */,
 				426BE07386F22996507BDB24 /* ToonEdgeReaderZoomUITests.swift in Sources */,
+				67577384A1D662DC54A4E7EB /* ToonEdgeReaderIntegratedZoomUITests.swift in Sources */,
 				A10000000000000000000035 /* ToonEdgeLibraryUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -436,6 +455,11 @@
 				9180D49C926CAD48EEE66EEC /* ReaderPageMaterializationPolicy.swift in Sources */,
 				EEDCF80192A5AC489D512B5F /* ReaderStickyBaselineZoomPolicy.swift in Sources */,
 				97A632D85B891232EFC8C3F9 /* ReaderZoomFixtureState.swift in Sources */,
+				7FD5ACD4946019CF5ACAC887 /* ReaderSurfaceHost.swift in Sources */,
+				DBCA74E60414AFBAE85427D6 /* ReaderSurfaceViewController.swift in Sources */,
+				8CEF94FF6EEF9E3F0D78C97B /* ReaderSurfacePageView.swift in Sources */,
+				D8C7D3B99F67723AE1602F1A /* ReaderSurfaceContract.swift in Sources */,
+				E238FF82A852544CE439AB1D /* ReaderZoomState.swift in Sources */,
 				D71F2BDF55D31C128D9F78AD /* ReaderZoomFixtureViewController.swift in Sources */,
 				328C16A9BD77C236E1B2FA02 /* ReaderZoomFixtureRoot.swift in Sources */,
 				B13600000000000000000003 /* SearchHistoryUITestFixture.swift in Sources */,

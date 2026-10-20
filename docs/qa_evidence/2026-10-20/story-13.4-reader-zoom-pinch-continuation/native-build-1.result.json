@@ -1,0 +1,59 @@
+{
+  "label": "native-build-1",
+  "command": [
+    "/usr/bin/xcodebuild",
+    "build-for-testing",
+    "-project",
+    "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/ToonEdge.xcodeproj",
+    "-scheme",
+    "ToonEdge",
+    "-configuration",
+    "Debug",
+    "-destination",
+    "platform=iOS Simulator,arch=arm64,id=4582CDE9-27DB-4669-86AC-0631C1D7F2ED",
+    "-derivedDataPath",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-story-13.4-reader-zoom-pinch-continuation-20261020a/DerivedData",
+    "-resultBundlePath",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-story-13.4-reader-zoom-pinch-continuation-20261020a/build-1.xcresult",
+    "CODE_SIGNING_ALLOWED=NO"
+  ],
+  "startUTC": "2026-10-20T17:30:18.476088+00:00",
+  "endUTC": "2026-10-20T17:30:33.638061+00:00",
+  "exit": 0,
+  "timedout": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/docs/qa_evidence/2026-10-20/story-13.4-reader-zoom-pinch-continuation/native-build-1.log",
+  "bytes": 188215,
+  "sha256": "97e5db73b162faeba0b69ce3d18bbe416b9863f52e9d521f3d9afee0d7bee7b0",
+  "kind": "build",
+  "casesReserved": 0,
+  "accounting": {
+    "packageStarts": 2,
+    "buildStarts": 1,
+    "uiStarts": 0,
+    "caseStarts": 0,
+    "maxPackageStarts": 2,
+    "maxBuildStarts": 2,
+    "maxUIStarts": 3,
+    "maxCaseStarts": 8,
+    "dispatches": [
+      {
+        "label": "package-focused",
+        "kind": "package",
+        "casesReserved": 0,
+        "startEpoch": 1792517302.702538
+      },
+      {
+        "label": "package-full",
+        "kind": "package",
+        "casesReserved": 0,
+        "startEpoch": 1792517402.193123
+      },
+      {
+        "label": "native-build-1",
+        "kind": "build",
+        "casesReserved": 0,
+        "startEpoch": 1792517418.475925
+      }
+    ]
+  }
+}

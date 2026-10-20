@@ -1,0 +1,39 @@
+{
+  "mainAppAllFileBytesEqualBetweenBuilds": true,
+  "files": [
+    {
+      "path": "Info.plist",
+      "bytes": 1117,
+      "sha256": "2213555c527470f0ec2ccb7b684821b9548ff63596a81a9385a0bca7e7ce64e6"
+    },
+    {
+      "path": "PkgInfo",
+      "bytes": 8,
+      "sha256": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0"
+    },
+    {
+      "path": "ToonEdge",
+      "bytes": 40216,
+      "sha256": "07c5fa3fb48abdee430f1226e4b70dd24f0e292411fbc0fc0caffdd5edac1d53"
+    },
+    {
+      "path": "ToonEdge.debug.dylib",
+      "bytes": 18163528,
+      "sha256": "da3222bc8ee7bbfa5e0860cdb2b83a8268a4d420e6dcfd0d3bc2fbd2e5b927e0"
+    },
+    {
+      "path": "__preview.dylib",
+      "bytes": 16760,
+      "sha256": "71618262a664b72d2ec090d8cb1f75aff99b62c431d35a73741cd43bf88f643a"
+    },
+    {
+      "path": "sleepy transparent.png",
+      "bytes": 177017,
+      "sha256": "fadf3ff0083be914578b6138673047974a5ba851286491fc0f675e55704a8ae5"
+    }
+  ],
+  "originalTestWholeBytesRecoveredByRemovingOnlyExclusiveTraceAndRestoringLiteral": true,
+  "fiveCasesAndCommonHelpersUnchanged": true,
+  "sourceScope": "12of14 imported files exactunchanged; controllerexactreviewedDEBUGobserver; testexactreviewedtrace+.54to.50",
+  "originalTestSha256": "c8554ac7e6f0a51105607515ecda339bb25c542514e1e82e8be47eb670430cf7"
+}

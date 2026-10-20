@@ -1,0 +1,13 @@
+# Independent final runtime stage review
+
+Verdict: ACCEPTED for the scoped zoom runtime stage. Whole-amendment final review, privacy/retention/source-binding checks and any authorized local commit remain controller/final-reviewer responsibilities. Persistence remains parked; no broader safety/release acceptance.
+
+Independently verified accept-pro-max.log 44115 bytes SHA256 e7844f4c069140c1da3d638f87e21464ccc2b637cb1d410b8848cb067c78c868 and result actual exit0. All six original selected class cases individually passed: chapter/pipeline replacement/stale restore; delayed decoded dimensions/retry; long/short container/loading limits; native pinch/detent/breakthrough/pan/reset; taps/fixed chrome/Original Page; viewport/fit/spacing anchor. Log reports six tests, zero failures/zero unexpected,141.497 seconds. No additional test assertion failure appears.
+
+Independently verified complete owned Pro Max trace 104801 bytes SHA256 2912ae0147b810b878e519409e90bda4d05166ecdabbecc1bde0ab739db42892. All121 rows have sequential per-gesture sample IDs and three fresh began/changed/ended lifecycles; counts30/62/29 match metadata. Origin/current/trace session and pipeline agree. All native numeric validity flags, available state, viewport containment and changed-input eligibility pass; native/layout viewport dimensions agree and geometry remains3. No active, lifecycle anomaly, cancel, overflow or truncation. Terminal states release pinching.
+
+Detent gesture2 begins at known2, has60 eligible changed samples, contracts to raw .5000115612321392, holds observed scale1 and ends1 with no below-baseline post sample. Independent breakthrough gesture3 begins2, observes held1 then crosses below and ends .7827892199882192 at raw .3502114518711872. Together with original passing assertions this establishes the planned Pro Max native outcomes, alongside the separately independently accepted final16e case.
+
+Runtime closure record ends2026-10-20T17:43:52.900252Z, before17:48:22.702026Z cutoff. It records exact allocation2 package/2 build/3 UI dispatches and8 device-case executions:7 passed,1 failed original-.54 observation. Those counts agree with the reviewed observation/final16e/ProMax result sets; the failed observation is preserved and is not passing acceptance. Historical5 passing/8 failed device-case executions remain unchanged and are not relabeled as a passing suite. Historical source/test evidence binding is for distinct whole-amendment final review.
+
+No further runtime/source changes are permitted by this gate. No source/Git mutation, build/test or simulator operation was performed by reviewer.

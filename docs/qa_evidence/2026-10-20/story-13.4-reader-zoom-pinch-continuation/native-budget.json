@@ -1,0 +1,12 @@
+{
+  "startEpoch": 1792517302.702026,
+  "newWorkCutoffEpoch": 1792518502.702026,
+  "deadlineEpoch": 1792518802.702026,
+  "totalMinutes": 25,
+  "newWorkMinutes": 20,
+  "reserveMinutes": 5,
+  "startsAt": "first package/build/test dispatch",
+  "startUTC": "2026-10-20T17:28:22.702026+00:00",
+  "newWorkCutoffUTC": "2026-10-20T17:48:22.702026+00:00",
+  "deadlineUTC": "2026-10-20T17:53:22.702026+00:00"
+}

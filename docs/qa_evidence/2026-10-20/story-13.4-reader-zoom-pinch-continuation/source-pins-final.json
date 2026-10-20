@@ -1,0 +1,72 @@
+[
+  {
+    "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Interaction/ReaderSurfaceContract.swift",
+    "bytes": 1972,
+    "sha256": "f56560d2912342b95fa4f48c9fe72f249c5eb1e628a2349b847e9b6d5f09e686"
+  },
+  {
+    "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Interaction/ReaderZoomState.swift",
+    "bytes": 17602,
+    "sha256": "a37be1a312d9222df97f4dd672924053932d1016c77844b84c0db1ccf55a6148"
+  },
+  {
+    "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderPagePipeline.swift",
+    "bytes": 13750,
+    "sha256": "90eb7bc0039444f2d814b29d4ec7d9b719fbf8b9fe99793fca9761eb067024f1"
+  },
+  {
+    "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Presentation/ReaderSurfaceHost.swift",
+    "bytes": 1898,
+    "sha256": "5c2d9576863e2c03ac01c00114702efac8e61af00fda64501f8cd16ed4eb2943"
+  },
+  {
+    "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Presentation/ReaderSurfacePageView.swift",
+    "bytes": 3705,
+    "sha256": "758e84169b5806d861c7aab0dd934c64068d56e5201adc03eba227bcd1f3207d"
+  },
+  {
+    "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Presentation/ReaderSurfaceViewController.swift",
+    "bytes": 30853,
+    "sha256": "71510658356853dd4ffcb236f39ee45f8171fff7e481f6705e205c7fd70bf1e1"
+  },
+  {
+    "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/Sources/ToonEdgeAppCore/Features/Reader/Views/ReaderView.swift",
+    "bytes": 38300,
+    "sha256": "41f7f6359ef8504025e0a88b640ed5ea540bfccc7c1f9bd65f7473e6706af461"
+  },
+  {
+    "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/Tests/ToonEdgeAppCoreTests/ReaderEffectivePageMetadataTests.swift",
+    "bytes": 2172,
+    "sha256": "00162c31ffe832a9f6ed8a1e7d960306431415658bf91e036023992f39bbb576"
+  },
+  {
+    "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/Tests/ToonEdgeAppCoreTests/ReaderSurfaceContractTests.swift",
+    "bytes": 1046,
+    "sha256": "5327479d088c6c4e2731c1a3b7a32853f0b78b8eeb52f083aa8425a7900fea94"
+  },
+  {
+    "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/Tests/ToonEdgeAppCoreTests/ReaderVisibleRangePipelineTests.swift",
+    "bytes": 3173,
+    "sha256": "f0b90dcbab6225988989c629159b3bef85a4a0c8b3e1d94149a9f69dadcab61b"
+  },
+  {
+    "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/Tests/ToonEdgeAppCoreTests/ReaderZoomStateTests.swift",
+    "bytes": 6321,
+    "sha256": "38b7a9601eccacc8602848309443babfc8df8b8fdcdae8b976c4a8d64ad98dd8"
+  },
+  {
+    "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/ToonEdge/ToonEdgeAppEntry.swift",
+    "bytes": 60194,
+    "sha256": "94dad6f56b02e3083c6234c520deb804a76f29ce392d674992ce840e2adc1084"
+  },
+  {
+    "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/ToonEdge.xcodeproj/project.pbxproj",
+    "bytes": 59727,
+    "sha256": "a89c9b55a1158fa27fda04fa11181f687d75f5773a5b7854380094e2aecdeff2"
+  },
+  {
+    "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge/app/ToonEdgeUITests/ToonEdgeReaderIntegratedZoomUITests.swift",
+    "bytes": 19222,
+    "sha256": "28bbd5ff7c814db7fc3d5b9fd5c5b7bb0254324d9c91f37bab30f653cce46c6e"
+  }
+]

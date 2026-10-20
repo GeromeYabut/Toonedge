@@ -41,6 +41,9 @@ struct ToonEdgeAppEntry: App {
             if ProcessInfo.processInfo.arguments.contains("-uiTesting"),
                ProcessInfo.processInfo.arguments.contains("-readerZoomFixture") {
                 ReaderZoomFixtureRoot()
+            } else if ProcessInfo.processInfo.arguments.contains("-uiTesting"),
+                      ProcessInfo.processInfo.arguments.contains("-readerIntegratedZoomFixture") {
+                ReaderIntegratedZoomFixtureRoot()
             } else if let fixture = SearchHistoryUITestFixture(arguments: ProcessInfo.processInfo.arguments) {
                 SearchHistoryFixtureRoot(fixture: fixture)
             } else {
@@ -1157,3 +1160,204 @@ private actor SourceLibraryUITestFixture: LibraryLifecycleManaging {
     func readerSession(forSourceURL sourceURL: URL) async -> MockReaderSession? { nil }
     func isSaved(canonicalURL: URL) async -> Bool { true }
 }
+
+#if DEBUG
+/// Owned local images feed the actual ReaderView and its normal page pipeline.
+@MainActor
+private struct ReaderIntegratedZoomFixtureRoot: View {
+    @State private var router = AppRouter()
+    @State private var originalVisible = false
+    @State private var compact = false
+    @State private var restoreGateStatus = "{}"
+    private let cache = try! ReaderIntegratedZoomAssetCache()
+    private let progress = ReaderIntegratedZoomRestoreFixture()
+    var body: some View {
+        VStack(spacing: 0) {
+            if ProcessInfo.processInfo.arguments.contains("-integratedZoomDelayedRestore") {
+                Button("Release restore") { Task { await progress.releaseRestore() } }
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("reader.zoom.releaseRestore")
+                Text("Owned restore gate")
+                    .font(.caption2)
+                    .accessibilityIdentifier("reader.zoom.restoreGate")
+                    .accessibilityValue(restoreGateStatus)
+            }
+            if ProcessInfo.processInfo.arguments.contains("-integratedZoomDelayedImage") {
+                Button("Release image") { cache.releaseImage() }
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("reader.zoom.releaseImage")
+            }
+            Button("Resize viewport") { compact.toggle() }
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("reader.zoom.resizeViewport")
+            ReaderView(session: ReaderIntegratedZoomOwnedSession.make(chapter: 1),
+                readerService: MockReaderService(), adjacentLoader: ReaderIntegratedZoomAdjacentLoader(),
+                progressRepository: progress, chapterAssetCache: cache,
+                viewOriginalPageAction: { originalVisible = true }, router: $router)
+                .frame(maxHeight: compact ? 500 : .infinity)
+        }
+        .task {
+            guard ProcessInfo.processInfo.arguments.contains("-integratedZoomDelayedRestore") else { return }
+            while !Task.isCancelled {
+                restoreGateStatus = await progress.diagnosticStatus()
+                try? await Task.sleep(nanoseconds: 20_000_000)
+            }
+        }
+        .sheet(isPresented: $originalVisible) {
+            VStack(spacing: 24) {
+                Text("Owned original page").accessibilityIdentifier("reader.zoom.ownedOriginal")
+                Button("Return to Reader") { originalVisible = false }
+                    .accessibilityIdentifier("reader.zoom.return")
+                    .frame(minHeight: 44)
+            }
+        }
+    }
+}
+private enum ReaderIntegratedZoomOwnedSession {
+    static let firstID = UUID(uuidString: "ED601301-0000-4000-8000-000000000001")!
+    static let secondID = UUID(uuidString: "ED601301-0000-4000-8000-000000000002")!
+    static func make(chapter: Int) -> MockReaderSession {
+        let count = chapter == 1 ? 80 : 12
+        var session = MockReaderSession(id: chapter == 1 ? firstID : secondID,
+            seriesTitle: "Owned Zoom Chapter", chapterTitle: "Chapter \(chapter)",
+            sourceURL: URL(string: "https://owned.toonedge.test/chapter-\(chapter)")!,
+            imageURLs: (0..<count).map {
+                URL(string: "https://owned.toonedge.test/chapter-\(chapter)/page-\($0).png")!
+            }, pageMetadata: [])
+        session.settings.isPageSpacingEnabled = false
+        session.nextChapter = chapter == 1 ? MockChapter(title: "Chapter 2",
+            sourceURL: URL(string: "https://owned.toonedge.test/chapter-2")!) : nil
+        return session
+    }
+}
+private struct ReaderIntegratedZoomAdjacentLoader: AdjacentReaderSessionLoading {
+    func loadAdjacentReaderSession(from sourceURL: URL,
+                                   context: AdjacentReaderSessionLoadContext) async throws -> MockReaderSession {
+        ReaderIntegratedZoomOwnedSession.make(chapter: 2)
+    }
+}
+private actor ReaderIntegratedZoomRestoreFixture: ReaderProgressStoring {
+    private var held: CheckedContinuation<ReaderProgress?, Never>?
+    private var timeoutTask: Task<Void, Never>?
+    private var started = 0
+    private var completed = 0
+    private var timedOut = false
+    func progress(for sourceURL: URL) async -> ReaderProgress? {
+        guard ProcessInfo.processInfo.arguments.contains("-integratedZoomDelayedRestore"),
+              sourceURL.lastPathComponent == "chapter-1" else { return nil }
+        // One held actual restore per owned app launch. Reentry fails closed.
+        guard held == nil, started == 0 else { return nil }
+        started += 1
+        let result: ReaderProgress? = await withCheckedContinuation { continuation in
+            held = continuation
+            timeoutTask = Task { [weak self] in
+                do { try await Task.sleep(nanoseconds: 30_000_000_000) }
+                catch { return }
+                await self?.expireRestore()
+            }
+        }
+        if result != nil { completed += 1 }
+        return result
+    }
+    func releaseRestore() {
+        guard let continuation = held else { return }
+        held = nil
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        continuation.resume(returning: ReaderProgress(currentImageIndex: 5, totalImageCount: 80))
+    }
+    private func expireRestore() {
+        guard let continuation = held else { return }
+        held = nil
+        timedOut = true
+        timeoutTask = nil
+        continuation.resume(returning: nil)
+    }
+    func diagnosticStatus() -> String {
+        "{\"started\":\(started),\"pending\":\(held == nil ? 0 : 1),\"completed\":\(completed),\"timedOut\":\(timedOut)}"
+    }
+    func save(_ progress: ReaderProgress, for sourceURL: URL) async {}
+}
+private final class ReaderIntegratedZoomAssetCache: ChapterAssetCaching, @unchecked Sendable {
+    private let directory: URL
+    private let images: [URL]
+    private let corrupt: URL
+    private let lock = NSLock()
+    private let imageCondition = NSCondition()
+    private var imageReleased = false
+    private var attempts: [URL: Int] = [:]
+    @MainActor init() throws {
+        directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ToonEdgeOwnedZoom-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var created: [URL] = []
+        for (index, height) in [900, 650, 1100, 500].enumerated() {
+            let size = CGSize(width: 300, height: CGFloat(height))
+            let renderer = UIGraphicsImageRenderer(size: size)
+            let data = renderer.pngData { context in
+                UIColor(hue: CGFloat(index) / 4, saturation: 0.15, brightness: 0.95, alpha: 1).setFill()
+                context.fill(CGRect(origin: .zero, size: size))
+                UIColor.darkGray.setStroke()
+                context.cgContext.setLineWidth(1)
+                for y in stride(from: 0, through: height, by: 100) {
+                    context.cgContext.move(to: CGPoint(x: 0, y: CGFloat(y)))
+                    context.cgContext.addLine(to: CGPoint(x: 300, y: CGFloat(y)))
+                }
+                context.cgContext.strokePath()
+                UIColor.red.setFill()
+                context.fill(CGRect(x: 145, y: CGFloat(height) / 2 - 5, width: 10, height: 10))
+                ("OWNED ZOOM IMAGE \(index + 1)" as NSString).draw(at: CGPoint(x: 12, y: 12),
+                    withAttributes: [.foregroundColor: UIColor.black, .font: UIFont.systemFont(ofSize: 16)])
+            }
+            let url = directory.appendingPathComponent("owned-\(index).png")
+            try data.write(to: url, options: .atomic)
+            created.append(url)
+        }
+        let shortRenderer = UIGraphicsImageRenderer(size: CGSize(width: 300, height: 60))
+        let shortData = shortRenderer.pngData { context in
+            UIColor.systemMint.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 300, height: 60))
+            UIColor.red.setFill()
+            context.fill(CGRect(x: 145, y: 25, width: 10, height: 10))
+        }
+        let shortURL = directory.appendingPathComponent("owned-short.png")
+        try shortData.write(to: shortURL, options: .atomic)
+        created.append(shortURL)
+        images = created
+        corrupt = directory.appendingPathComponent("retry-invalid-image.bin")
+        try Data("owned deliberate decode failure".utf8).write(to: corrupt, options: .atomic)
+    }
+    func releaseImage() {
+        imageCondition.lock()
+        imageReleased = true
+        imageCondition.broadcast()
+        imageCondition.unlock()
+    }
+    func chapterDirectory(for sourceURL: URL) -> URL { directory }
+    func cachedAssetURL(for assetURL: URL, sourceURL: URL) -> URL? {
+        let number = Int(assetURL.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "page-", with: "")) ?? 0
+        lock.lock()
+        let attempt = attempts[assetURL, default: 0] + 1
+        attempts[assetURL] = attempt
+        lock.unlock()
+        if ProcessInfo.processInfo.arguments.contains("-integratedZoomDelayedImage"),
+           sourceURL.lastPathComponent == "chapter-1", number == 0, attempt == 1 {
+            // DefaultReaderPageAssetLoader.load is nonisolated async; this synchronous
+            // cache lookup executes on its background executor, never the UI actor.
+            guard !Thread.isMainThread else { return corrupt }
+            let deadline = Date().addingTimeInterval(30)
+            imageCondition.lock()
+            while !imageReleased && Date() < deadline {
+                _ = imageCondition.wait(until: deadline)
+            }
+            let released = imageReleased
+            imageCondition.unlock()
+            // Expiration is an actual decode failure, never a fabricated release.
+            guard released else { return corrupt }
+        }
+        if sourceURL.lastPathComponent == "chapter-1", number == 1, attempt == 1 { return corrupt }
+        return sourceURL.lastPathComponent == "chapter-2" ? images[4] : images[number % 4]
+    }
+    func store(_ data: Data, for assetURL: URL, sourceURL: URL) throws {}
+}
+#endif
