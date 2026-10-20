@@ -75,6 +75,15 @@
 		A10000000000000000000041 /* ReaderPageAssetLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000041 /* ReaderPageAssetLoader.swift */; };
 		A10000000000000000000042 /* ReaderImageDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000042 /* ReaderImageDecoder.swift */; };
 		A10000000000000000000043 /* ReaderPagePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000043 /* ReaderPagePipeline.swift */; };
+		945CCEAB530BFB4434459654 /* ReaderChapterGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4E9527AEEED1073FA859BFF /* ReaderChapterGeometry.swift */; };
+		AD54E0026223DA884CB4502E /* ReaderFittedLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB30434CB8D89DF9883A8E8B /* ReaderFittedLayout.swift */; };
+		4A568F14B4EEBA981FE6CE24 /* ReaderPresentationTransform.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC21DC0BFF3EC6BFA49ADC86 /* ReaderPresentationTransform.swift */; };
+		9180D49C926CAD48EEE66EEC /* ReaderPageMaterializationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6685E3D13E203E2695A9427D /* ReaderPageMaterializationPolicy.swift */; };
+		EEDCF80192A5AC489D512B5F /* ReaderStickyBaselineZoomPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800E422F588678330C439E78 /* ReaderStickyBaselineZoomPolicy.swift */; };
+		97A632D85B891232EFC8C3F9 /* ReaderZoomFixtureState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35261E3286B04275FCAC91F8 /* ReaderZoomFixtureState.swift */; };
+		D71F2BDF55D31C128D9F78AD /* ReaderZoomFixtureViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08E862ABBC98447BDB206AA8 /* ReaderZoomFixtureViewController.swift */; };
+		328C16A9BD77C236E1B2FA02 /* ReaderZoomFixtureRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D70631EAC3AE8BA90A00438 /* ReaderZoomFixtureRoot.swift */; };
+		426BE07386F22996507BDB24 /* ToonEdgeReaderZoomUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 065E356662CC783C5D0A1C76 /* ToonEdgeReaderZoomUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -148,6 +157,15 @@
 		A20000000000000000000041 /* ReaderPageAssetLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderPageAssetLoader.swift; sourceTree = "<group>"; };
 		A20000000000000000000042 /* ReaderImageDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderImageDecoder.swift; sourceTree = "<group>"; };
 		A20000000000000000000043 /* ReaderPagePipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Loading/ReaderPagePipeline.swift; sourceTree = "<group>"; };
+		F4E9527AEEED1073FA859BFF /* ReaderChapterGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Interaction/ReaderChapterGeometry.swift; sourceTree = "<group>"; };
+		EB30434CB8D89DF9883A8E8B /* ReaderFittedLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Interaction/ReaderFittedLayout.swift; sourceTree = "<group>"; };
+		EC21DC0BFF3EC6BFA49ADC86 /* ReaderPresentationTransform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Interaction/ReaderPresentationTransform.swift; sourceTree = "<group>"; };
+		6685E3D13E203E2695A9427D /* ReaderPageMaterializationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Interaction/ReaderPageMaterializationPolicy.swift; sourceTree = "<group>"; };
+		800E422F588678330C439E78 /* ReaderStickyBaselineZoomPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Interaction/ReaderStickyBaselineZoomPolicy.swift; sourceTree = "<group>"; };
+		35261E3286B04275FCAC91F8 /* ReaderZoomFixtureState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Interaction/ReaderZoomFixtureState.swift; sourceTree = "<group>"; };
+		08E862ABBC98447BDB206AA8 /* ReaderZoomFixtureViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Reader/Presentation/ReaderZoomFixtureViewController.swift; sourceTree = "<group>"; };
+		6D70631EAC3AE8BA90A00438 /* ReaderZoomFixtureRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderZoomFixtureRoot.swift; sourceTree = "<group>"; };
+		065E356662CC783C5D0A1C76 /* ToonEdgeReaderZoomUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToonEdgeUITests/ToonEdgeReaderZoomUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -155,6 +173,7 @@
 			isa = PBXGroup;
 			children = (
 				A20000000000000000000001 /* ToonEdgeAppEntry.swift */,
+				6D70631EAC3AE8BA90A00438 /* ReaderZoomFixtureRoot.swift */,
 				B13600000000000000000004 /* SearchHistoryUITestFixture.swift */,
 			);
 			path = ToonEdge;
@@ -217,6 +236,13 @@
 				A20000000000000000000039 /* SeriesDetailView.swift */,
 				A2000000000000000000000D /* ReaderPlaceholderView.swift */,
 				A20000000000000000000015 /* ReaderView.swift */,
+				F4E9527AEEED1073FA859BFF /* ReaderChapterGeometry.swift */,
+				EB30434CB8D89DF9883A8E8B /* ReaderFittedLayout.swift */,
+				EC21DC0BFF3EC6BFA49ADC86 /* ReaderPresentationTransform.swift */,
+				6685E3D13E203E2695A9427D /* ReaderPageMaterializationPolicy.swift */,
+				800E422F588678330C439E78 /* ReaderStickyBaselineZoomPolicy.swift */,
+				35261E3286B04275FCAC91F8 /* ReaderZoomFixtureState.swift */,
+				08E862ABBC98447BDB206AA8 /* ReaderZoomFixtureViewController.swift */,
 				A20000000000000000000032 /* ReaderCanvasPalette.swift */,
 				A20000000000000000000026 /* ReaderPageImageLoader.swift */,
 				A20000000000000000000040 /* ReaderPagePipelineModels.swift */,
@@ -254,6 +280,7 @@
 				A2000000000000000000002F /* ToonEdgeSettingsUITests.swift */,
 				A20000000000000000000031 /* ToonEdgeOfflineUITests.swift */,
 				A20000000000000000000034 /* ToonEdgeBrowserReaderUITests.swift */,
+				065E356662CC783C5D0A1C76 /* ToonEdgeReaderZoomUITests.swift */,
 				A20000000000000000000035 /* ToonEdgeLibraryUITests.swift */,
 			);
 			name = ToonEdgeUITests;
@@ -390,6 +417,7 @@
 				A1000000000000000000002F /* ToonEdgeSettingsUITests.swift in Sources */,
 				A10000000000000000000031 /* ToonEdgeOfflineUITests.swift in Sources */,
 				A10000000000000000000034 /* ToonEdgeBrowserReaderUITests.swift in Sources */,
+				426BE07386F22996507BDB24 /* ToonEdgeReaderZoomUITests.swift in Sources */,
 				A10000000000000000000035 /* ToonEdgeLibraryUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -402,6 +430,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000001 /* ToonEdgeAppEntry.swift in Sources */,
+				945CCEAB530BFB4434459654 /* ReaderChapterGeometry.swift in Sources */,
+				AD54E0026223DA884CB4502E /* ReaderFittedLayout.swift in Sources */,
+				4A568F14B4EEBA981FE6CE24 /* ReaderPresentationTransform.swift in Sources */,
+				9180D49C926CAD48EEE66EEC /* ReaderPageMaterializationPolicy.swift in Sources */,
+				EEDCF80192A5AC489D512B5F /* ReaderStickyBaselineZoomPolicy.swift in Sources */,
+				97A632D85B891232EFC8C3F9 /* ReaderZoomFixtureState.swift in Sources */,
+				D71F2BDF55D31C128D9F78AD /* ReaderZoomFixtureViewController.swift in Sources */,
+				328C16A9BD77C236E1B2FA02 /* ReaderZoomFixtureRoot.swift in Sources */,
 				B13600000000000000000003 /* SearchHistoryUITestFixture.swift in Sources */,
 				A10000000000000000000002 /* AppShellView.swift in Sources */,
 				A10000000000000000000003 /* AppDependencies.swift in Sources */,

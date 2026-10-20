@@ -37,6 +37,19 @@ private enum ReaderHardeningFixtureScenario: String {
 struct ToonEdgeAppEntry: App {
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-uiTesting"),
+               ProcessInfo.processInfo.arguments.contains("-readerZoomFixture") {
+                ReaderZoomFixtureRoot()
+            } else if let fixture = SearchHistoryUITestFixture(arguments: ProcessInfo.processInfo.arguments) {
+                SearchHistoryFixtureRoot(fixture: fixture)
+            } else {
+                ToonEdgeRootView(
+                    dependencies: launchDependencies(),
+                    initialRouter: launchRouter()
+                )
+            }
+            #else
             if let fixture = SearchHistoryUITestFixture(arguments: ProcessInfo.processInfo.arguments) {
                 SearchHistoryFixtureRoot(fixture: fixture)
             } else {
@@ -45,6 +58,7 @@ struct ToonEdgeAppEntry: App {
                     initialRouter: launchRouter()
                 )
             }
+            #endif
         }
     }
 
