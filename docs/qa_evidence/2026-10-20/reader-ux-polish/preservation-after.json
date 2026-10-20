@@ -1,0 +1,197 @@
+{
+  "oldCheckouts": [
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-identifier-amended/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-identifier-investigation/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-identifier-xcode27/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-identity-byte-calibration/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-identity-byte-permission/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-identity-byte-retry/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-identity-byte-verified-parent/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-identity-proof-design/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-identity-proof/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-interaction-reconciliation-design/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-native-geometry-foundations/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-native-integration-plan/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-pipeline-baseline/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-sticky-baseline-design/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-store-isolation-proof/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-swiftdata-commit-design/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-integration/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-iphone-preview/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-pinch-continuation/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/reader-zoom-synthetic-fixture/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/.codex/worktrees/story-13-4-reader-zoom/Toonedge",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/def-020-numeric-adjacency-ui",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/def-021-authoritative-continue-ui",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/def-022-adjacent-outcome-matrix",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/def-036-vortex-live-parity",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/docs-branch-pipeline-design",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/story-12.1-adaptive-editorial-foundation",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/story-12.2-home-search-editorial-entry",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/story-12.3-browser-editorial-chrome",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/story-12.4-reader-editorial-controls",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/story-12.5-library-series-editorial-surfaces",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/story-12.6-downloads-settings-utilities",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/story-12.7-semantic-haptics",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/story-12.8-editorial-release-qa",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/story-13.1-reader-continuity",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/story-13.5-remote-delivery",
+      "bindingMatch": true,
+      "statusMatch": true
+    },
+    {
+      "path": "/Users/geromeyabut/Developer/Toonedge/.worktrees/story-reader-hardening-foundation",
+      "bindingMatch": true,
+      "statusMatch": true
+    }
+  ],
+  "priorEvidenceFilesVerified": 209,
+  "allMatch": true,
+  "protectedScreenshotContentsAccessed": false
+}

@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "/usr/bin/ditto",
+    "/private/tmp/toonedge-reader-ux-polish-products-20261020a/progress-red",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/Products-task-3-progress-red"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536067.662295,
+  "end_unix": 1792536068.551979,
+  "elapsed_seconds": 0.8896839618682861,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/task-3-progress-red-products-archive.log",
+  "bytes": 0,
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

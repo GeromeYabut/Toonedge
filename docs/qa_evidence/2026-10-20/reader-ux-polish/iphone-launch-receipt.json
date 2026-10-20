@@ -1,0 +1,28 @@
+{
+  "argv": [
+    "xcrun",
+    "devicectl",
+    "device",
+    "process",
+    "launch",
+    "--device",
+    "00008140-0011658A2260801C",
+    "--terminate-existing",
+    "--environment-variables",
+    "{}",
+    "--timeout",
+    "30",
+    "--json-output",
+    "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-launch.json",
+    "com.toonedge.app"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536963.948836,
+  "end_unix": 1792536964.0754502,
+  "elapsed_seconds": 0.12661409378051758,
+  "exit": 64,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-launch.log",
+  "bytes": 324,
+  "sha256": "e410570fada87949ff74bd7578a21fa7aa4f48fbeb7adccc94e5c713bc36eaa2"
+}

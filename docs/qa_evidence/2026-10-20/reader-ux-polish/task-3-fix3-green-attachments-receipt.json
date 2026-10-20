@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "xcrun",
+    "xcresulttool",
+    "export",
+    "attachments",
+    "--path",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-3-fix3-native-green.xcresult",
+    "--output-path",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-3-fix3-green-attachments"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536493.397871,
+  "end_unix": 1792536494.3420842,
+  "elapsed_seconds": 0.9442131519317627,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/task-3-fix3-green-attachments.log",
+  "bytes": 827,
+  "sha256": "7a3901861b876cb4a1ef31057cd936e7571a09ba27defe1c2e46e0b8c3df6c4a"
+}

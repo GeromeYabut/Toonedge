@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "env",
+    "GIT_OPTIONAL_LOCKS=0",
+    "python3",
+    "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/verify-preservation.py"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536950.968848,
+  "end_unix": 1792536952.294552,
+  "elapsed_seconds": 1.3257040977478027,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/preservation-final.log",
+  "bytes": 139,
+  "sha256": "4244055231773876ddad944775f681f4fd23473d4cc52d9a76b86a668790b772"
+}

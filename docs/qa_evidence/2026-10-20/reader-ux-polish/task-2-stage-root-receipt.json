@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "-c",
+    "from pathlib import Path; p=Path('/private/tmp/toonedge-reader-ux-polish-products-20261020a'); p.mkdir(); print(p)"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792533876.14702,
+  "end_unix": 1792533876.188224,
+  "elapsed_seconds": 0.041203975677490234,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/task-2-stage-root.log",
+  "bytes": 58,
+  "sha256": "ebdd1f22889263e8f72c866c128382b7abc91d5ef10d5c6c2cfff680845b9666"
+}

@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "-c",
+    "from pathlib import Path\np=Path(\"/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/iphone-write-probe\")\nassert p.parent.is_dir() and not p.exists()\np.mkdir()\nassert p.is_dir()\nprint(p)\n"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536680.423412,
+  "end_unix": 1792536680.869774,
+  "elapsed_seconds": 0.4463620185852051,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-directory-probe.log",
+  "bytes": 97,
+  "sha256": "51be1453ef3546f70e99cc5cd6c0f608e6a7d5edd19337bec4a3665f658fd7a7"
+}
