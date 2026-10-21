@@ -1,0 +1,53 @@
+{
+  "sourceHead": "2683bfce87b722410f50b4d673c809147f7030a9",
+  "sourceTree": "829796dacdcc2f4c170268b59f79cec74e808687",
+  "bundleIdentifier": "com.toonedge.app",
+  "minimumOSVersion": "17.0",
+  "teamIdentifier": "BQJLD7NPWL",
+  "profileDeviceMatch": true,
+  "profileExpiration": "2027-10-19T21:44:26",
+  "codesignVerified": true,
+  "app": "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/iphone/Build/Products/Debug-iphoneos/ToonEdge.app",
+  "files": [
+    {
+      "relative": "Info.plist",
+      "bytes": 1137,
+      "sha256": "68353a8b52045d5f2a15a42b1dac8d8e0bae4ca20d5bee7f75589f378a534c72"
+    },
+    {
+      "relative": "PkgInfo",
+      "bytes": 8,
+      "sha256": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0"
+    },
+    {
+      "relative": "ToonEdge",
+      "bytes": 91856,
+      "sha256": "ce86fe86c33d23bb5dfef933e902b7a8fa73d6f6bf756561315c9005766af259"
+    },
+    {
+      "relative": "ToonEdge.debug.dylib",
+      "bytes": 18872736,
+      "sha256": "5e594b432e6ea57491b0b9f28be9ea9316a55d69485035ace966c53222a03da5"
+    },
+    {
+      "relative": "_CodeSignature/CodeResources",
+      "bytes": 2783,
+      "sha256": "c8f0d8d6cd630fa2f30bba6d380928502a95d8801fafbab2a52dbfb0d474ccae"
+    },
+    {
+      "relative": "__preview.dylib",
+      "bytes": 34944,
+      "sha256": "2ad558314107b318b28e1813a2088fcc939d277a8a7f8f0261c2b4c6de900f5b"
+    },
+    {
+      "relative": "embedded.mobileprovision",
+      "bytes": 12247,
+      "sha256": "33c9e08fe38ce6e8af0e0e203a9ae30c50287ef86ac884efcdc24d6f35352ac5"
+    },
+    {
+      "relative": "sleepy transparent.png",
+      "bytes": 177017,
+      "sha256": "fadf3ff0083be914578b6138673047974a5ba851286491fc0f675e55704a8ae5"
+    }
+  ]
+}

@@ -1645,6 +1645,26 @@ Strengthen ToonEdge's core browser-to-reader and local-library loop with bounded
 - Story 13.8: [Live-device compatibility validation](superpowers/plans/2026-09-28-story-13.8-live-device-compatibility-validation.md)
 - Story 13.9: [Saved-source filtering](superpowers/plans/2026-10-05-story-13.9-library-source-filtering.md); [approved design](superpowers/specs/2026-10-05-story-13.9-library-source-filtering-design.md); delivered separately from Story 13.5
 
+### Approved UX follow-up — seven-item Reader and app polish (2026-10-20)
+
+**Status:** implemented, independently reviewed and installed for iPhone user trial on local `feature/reader-ux-polish`; unmerged. Continue Reading has the open adjacent-navigation defect [DEF-047](defects.md#def-047--resumed-reader-can-lose-previous-and-next-chapter-targets).
+
+| Request | Approved change | Current delivery status |
+| --- | --- | --- |
+| 1 | Default dark appearance and black app background, preserving Reader canvas choice | Implemented; installed for trial |
+| 2 | Continue Reading opens the actual retained/open chapter, with source fallback and loading/retry | Entry implemented; adjacent chapter navigation remains to do in DEF-047 |
+| 3 | More transparent Reader chrome with legible controls and accessibility fallback | Implemented; installed for trial |
+| 4 | Compact bottom and side controls, reduced gaps, accessible hit targets | Implemented; installed for trial |
+| 5 | Actual zoom percentage shown during zoom, followed by a short fade | Implemented; installed for trial; sustained-pinch/timer coverage follow-up recorded |
+| 6 | Home title, slimmer search, tighter spacing and one shared search flow across app screens | Implemented; installed for trial |
+| 7 | Compact right-aligned Library source/sort summary and controls without enclosing white box | Implemented; installed for trial |
+
+The [approved spec](superpowers/specs/2026-10-20-reader-ux-polish.md) records all seven requirements, the [execution plan](superpowers/plans/2026-10-20-reader-ux-polish.md) records scope and gates, and the [delivery QA](qa_evidence/2026-10-20/reader-ux-polish/QA.md) records implementation, reviews, exact source, tests and installation. Shared search covers Home, Library, Downloads, Settings, Browser address and revealed Reader controls; Cancel preserves the originating context.
+
+Verification at delivery: 760 package tests passed. Eight unique native methods have passing evidence across the initial run and focused corrected reruns, not one final-binary eight-method run. Independent review retained four coverage follow-ups: sustained pinch/HUD lifecycle, saved-empty recent-image fallback, actual repeated WebKit completion and delayed Home resume loading/cancellation/retry. The saved-empty fallback now has confirmed failing navigation coverage in DEF-047; other follow-ups remain in the review record.
+
+No persistence-safety clearance follows from this delivery. Persistence/autosave investigation remains parked, prior evidence/stopped checkouts remain preserved, and no push or merge is authorized.
+
 ### Story 13.1 — Add chapter-scoped Reader continuity and bounded prefetch
 
 **Status:** merged into `main` via [PR 2](https://github.com/GeromeYabut/Toonedge/pull/2). [Local QA evidence](qa_evidence/2026-10-01-story-13.1-reader-continuity.md) records the pre-integration verification.
@@ -1719,7 +1739,7 @@ As a reader searching from Home, I want saved titles to appear alongside web opt
 
 ### Story 13.4 — Add bounded pinch and double-tap zoom to Reader
 
-**Status:** paused by user; existing Reader zoom work remains preserved. Do not resume or merge it without explicit user authorization.
+**Status:** Reader zoom integration merged in [PR #17](https://github.com/GeromeYabut/Toonedge/pull/17) at `58d6738f78ae805ef716fb2221c9c2f1135d56ef`. Persistence/progress-safety investigation and its historical evidence gaps remain parked by the user. The seven-item UX follow-up above is independently reviewed and installed for trial but remains unmerged; DEF-047 tracks resumed chapter navigation. This does not grant persistence-safety or release clearance.
 
 **Dependencies:** Story 13.1 pipeline-owned page state and the existing lazy long-strip Reader.
 
@@ -1810,7 +1830,7 @@ As the product team, we want evidence that generic Clean Mode handles diverse re
 
 ### Story 13.8 — Complete live-device generic compatibility release validation
 
-**Status:** planned; release sign-off remains gated by paused Story 13.4, Story 13.6 integration/manual VoiceOver verification, and the documented Reader package-test limitation. Physical-device validation is outstanding.
+**Status:** planned; release sign-off remains gated by unresolved Story 13.4 progress-safety evidence, Story 13.6 integration/manual VoiceOver verification, and the documented Reader package-test limitation. Physical-device validation is outstanding.
 
 **Dependencies:** Stories 13.1–13.7 and 13.9 complete and their automated suites passing. Story numbers are identifiers, not a requirement to execute 13.9 after this release-validation story.
 

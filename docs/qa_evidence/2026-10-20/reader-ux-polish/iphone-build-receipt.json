@@ -1,0 +1,32 @@
+{
+  "argv": [
+    "xcodebuild",
+    "-project",
+    "app/ToonEdge.xcodeproj",
+    "-scheme",
+    "ToonEdge",
+    "-configuration",
+    "Debug",
+    "-destination",
+    "platform=iOS,id=00008140-0011658A2260801C",
+    "-derivedDataPath",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/iphone",
+    "-resultBundlePath",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/iphone-build.xcresult",
+    "-jobs",
+    "1",
+    "build",
+    "DEVELOPMENT_TEAM=BQJLD7NPWL",
+    "CODE_SIGN_IDENTITY=Apple Development",
+    "IPHONEOS_DEPLOYMENT_TARGET=17.0"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536847.233381,
+  "end_unix": 1792536917.747124,
+  "elapsed_seconds": 70.51374292373657,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-build.log",
+  "bytes": 118875,
+  "sha256": "1e590bd468038415d1281d25ef37012e72198cc5b92f026d6dd9696cfc0c4dda"
+}

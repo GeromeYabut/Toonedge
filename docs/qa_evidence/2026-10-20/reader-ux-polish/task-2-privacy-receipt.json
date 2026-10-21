@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "-c",
+    "from pathlib import Path\nimport hashlib,json,re\ne=Path(\"/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish\");o=Path(\"/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a\");a=o/'task-2-red-attachments'\nrows=[];findings=[]\nfor p in sorted(a.iterdir()):\n if not p.is_file():continue\n b=p.read_bytes();rows.append({'file':p.name,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()})\n if p.suffix=='.txt':\n  t=b.decode(errors='replace')\n  if re.search(r'(Bearer\\s+[A-Za-z0-9]|sk-[A-Za-z0-9]{20}|Cookie\\s*:|Set-Cookie\\s*:)',t):findings.append(p.name+':credential-pattern')\nassert not findings,findings\nv={'fixture':'owned Reader integrated zoom fixture only','redAttachments':rows,'greenAttachmentCount':0,'recordingFrameInspection':['task-2-red-frame-1.png','task-2-red-frame-2.png'],'visualInspection':'Both sampled frames show generated pink grid/marker and Resize viewport only; no copyrighted artwork or user content. Text hierarchy attachments inspected/scanned, no credential patterns.','findings':findings,'protectedScreenshotsAccessed':False}\np=e/'task-2-attachment-privacy.json';p.open('x').write(json.dumps(v,indent=2)+'\\n');print({'attachments':len(rows)-1,'findings':findings,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})\n"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792534566.375225,
+  "end_unix": 1792534569.2471411,
+  "elapsed_seconds": 2.8719160556793213,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/task-2-privacy.log",
+  "bytes": 114,
+  "sha256": "d13855b33fb3e81ec2cff95c893ede69ec9d52973f904c9346793f60b7115c0d"
+}

@@ -102,6 +102,11 @@ public struct LibraryView: View {
             }
             .animation(.easeInOut(duration: 0.2), value: refreshFeedback)
             .navigationTitle("Library")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    UniversalSearchButton(identifier: "library.search") { router.presentSearch() }
+                }
+            }
             .task {
                 await reloadSnapshot()
                 if let segment = router.consumePendingLibrarySegment() {
@@ -610,13 +615,13 @@ private struct LibraryViewModeControl: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(selection == mode ? ToonEdgeColor.textPrimary : ToonEdgeColor.textSecondary)
+                .accessibilityIdentifier("library.density.\(mode.rawValue)")
                 .accessibilityLabel("\(mode.title) library view")
                 .accessibilityAddTraits(selection == mode ? .isSelected : [])
                 .accessibilityValue(selection == mode ? "Selected" : "Not selected")
             }
         }
-        .padding(ToonEdgeSpacing.xsmall)
-        .background(ToonEdgeColor.elevated.opacity(0.72), in: RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
+
     }
 }
 
@@ -692,33 +697,23 @@ private struct LibraryCollectionControls: View {
 
             ViewThatFits(in: .horizontal) {
                 if layout.countAndSortArrangements.first == .horizontal {
-                    HStack(spacing: 10) {
+                    HStack(spacing: ToonEdgeSpacing.xsmall) {
                         density
-                        divider
                         tools
                     }
                     .fixedSize(horizontal: true, vertical: false)
                 }
-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+                VStack(alignment: .trailing, spacing: ToonEdgeSpacing.xsmall) {
                     density
-                    HStack(spacing: 10) {
-                        divider
-                        tools
-                    }
+                    tools
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 
     private var density: some View {
         LibraryViewModeControl(selection: $selection, select: selectViewMode)
-    }
-
-    private var divider: some View {
-        Divider()
-            .frame(width: 1, height: 20)
-            .overlay(ToonEdgeColor.border)
-            .accessibilityHidden(true)
     }
 
     private var tools: some View {
@@ -732,6 +727,7 @@ private struct LibraryCollectionControls: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(layout.refreshSystemImage == "hourglass")
+                .accessibilityIdentifier("library.refresh")
                 .accessibilityLabel(layout.refreshAccessibilityLabel)
             }
             LibraryOrganizationButton(layout: organizationLayout, show: showOrganization)
@@ -740,21 +736,21 @@ private struct LibraryCollectionControls: View {
 
     private var count: some View {
         Text(layout.countText)
+            .accessibilityIdentifier("library.count")
             .font(ToonEdgeTypography.caption.weight(.semibold))
             .foregroundStyle(ToonEdgeColor.textSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }
 
     private var summary: some View {
-        VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
-            Text(organizationLayout.sourceSummary)
-                .accessibilityIdentifier("library.sources.summary")
-            Text(organizationLayout.sortChoice.title)
-        }
-        .font(ToonEdgeTypography.caption)
-        .foregroundStyle(ToonEdgeColor.textSecondary)
-        .fixedSize(horizontal: false, vertical: true)
+        Text(organizationLayout.compactSummary)
+            .font(ToonEdgeTypography.caption)
+            .foregroundStyle(ToonEdgeColor.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityLabel(organizationLayout.accessibilityValue)
+            .accessibilityIdentifier("library.sources.summary")
     }
+
 }
 
 private struct LibraryRefreshFeedbackView: View {

@@ -146,7 +146,10 @@ The visual direction is defined in `docs/plans/2026-09-27-quiet-editorial-ux-des
 - Borderless editorial groups are the default; repeated outlined cards are not.
 - Typography, spacing, alignment, artwork, and restrained motion establish hierarchy.
 - Elevated surfaces are reserved for navigation/reader chrome, sheets, selected state, and transient feedback.
-- Utility screens follow system light/dark appearance; Reader canvas remains an explicit reading preference.
+- Approved 2026-10-20 amendment: app and utility screens default to dark appearance with a pure-black canvas and restrained charcoal panels. Reader canvas remains an independent explicit reading preference; no new appearance preference is persisted.
+- Home retains its navigation title, a 44-point search entry at standard text sizes, and compact section spacing with Continue Reading prominent.
+- Universal Search is one shared overlay available from Home, Library, Downloads, Settings, Browser address entry, and revealed Reader chrome. Cancel preserves the originating tab, navigation, filters, scroll, and Reader instance/scale. Selection commits only after search dismissal; web requests reuse the current Browser when available, while saved results open native Library detail.
+- Library places count left and a compact source/sort summary right, with adaptive accessibility wrapping and full wording in accessibility/sheet controls. Plain density, refresh, and organization controls align right and retain 44-point hit targets.
 - Purple is reserved for primary action, selection, and meaningful update state.
 - Custom controls provide visible pressed states and at least 44×44-point hit regions.
 - Haptics are optional, semantic, and limited to meaningful user-caused outcomes.
@@ -175,6 +178,7 @@ Home is the primary launchpad for both search-based reading and saved reading.
 
 ## Required behavior
 - Tapping the search field opens search entry state or overlay.
+- Continue Reading opens the displayed current chapter using a retained Reader session when available, otherwise the existing source-page entry flow; show loading and Retry on failure. Resumed sessions retain valid adjacent chapter navigation. Delivery status and the known navigation defect are tracked in DEF-047.
 - Tapping a continue-reading card opens the last-read chapter.
 - Tapping a library card opens Series Detail.
 - Tapping a recently updated card opens Series Detail.
@@ -404,6 +408,9 @@ Provide the cleanest possible mobile reading experience for extracted chapter co
 - “View Original Page” must return to the browser page.
 - Reader `Library` action always routes to the Library root, not Series Detail.
 - Reader must not prominently show product branding in active reading chrome.
+- Reader chrome uses translucent dark surfaces with undimmed text/icons; Reduce Transparency and increased contrast receive an opaque legible fallback.
+- Reader top, bottom and side controls use compact spacing while retaining 44-point hit targets, safe-area clearance and adaptive Dynamic Type layout.
+- Zoom feedback passively displays the actual applied percentage during pinch and other zoom commands, including with chrome hidden, then briefly fades after completion. The indicator does not consume reading gestures or alter progress/settings.
 - Reader should preserve the user’s place even if the screen is dismissed and reopened.
 
 ## Acceptance criteria

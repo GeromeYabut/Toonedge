@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "xcrun",
+    "xcresulttool",
+    "export",
+    "attachments",
+    "--path",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-2-native-red-staged.xcresult",
+    "--output-path",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-2-red-attachments"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792534457.661707,
+  "end_unix": 1792534462.183043,
+  "elapsed_seconds": 4.521336078643799,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/task-2-red-attachments.log",
+  "bytes": 2825,
+  "sha256": "4fe7b09214c92cd308cfd8e5fbc1d3f14defdcb66aa359881b187fba49e57c43"
+}

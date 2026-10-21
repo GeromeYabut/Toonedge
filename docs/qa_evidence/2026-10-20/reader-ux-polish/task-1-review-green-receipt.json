@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "swift",
+    "test",
+    "--package-path",
+    "app",
+    "--scratch-path",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/swiftpm",
+    "--jobs",
+    "1",
+    "--filter",
+    "task1ContinueReading|swiftDataRepositoryReconcilesRecentReadingWithSavedChapterContinueTarget|swiftDataRepositorySavesProgressAndRestoresContinueReadingTarget"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792533523.4451132,
+  "end_unix": 1792533536.399554,
+  "elapsed_seconds": 12.954440832138062,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/task-1-review-green.log",
+  "bytes": 2327,
+  "sha256": "9614446f95422bc0800cae22056d872fe6969042d6178df667e69f294128c041"
+}

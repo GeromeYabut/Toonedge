@@ -1321,7 +1321,7 @@ import Testing
 @Test func homeSearchEntryUsesRestrainedBrowserCommandBarStyling() {
     let layout = HomeSearchEntryLayout()
 
-    #expect(layout.placeholder == "Search the web or paste a chapter link")
+    #expect(layout.placeholder == "Search or enter URL")
     #expect(layout.height == 44)
     #expect(layout.cornerRadius == 10)
     #expect(layout.usesCapsuleShape == false)
@@ -2011,4 +2011,19 @@ private func waitForSeriesMutationAttempt(
     while await service.attemptCount(for: operation) < count {
         await Task.yield()
     }
+}
+
+@Test func task3CompactLibrarySummaryPreservesFullAccessibleOrganization() {
+    var query = LibraryCollectionQuery.default
+    #expect(LibraryOrganizationLayout(query: query).compactSummary == "All sources · Recent ↓")
+    query = LibrarySortChoice.recentOldest.applying(to: query)
+    let oldest = LibraryOrganizationLayout(query: query)
+    #expect(oldest.compactSummary == "All sources · Recent ↑")
+    #expect(oldest.accessibilityValue.contains("Recent activity · Oldest"))
+    query.selectedSourceDomains = ["panel.example.test"]
+    query = LibrarySortChoice.titleDescending.applying(to: query)
+    let filtered = LibraryOrganizationLayout(query: query)
+    #expect(filtered.compactSummary == "panel.example.test · Title Z–A")
+    #expect(filtered.accessibilityValue.contains("panel.example.test"))
+    #expect(filtered.sortChoice.applying(to: query) == query)
 }

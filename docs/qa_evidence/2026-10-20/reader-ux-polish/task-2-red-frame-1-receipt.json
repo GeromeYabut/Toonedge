@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "/opt/homebrew/bin/ffmpeg",
+    "-v",
+    "error",
+    "-ss",
+    "12",
+    "-i",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-2-red-attachments/51898671-F8C6-4984-8ED7-3E7591522C96.mp4",
+    "-frames:v",
+    "1",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-2-red-frame-1.png"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792534512.958529,
+  "end_unix": 1792534514.583091,
+  "elapsed_seconds": 1.6245620250701904,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/task-2-red-frame-1.log",
+  "bytes": 0,
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "-c",
+    "import json,pathlib,hashlib,subprocess\ne=pathlib.Path(\"/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish\");o=pathlib.Path(\"/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a\")\nd=json.loads((e/'iphone-device-preflight.json').read_text());p=d['result']['properties']\nassert d['info']['outcome']=='success'\nassert p['hardware']['udid']=='00008140-0011658A2260801C' and p['hardware']['reality']=='physical'\nassert p['connection']['state']=='connected' and p['connection']['pairingState']=='paired'\nassert 'enabled' in p['state']['developerModeStatus'] and p['state']['bootState']=='booted'\nassert hashlib.sha256((e/'final-review.md').read_bytes()).hexdigest()=='6ef6136835c2f453856343fbe80bdb2b2bac9e37576ee78e4413d5ee3715b2b4'\nassert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()=='2683bfce87b722410f50b4d673c809147f7030a9'\nassert not subprocess.check_output(['git','status','--short','--untracked-files=no'],text=True).strip()\nassert not (o/'iphone').exists() and not (o/'iphone-build.xcresult').exists()\nprint(json.dumps({'device':'iPhone 16 Pro','os':p['software']['osVersionNumber']['stringValue'],'connected':True,'paired':True,'developer_mode':True,'review':'clear','fresh_output_paths':True}))\n"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536837.001523,
+  "end_unix": 1792536840.62705,
+  "elapsed_seconds": 3.6255269050598145,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-final-gate.log",
+  "bytes": 150,
+  "sha256": "65910ab47998a40459b3734b033ba292417ba9c5c0a9691ccfb42d84dadc5188"
+}

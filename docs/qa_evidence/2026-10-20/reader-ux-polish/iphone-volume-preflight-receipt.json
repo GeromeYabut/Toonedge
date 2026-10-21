@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "-c",
+    "from pathlib import Path\nimport subprocess,plistlib,os,json\np=Path('/Volumes/Seagate 2TB');assert p.is_dir()\nr=subprocess.run(['diskutil','info','-plist',str(p)],capture_output=True);assert r.returncode==0\nd=plistlib.loads(r.stdout);assert d['VolumeUUID']=='7C6E7CE1-D8D5-3041-AA58-DC000A724A29' and d['MountPoint']==str(p) and d['Writable']\ns=os.statvfs(p);free=s.f_bavail*s.f_frsize;assert free>20*1024**3\nprint(json.dumps({'volumeUUID':d['VolumeUUID'],'mount':str(p),'writable':True,'freeBytes':free}))\n"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536654.1637151,
+  "end_unix": 1792536655.198038,
+  "elapsed_seconds": 1.03432297706604,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-volume-preflight.log",
+  "bytes": 134,
+  "sha256": "643c3580865e888a2e4008d1cb95fd05968a314b964765f6adda21bbcfb7c55b"
+}

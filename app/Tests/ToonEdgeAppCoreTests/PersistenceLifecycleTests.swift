@@ -1749,3 +1749,125 @@ private extension RecentReadingInput {
         )
     }
 }
+
+
+@MainActor
+@Test(arguments: [false, true])
+func task1ContinueReadingRecentOnlyResolvesActualChapter(retainsImages: Bool) async throws {
+    let repository = try makeRepository()
+    let seriesID = UUID()
+    let chapterID = UUID()
+    let seriesURL = URL(string: "https://example.com/series/resume")!
+    let sourceURL = seriesURL.appendingPathComponent("chapter-12")
+    let images = retainsImages ? [URL(string: "https://images.example.com/resume-12.jpg")!] : []
+    let progress = ReaderProgress(currentImageIndex: 1, totalImageCount: 4)
+    try await repository.recordRecentReading(RecentReadingInput(
+        seriesID: seriesID, chapterID: chapterID, seriesTitle: "Resume Fixture",
+        seriesURL: seriesURL, sourceDomain: "example.com", chapterTitle: "Chapter 12",
+        chapterLabel: "12", sourceURL: sourceURL, imageURLs: images, progress: progress
+    ))
+    let snapshot = await repository.homeSnapshot()
+    #expect(snapshot.continueReading.map(\.id) == [seriesID])
+    let target = try #require(await repository.continueReadingTarget(for: seriesID))
+    #expect(target.chapterID == chapterID)
+    #expect(target.sourceURL == sourceURL)
+    #expect(target.progress == progress)
+    let session = await repository.readerSession(forChapterID: target.chapterID)
+    if retainsImages {
+        let retained = try #require(session)
+        #expect(retained.seriesID == seriesID)
+        #expect(retained.sourceURL == sourceURL)
+        #expect(retained.imageURLs == images)
+    } else {
+        #expect(session == nil)
+        #expect(HomeContinueReadingNavigation.browserStartPoint(for: target) == .url(sourceURL.absoluteString))
+    }
+    #expect(await repository.isSaved(canonicalURL: seriesURL) == false)
+}
+
+
+@MainActor
+@Test func task1ContinueReadingSavedSessionPreservesMetadataAndAdjacencyWithRecentRecord() async throws {
+    let repository = try makeRepository()
+    let seriesID = UUID()
+    let chapterID = UUID()
+    let seriesURL = URL(string: "https://example.com/series/saved-resume")!
+    let sourceURL = seriesURL.appendingPathComponent("chapter-2")
+    let previousURL = seriesURL.appendingPathComponent("chapter-1")
+    let nextURL = seriesURL.appendingPathComponent("chapter-3")
+    let imageURL = URL(string: "https://images.example.com/saved-2.jpg")!
+    try await repository.addToLibrary(.mock(
+        id: seriesID, title: "Saved Resume Fixture", canonicalURL: seriesURL,
+        chapters: [
+            .mock(chapterLabel: "1", sourceURL: previousURL),
+            .mock(id: chapterID, chapterLabel: "2", sourceURL: sourceURL,
+                  previousChapterURL: previousURL, nextChapterURL: nextURL, imageURLs: [imageURL]),
+            .mock(chapterLabel: "3", sourceURL: nextURL)
+        ]
+    ), context: .reader)
+    let before = try #require(await repository.readerSession(forChapterID: chapterID))
+    try await repository.recordRecentReading(RecentReadingInput(
+        seriesID: seriesID, chapterID: chapterID, seriesTitle: "Saved Resume Fixture",
+        seriesURL: seriesURL, sourceDomain: "example.com", chapterTitle: "Chapter 2",
+        chapterLabel: "2", sourceURL: sourceURL, imageURLs: [imageURL],
+        progress: ReaderProgress(currentImageIndex: 0, totalImageCount: 1)
+    ))
+    let target = try #require(await repository.continueReadingTarget(for: seriesID))
+    #expect(target.chapterID == chapterID)
+    let after = try #require(await repository.readerSession(forChapterID: target.chapterID))
+    #expect(after.seriesStatus == before.seriesStatus)
+    #expect(after.seriesSynopsis == before.seriesSynopsis)
+    #expect(after.previousChapter == before.previousChapter)
+    #expect(after.nextChapter == before.nextChapter)
+    #expect(after.previousChapter?.sourceURL == previousURL)
+    #expect(after.nextChapter?.sourceURL == nextURL)
+    #expect(after.seriesStatus == "Ongoing")
+    #expect(after.seriesSynopsis == "Stored test series.")
+}
+
+
+@MainActor
+@Test(arguments: [false, true])
+func task1ContinueReadingRecentSessionAliasResolvesSavedChapter(retainsRecentImages: Bool) async throws {
+    let repository = try makeRepository()
+    let seriesID = UUID()
+    let chapterID = UUID()
+    let seriesURL = URL(string: "https://example.com/series/alias-resume")!
+    let sourceURL = seriesURL.appendingPathComponent("chapter-2")
+    let previousURL = seriesURL.appendingPathComponent("chapter-1")
+    let nextURL = seriesURL.appendingPathComponent("chapter-3")
+    let imageURL = URL(string: "https://images.example.com/alias-2.jpg")!
+    let readAt = Date(timeIntervalSince1970: 1_800_000_000)
+    let progress = ReaderProgress(currentImageIndex: 1, totalImageCount: 4)
+    try await repository.addToLibrary(.mock(
+        id: seriesID, title: "Alias Resume Fixture", canonicalURL: seriesURL,
+        chapters: [
+            .mock(chapterLabel: "1", sourceURL: previousURL),
+            .mock(id: chapterID, chapterLabel: "2", sourceURL: sourceURL,
+                  previousChapterURL: previousURL, nextChapterURL: nextURL, imageURLs: [imageURL]),
+            .mock(chapterLabel: "3", sourceURL: nextURL)
+        ]
+    ), context: .reader)
+    let original = try #require(await repository.readerSession(forChapterID: chapterID))
+    // Production Reader writes use the reconstructed session UUID, not StoredChapter.id.
+    #expect(original.id != chapterID)
+    try await repository.recordRecentReading(RecentReadingInput(
+        seriesID: seriesID, chapterID: original.id, seriesTitle: original.seriesTitle,
+        seriesURL: original.seriesURL, sourceDomain: original.sourceDomain,
+        chapterTitle: original.chapterTitle, chapterLabel: "2", sourceURL: original.sourceURL,
+        imageURLs: retainsRecentImages ? original.imageURLs : [], progress: progress, readAt: readAt
+    ))
+    // The real write reconciles saved progress/timestamp by URL. Resolve without another snapshot.
+    let target = try #require(await repository.continueReadingTarget(for: seriesID))
+    #expect(target.chapterID == chapterID)
+    #expect(target.sourceURL == sourceURL)
+    #expect(target.progress == progress)
+    let resumed = try #require(await repository.readerSession(forChapterID: target.chapterID))
+    #expect(resumed.seriesStatus == original.seriesStatus)
+    #expect(resumed.seriesSynopsis == original.seriesSynopsis)
+    #expect(resumed.previousChapter == original.previousChapter)
+    #expect(resumed.nextChapter == original.nextChapter)
+    #expect(resumed.previousChapter?.sourceURL == previousURL)
+    #expect(resumed.nextChapter?.sourceURL == nextURL)
+    #expect(resumed.imageURLs == [imageURL])
+}

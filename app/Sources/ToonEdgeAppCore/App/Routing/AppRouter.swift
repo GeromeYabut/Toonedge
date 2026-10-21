@@ -1,6 +1,7 @@
 import Foundation
 
 public struct AppRouter: Equatable, Sendable {
+    public private(set) var browserRequestRevision: UInt64 = 0
     public var selectedTab: AppTab
     public var activeSheet: AppSheet?
     public var presentedBrowser: BrowserStartPoint?
@@ -40,6 +41,8 @@ public struct AppRouter: Equatable, Sendable {
         readerLaunchOrigin: ReaderLaunchOrigin? = nil
     ) {
         activeSheet = nil
+        presentedReader = nil
+        browserRequestRevision &+= 1
         presentedBrowser = startPoint
         presentedBrowserReaderLaunchOrigin = readerLaunchOrigin
     }
@@ -69,14 +72,13 @@ public struct AppRouter: Equatable, Sendable {
 
         presentedReader = nil
         if presentedBrowser == nil {
-            presentedBrowser = .url(sourceURL.absoluteString)
+            presentBrowser(.url(sourceURL.absoluteString))
         }
     }
 
     public mutating func openOriginalPage(_ sourceURL: URL) {
         presentedReader = nil
-        presentedBrowser = .url(sourceURL.absoluteString)
-        presentedBrowserReaderLaunchOrigin = nil
+        presentBrowser(.url(sourceURL.absoluteString))
     }
 
     public mutating func dismissReaderToSeries() {
@@ -86,7 +88,7 @@ public struct AppRouter: Equatable, Sendable {
         }
 
         presentedReader = nil
-        presentedBrowser = .url(seriesURL.absoluteString)
+        presentBrowser(.url(seriesURL.absoluteString))
     }
 
     public mutating func navigateBackFromReader() {
@@ -108,6 +110,7 @@ public struct AppRouter: Equatable, Sendable {
     }
 
     public mutating func openLibraryRoot() {
+        activeSheet = nil
         selectedTab = .library
         pendingLibrarySeriesID = nil
         pendingLibrarySegment = nil
@@ -127,6 +130,7 @@ public struct AppRouter: Equatable, Sendable {
     }
 
     public mutating func openLibraryRecent() {
+        activeSheet = nil
         selectedTab = .library
         pendingLibrarySeriesID = nil
         pendingLibrarySegment = .recent
@@ -136,6 +140,7 @@ public struct AppRouter: Equatable, Sendable {
     }
 
     public mutating func openLibraryDetail(seriesID: UUID) {
+        activeSheet = nil
         selectedTab = .library
         pendingLibrarySeriesID = seriesID
         pendingLibrarySegment = nil
@@ -152,5 +157,29 @@ public struct AppRouter: Equatable, Sendable {
     public mutating func consumePendingLibrarySegment() -> LibrarySegment? {
         defer { pendingLibrarySegment = nil }
         return pendingLibrarySegment
+    }
+}
+
+/// A search sheet works against a private routing draft. Only its completed
+/// destination is committed, after dismissal, to the originating screen.
+enum UniversalSearchSelection: Equatable, Sendable {
+    case browser(BrowserStartPoint)
+    case library(UUID)
+
+    init?(draft: AppRouter) {
+        if let seriesID = draft.pendingLibrarySeriesID {
+            self = .library(seriesID)
+        } else if let startPoint = draft.presentedBrowser {
+            self = .browser(startPoint)
+        } else {
+            return nil
+        }
+    }
+
+    func apply(to router: inout AppRouter) {
+        switch self {
+        case .browser(let startPoint): router.presentBrowser(startPoint)
+        case .library(let seriesID): router.openLibraryDetail(seriesID: seriesID)
+        }
     }
 }

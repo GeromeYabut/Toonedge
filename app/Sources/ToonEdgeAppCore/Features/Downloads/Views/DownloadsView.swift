@@ -117,7 +117,10 @@ public final class DownloadsViewModel: ObservableObject {
 public struct DownloadsView: View {
     @StateObject private var viewModel: DownloadsViewModel
 
-    public init(dependencies: AppDependencies) {
+    private let onSearch: (() -> Void)?
+
+    public init(dependencies: AppDependencies, onSearch: (() -> Void)? = nil) {
+        self.onSearch = onSearch
         self._viewModel = StateObject(
             wrappedValue: DownloadsViewModel(
                 cacheMetadataManager: dependencies.cacheMetadataService,
@@ -151,6 +154,13 @@ public struct DownloadsView: View {
             }
             .accessibilityIdentifier("downloads.root")
             .navigationTitle("Downloads")
+            .toolbar {
+                if let onSearch {
+                    ToolbarItem(placement: .primaryAction) {
+                        UniversalSearchButton(identifier: "downloads.search", action: onSearch)
+                    }
+                }
+            }
             .task {
                 await viewModel.load()
             }

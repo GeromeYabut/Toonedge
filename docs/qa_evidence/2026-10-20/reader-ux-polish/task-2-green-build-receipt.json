@@ -1,0 +1,30 @@
+{
+  "argv": [
+    "xcodebuild",
+    "-project",
+    "app/ToonEdge.xcodeproj",
+    "-scheme",
+    "ToonEdge",
+    "-configuration",
+    "Debug",
+    "-destination",
+    "platform=iOS Simulator,id=4582CDE9-27DB-4669-86AC-0631C1D7F2ED",
+    "-derivedDataPath",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/simulator-red-stage",
+    "-resultBundlePath",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-2-green-build.xcresult",
+    "-jobs",
+    "1",
+    "build-for-testing",
+    "CODE_SIGNING_ALLOWED=NO"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792534008.838787,
+  "end_unix": 1792534077.4581351,
+  "elapsed_seconds": 68.61934804916382,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/task-2-green-build.log",
+  "bytes": 50166,
+  "sha256": "1e2800773eb4d84dd7b19d883ada74a469e61cf790b9b70ccde7f94211d76e21"
+}
