@@ -14,7 +14,7 @@ This document tracks confirmed product defects, their evidence, current status, 
 
 ### User-visible problem
 
-A resumed chapter displays its images, but both Previous and Next are greyed out and unavailable. The user reported this while reading chapter 199 on iPhone. The phone was disconnected during diagnosis; its exact entry path is not yet confirmed.
+A resumed chapter displays its images, but both Previous and Next are greyed out and unavailable. The user reported this while reading chapter 199 on iPhone. The user confirmed opening it through Home → Continue Reading. This matches the Mac reproduction path; the phone was disconnected, so its exact stored session state was not inspected.
 
 ### Reproduction
 
@@ -51,6 +51,7 @@ This is a read-only session reconstruction defect, distinct from DEF-010's loadi
 
 ### Evidence and related work
 
+- [User entry-path confirmation](qa_evidence/2026-10-20/chapter-navigation-diagnostic/entry-path-confirmation.md): Home → Continue Reading, confirmed 2026-10-20.
 - [Mac diagnosis](qa_evidence/2026-10-20/chapter-navigation-diagnostic/REPORT.md): three authored cases; two expected failing cases/four issues, saved-complete control has no issue. Two existing detector-navigation controls pass. A separate first-attempt fixture compile error is retained as a harness error.
 - [Retained failing reproducer](qa_evidence/2026-10-20/chapter-navigation-diagnostic/parked-reproducer/ChapterNavigationDiagnosticTests.swift), outside active test discovery.
 - [Seven-item approved UX scope](superpowers/specs/2026-10-20-reader-ux-polish.md), item 2; [delivery QA](qa_evidence/2026-10-20/reader-ux-polish/QA.md).
