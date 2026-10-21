@@ -2,6 +2,60 @@
 
 This document tracks confirmed product defects, their evidence, current status, and intended resolution.
 
+## DEF-047 — Resumed Reader can lose previous and next chapter targets
+
+**Status:** Open — to do; cause reproduced on Mac, fix not implemented
+
+**Severity:** High
+
+**Reported:** 2026-10-20
+
+**Area:** Home Continue Reading, retained Reader sessions, adjacent chapter navigation
+
+### User-visible problem
+
+A resumed chapter displays its images, but both Previous and Next are greyed out and unavailable. The user reported this while reading chapter 199 on iPhone. The phone was disconnected during diagnosis; its exact entry path is not yet confirmed.
+
+### Reproduction
+
+Use authored chapter 199 metadata and an in-memory repository:
+
+1. Record recent reading with retained image URLs.
+2. Either leave the chapter unsaved, or save its metadata and explicit chapter 198/200 links while leaving the saved chapter-image list empty.
+3. Resolve Continue Reading, reconstruct its Reader session, and inspect Reader navigation availability.
+
+Both paths restore images but return nil previous/next targets. A saved chapter with its own image URLs retains both targets and enables both controls.
+
+### Confirmed cause
+
+`SwiftDataLibraryRepository.recentReaderSession(forChapterID:)` constructs the recent-image session without adjacent chapters. The saved-empty-image branch returns through this fallback before deriving saved neighbors. ReaderViewModel exposes navigation only for non-nil targets, so Reader correctly disables both buttons for the incomplete session.
+
+This is a read-only session reconstruction defect, distinct from DEF-010's loading of an already-known adjacent target and DEF-020's incorrect target ordering. It does not establish that adjacent source chapters are actually available.
+
+### Intended resolution
+
+- Preserve saved metadata and valid neighbor targets when recent images provide the payload.
+- Resolve recent-only neighbors through the existing chapter-target rules where supported; do not fabricate destinations for unknown/non-numeric routes.
+- Keep safe source-page recovery when a target cannot be established.
+- Leave autosave, storage schema, progress writes and the parked persistence investigation unchanged.
+
+### Acceptance criteria
+
+- Recent-only resume retains or resolves valid previous/next targets for supported chapter URLs.
+- Saved-empty-image fallback keeps its valid saved neighbors while using recent images.
+- Both Next and Previous perform a real adjacent transition through the existing loader; chapter availability alone is not sufficient verification.
+- First-chapter, unknown-route, unsafe-target and load-failure cases degrade safely without invented destinations or an unusable Reader.
+- Existing Back/launch-origin, View Original Page, zoom reset and progress contracts remain intact.
+- Focused regression tests reproduce the two failing assembly paths before the fix and pass afterward; an owned simulator flow verifies both transitions.
+- Physical-iPhone confirmation follows when the device is available; no merge is authorized by this defect registration.
+
+### Evidence and related work
+
+- [Mac diagnosis](qa_evidence/2026-10-20/chapter-navigation-diagnostic/REPORT.md): three authored cases; two expected failing cases/four issues, saved-complete control has no issue. Two existing detector-navigation controls pass. A separate first-attempt fixture compile error is retained as a harness error.
+- [Retained failing reproducer](qa_evidence/2026-10-20/chapter-navigation-diagnostic/parked-reproducer/ChapterNavigationDiagnosticTests.swift), outside active test discovery.
+- [Seven-item approved UX scope](superpowers/specs/2026-10-20-reader-ux-polish.md), item 2; [delivery QA](qa_evidence/2026-10-20/reader-ux-polish/QA.md).
+- Delivered source: `2683bfce87b722410f50b4d673c809147f7030a9` on local, unmerged `feature/reader-ux-polish`. Diagnosis changed no production source.
+
 ## DEF-046 — Settings Reader Fit icon exposes a misleading accessibility label
 
 **Status:** Implemented (verified 2026-09-25)  

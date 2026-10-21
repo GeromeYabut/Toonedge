@@ -178,6 +178,7 @@ Home is the primary launchpad for both search-based reading and saved reading.
 
 ## Required behavior
 - Tapping the search field opens search entry state or overlay.
+- Continue Reading opens the displayed current chapter using a retained Reader session when available, otherwise the existing source-page entry flow; show loading and Retry on failure. Resumed sessions retain valid adjacent chapter navigation. Delivery status and the known navigation defect are tracked in DEF-047.
 - Tapping a continue-reading card opens the last-read chapter.
 - Tapping a library card opens Series Detail.
 - Tapping a recently updated card opens Series Detail.
@@ -407,6 +408,9 @@ Provide the cleanest possible mobile reading experience for extracted chapter co
 - “View Original Page” must return to the browser page.
 - Reader `Library` action always routes to the Library root, not Series Detail.
 - Reader must not prominently show product branding in active reading chrome.
+- Reader chrome uses translucent dark surfaces with undimmed text/icons; Reduce Transparency and increased contrast receive an opaque legible fallback.
+- Reader top, bottom and side controls use compact spacing while retaining 44-point hit targets, safe-area clearance and adaptive Dynamic Type layout.
+- Zoom feedback passively displays the actual applied percentage during pinch and other zoom commands, including with chrome hidden, then briefly fades after completion. The indicator does not consume reading gestures or alter progress/settings.
 - Reader should preserve the user’s place even if the screen is dismissed and reopened.
 
 ## Acceptance criteria
