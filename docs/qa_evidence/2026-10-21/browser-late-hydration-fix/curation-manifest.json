@@ -1,0 +1,63 @@
+{
+  "exactCandidateFiles": [
+    {
+      "path": "app/Sources/ToonEdgeAppCore/Features/Browser/WebView/BrowserWebView.swift",
+      "bytes": 35884,
+      "sha256": "5106d1f7f00d0cf3382f7fdd651f0660bca2c73696390b08a7b19e6efc76322a"
+    },
+    {
+      "path": "app/Tests/ToonEdgeAppCoreTests/BrowserHydrationRecoveryTests.swift",
+      "bytes": 24963,
+      "sha256": "66905a79c820e1e31ac3abd5777e7306ab25a6849306eb27c9ca9c18a316c1cf"
+    },
+    {
+      "path": "docs/defects.md",
+      "bytes": 120881,
+      "sha256": "16acffe5a215c627a084f67ee4e339a12c862a3cb0ab75029289ed372bd6806a"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-21-browser-late-hydration.md",
+      "bytes": 4350,
+      "sha256": "4955143db06f668614d5db47a7e3b673a61982edee1f6d98eeddd912371ae952"
+    },
+    {
+      "path": "docs/qa_evidence/2026-10-21/browser-late-hydration-fix/REPORT.md",
+      "bytes": 5915,
+      "sha256": "e54c98614da8dddf22ed7f34a2c0f1b7565689e7094900fe6e1e3ce6a9cb5f27"
+    },
+    {
+      "path": "docs/qa_evidence/2026-10-21/browser-late-hydration-fix/commands.json",
+      "bytes": 7973,
+      "sha256": "487bf465ab82e03c5f5c8e0fe285603cb8daeaed382b0a51e9ae9a27fe8489f6"
+    },
+    {
+      "path": "docs/qa_evidence/2026-10-21/browser-late-hydration-fix/task-review.md",
+      "bytes": 7708,
+      "sha256": "48ef4e6b7f3dafc5ad918c48c0a949c1cab9430c433ea7309b969b1639690e07"
+    },
+    {
+      "path": "docs/qa_evidence/2026-10-21/browser-late-hydration-fix/task-rereview.md",
+      "bytes": 6434,
+      "sha256": "833be6277245b5ca38ad3dd20dbd8a22751e920956150c243b04b777be1991bb"
+    },
+    {
+      "path": "docs/qa_evidence/2026-10-21/browser-late-hydration-fix/review-fix-verification.md",
+      "bytes": 1616,
+      "sha256": "d1bcb9e2e6b8bc8a33e2d033325504f584af75f742ea547ba88006dc853c1d42"
+    },
+    {
+      "path": "docs/qa_evidence/2026-10-21/browser-late-hydration-fix/retention-inspection.json",
+      "bytes": 918,
+      "sha256": "11a8e1757633f421f62a35e040cfad756afd6333c33d3defc3b3e8f4a508ff28"
+    },
+    {
+      "path": "docs/qa_evidence/2026-10-21/browser-late-hydration-fix/preservation-after.json",
+      "bytes": 127,
+      "sha256": "f74e8628abb998acd8eca29ffff0865bddedafc8182434e32ec383de6db3e809"
+    }
+  ],
+  "textOnly": true,
+  "secretPatternScan": "pass",
+  "manualReview": "owned fixtures; code/doc keyword references are not cookies or credentials; no screenshot/artwork files",
+  "protectedFileContentsRead": false
+}

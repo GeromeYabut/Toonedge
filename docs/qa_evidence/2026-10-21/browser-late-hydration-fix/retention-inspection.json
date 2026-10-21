@@ -1,0 +1,22 @@
+{
+  "buildOnly": true,
+  "testActionRequested": false,
+  "attachmentsInspected": 223,
+  "attachmentIdentifiers": {
+    "com.apple.dt.ActivityLogSectionAttachment.TaskMetrics": 223
+  },
+  "numericMetricsOnly": true,
+  "metricKeys": [
+    "maxRSS",
+    "stime",
+    "utime",
+    "wcDuration",
+    "wcStartTime"
+  ],
+  "mediaOrScreenshotAttachments": 0,
+  "retainedBundle": "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/fix-browser-late-hydration-20261021a/simulator-build.xcresult",
+  "activityLogSHA256": "a58e749660441c2a7d2d2bc7446dcdb1fbdaa30b64970763189a03e7dc45b1a1",
+  "rawMetadataPublication": false,
+  "priorInspection": "Initial no-attachment assertion failed because Xcode includes numeric TaskMetrics attachments. Actual payloads individually validated; prior failure retained.",
+  "warning": "AppIntents metadata extraction skipped because no AppIntents.framework dependency. No compiler warning or error."
+}
