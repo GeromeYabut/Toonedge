@@ -14,7 +14,7 @@ Use document content observation with native navigation/document identity guards
 
 The implementation must reject stale document/navigation, subframe, wrong-WebView and malformed events; prevent concurrent or duplicate recovery delivery; cancel on teardown and navigation; avoid handler/task retention cycles. Exact debounce/window/budget values and their boundary tests are recorded with the implementation proposal before application.
 
-Reuse the existing confidence disposition, hard blocks, source URL checks, cookie/request context and image preflight. A defaulted internal preflight dependency may use its existing HTTPDataLoading interface for owned test data; production behavior remains the default.
+Reuse the existing confidence disposition, hard blocks, source URL checks, cookie/request context and image preflight. A defaulted internal preflight dependency may use its existing HTTPDataLoading interface for owned test data; production behavior remains the default. The existing first-image preflight checks HTTP data and ImageIO source/type/frame count; it does not perform pixel decoding. The owned test separately decodes its generated PNG.
 
 ## Files and verification
 

@@ -11,7 +11,7 @@ Outcome: repair the reproduced same-URL image hydration scheduling gap. DEF-036 
 Follow docs/superpowers/specs/2026-10-21-browser-late-hydration-design.md.
 Exact untrimmed before/after code is the implementation appendix: /Users/geromeyabut/.codex/worktrees/browser-late-hydration-fix/Toonedge/docs/qa_evidence/2026-10-21/browser-late-hydration-fix/task-1-proposal.json, SHA256 a179687e380c05e99a168f40a2dfdd4e96c05936f7f2662972b9f1c22d77379c.
 Only BrowserWebView.swift and BrowserHydrationRecoveryTests.swift may change as product/test code.
-Preserve initial 750ms and legacy 12s scheduling. Add image readiness hints in isolated WebKit world with fixed 30s uptime window, 500ms first-event debounce and four additional analyses. Fingerprint first 512 images, attributes capped at 2048 characters. Classifier, hard blocks, cookie context, decoded image preflight and source guards remain mandatory. Navigation, replacement and teardown invalidate asynchronous work.
+Preserve initial 750ms and legacy 12s scheduling. Add image readiness hints in isolated WebKit world with fixed 30s uptime window, 500ms first-event debounce and four additional analyses. Fingerprint first 512 images, attributes capped at 2048 characters. Classifier, hard blocks, cookie context, existing first-image ImageIO source/type/count preflight and source guards remain mandatory. Navigation, replacement and teardown invalidate asynchronous work.
 
 ## Controller-owned sequence
 1. Validate complete envelope, absolute destinations, base ancestry, full UTF8 bytes and hashes using apply-proposal.py.
