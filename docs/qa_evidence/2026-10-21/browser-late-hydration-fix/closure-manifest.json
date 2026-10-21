@@ -1,0 +1,27 @@
+{
+  "files": [
+    {
+      "path": "docs/qa_evidence/2026-10-21/browser-late-hydration-fix/CLOSURE.md",
+      "bytes": 3825,
+      "sha256": "3e8e8414aed6b0569dc8314e46bf50ef8b1ae3d4902f324e7523352f5aaa9592"
+    },
+    {
+      "path": "docs/qa_evidence/2026-10-21/browser-late-hydration-fix/final-review.md",
+      "bytes": 8793,
+      "sha256": "803298aa5e62ad230b17561f173282f9a12600eac7f9b89424234e6481fcad9e"
+    },
+    {
+      "path": "docs/qa_evidence/2026-10-21/browser-late-hydration-fix/final-review-addendum.md",
+      "bytes": 3408,
+      "sha256": "986070d6d96df47d3960825cba9dfe1bdc78196623fbd20010261e2cd5e1e5e7"
+    },
+    {
+      "path": "docs/qa_evidence/2026-10-21/browser-late-hydration-fix/preservation-final.json",
+      "bytes": 127,
+      "sha256": "f74e8628abb998acd8eca29ffff0865bddedafc8182434e32ec383de6db3e809"
+    }
+  ],
+  "textOnly": true,
+  "privacy": "pass",
+  "productSourceUnchanged": true
+}
