@@ -4,7 +4,7 @@ This document tracks confirmed product defects, their evidence, current status, 
 
 ## DEF-047 — Resumed Reader can lose previous and next chapter targets
 
-**Status:** Open — to do; cause reproduced on Mac, fix not implemented
+**Status:** Fix implemented on local branch `fix/def-047-resumed-reader-adjacent` (2026-10-29); owned simulator flow and physical-iPhone confirmation pending
 
 **Severity:** High
 
@@ -48,6 +48,14 @@ This is a read-only session reconstruction defect, distinct from DEF-010's loadi
 - Existing Back/launch-origin, View Original Page, zoom reset and progress contracts remain intact.
 - Focused regression tests reproduce the two failing assembly paths before the fix and pass afterward; an owned simulator flow verifies both transitions.
 - Physical-iPhone confirmation follows when the device is available; no merge is authorized by this defect registration.
+
+### Fix (2026-10-29, local, unmerged)
+
+- `readerSession(forChapterID:)` keeps saved series metadata and saved neighbors when the saved image list is empty, taking images only from a recent reading with the same source URL. A recent row with the same chapter ID but another URL falls back to a self-consistent recent session instead of mixing payloads.
+- `recentReaderSession(forChapterID:)` infers neighbors for recent-only chapters through `ChapterURLInference`, only when the label's integer chapter number appears in the chapter's own route and the rewritten target carries its own number. Chapter 1 and 0 offer Next only; slug collisions (`solo-2/chapter-2`), decimals and routes without the number offer no targets.
+- `ResumedReaderAdjacentNavigationTests` (authored owned-fixture URLs, in-memory storage): the initial five tests failed on unchanged code (4 failing, 19 issues) and pass after the fix, with edge cases for first/zero chapters, ambiguous routes, cross-URL recent rows, URL-based resolution and missing images. Previous and Next transitions go through `AdjacentReaderSessionLoading` and keep the Continue Reading launch origin. Full package suite: 810 tests passed (`swift test --package-path app --jobs 1`).
+- Independent review: clear with notes. Notes not changed: the label number can come from the URL itself, so the own-route check is consistency rather than independent evidence; the recent path re-checks the rewritten target while the saved path relies on stored links.
+- Not verified: owned simulator Home → Continue Reading → Next/Previous flow, physical iPhone. No storage schema, autosave or progress-write changes.
 
 ### Evidence and related work
 
