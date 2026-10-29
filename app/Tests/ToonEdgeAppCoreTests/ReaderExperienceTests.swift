@@ -1137,6 +1137,21 @@ func adjacentFailureWaitsForExplicitRetry(reason: AdjacentReaderSessionLoadFailu
     #expect(announcements.announcement(for: failure) == nil)
 }
 
+@Test(arguments: [ReaderChapterDirection.previous, .next])
+func adjacentLoadingShowsOnlyTheControlSpinnerButStillAnnounces(_ direction: ReaderChapterDirection) {
+    let loading = AdjacentChapterLoadState.loading(direction)
+    let failure = AdjacentChapterLoadState.failed(
+        AdjacentChapterLoadFailure(direction: direction, reason: .timeout, targetURL: nil)
+    )
+    var announcements = ReaderAdjacentAnnouncementPolicy()
+
+    // The tapped control's spinner is the visible loading state; failures keep their recovery row.
+    #expect(ReaderAdjacentFeedbackPresentation(state: loading)?.showsInlineMessage == false)
+    #expect(ReaderAdjacentFeedbackPresentation(state: failure)?.showsInlineMessage == true)
+    #expect(announcements.announcement(for: loading)
+        == (direction == .next ? "Loading next chapter." : "Loading previous chapter."))
+}
+
 private struct FailingCacheMetadataService: CacheMetadataManaging {
     func recordCacheMetadata(_ input: CacheMetadataInput) async throws -> CacheActionResult {
         throw URLError(.cannotWriteToFile)
