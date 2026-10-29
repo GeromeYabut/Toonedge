@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "-c",
+    "from pathlib import Path\nimport subprocess,json,hashlib\no=Path(\"/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a\");e=Path(\"/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish\")\nnames=['task-2-green-build','task-2-native-red-valid','task-2-native-red','task-2-red-build','task-3-fix3-native-build','task-3-native-build','task-3-progress-red-build']\nrows=[]\nfor n in names:\n dest=o/(n+'-retention-attachments')\n assert not dest.exists()\n r=subprocess.run(['xcrun','xcresulttool','export','attachments','--path',str(o/(n+'.xcresult')),'--output-path',str(dest)],capture_output=True,text=True,timeout=20)\n files=[x for x in dest.rglob('*') if x.is_file()] if dest.exists() else []\n media=[x for x in files if x.name!='manifest.json']\n assert not media, (n,'unexpected attachment requires inspection')\n row={'bundle':n+'.xcresult','exportExit':r.returncode,'attachmentFiles':0,'output':r.stdout+r.stderr}\n rows.append(row);print(json.dumps(row),flush=True)\n(e/'prelaunch-build-retention.json').open('x').write(json.dumps(rows,indent=2)+'\\n')\n"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792537024.491699,
+  "end_unix": 1792537025.5421581,
+  "elapsed_seconds": 1.0504591464996338,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/build-retention-inspection.log",
+  "bytes": 2180,
+  "sha256": "d3b1bf34a61db92fa13385e35d37ae3e0f2ceacd03195496098f4c376304a8a8"
+}

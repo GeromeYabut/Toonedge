@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "swift",
+    "test",
+    "--package-path",
+    "app",
+    "--scratch-path",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/swiftpm",
+    "--jobs",
+    "1",
+    "--filter",
+    "ReaderZoom|ReaderInspection|ReaderSemanticPresentation|readerZoomFeedback"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792534757.427559,
+  "end_unix": 1792534762.100375,
+  "elapsed_seconds": 4.672816038131714,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/task-2-existing-zoom-green.log",
+  "bytes": 5479,
+  "sha256": "8675bc61a25962f4635597e90fad4f6a7f0ec343b175e35f3169e9023d9549d8"
+}

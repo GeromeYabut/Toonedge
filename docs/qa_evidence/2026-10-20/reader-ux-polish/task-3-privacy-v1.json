@@ -1,0 +1,336 @@
+{
+  "attachments": [
+    {
+      "directory": "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-3-v1-attachments",
+      "tests": 3,
+      "files": [
+        {
+          "name": "070600F3-719D-4D29-8896-15C6728D4FA9",
+          "bytes": 1903,
+          "sha256": "98342d2742856dedbcfd09d245a416fe48f09a4d121285431891d75f4c8252fa"
+        },
+        {
+          "name": "0870743A-9A19-4B20-9782-D9273936A7E3",
+          "bytes": 1891,
+          "sha256": "09f0585ad41b00d917942e773c8fc81ca0057ae8c432672c0299dc2dbe56622b"
+        },
+        {
+          "name": "1A92B537-F20C-4AF8-820F-84142DBADC56.mp4",
+          "bytes": 14296787,
+          "sha256": "1bfa472461fb2476328c9169848e402b52a3aba5f3f272d44c26ad2cd03ea509"
+        },
+        {
+          "name": "217C6E38-9B45-473C-AF50-A75BFD0AB4CB",
+          "bytes": 1891,
+          "sha256": "4a14c1500cdc9170732b7038a713aa1644d078154d797e776c3aada11813974d"
+        },
+        {
+          "name": "2FA1D017-7092-4D21-B385-E80430310937",
+          "bytes": 1879,
+          "sha256": "458682c64455dfa91c9f5c59fc6db67cd73b8492de83d2a020dd547736942af8"
+        },
+        {
+          "name": "3A88A123-6D65-4576-836B-3E0CD2BB5419",
+          "bytes": 1879,
+          "sha256": "458682c64455dfa91c9f5c59fc6db67cd73b8492de83d2a020dd547736942af8"
+        },
+        {
+          "name": "3DFD1346-D99A-45E9-8840-8A62416F68D6",
+          "bytes": 6485,
+          "sha256": "fea1f49daf381702e8c6aec611fa66b3c4fdc7f64f4729bc981555969566fa7d"
+        },
+        {
+          "name": "495AF839-ECA5-4D01-ADB9-55DB35462026",
+          "bytes": 1855,
+          "sha256": "8ad05437fea4d1080c8004c3e156e39cf17cc5fa2e31cf6dca645a076b76d136"
+        },
+        {
+          "name": "4B970542-C831-4E94-92EA-91400D05D7D4",
+          "bytes": 1211,
+          "sha256": "594b99b137616a565f9bbbb575cea1fea8fb356ab4f4f7a0442d6edd82e6f516"
+        },
+        {
+          "name": "5E409701-0C82-4434-8EC7-A4F5C8099845",
+          "bytes": 6485,
+          "sha256": "fea1f49daf381702e8c6aec611fa66b3c4fdc7f64f4729bc981555969566fa7d"
+        },
+        {
+          "name": "6B7DAF69-056F-4ECA-90EA-C29F66BFA7C8",
+          "bytes": 1891,
+          "sha256": "7eeeedb951d3bbb23d268e07d4e4f97eb6e1278fe12e85a017175b26e5681040"
+        },
+        {
+          "name": "6E1E3BD6-9AB0-4C11-A916-87A4EA339459.png",
+          "bytes": 106206,
+          "sha256": "94b8176513412649eda72ea27f37340994e7ee8c41ec0f55c616f5a8bca189d8"
+        },
+        {
+          "name": "6F6C8040-DFD4-49D2-BEAD-D67C40AE54F7",
+          "bytes": 1903,
+          "sha256": "2e65ec25d15e0cfb8ac9cf28627ff8a79a6cc60761d4140971b3906792217a03"
+        },
+        {
+          "name": "8407AE01-8B3C-4195-A037-D08D6DEE448B",
+          "bytes": 1891,
+          "sha256": "037d97b01e25023ce6d57ff38a5fe8151d34293a4ee15c813967096551d7d921"
+        },
+        {
+          "name": "866C60EB-422D-4442-A8DB-C7085C9B9394",
+          "bytes": 1891,
+          "sha256": "5db48dc6c8a67061ff509e5ce154c7d2190d90c175730c37e054a15c1ad4ba2b"
+        },
+        {
+          "name": "8BE2FC53-013A-4193-903C-09731C74884C",
+          "bytes": 1855,
+          "sha256": "564d6e61e7015a2f6408b1ede855c35431b67523df31999eadd86e2aad76923b"
+        },
+        {
+          "name": "9AA099F9-DEB3-4756-BB15-E68D272DA61B",
+          "bytes": 1891,
+          "sha256": "0e6c73261d7fbe899cd8e605ea8e55771dda66aa1c272f4b1b71fcdeb67ace1f"
+        },
+        {
+          "name": "9E64CE4B-3033-45C4-9821-C92A372396EF",
+          "bytes": 1211,
+          "sha256": "b83945607a0ad1ce889c6b88d921b91efbf0ce3004cd73fbb9678e72db9ea10d"
+        },
+        {
+          "name": "A0E0B1C1-76DC-40AA-A704-3DFEE3EF6DD1",
+          "bytes": 1783,
+          "sha256": "7910cfebb533ff554e6bb5f29d8126f1806f08624936d06ace3a85ae77821c4b"
+        },
+        {
+          "name": "A273392A-D297-4F91-B39D-F54FC8679C98",
+          "bytes": 1891,
+          "sha256": "7ce4cbcad7bed84cfe64b11bd818abf4044b1f2770754aed9bba521a8d1952bc"
+        },
+        {
+          "name": "A5C6178E-2E8A-40EA-BB95-17A8FFD58D13",
+          "bytes": 6485,
+          "sha256": "fea1f49daf381702e8c6aec611fa66b3c4fdc7f64f4729bc981555969566fa7d"
+        },
+        {
+          "name": "A61B97EB-E210-40DD-9C4C-734430C94DA0",
+          "bytes": 6485,
+          "sha256": "fea1f49daf381702e8c6aec611fa66b3c4fdc7f64f4729bc981555969566fa7d"
+        },
+        {
+          "name": "C2CF3818-F199-4F25-97D6-B174E75E79AB",
+          "bytes": 6485,
+          "sha256": "fea1f49daf381702e8c6aec611fa66b3c4fdc7f64f4729bc981555969566fa7d"
+        },
+        {
+          "name": "CF673286-B500-4E90-B630-1364851C71E1",
+          "bytes": 1726,
+          "sha256": "ea4cd3951e0c4cc0932464882699380124eee65b72294dcace97c66ef7477a55"
+        },
+        {
+          "name": "D6527E9B-A669-4342-A126-129FC925AF0B",
+          "bytes": 1903,
+          "sha256": "b600f378966021d0a88ab6c04734dd04dcc0aae859fa9aa9b8a54a566ae7a181"
+        },
+        {
+          "name": "D6DE0415-EC0D-4169-BB14-58D2972D5891",
+          "bytes": 1891,
+          "sha256": "9920df2c1f034edc8387b2c7f6b3c6b0dea8f131a94c1d66b1a76a5f962ce511"
+        },
+        {
+          "name": "E41CC151-F524-4FAD-A332-0D3A1364CF24.mp4",
+          "bytes": 1491771,
+          "sha256": "a5aab3b68e038dd85fe1a6c7003b45bced39d1ae87f7d4e664dd4877ce644b54"
+        },
+        {
+          "name": "E48A3BA9-5F82-48F3-955F-46575ED74E4C",
+          "bytes": 1855,
+          "sha256": "ab00814c1123b60ffed4176b9df651d665575adbb5fe79600ddb3b096a939d5d"
+        },
+        {
+          "name": "E5BAD9AA-5E13-4778-94B7-DB00BA7EF044",
+          "bytes": 1211,
+          "sha256": "b83945607a0ad1ce889c6b88d921b91efbf0ce3004cd73fbb9678e72db9ea10d"
+        },
+        {
+          "name": "ED1809FE-5C5F-47B9-BE14-1DC794AD6135",
+          "bytes": 1879,
+          "sha256": "2990e08af0b182d96ce5559c3db875813ebeef62462d69336e21b88b9a022ecd"
+        },
+        {
+          "name": "ED95C534-120F-4C00-A4B9-D7AFBBF2EEF1",
+          "bytes": 1891,
+          "sha256": "85db372d9b9d46256fa19f893ba02ddf1936f8bbbf5b6a71294aad7517be7709"
+        },
+        {
+          "name": "EDF205CF-83B6-4561-B08F-E273519F860A.mp4",
+          "bytes": 40474406,
+          "sha256": "9883ccd2da24af6105dd666b5f27e869acd49d676ad99cd1973ad72fb3026155"
+        },
+        {
+          "name": "EED53F66-554B-4F82-A737-0BD96AD01747",
+          "bytes": 1211,
+          "sha256": "594b99b137616a565f9bbbb575cea1fea8fb356ab4f4f7a0442d6edd82e6f516"
+        },
+        {
+          "name": "FB14FAB8-803F-421A-8443-C9162BF1E9DA.png",
+          "bytes": 187247,
+          "sha256": "894ba5d9fa11d67ba36df043c8d59df116742c72d226d587798814bba6f2876e"
+        },
+        {
+          "name": "manifest.json",
+          "bytes": 14624,
+          "sha256": "752620ca97f6953d723b1a0b5ff985505dc459740ffe72bbf2fc7ec01d133916"
+        }
+      ],
+      "fixtureOnly": true
+    },
+    {
+      "directory": "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-3-progress-red-attachments",
+      "tests": 1,
+      "files": [
+        {
+          "name": "0D7B8694-1A56-4381-BF6C-C5CB52075357.mp4",
+          "bytes": 36148620,
+          "sha256": "0fd9ca447be308808eb1f7bf937f083abc69ca014fe52cedcd6e408ed02b8ac3"
+        },
+        {
+          "name": "1BF2A50B-7AA9-4FC1-A2FF-93A7BA0ADE2E",
+          "bytes": 1879,
+          "sha256": "ea952c1d6357a8d494108959f7f8993af0638e43a5d51019c4c2cd56603bffa8"
+        },
+        {
+          "name": "25E840B9-90BB-493C-AC86-D0312CB47E90",
+          "bytes": 6533,
+          "sha256": "b1fdb01c167bdb70c4d39e97dfac81785527410c4062917875f26c6a1c3422db"
+        },
+        {
+          "name": "3EF0BB35-E1C3-4A43-BC70-AEC129D15573.png",
+          "bytes": 105335,
+          "sha256": "71a91921bcf9cf9f5592b0ea14e64c6c2e8979db219158b6c0df20e70bee3927"
+        },
+        {
+          "name": "42C5E542-5299-4384-9ADE-C0A70BB8B1D0",
+          "bytes": 1211,
+          "sha256": "86c805667afa7688aa83dccbdc019adbef814a49db2e3ad6be1049068e061ad8"
+        },
+        {
+          "name": "4880B39D-BF7C-460A-9DB9-A8CAE3BC5FF8",
+          "bytes": 1855,
+          "sha256": "50bab7c7453c9211bdd6276c2c4fee7874b240a523f1bf6a973810ddbb1df848"
+        },
+        {
+          "name": "53A531AB-4C69-445A-96AD-8643F6BBCF22",
+          "bytes": 1903,
+          "sha256": "be9674e5444de7c17a29f799d86c00edf10e20f5abefb3c3c5b49de89d284590"
+        },
+        {
+          "name": "5420C994-B7C0-4537-8F9A-96EB4BBEB6C9",
+          "bytes": 1891,
+          "sha256": "71beb9534931494855f177d6b31ac6b0ee1a7503502bd8b2a1254d87e210301d"
+        },
+        {
+          "name": "64DFFF2D-D9AB-4520-AFAF-0B237DECC71D",
+          "bytes": 1855,
+          "sha256": "acb34a277dd997f5f06703aea66807f80f65fa36fce08f7b7837c5b114b6a385"
+        },
+        {
+          "name": "66A5B4C2-CB72-4D5D-A340-0FC914B4AE04",
+          "bytes": 1211,
+          "sha256": "86c805667afa7688aa83dccbdc019adbef814a49db2e3ad6be1049068e061ad8"
+        },
+        {
+          "name": "6E5B176D-224E-404F-B382-E4935A9AB8C0",
+          "bytes": 6533,
+          "sha256": "b1fdb01c167bdb70c4d39e97dfac81785527410c4062917875f26c6a1c3422db"
+        },
+        {
+          "name": "701056C0-C4D6-4E03-8245-6FBCA99D9D33",
+          "bytes": 1783,
+          "sha256": "883ebde173313141b6ed0f6766497ad7ac063e976ec347b8664ee5d67ea4fc9f"
+        },
+        {
+          "name": "98E8E53B-B9B3-4A33-9BB5-A48B74830248",
+          "bytes": 6533,
+          "sha256": "b1fdb01c167bdb70c4d39e97dfac81785527410c4062917875f26c6a1c3422db"
+        },
+        {
+          "name": "9A842DAC-7934-49BB-9941-504894FE28A4",
+          "bytes": 1726,
+          "sha256": "9efc9ee199f35ba9c945ee5fc1b94f10cfdeb4c84f5e7fc7cce2365a81f9d091"
+        },
+        {
+          "name": "9F86C921-3119-478F-A74E-08B2C1AB5C66",
+          "bytes": 1879,
+          "sha256": "ea952c1d6357a8d494108959f7f8993af0638e43a5d51019c4c2cd56603bffa8"
+        },
+        {
+          "name": "D122AA31-4733-415D-84CC-3A76C6C41B65",
+          "bytes": 1891,
+          "sha256": "db46f42ac781b391a05fef205add2585891062956d62c581ea0a2a2e2d192d3c"
+        },
+        {
+          "name": "D9800175-53B8-484B-B087-72C8497F87D9.png",
+          "bytes": 186181,
+          "sha256": "2fa1e849b225e95e8e312b100843d8fc46dc4c6f9d1df7de45385e8bc17ed792"
+        },
+        {
+          "name": "E2A0E358-A10D-485D-B2C9-BFB8D4547243",
+          "bytes": 1891,
+          "sha256": "9f50b97907eb73b9feebbd26f8fdfbedc17161a12b290fa386bea48b514cf347"
+        },
+        {
+          "name": "E34E3A77-5E01-4EED-8D20-9BF7C5B58901",
+          "bytes": 1891,
+          "sha256": "7ffddd8b0ac30e5906b96e52ad57bb23f008aa550f5f4e6d9f2f52b8131c4d2f"
+        },
+        {
+          "name": "E44DA44D-A2D5-42FE-A0BC-B2C128E2E2C0",
+          "bytes": 1891,
+          "sha256": "2751ca32f96502bd5247548c01cf31189a3b9693f0336a31d104a0ee0ed5f036"
+        },
+        {
+          "name": "E6C55CB3-6C1E-4C96-939A-A47AF922BCA6",
+          "bytes": 1855,
+          "sha256": "1df35fa19b6c99c86566e1c8950855b6321e120b1b75ee914b68d5396482c865"
+        },
+        {
+          "name": "EC7299E9-6A9E-4C68-8C29-2FBF3E91DF88",
+          "bytes": 6533,
+          "sha256": "b1fdb01c167bdb70c4d39e97dfac81785527410c4062917875f26c6a1c3422db"
+        },
+        {
+          "name": "F507FB63-CAC5-4369-8E6E-D37A80895570",
+          "bytes": 1903,
+          "sha256": "69bf25bf2cea3ee7c0fa7084c9425d282b2cd0c7904bff0ad8aa72aa178ef3bf"
+        },
+        {
+          "name": "F5E3D259-13E5-4E4B-9B5A-5A008286963C",
+          "bytes": 1891,
+          "sha256": "1322cb77a973b9233bbece1f3521222f7166a61339f43b6a7c6ea20141ec7418"
+        },
+        {
+          "name": "F80A48FB-4B76-48E8-A12C-70BCC55168CE",
+          "bytes": 6533,
+          "sha256": "b1fdb01c167bdb70c4d39e97dfac81785527410c4062917875f26c6a1c3422db"
+        },
+        {
+          "name": "FF01E967-0C02-4B48-9314-E54A8F61513F",
+          "bytes": 1879,
+          "sha256": "0bd6a651dde24834732e43a562fc34fdc2a44881a57aff28dc28029a0dc5a7f8"
+        },
+        {
+          "name": "manifest.json",
+          "bytes": 10823,
+          "sha256": "aef78c9b149637896c7a5d86009e69ddc69e8dd249f21f6c948cfb97d139a31b"
+        }
+      ],
+      "fixtureOnly": true
+    }
+  ],
+  "visualInspected": [
+    "task-3-home-frame-v1.png",
+    "task-3-library-frame-v1.png",
+    "task-3-v1-attachments/6E1E3BD6-9AB0-4C11-A916-87A4EA339459.png",
+    "task-3-v1-attachments/FB14FAB8-803F-421A-8443-C9162BF1E9DA.png"
+  ],
+  "result": "Owned Home/Library placeholders and generated Reader grid only; no copyrighted artwork, credentials or phone content. AX progress wrapping retained as RED. Final GREEN screenshot inspection pending.",
+  "protectedScreenshotsRead": false
+}

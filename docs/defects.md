@@ -2,6 +2,61 @@
 
 This document tracks confirmed product defects, their evidence, current status, and intended resolution.
 
+## DEF-047 — Resumed Reader can lose previous and next chapter targets
+
+**Status:** Open — to do; cause reproduced on Mac, fix not implemented
+
+**Severity:** High
+
+**Reported:** 2026-10-20
+
+**Area:** Home Continue Reading, retained Reader sessions, adjacent chapter navigation
+
+### User-visible problem
+
+A resumed chapter displays its images, but both Previous and Next are greyed out and unavailable. The user reported this while reading chapter 199 on iPhone. The user confirmed opening it through Home → Continue Reading. This matches the Mac reproduction path; the phone was disconnected, so its exact stored session state was not inspected.
+
+### Reproduction
+
+Use authored chapter 199 metadata and an in-memory repository:
+
+1. Record recent reading with retained image URLs.
+2. Either leave the chapter unsaved, or save its metadata and explicit chapter 198/200 links while leaving the saved chapter-image list empty.
+3. Resolve Continue Reading, reconstruct its Reader session, and inspect Reader navigation availability.
+
+Both paths restore images but return nil previous/next targets. A saved chapter with its own image URLs retains both targets and enables both controls.
+
+### Confirmed cause
+
+`SwiftDataLibraryRepository.recentReaderSession(forChapterID:)` constructs the recent-image session without adjacent chapters. The saved-empty-image branch returns through this fallback before deriving saved neighbors. ReaderViewModel exposes navigation only for non-nil targets, so Reader correctly disables both buttons for the incomplete session.
+
+This is a read-only session reconstruction defect, distinct from DEF-010's loading of an already-known adjacent target and DEF-020's incorrect target ordering. It does not establish that adjacent source chapters are actually available.
+
+### Intended resolution
+
+- Preserve saved metadata and valid neighbor targets when recent images provide the payload.
+- Resolve recent-only neighbors through the existing chapter-target rules where supported; do not fabricate destinations for unknown/non-numeric routes.
+- Keep safe source-page recovery when a target cannot be established.
+- Leave autosave, storage schema, progress writes and the parked persistence investigation unchanged.
+
+### Acceptance criteria
+
+- Recent-only resume retains or resolves valid previous/next targets for supported chapter URLs.
+- Saved-empty-image fallback keeps its valid saved neighbors while using recent images.
+- Both Next and Previous perform a real adjacent transition through the existing loader; chapter availability alone is not sufficient verification.
+- First-chapter, unknown-route, unsafe-target and load-failure cases degrade safely without invented destinations or an unusable Reader.
+- Existing Back/launch-origin, View Original Page, zoom reset and progress contracts remain intact.
+- Focused regression tests reproduce the two failing assembly paths before the fix and pass afterward; an owned simulator flow verifies both transitions.
+- Physical-iPhone confirmation follows when the device is available; no merge is authorized by this defect registration.
+
+### Evidence and related work
+
+- [User entry-path confirmation](qa_evidence/2026-10-20/chapter-navigation-diagnostic/entry-path-confirmation.md): Home → Continue Reading, confirmed 2026-10-20.
+- [Mac diagnosis](qa_evidence/2026-10-20/chapter-navigation-diagnostic/REPORT.md): three authored cases; two expected failing cases/four issues, saved-complete control has no issue. Two existing detector-navigation controls pass. A separate first-attempt fixture compile error is retained as a harness error.
+- [Retained failing reproducer](qa_evidence/2026-10-20/chapter-navigation-diagnostic/parked-reproducer/ChapterNavigationDiagnosticTests.swift), outside active test discovery.
+- [Seven-item approved UX scope](superpowers/specs/2026-10-20-reader-ux-polish.md), item 2; [delivery QA](qa_evidence/2026-10-20/reader-ux-polish/QA.md).
+- Delivered source: `2683bfce87b722410f50b4d673c809147f7030a9` on local, unmerged `feature/reader-ux-polish`. Diagnosis changed no production source.
+
 ## DEF-046 — Settings Reader Fit icon exposes a misleading accessibility label
 
 **Status:** Implemented (verified 2026-09-25)  
@@ -349,7 +404,7 @@ Reader opens with page 1 failed, and Retry fails again. View Original Page retur
 
 ## DEF-036 — Vortex chapter detection differs between in-site and direct navigation
 
-**Status:** Open — bounded route follow-up and sanitized fixture coverage pass; live Reader parity is not verified
+**Status:** Open — bounded late-hydration recovery implemented; historical live/device Reader parity remains unverified
 **Severity:** High  
 **Reported:** 2026-09-22  
 **Area:** Browser navigation observation, WebKit route changes, detection scheduling
@@ -389,6 +444,16 @@ In-site navigation stays in Browser; direct navigation opens Reader.
 - Vortex low-confidence route results now receive one host-scoped, 12-second settled-content follow-up. URL/KVO/navigation callback duplication remains suppressed by the existing per-URL navigation and retry policies.
 - The deterministic Vortex fixture and route-policy regressions pass.
 - Repeated live checks later in the session returned only one viable candidate for both in-site and direct chapter 168 loads, including after the bounded follow-up. Because the live site no longer produced a viable direct control, parity and Reader presentation could not be independently verified. The defect remains open.
+
+### 2026-10-21 bounded late-hydration continuation
+
+- An owned Mac WKWebView regression confirmed a same-URL scheduling gap: content arrived after the legacy retry, manual detection found six eligible images, and automatic analysis was missing. The original test failed for that exact reason before the fix.
+- Browser scheduling now observes bounded image-readiness hints in an isolated WebKit world. Recovery coalesces for 500ms, permits at most four extra analyses within a fixed 30-second window, and fingerprints the first 512 images. It preserves initial/legacy follow-up scheduling, classifier thresholds, hard blocks, existing first-image ImageIO preflight and Browser fallback.
+- Navigation/document/source guards, serialized preflight, cancellation and teardown prevent stale work from handing off a Reader session. Independent task review found visibility and absent-to-empty semantic marker collisions; owned regression controls reproduced both and the descriptor was corrected.
+- The focused Mac suite passed eight functions/16 parameter cases, including the 14-second delay, readiness-only changes, hard blocks, unreadable images, stale navigation/replacement/teardown, noise suppression, finite budget and coalescing. This establishes pending Reader handoff with owned image bytes; mounted Reader usability and historical live/device parity are not established.
+- Recovery is finite and signal-driven: later, out-of-budget or unobserved readiness transitions can remain in Browser. DEF-036 remains open. DEF-047 remains separately open and is tracked in this file. Persistence remains parked.
+- 2026-10-29 reconciliation: the recovery code reached `main` through the tested source projection in PR #20 (`3c902ff`), which also added the document-ready detection fix for MangaGeko (`42a235b`); this evidence was carried over separately because PR #19 did not merge.
+- Commands, failed attempts, hashes and independent reviews: [bounded continuation evidence](qa_evidence/2026-10-21/browser-late-hydration-fix/REPORT.md).
 
 ## DEF-035 — Protected WEBTOON episodes incorrectly receive a Clean Mode prompt
 

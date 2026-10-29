@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "-c",
+    "import pathlib,json,hashlib,plistlib\ns=pathlib.Path(\"/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/simulator-red-stage/Build/Products\");d=pathlib.Path(\"/private/tmp/toonedge-reader-ux-polish-products-20261020a/fix3-green\")\nrows=[]\nfor p in sorted(s.rglob('*')):\n if p.is_file():\n  a=p.read_bytes();b=(d/p.relative_to(s)).read_bytes();assert a==b\n  rows.append({'path':str(p.relative_to(s)),'bytes':len(a),'sha256':hashlib.sha256(a).hexdigest()})\nassert len(rows)>10\nfor rel,bid in [('Debug-iphonesimulator/ToonEdge.app/Info.plist','com.toonedge.app'),('Debug-iphonesimulator/ToonEdgeUITests-Runner.app/Info.plist','com.toonedge.app.UITests.xctrunner')]:\n assert plistlib.loads((d/rel).read_bytes())['CFBundleIdentifier']==bid\nruns=list(d.glob('*.xctestrun'));assert len(runs)==1\nv={'source':str(s),'destination':str(d),'completeFileByteMatch':True,'files':rows,'xctestrun':str(runs[0])}\np=pathlib.Path(\"/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/task-3-fix3-green-products.json\");p.open('x').write(json.dumps(v,indent=2)+'\\n')\nprint(json.dumps({'files':len(rows),'xctestrun':str(runs[0]),'manifestSha256':hashlib.sha256(p.read_bytes()).hexdigest()}))\n"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536291.842262,
+  "end_unix": 1792536292.933701,
+  "elapsed_seconds": 1.0914390087127686,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/task-3-fix3-green-products-verify.log",
+  "bytes": 239,
+  "sha256": "d7d468d2ffb4fbdfcbb4dc65e3eaf5aeffb748e9d2ffb95292a02e13df2edda2"
+}

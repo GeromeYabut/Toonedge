@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "-c",
+    "import os,subprocess,json\nargs=json.loads(\"[\\\"xcrun\\\",\\\"devicectl\\\",\\\"device\\\",\\\"process\\\",\\\"launch\\\",\\\"--device\\\",\\\"00008140-0011658A2260801C\\\",\\\"--terminate-existing\\\",\\\"--timeout\\\",\\\"30\\\",\\\"--json-output\\\",\\\"/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-launch-v2.json\\\",\\\"com.toonedge.app\\\"]\")\nenv={k:v for k,v in os.environ.items() if not k.startswith('DEVICECTL_CHILD_')}\nprint('Normal launch; no command arguments; DEVICECTL_CHILD_ environment removed',flush=True)\nraise SystemExit(subprocess.run(args,env=env).returncode)\n"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536972.4513721,
+  "end_unix": 1792536973.3859258,
+  "elapsed_seconds": 0.9345536231994629,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-launch-v2.log",
+  "bytes": 136,
+  "sha256": "bc3efd59d4f6e2447fdf0a0e58a7b9b82c1eb50ebe1a62ebe08512187088cdfc"
+}

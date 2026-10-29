@@ -1,0 +1,25 @@
+{
+  "argv": [
+    "xcrun",
+    "devicectl",
+    "device",
+    "info",
+    "details",
+    "--device",
+    "00008140-0011658A2260801C",
+    "--quiet",
+    "--timeout",
+    "20",
+    "--json-output",
+    "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-device-preflight.json"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536670.5234408,
+  "end_unix": 1792536673.180971,
+  "elapsed_seconds": 2.6575300693511963,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-device-preflight.log",
+  "bytes": 0,
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

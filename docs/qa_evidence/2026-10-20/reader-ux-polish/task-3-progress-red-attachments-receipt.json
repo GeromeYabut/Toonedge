@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "xcrun",
+    "xcresulttool",
+    "export",
+    "attachments",
+    "--path",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-3-progress-native-red.xcresult",
+    "--output-path",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-3-progress-red-attachments"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536340.605657,
+  "end_unix": 1792536342.8347032,
+  "elapsed_seconds": 2.229046106338501,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/task-3-progress-red-attachments.log",
+  "bytes": 3094,
+  "sha256": "92017edd5d35847cd1ac45be7106aa8ae7a78dfac574e63236d081cc70905fb1"
+}

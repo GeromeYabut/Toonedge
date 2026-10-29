@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "xcrun",
+    "devicectl",
+    "list",
+    "devices",
+    "--json-output",
+    "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-availability.json"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792534355.7411149,
+  "end_unix": 1792534355.995248,
+  "elapsed_seconds": 0.2541332244873047,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-availability.log",
+  "bytes": 1188,
+  "sha256": "280678ff4d9dfc80077866861f760ae62690cef36a30606d7c71c0301e1ddcbe"
+}

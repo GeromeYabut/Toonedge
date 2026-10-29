@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "-c",
+    "from pathlib import Path\nimport subprocess\ns=Path(\"/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/simulator-red-stage/Build/Products\");d=Path(\"/private/tmp/toonedge-reader-ux-polish-products-20261020a/progress-red\")\nassert s.is_dir() and not d.exists()\nraise SystemExit(subprocess.run(['/usr/bin/ditto',str(s),str(d)]).returncode)\n"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536001.5873952,
+  "end_unix": 1792536002.196619,
+  "elapsed_seconds": 0.6092238426208496,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/task-3-progress-red-copy.log",
+  "bytes": 0,
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

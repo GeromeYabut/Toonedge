@@ -1,0 +1,27 @@
+{
+  "argv": [
+    "xcrun",
+    "devicectl",
+    "device",
+    "info",
+    "processes",
+    "--device",
+    "00008140-0011658A2260801C",
+    "--search",
+    "ToonEdge",
+    "--quiet",
+    "--timeout",
+    "20",
+    "--json-output",
+    "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-process-check.json"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536991.5863721,
+  "end_unix": 1792536997.605479,
+  "elapsed_seconds": 6.019106864929199,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-process-check.log",
+  "bytes": 0,
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

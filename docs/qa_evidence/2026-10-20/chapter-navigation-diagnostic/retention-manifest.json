@@ -1,0 +1,68 @@
+{
+  "sourceUnchanged": true,
+  "testReproducerParkedOutsideActiveSuite": true,
+  "phoneUsed": false,
+  "protectedScreenshotsAccessed": false,
+  "files": [
+    {
+      "file": "ChapterNavigationDiagnosticTests-v2.swift",
+      "bytes": 3607,
+      "sha256": "643f06a362fb54eabe989b411e2463a7dc83f7f31609943f296f4826f114359e"
+    },
+    {
+      "file": "ChapterNavigationDiagnosticTests.swift",
+      "bytes": 3589,
+      "sha256": "80f790f242a1a8a2bcab30b2f66b107eeaebf32a158d298e169a3e0663b1ca29"
+    },
+    {
+      "file": "REPORT.md",
+      "bytes": 4252,
+      "sha256": "61f51202a5943b5b50b704d357a1a99bfc361ce031eed8ea6c80df488111c73a"
+    },
+    {
+      "file": "detector-navigation-control-receipt.json",
+      "bytes": 848,
+      "sha256": "f8f7e204219391bb902b01ea107d78ffab7ff275bda6587c60bd049fce6933ca"
+    },
+    {
+      "file": "detector-navigation-control.log",
+      "bytes": 726,
+      "sha256": "021e79827cfac638252fa0e335a1ce7514c4826a6125743584d80a689a9f8e10"
+    },
+    {
+      "file": "mac-resume-navigation-receipt.json",
+      "bytes": 771,
+      "sha256": "b47890d8b5b167d84de9a8fab732b9d45cc9ca21c522554ac0d836a4f074c630"
+    },
+    {
+      "file": "mac-resume-navigation-v2-receipt.json",
+      "bytes": 773,
+      "sha256": "94c844b3b066813438c3295bdc7a912b820bf188b0a8358aaeb5cfda4ca3946a"
+    },
+    {
+      "file": "mac-resume-navigation-v2.log",
+      "bytes": 9799,
+      "sha256": "daeeb86f88e27c2c7a053ba5ab0a95b0720104b279b8b2f263a737f9cf32551e"
+    },
+    {
+      "file": "mac-resume-navigation.log",
+      "bytes": 17844,
+      "sha256": "1993d06f5089ab8a1a568135686b44d12f14b4513b409b9c9cb96cc4a17456fc"
+    },
+    {
+      "file": "output-probe-receipt.json",
+      "bytes": 736,
+      "sha256": "05c4fe876fcac3fc3c77f8af0ab72529083145a0963b2033c3b93094525ca065"
+    },
+    {
+      "file": "output-probe.log",
+      "bytes": 138,
+      "sha256": "ed77c490184e6fdaff35634774aa457af23529cb95ef2997a5698ac11a7a8446"
+    },
+    {
+      "file": "parked-reproducer/ChapterNavigationDiagnosticTests.swift",
+      "bytes": 3607,
+      "sha256": "643f06a362fb54eabe989b411e2463a7dc83f7f31609943f296f4826f114359e"
+    }
+  ]
+}

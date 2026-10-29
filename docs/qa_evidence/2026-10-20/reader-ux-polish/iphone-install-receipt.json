@@ -1,0 +1,25 @@
+{
+  "argv": [
+    "xcrun",
+    "devicectl",
+    "device",
+    "install",
+    "app",
+    "--device",
+    "00008140-0011658A2260801C",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/iphone/Build/Products/Debug-iphoneos/ToonEdge.app",
+    "--timeout",
+    "120",
+    "--json-output",
+    "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-install.json"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536929.515933,
+  "end_unix": 1792536947.898932,
+  "elapsed_seconds": 18.382998943328857,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-install.log",
+  "bytes": 308,
+  "sha256": "9e213523ab32d4c2c9b05317c54978ef6eef57df6855b15ea2e2c9f2885a83f7"
+}
