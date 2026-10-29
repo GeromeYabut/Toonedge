@@ -33,7 +33,7 @@ public struct ReaderImagePreflightObservation: Equatable, Sendable {
 }
 
 enum ReaderReadinessStage: String, Codable, Sendable {
-    case navigationStarted, navigationFinished, navigationFailed
+    case navigationStarted, navigationCommitted, documentReady, navigationFinished, navigationFailed
     case analysisStarted, analysisCompleted, analysisFailed
     case preflightStarted, preflightCompleted, handoff, guardStopped, recoveryStopped
 }

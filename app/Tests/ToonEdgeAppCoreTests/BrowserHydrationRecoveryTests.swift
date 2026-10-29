@@ -28,7 +28,8 @@ private final class HydrationBrowser {
     let coordinator: BrowserWebView.Coordinator
     let webView: WKWebView
     let client: HydrationHTTPClient
-    init(url: URL, client: HydrationHTTPClient = HydrationHTTPClient()) {
+    let stallingHandler = StallingSchemeHandler()
+    init(url: URL, client: HydrationHTTPClient = HydrationHTTPClient(), stallSubresources: Bool = false) {
         self.client = client
         _ = NSApplication.shared
         model = BrowserViewModel(startPoint: .url(url.absoluteString))
@@ -40,6 +41,9 @@ private final class HydrationBrowser {
         configuration.userContentController.addUserScript(WKUserScript(
             source: BrowserPageSanitizerScript.javaScript, injectionTime: .atDocumentEnd,
             forMainFrameOnly: false))
+        if stallSubresources {
+            configuration.setURLSchemeHandler(stallingHandler, forURLScheme: StallingSchemeHandler.scheme)
+        }
         webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 844), configuration: configuration)
         webView.customUserAgent = BrowserUserAgent.mobileSafari
         webView.navigationDelegate = coordinator
@@ -95,9 +99,175 @@ private func hydrationHTML(direct: Bool, blocked: Bool = false) -> String {
     </script></body></html>
     """
 }
+// Accepts subresource requests and never answers them, keeping the main-frame load open.
+@MainActor
+private final class StallingSchemeHandler: NSObject, WKURLSchemeHandler {
+    static let scheme = "toonedge-stall"
+    private(set) var startedCount = 0
+    private var held: [any WKURLSchemeTask] = []
+    func webView(_ webView: WKWebView, start urlSchemeTask: any WKURLSchemeTask) {
+        startedCount += 1
+        held.append(urlSchemeTask)
+    }
+    func webView(_ webView: WKWebView, stop urlSchemeTask: any WKURLSchemeTask) {
+        held.removeAll { $0 === urlSchemeTask }
+    }
+    // Answers every held request so the main-frame load can settle.
+    func release() {
+        let tasks = held
+        held = []
+        for task in tasks {
+            task.didReceive(URLResponse(url: task.request.url!, mimeType: "image/gif",
+                expectedContentLength: 0, textEncodingName: nil))
+            task.didFinish()
+        }
+    }
+}
+private func stalledLoadChapterHTML(lateBlockAfterMilliseconds: Int? = nil) -> String {
+    """
+    <!doctype html><html><head>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src toonedge-stall:; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
+    <title>Owned Chapter 169</title>
+    <style>html,body{margin:0;width:390px}img{display:block;width:390px;height:1350px}</style>
+    </head><body><main id="reader">
+    \(Array(0..<6).map { i in
+        "<img src=\"http://127.0.0.1:1/page-\(i).png\" width=\"390\" height=\"1350\" class=\"chapter-page\" data-reader-page-image data-reader-index=\"\(i)\" alt=\"Owned chapter page\">"
+    }.joined())
+    </main><img src="toonedge-stall://hold/tracker.gif" width="1" height="1" alt="">
+    \(lateBlockAfterMilliseconds.map { delay in
+        "<script>setTimeout(() => { document.getElementById('reader').insertAdjacentHTML('afterbegin', '<p>Sign in to continue</p>'); window.lateBlockReady = true; }, \(delay));</script>"
+    } ?? "")
+    </body></html>
+    """
+}
 @Suite(.serialized)
 @MainActor
 struct BrowserHydrationRecoveryTests {
+    @Test func parsedChapterOffersCleanModeWhileASubresourceKeepsTheLoadOpen() async throws {
+        let chapter = URL(string: "https://vortexscans.org/series/owned-fixture/chapter-169")!
+        let browser = HydrationBrowser(url: chapter, stallSubresources: true)
+        defer { browser.stop() }
+        browser.webView.loadSimulatedRequest(URLRequest(url: chapter), responseHTML: stalledLoadChapterHTML())
+        try await waitForReaderTestCondition("stalled subresource requested") {
+            browser.stallingHandler.startedCount > 0
+        }
+        try await waitForReaderTestCondition("Clean Mode offered before load settles", timeout: .seconds(8)) {
+            browser.model.cleanModePresentation == .recommendedBanner
+        }
+        #expect(browser.webView.isLoading, "The fixture must still be loading when Clean Mode is offered")
+        #expect(browser.model.pendingReaderSession == nil, "Unsettled evidence must not auto-open Reader")
+        let result = try #require(browser.model.detectionResult)
+        #expect(result.readerEntryDisposition == .recommended)
+        #expect(result.readerSession?.sourceURL == chapter)
+        #expect(result.readerSession?.imageURLs.count == 6)
+        #expect(await browser.client.requestCount == 1)
+    }
+
+    @Test func settledLoadConfirmsAutomaticReaderAfterProvisionalRecommendation() async throws {
+        let chapter = URL(string: "https://vortexscans.org/series/owned-fixture/chapter-169")!
+        let browser = HydrationBrowser(url: chapter, stallSubresources: true)
+        defer { browser.stop() }
+        browser.webView.loadSimulatedRequest(URLRequest(url: chapter), responseHTML: stalledLoadChapterHTML())
+        try await waitForReaderTestCondition("provisional recommendation", timeout: .seconds(8)) {
+            browser.model.cleanModePresentation == .recommendedBanner
+        }
+        let provisionalAnalyses = browser.logger.events.count
+        browser.stallingHandler.release()
+        try await waitForReaderTestCondition("load settles") { !browser.webView.isLoading }
+        try await waitForReaderTestCondition("settled automatic handoff", timeout: .seconds(5)) {
+            browser.model.pendingReaderSession != nil
+        }
+        #expect(browser.model.detectionResult?.readerEntryDisposition == .automatic)
+        #expect(browser.model.pendingReaderSession?.sourceURL == chapter)
+        #expect(browser.logger.events.count == provisionalAnalyses + 1, "The settled load earns exactly one pass")
+        #expect(await browser.client.requestCount == 2)
+    }
+
+    @Test func settledPassDoesNotReopenReaderAfterTheUserReturnedToTheOriginal() async throws {
+        let chapter = URL(string: "https://vortexscans.org/series/owned-fixture/chapter-169")!
+        let browser = HydrationBrowser(url: chapter, stallSubresources: true)
+        defer { browser.stop() }
+        browser.webView.loadSimulatedRequest(URLRequest(url: chapter), responseHTML: stalledLoadChapterHTML())
+        try await waitForReaderTestCondition("provisional recommendation", timeout: .seconds(8)) {
+            browser.model.cleanModePresentation == .recommendedBanner
+        }
+        browser.model.enterCleanModeManually()
+        let session = try #require(browser.model.pendingReaderSession)
+        browser.model.presentPendingReaderInsideBrowser(session)
+        browser.model.dismissBrowserOwnedReader()
+        let analyses = browser.logger.events.count
+        browser.stallingHandler.release()
+        try await waitForReaderTestCondition("load settles") { !browser.webView.isLoading }
+        try await waitForReaderTestCondition("settled pass", timeout: .seconds(5)) {
+            browser.logger.events.count > analyses
+        }
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(browser.model.pendingReaderSession == nil, "View Original Page must stay respected")
+        #expect(browser.model.browserOwnedReaderSession == nil)
+    }
+
+    @Test func loadSettlingDuringPreflightStillLeavesAutomaticEntryToTheSettledPass() async throws {
+        let chapter = URL(string: "https://vortexscans.org/series/owned-fixture/chapter-169")!
+        let client = HydrationHTTPClient(hold: true)
+        let browser = HydrationBrowser(url: chapter, client: client, stallSubresources: true)
+        defer { browser.stop() }
+        browser.webView.loadSimulatedRequest(URLRequest(url: chapter), responseHTML: stalledLoadChapterHTML())
+        try await waitForReaderTestCondition("early preflight held", timeout: .seconds(8)) {
+            await client.requestCount == 1
+        }
+        browser.stallingHandler.release()
+        try await waitForReaderTestCondition("load settles") { !browser.webView.isLoading }
+        await client.release()
+        try await waitForReaderTestCondition("settled automatic handoff", timeout: .seconds(8)) {
+            browser.model.pendingReaderSession != nil
+        }
+        #expect(await client.requestCount == 2, "The settled pass must re-check evidence read while loading")
+        #expect(browser.model.detectionResult?.readerEntryDisposition == .automatic)
+    }
+
+    @Test func blockingNoticeAddedAfterParseNeverAutoOpensReader() async throws {
+        let chapter = URL(string: "https://vortexscans.org/series/owned-fixture/chapter-169")!
+        let browser = HydrationBrowser(url: chapter, stallSubresources: true)
+        defer { browser.stop() }
+        browser.webView.loadSimulatedRequest(URLRequest(url: chapter),
+            responseHTML: stalledLoadChapterHTML(lateBlockAfterMilliseconds: 2500))
+        try await waitForReaderTestCondition("early provisional recommendation", timeout: .seconds(8)) {
+            browser.model.cleanModePresentation == .recommendedBanner
+        }
+        try await waitForReaderTestCondition("late blocking notice", timeout: .seconds(5)) {
+            (try? await browser.webView.evaluateJavaScript("window.lateBlockReady === true") as? Bool) == true
+        }
+        #expect(browser.model.pendingReaderSession == nil)
+        browser.stallingHandler.release()
+        try await waitForReaderTestCondition("load settles") { !browser.webView.isLoading }
+        try await waitForReaderTestCondition("settled analysis sees the block", timeout: .seconds(5)) {
+            browser.logger.events.contains { !$0.hardBlocks.isEmpty }
+        }
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(browser.model.pendingReaderSession == nil)
+        #expect(browser.model.cleanModePresentation == .hidden)
+    }
+
+    @Test func stalledLoadWithoutParsedChapterEvidenceDoesNotOfferReader() async throws {
+        let chapter = URL(string: "https://vortexscans.org/series/owned-fixture/chapter-169")!
+        let browser = HydrationBrowser(url: chapter, stallSubresources: true)
+        defer { browser.stop() }
+        browser.webView.loadSimulatedRequest(URLRequest(url: chapter), responseHTML: """
+            <!doctype html><title>Owned notice</title><p>Nothing to read here.</p>
+            <img src="toonedge-stall://hold/tracker.gif" width="1" height="1" alt="">
+            """)
+        try await waitForReaderTestCondition("stalled subresource requested") {
+            browser.stallingHandler.startedCount > 0
+        }
+        try await waitForReaderTestCondition("early analysis of the parsed document", timeout: .seconds(8)) {
+            !browser.logger.events.isEmpty
+        }
+        #expect(browser.webView.isLoading)
+        #expect(browser.model.pendingReaderSession == nil)
+        #expect(await browser.client.requestCount == 0)
+    }
+
     @Test func lateRouteReceivesAnalysisAfterLegacyRetry() async throws {
         let series = URL(string: "https://vortexscans.org/series/owned-fixture")!
         let chapter = series.appendingPathComponent("chapter-169")

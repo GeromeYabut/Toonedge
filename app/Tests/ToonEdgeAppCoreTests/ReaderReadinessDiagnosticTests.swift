@@ -311,6 +311,7 @@ struct ReaderReadinessDiagnosticTests {
         }
         let stages = trace.map(\.stage)
         #expect(stages.contains(.navigationStarted))
+        #expect(stages.contains(.navigationCommitted), "Commit separates an unanswered request from a slow load")
         #expect(stages.contains(.analysisStarted))
         #expect(stages.contains(.analysisCompleted), "A real detector pass must have a stage observation")
         let analysis = trace.first { $0.stage == .analysisCompleted }

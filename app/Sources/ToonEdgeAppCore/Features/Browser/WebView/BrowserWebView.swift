@@ -125,6 +125,7 @@ public struct BrowserDetectionRetryPolicy {
 
 public struct BrowserDetectionNavigationPolicy {
     private var lastScheduledURL: URL?
+    private var lastScheduleWasBeforeLoadSettled = false
     public private(set) var generation = UUID()
 
     public init() {}
@@ -132,15 +133,22 @@ public struct BrowserDetectionNavigationPolicy {
     public mutating func navigationDidStart() {
         generation = UUID()
         lastScheduledURL = nil
+        lastScheduleWasBeforeLoadSettled = false
     }
 
     public func isCurrent(_ generation: UUID) -> Bool {
         self.generation == generation
     }
 
-    public mutating func shouldSchedule(url: URL?, isLoading: Bool) -> Bool {
-        guard let url, !isLoading, lastScheduledURL != url else { return false }
+    // A parsed document may be analysed while subresources still load; the settled
+    // load then earns exactly one more pass for that URL.
+    public mutating func shouldSchedule(url: URL?, isLoading: Bool, documentReady: Bool = false) -> Bool {
+        guard let url, !isLoading || documentReady else { return false }
+        if lastScheduledURL == url {
+            guard !isLoading, lastScheduleWasBeforeLoadSettled else { return false }
+        }
         lastScheduledURL = url
+        lastScheduleWasBeforeLoadSettled = isLoading
         return true
     }
 }
@@ -370,7 +378,12 @@ public extension BrowserWebView {
         private var lastReadinessRevision = 0
         private var pendingRecovery = false
         private var pendingFollowUp = false
+        private var pendingSettledPass = false
+        private var provisionalRecommendationDelivered = false
         private var hasViableResult = false
+        private var documentIsReady = false
+        private var documentReadyTask: Task<Void, Never>?
+        private static let documentReadyPollLimit = 120
         private enum AnalysisKind: Equatable { case initial, followUp, recovery }
 
         init(
@@ -394,6 +407,7 @@ public extension BrowserWebView {
             webView.uiDelegate = self
             hasLoadedInitialRequest = false
             lastObservedURL = nil
+            documentIsReady = false
             webView.configuration.userContentController.add(
                 BrowserHydrationMessageHandler(coordinator: self),
                 contentWorld: BrowserHydrationReadinessScript.world,
@@ -468,6 +482,7 @@ public extension BrowserWebView {
             }
 
             handledCommandID = command.id
+            stopObservingDocumentReadiness()
             invalidateDetection()
 
             switch command.action {
@@ -502,6 +517,7 @@ public extension BrowserWebView {
         @MainActor
         public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
             guard self.webView === webView else { return }
+            stopObservingDocumentReadiness()
             invalidateDetection()
             updateState(from: webView, isLoading: true)
         }
@@ -510,11 +526,14 @@ public extension BrowserWebView {
         public func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
             guard self.webView === webView else { return }
             updateState(from: webView, isLoading: true)
+            recordReadiness(.navigationCommitted, generation: navigationPolicy.generation)
+            observeDocumentReadiness(in: webView)
         }
 
         @MainActor
         public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             guard self.webView === webView else { return }
+            stopObservingDocumentReadiness()
             lastObservedURL = webView.url
             updateState(from: webView, isLoading: false)
             startReadinessDiagnostics(generation: navigationPolicy.generation)
@@ -531,6 +550,7 @@ public extension BrowserWebView {
         @MainActor
         public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             guard self.webView === webView else { return }
+            stopObservingDocumentReadiness()
             recordReadiness(.navigationFailed, generation: navigationPolicy.generation,
                 transport: .category(for: error))
             updateState(from: webView, isLoading: false)
@@ -539,6 +559,7 @@ public extension BrowserWebView {
         @MainActor
         public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             guard self.webView === webView else { return }
+            stopObservingDocumentReadiness()
             recordReadiness(.navigationFailed, generation: navigationPolicy.generation,
                 transport: .category(for: error))
             updateState(from: webView, isLoading: false)
@@ -558,6 +579,7 @@ public extension BrowserWebView {
             }
 
             if popupPolicy.shouldAllowTargetWindowNavigation(to: destinationURL, from: webView.url) {
+                stopObservingDocumentReadiness()
                 webView.load(navigationAction.request)
             }
 
@@ -579,6 +601,7 @@ public extension BrowserWebView {
             // SwiftUI may be destroying its observation graph here. Cancel work without
             // publishing presentation resets into the graph being removed.
             cancelDetectionWork(diagnosticReason: .teardown)
+            stopObservingDocumentReadiness()
             urlObservation?.invalidate()
             urlObservation = nil
             let detachedView = webView
@@ -613,6 +636,8 @@ public extension BrowserWebView {
             recoveryExpiryTask = nil
             pendingRecovery = false
             pendingFollowUp = false
+            pendingSettledPass = false
+            provisionalRecommendationDelivered = false
             hasViableResult = false
             recoveryPolicy = nil
             bridgeEpoch = nil
@@ -623,7 +648,7 @@ public extension BrowserWebView {
 
         private func isCurrent(_ webView: WKWebView, url: URL, generation: UUID) -> Bool {
             self.webView === webView && navigationPolicy.isCurrent(generation)
-                && webView.url == url && !webView.isLoading && viewModel.pendingCommand == nil
+                && webView.url == url && (!webView.isLoading || documentIsReady) && viewModel.pendingCommand == nil
                 && !Task.isCancelled
         }
 
@@ -638,18 +663,51 @@ public extension BrowserWebView {
         }
 
         private func scheduleDetection(for webView: WKWebView) {
-            guard self.webView === webView, presentationFixture == nil,
-                  navigationPolicy.shouldSchedule(url: webView.url, isLoading: webView.isLoading),
+            guard self.webView === webView, presentationFixture == nil, !hasViableResult,
+                  navigationPolicy.shouldSchedule(url: webView.url, isLoading: webView.isLoading,
+                      documentReady: documentIsReady),
                   let url = webView.url else { return }
             let generation = navigationPolicy.generation
             startReadinessDiagnostics(generation: generation)
-            recoveryPolicy = BrowserHydrationRecoveryPolicy(startedAt: ProcessInfo.processInfo.systemUptime)
+            // A settled pass keeps the generation's fixed recovery window and budget.
+            if recoveryPolicy == nil {
+                recoveryPolicy = BrowserHydrationRecoveryPolicy(startedAt: ProcessInfo.processInfo.systemUptime)
+            }
+            scheduledDetectionTask?.cancel()
             scheduledDetectionTask = Task { @MainActor [weak self, weak webView] in
                 do { try await Task.sleep(nanoseconds: 750_000_000) } catch { return }
                 guard let self, let webView,
                       self.isCurrent(webView, url: url, generation: generation) else { return }
                 self.requestAnalysis(.initial, in: webView, url: url, generation: generation)
             }
+        }
+
+        // Detection waits for a parsed document, not for every subresource to settle.
+        private func observeDocumentReadiness(in webView: WKWebView) {
+            documentReadyTask?.cancel()
+            documentIsReady = false
+            guard presentationFixture == nil else { return }
+            documentReadyTask = Task { @MainActor [weak self, weak webView] in
+                for _ in 0..<Self.documentReadyPollLimit {
+                    do { try await Task.sleep(nanoseconds: 250_000_000) } catch { return }
+                    guard let self, let webView, self.webView === webView, webView.isLoading else { return }
+                    let state = try? await webView.evaluateJavaScript("document.readyState",
+                        in: nil, contentWorld: BrowserHydrationReadinessScript.world)
+                    guard !Task.isCancelled, self.webView === webView, webView.isLoading else { return }
+                    guard let state = state as? String, state != "loading" else { continue }
+                    self.documentIsReady = true
+                    self.documentReadyTask = nil
+                    self.recordReadiness(.documentReady, generation: self.navigationPolicy.generation)
+                    self.scheduleDetection(for: webView)
+                    return
+                }
+            }
+        }
+
+        private func stopObservingDocumentReadiness() {
+            documentReadyTask?.cancel()
+            documentReadyTask = nil
+            documentIsReady = false
         }
 
         private func installRecovery(in webView: WKWebView, url: URL, generation: UUID) async {
@@ -710,6 +768,7 @@ public extension BrowserWebView {
             if analysisTask != nil {
                 if kind == .recovery { pendingRecovery = true }
                 if kind == .followUp { pendingFollowUp = true }
+                if kind == .initial { pendingSettledPass = true }
                 return
             }
             analysisTask = Task { @MainActor [weak self, weak webView] in
@@ -718,7 +777,9 @@ public extension BrowserWebView {
                     if self.navigationPolicy.isCurrent(generation) { self.analysisTask = nil }
                 }
                 var next = kind
-                if kind == .initial { await self.installRecovery(in: webView, url: url, generation: generation) }
+                if kind == .initial, self.bridgeEpoch != generation {
+                    await self.installRecovery(in: webView, url: url, generation: generation)
+                }
                 while self.isCurrent(webView, url: url, generation: generation), !self.hasViableResult {
                     if next == .recovery {
                         guard self.recoveryPolicy?.takeAttempt(at: ProcessInfo.processInfo.systemUptime) == true else {
@@ -731,7 +792,10 @@ public extension BrowserWebView {
                     if self.recoveryPolicy?.canAttempt(at: ProcessInfo.processInfo.systemUptime) != true {
                         self.stopRecovery(in: webView, generation: generation)
                     }
-                    if self.pendingFollowUp {
+                    if self.pendingSettledPass {
+                        self.pendingSettledPass = false
+                        next = .initial
+                    } else if self.pendingFollowUp {
                         self.pendingFollowUp = false
                         next = .followUp
                     } else if self.pendingRecovery {
@@ -755,6 +819,7 @@ public extension BrowserWebView {
                     return
                 }
                 let diagnostic = recordReadiness(.analysisStarted, generation: generation, analysis: analysisKind)
+                let analysedWhileLoading = webView.isLoading
                 let value: Any?
                 if bridgeEpoch == generation {
                     value = try await webView.evaluateJavaScript("""
@@ -781,8 +846,9 @@ public extension BrowserWebView {
                         ?? detector.detect(page: page)
                 let completed = recordReadiness(.analysisCompleted, generation: generation,
                     template: diagnostic, page: page, result: result)
-                await deliverDetectionResult(result, in: webView, generation: generation, diagnostic: completed)
-                guard isCurrent(webView, url: url, generation: generation), !hasViableResult else { return }
+                let provisional = await deliverDetectionResult(result, in: webView, generation: generation,
+                    diagnostic: completed, analysedWhileLoading: analysedWhileLoading)
+                guard !provisional, isCurrent(webView, url: url, generation: generation), !hasViableResult else { return }
                 if kind == .initial, retryPolicy.shouldScheduleFollowUp(
                     for: page.pageURL, recommendation: result.retryRecommendation, confidence: result.confidence
                 ) { scheduleFollowUpDetection(for: webView, url: page.pageURL) }
@@ -810,14 +876,20 @@ public extension BrowserWebView {
             }
         }
 
-        @MainActor
+        @MainActor @discardableResult
         private func deliverDetectionResult(
             _ result: DetectionResult, in webView: WKWebView, generation: UUID,
-            diagnostic: ReaderReadinessEvent? = nil
-        ) async {
+            diagnostic: ReaderReadinessEvent? = nil, analysedWhileLoading: Bool = false
+        ) async -> Bool {
             guard await documentIsCurrent(webView, url: result.pageURL, generation: generation) else {
                 recordReadiness(.guardStopped, generation: generation, template: diagnostic, stop: .staleDocument)
-                return
+                return false
+            }
+            // Once the user has acted on a provisional banner, later passes must not change what they chose.
+            if provisionalRecommendationDelivered, viewModel.cleanModePresentation != .recommendedBanner {
+                hasViableResult = true
+                stopRecovery(in: webView, generation: generation)
+                return false
             }
             guard result.readerEntryDisposition != .unavailable,
                   result.diagnostics.hardBlocks.isEmpty,
@@ -832,13 +904,13 @@ public extension BrowserWebView {
                 else { reason = .noImages }
                 recordReadiness(.guardStopped, generation: generation, template: diagnostic, stop: reason)
                 viewModel.handleDetectionResult(result)
-                return
+                return false
             }
 
             let cookies = await webView.configuration.websiteDataStore.httpCookieStore.allCookies()
             guard await documentIsCurrent(webView, url: result.pageURL, generation: generation) else {
                 recordReadiness(.guardStopped, generation: generation, template: diagnostic, stop: .staleDocument)
-                return
+                return false
             }
             let imageHost = session.imageURLs.first?.host()?.lowercased() ?? ""
             let matchingCookies = cookies.filter { cookie in
@@ -862,14 +934,25 @@ public extension BrowserWebView {
                 observation: buffer?.read())
             guard await documentIsCurrent(webView, url: result.pageURL, generation: generation) else {
                 recordReadiness(.guardStopped, generation: generation, template: diagnostic, stop: .staleDocument)
-                return
+                return false
             }
             if viable {
                 var prepared = result
                 prepared.readerSession = session
+                let provisional = analysedWhileLoading && prepared.readerEntryDisposition == .automatic
+                if provisional { prepared.readerEntryDisposition = .recommended }
                 viewModel.handleDetectionResult(prepared)
                 if viewModel.pendingReaderSession != nil {
                     recordReadiness(.handoff, generation: generation, template: diagnostic)
+                }
+                // Late page scripts may still add blocking markers; the settled pass decides automatic entry.
+                if provisional {
+                    provisionalRecommendationDelivered = true
+                    followUpTask?.cancel()
+                    followUpTask = nil
+                    pendingFollowUp = false
+                    stopRecovery(in: webView, generation: generation)
+                    return true
                 }
                 hasViableResult = true
                 pendingFollowUp = false
@@ -880,6 +963,7 @@ public extension BrowserWebView {
                 recordReadiness(.guardStopped, generation: generation, template: diagnostic, stop: .unreadableImage)
                 viewModel.handleUnreadableDetectionResult(result)
             }
+            return false
         }
 
         private func startReadinessDiagnostics(generation: UUID) {
