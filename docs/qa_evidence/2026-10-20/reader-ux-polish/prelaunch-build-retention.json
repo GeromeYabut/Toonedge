@@ -1,0 +1,44 @@
+[
+  {
+    "bundle": "task-2-green-build.xcresult",
+    "exportExit": 0,
+    "attachmentFiles": 0,
+    "output": "Generated manifest file with attachment details: /Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-2-green-build-retention-attachments/manifest.json\n"
+  },
+  {
+    "bundle": "task-2-native-red-valid.xcresult",
+    "exportExit": 64,
+    "attachmentFiles": 0,
+    "output": "Error: Failed to create a new result bundle reader, underlying error: Info.plist at /Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-2-native-red-valid.xcresult/Info.plist does not exist, the result bundle might be corrupted or the provided path is not a result bundle\nUsage: xcresulttool <subcommand>\n  See 'xcresulttool --help' for more information.\n"
+  },
+  {
+    "bundle": "task-2-native-red.xcresult",
+    "exportExit": 0,
+    "attachmentFiles": 0,
+    "output": "Generated manifest file with attachment details: /Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-2-native-red-retention-attachments/manifest.json\n"
+  },
+  {
+    "bundle": "task-2-red-build.xcresult",
+    "exportExit": 0,
+    "attachmentFiles": 0,
+    "output": "Generated manifest file with attachment details: /Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-2-red-build-retention-attachments/manifest.json\n"
+  },
+  {
+    "bundle": "task-3-fix3-native-build.xcresult",
+    "exportExit": 0,
+    "attachmentFiles": 0,
+    "output": "Generated manifest file with attachment details: /Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-3-fix3-native-build-retention-attachments/manifest.json\n"
+  },
+  {
+    "bundle": "task-3-native-build.xcresult",
+    "exportExit": 0,
+    "attachmentFiles": 0,
+    "output": "Generated manifest file with attachment details: /Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-3-native-build-retention-attachments/manifest.json\n"
+  },
+  {
+    "bundle": "task-3-progress-red-build.xcresult",
+    "exportExit": 0,
+    "attachmentFiles": 0,
+    "output": "Generated manifest file with attachment details: /Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/task-3-progress-red-build-retention-attachments/manifest.json\n"
+  }
+]

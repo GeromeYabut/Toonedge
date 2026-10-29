@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "-c",
+    "import subprocess,json\nr=subprocess.run(['security','find-identity','-v','-p','codesigning'],capture_output=True,text=True);assert r.returncode==0\nsha='82F7276280B26D2C58BED5286AF65D3C345CFC61'\nassert any(sha in line and 'Apple Development' in line for line in r.stdout.splitlines())\nprint(json.dumps({'validAppleDevelopmentIdentity':sha,'expectedTeam':'BQJLD7NPWL','privateKeyExported':False}))\n"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536656.755557,
+  "end_unix": 1792536656.832852,
+  "elapsed_seconds": 0.07729482650756836,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-signing-preflight.log",
+  "bytes": 137,
+  "sha256": "88f5e44ab62530b77bdd6c19727e8de0bedf533a36ffa0d03ff4d37149e2bef0"
+}

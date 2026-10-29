@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "python3",
+    "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/verify-iphone-product.py"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536924.052973,
+  "end_unix": 1792536924.2402308,
+  "elapsed_seconds": 0.1872577667236328,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-product-gate.log",
+  "bytes": 470,
+  "sha256": "46e7334d2c60f868720b5cc44fcb386e652ff400ad656c3ebd7b2cdc94287aef"
+}

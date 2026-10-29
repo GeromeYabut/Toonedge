@@ -1,0 +1,22 @@
+{
+  "files": [
+    {
+      "file": "1227723A-869C-4276-A09E-539AD7715B1F.png",
+      "bytes": 187344,
+      "sha256": "9a94493ad4f0e0388eb4f60740d4175ee625b1ba74c82b00f7ff68ea6ecc775f"
+    },
+    {
+      "file": "F6BBAF1E-1843-4480-89DE-89EEAD2A281F.png",
+      "bytes": 106113,
+      "sha256": "bf619ab1b1767e79e340e0850ae0b32d28fbcfa7a1e2b893731233480fba7f5d"
+    },
+    {
+      "file": "manifest.json",
+      "bytes": 1209,
+      "sha256": "8bfb2d6a8d3073b4604786b3e06fa55277f8276347dfe792dcaf71a053a8565e"
+    }
+  ],
+  "imagesVisuallyInspected": true,
+  "content": "Generated owned grid only; normal and AX percentage one line; no copyrighted/user/phone artwork, no protected screenshots accessed.",
+  "findings": []
+}

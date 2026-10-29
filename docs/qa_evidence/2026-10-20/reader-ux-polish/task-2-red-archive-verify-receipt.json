@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "-c",
+    "from pathlib import Path\nimport json,hashlib\ne=Path(\"/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish\");v=json.loads((e/'task-2-red-products.json').read_text());a=Path(\"/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/Products-task-2-red\")\nfor f in v['files']:\n b=(a/f['path']).read_bytes();assert len(b)==f['bytes'] and hashlib.sha256(b).hexdigest()==f['sha256']\np=e/'task-2-red-products-archive-verified.json';p.open('x').write(json.dumps({'archive':str(a),'files':len(v['files']),'allBytesMatch':True})+'\\n')\nprint(p.read_text())\n"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792534273.62781,
+  "end_unix": 1792534274.978205,
+  "elapsed_seconds": 1.3503949642181396,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/task-2-red-archive-verify.log",
+  "bytes": 150,
+  "sha256": "0b7b7d17c45a3f7152b71981ed3c88a1b4b8558fe5f2b592d5ed2ef1481cb61a"
+}

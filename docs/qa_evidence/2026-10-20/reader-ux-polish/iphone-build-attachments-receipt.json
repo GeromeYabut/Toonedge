@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "xcrun",
+    "xcresulttool",
+    "export",
+    "attachments",
+    "--path",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/iphone-build.xcresult",
+    "--output-path",
+    "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/iphone-build-attachments"
+  ],
+  "cwd": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge",
+  "start_unix": 1792536981.096212,
+  "end_unix": 1792536981.5537899,
+  "elapsed_seconds": 0.4575779438018799,
+  "exit": 0,
+  "timed_out": false,
+  "log": "/Users/geromeyabut/.codex/worktrees/reader-ux-polish/Toonedge/docs/qa_evidence/2026-10-20/reader-ux-polish/iphone-build-attachments.log",
+  "bytes": 166,
+  "sha256": "b0a187a1659eba2beea0e8d28b4c25cd969f311278ee344dd8aa898e5f053bac"
+}

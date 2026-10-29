@@ -1,0 +1,144 @@
+{
+  "uniqueMethods": 8,
+  "ceiling": 8,
+  "attempts": [
+    {
+      "run": "task-3-native-green",
+      "cases": [
+        {
+          "method": "ToonEdgeReaderIntegratedZoomUITests/testProductionZoomBadgeShowsAppliedCommandsAndFades",
+          "status": "passed",
+          "seconds": 16.332,
+          "run": "task-3-native-green"
+        },
+        {
+          "method": "ToonEdgeReaderIntegratedZoomUITests/testProductionZoomBadgeWithHiddenChromeDoesNotConsumeDoubleTap",
+          "status": "passed",
+          "seconds": 17.8,
+          "run": "task-3-native-green"
+        },
+        {
+          "method": "ToonEdgeSharedSearchUITests/testBrowserAddressSearchLoadsRepeatedRequestsAndSavedSelection",
+          "status": "passed",
+          "seconds": 26.76,
+          "run": "task-3-native-green"
+        },
+        {
+          "method": "ToonEdgeSharedSearchUITests/testBrowserOwnedReaderSearchCancelKeepsScaleThenCommitsWebSelection",
+          "status": "failed",
+          "seconds": 68.093,
+          "run": "task-3-native-green"
+        },
+        {
+          "method": "ToonEdgeSharedSearchUITests/testDarkHomeHasTitleAndCompactSearch",
+          "status": "failed",
+          "seconds": 6.816,
+          "run": "task-3-native-green"
+        },
+        {
+          "method": "ToonEdgeSharedSearchUITests/testLibraryCompactSummaryControlsAndAccessibilityFallback",
+          "status": "failed",
+          "seconds": 14.686,
+          "run": "task-3-native-green"
+        },
+        {
+          "method": "ToonEdgeSharedSearchUITests/testRecentOnlyHomeReaderSearchCancelAndDirectReaderWebSelection",
+          "status": "passed",
+          "seconds": 33.925,
+          "run": "task-3-native-green"
+        },
+        {
+          "method": "ToonEdgeSharedSearchUITests/testUtilitySearchCancelPreservesTabsAndLibraryOrganization",
+          "status": "passed",
+          "seconds": 23.917,
+          "run": "task-3-native-green"
+        }
+      ]
+    },
+    {
+      "run": "task-3-progress-native-red",
+      "cases": [
+        {
+          "method": "ToonEdgeSharedSearchUITests/testBrowserOwnedReaderSearchCancelKeepsScaleThenCommitsWebSelection",
+          "status": "failed",
+          "seconds": 76.846,
+          "run": "task-3-progress-native-red"
+        }
+      ]
+    },
+    {
+      "run": "task-3-fix3-native-green",
+      "cases": [
+        {
+          "method": "ToonEdgeSharedSearchUITests/testBrowserOwnedReaderSearchCancelKeepsScaleThenCommitsWebSelection",
+          "status": "passed",
+          "seconds": 72.559,
+          "run": "task-3-fix3-native-green"
+        },
+        {
+          "method": "ToonEdgeSharedSearchUITests/testDarkHomeHasTitleAndCompactSearch",
+          "status": "passed",
+          "seconds": 5.526,
+          "run": "task-3-fix3-native-green"
+        },
+        {
+          "method": "ToonEdgeSharedSearchUITests/testLibraryCompactSummaryControlsAndAccessibilityFallback",
+          "status": "passed",
+          "seconds": 14.871,
+          "run": "task-3-fix3-native-green"
+        }
+      ]
+    }
+  ],
+  "latestResults": {
+    "ToonEdgeReaderIntegratedZoomUITests/testProductionZoomBadgeShowsAppliedCommandsAndFades": {
+      "method": "ToonEdgeReaderIntegratedZoomUITests/testProductionZoomBadgeShowsAppliedCommandsAndFades",
+      "status": "passed",
+      "seconds": 16.332,
+      "run": "task-3-native-green"
+    },
+    "ToonEdgeReaderIntegratedZoomUITests/testProductionZoomBadgeWithHiddenChromeDoesNotConsumeDoubleTap": {
+      "method": "ToonEdgeReaderIntegratedZoomUITests/testProductionZoomBadgeWithHiddenChromeDoesNotConsumeDoubleTap",
+      "status": "passed",
+      "seconds": 17.8,
+      "run": "task-3-native-green"
+    },
+    "ToonEdgeSharedSearchUITests/testBrowserAddressSearchLoadsRepeatedRequestsAndSavedSelection": {
+      "method": "ToonEdgeSharedSearchUITests/testBrowserAddressSearchLoadsRepeatedRequestsAndSavedSelection",
+      "status": "passed",
+      "seconds": 26.76,
+      "run": "task-3-native-green"
+    },
+    "ToonEdgeSharedSearchUITests/testBrowserOwnedReaderSearchCancelKeepsScaleThenCommitsWebSelection": {
+      "method": "ToonEdgeSharedSearchUITests/testBrowserOwnedReaderSearchCancelKeepsScaleThenCommitsWebSelection",
+      "status": "passed",
+      "seconds": 72.559,
+      "run": "task-3-fix3-native-green"
+    },
+    "ToonEdgeSharedSearchUITests/testDarkHomeHasTitleAndCompactSearch": {
+      "method": "ToonEdgeSharedSearchUITests/testDarkHomeHasTitleAndCompactSearch",
+      "status": "passed",
+      "seconds": 5.526,
+      "run": "task-3-fix3-native-green"
+    },
+    "ToonEdgeSharedSearchUITests/testLibraryCompactSummaryControlsAndAccessibilityFallback": {
+      "method": "ToonEdgeSharedSearchUITests/testLibraryCompactSummaryControlsAndAccessibilityFallback",
+      "status": "passed",
+      "seconds": 14.871,
+      "run": "task-3-fix3-native-green"
+    },
+    "ToonEdgeSharedSearchUITests/testRecentOnlyHomeReaderSearchCancelAndDirectReaderWebSelection": {
+      "method": "ToonEdgeSharedSearchUITests/testRecentOnlyHomeReaderSearchCancelAndDirectReaderWebSelection",
+      "status": "passed",
+      "seconds": 33.925,
+      "run": "task-3-native-green"
+    },
+    "ToonEdgeSharedSearchUITests/testUtilitySearchCancelPreservesTabsAndLibraryOrganization": {
+      "method": "ToonEdgeSharedSearchUITests/testUtilitySearchCancelPreservesTabsAndLibraryOrganization",
+      "status": "passed",
+      "seconds": 23.917,
+      "run": "task-3-native-green"
+    }
+  },
+  "strategy": "Five unchanged methods retain v1 passing evidence; three affected methods rerun GREEN. This is not one all-eight final-binary run. Every failed attempt remains preserved."
+}

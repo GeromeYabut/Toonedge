@@ -1,0 +1,108 @@
+{
+  "source": "/Volumes/Seagate 2TB/ToonEdgeBuilds/Active/feature-reader-ux-polish-20261020a/simulator-red-stage/Build/Products",
+  "destination": "/private/tmp/toonedge-reader-ux-polish-products-20261020a/fix3-green",
+  "completeFileByteMatch": true,
+  "files": [
+    {
+      "path": "Debug-iphonesimulator/ToonEdge.app/Info.plist",
+      "bytes": 1117,
+      "sha256": "2213555c527470f0ec2ccb7b684821b9548ff63596a81a9385a0bca7e7ce64e6"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdge.app/PkgInfo",
+      "bytes": 8,
+      "sha256": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdge.app/ToonEdge",
+      "bytes": 40216,
+      "sha256": "07c5fa3fb48abdee430f1226e4b70dd24f0e292411fbc0fc0caffdd5edac1d53"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdge.app/ToonEdge.debug.dylib",
+      "bytes": 18789800,
+      "sha256": "44185ff6bd49fe56a5f6bd780ff75b844ce57205531f0d9961579b622520be20"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdge.app/__preview.dylib",
+      "bytes": 16760,
+      "sha256": "71618262a664b72d2ec090d8cb1f75aff99b62c431d35a73741cd43bf88f643a"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdge.app/sleepy transparent.png",
+      "bytes": 177017,
+      "sha256": "fadf3ff0083be914578b6138673047974a5ba851286491fc0f675e55704a8ae5"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdge.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo",
+      "bytes": 504300,
+      "sha256": "b4bdfa929c8cad56f1a791cb90056e7024392d378ea64599f785461c37a3651b"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdge.swiftmodule/arm64-apple-ios-simulator.abi.json",
+      "bytes": 149,
+      "sha256": "4277ac6b49f8511196028a5ac20f5b1b1dfa754c24615d34068089f0b1739728"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdge.swiftmodule/arm64-apple-ios-simulator.swiftdoc",
+      "bytes": 10472,
+      "sha256": "a59cbb3eb80837fd00337b8ab83b8c33abdd34ccc343dddf0ca52133d47c5836"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdge.swiftmodule/arm64-apple-ios-simulator.swiftmodule",
+      "bytes": 2379508,
+      "sha256": "d7815fc39b3aadc28e8c43480dcfeca62606c51c35ea996df6a93a7c217e87dc"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdgeUITests-Runner.app/Info.plist",
+      "bytes": 10891,
+      "sha256": "4cee31bd5f19a9c41d8cb44fe71040bb2a76295af0e20fae72e49f974c51337c"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdgeUITests-Runner.app/PkgInfo",
+      "bytes": 8,
+      "sha256": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdgeUITests-Runner.app/PlugIns/ToonEdgeUITests.xctest/Info.plist",
+      "bytes": 704,
+      "sha256": "957d05a5da5f829c0d93d720218f04eeab29801e0c2b5b422e8af6909f5be650"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdgeUITests-Runner.app/PlugIns/ToonEdgeUITests.xctest/ToonEdgeUITests",
+      "bytes": 2191984,
+      "sha256": "022b39e44e0a47bc2bdc7441c6cb3e4351d911afd420df60e572d8650a341e33"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdgeUITests-Runner.app/ToonEdgeUITests-Runner",
+      "bytes": 113728,
+      "sha256": "a2a058c87c45755e677e9008b78b91308a08e596bd8c121de7697d3bc875095f"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdgeUITests.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo",
+      "bytes": 25984,
+      "sha256": "8bd8aedfd142097a065a70806a54142cdc83fb02f2368d9060bd86dd941dfdcb"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdgeUITests.swiftmodule/arm64-apple-ios-simulator.abi.json",
+      "bytes": 149,
+      "sha256": "4277ac6b49f8511196028a5ac20f5b1b1dfa754c24615d34068089f0b1739728"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdgeUITests.swiftmodule/arm64-apple-ios-simulator.swiftdoc",
+      "bytes": 408,
+      "sha256": "35e65671b23c63a654c3c6b52d08a0a377725c6c8bfb3cdd00eaa6693f31d264"
+    },
+    {
+      "path": "Debug-iphonesimulator/ToonEdgeUITests.swiftmodule/arm64-apple-ios-simulator.swiftmodule",
+      "bytes": 161124,
+      "sha256": "cb0b09efb1f46456afd2ba7c5ac997edfbe7bae5a1cd838d6f25c4aa0ae10182"
+    },
+    {
+      "path": "ToonEdge_ToonEdge_iphonesimulator27.0-arm64.xctestrun",
+      "bytes": 15091,
+      "sha256": "ece7289e08791771a74cad4c453994bd4be406dd65fcc1ad3365989553214da5"
+    }
+  ],
+  "xctestrun": "/private/tmp/toonedge-reader-ux-polish-products-20261020a/fix3-green/ToonEdge_ToonEdge_iphonesimulator27.0-arm64.xctestrun"
+}

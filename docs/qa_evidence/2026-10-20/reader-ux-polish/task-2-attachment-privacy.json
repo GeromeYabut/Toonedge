@@ -1,0 +1,123 @@
+{
+  "fixture": "owned Reader integrated zoom fixture only",
+  "redAttachments": [
+    {
+      "file": "0390D1A0-5B92-4E37-B43F-755D67089169.txt",
+      "bytes": 527,
+      "sha256": "40b752f9272d83d7277a0e25e033db7ec3e0e0968d5c09d24250756f26d30832"
+    },
+    {
+      "file": "0A5CE14C-C2F8-43EE-B23A-B029EB79BC2C.txt",
+      "bytes": 4333,
+      "sha256": "808b0e8b398b9fe0e6edafb085fda012b574caa5f0c723aed697d0516b4ada10"
+    },
+    {
+      "file": "12DAD2FE-5E1B-40BE-BE72-E7D35D9EFBE7",
+      "bytes": 1893,
+      "sha256": "1b71a9a0b8d8274be1a1abbb2b9f7c1a7c06219e75baf934a77893cda3e82887"
+    },
+    {
+      "file": "4568FD96-9D1E-47A8-9553-C44FED80823D",
+      "bytes": 19426,
+      "sha256": "0fae74884d3890ffaacd0bca005e86440ccb09d3074490987375697f068b54d8"
+    },
+    {
+      "file": "51898671-F8C6-4984-8ED7-3E7591522C96.mp4",
+      "bytes": 5807156,
+      "sha256": "48a0518916db8beff2c80af9c56e5ca9fc73ec7127f8969669ce371eca7130a4"
+    },
+    {
+      "file": "5376F515-A79A-4D39-93C7-66D9BB63B5A1.txt",
+      "bytes": 8795,
+      "sha256": "463366e28a307864cc738f09feede92396fb9e1e7efc80f90ab764662f7037e0"
+    },
+    {
+      "file": "5D9531B7-4CF6-4A3A-BC00-89B46A4CC524",
+      "bytes": 1893,
+      "sha256": "1b71a9a0b8d8274be1a1abbb2b9f7c1a7c06219e75baf934a77893cda3e82887"
+    },
+    {
+      "file": "62043E6F-9F89-474B-9BC6-132916D8E1F4",
+      "bytes": 1905,
+      "sha256": "46d16e2c7c4e141ffb3656a983bfe8cfdbbf0782c5681463aa71f507cb5222ad"
+    },
+    {
+      "file": "72640C8A-E1AD-481F-BE29-7BBA025E4696.txt",
+      "bytes": 4333,
+      "sha256": "7e4bfa928a8d153f04a133f09450bfaf722444d911116da062e1b53bed5dedd8"
+    },
+    {
+      "file": "85379BAC-3672-4B19-8872-B94B07188702",
+      "bytes": 19426,
+      "sha256": "0fae74884d3890ffaacd0bca005e86440ccb09d3074490987375697f068b54d8"
+    },
+    {
+      "file": "85C79E75-D258-4A30-968F-8E8F6F6A811F",
+      "bytes": 35555,
+      "sha256": "079118cf9167b469085112b7fac23e92ecaade0021c2cd3d9aee47b4c9260b2e"
+    },
+    {
+      "file": "87DC2C51-09F7-4AD7-B05F-C0808C0958CB.txt",
+      "bytes": 986,
+      "sha256": "3c0064037189abc3c1eb3c09e1e227c2b6268001f249a5ab8fd5882033339fe7"
+    },
+    {
+      "file": "A47F312B-EA1F-47C2-A827-92BE8C3B4202.mp4",
+      "bytes": 1529235,
+      "sha256": "eaae8184d4d0425c4e6529bdc8903cb7dee26a2b31a21f3d809e95b9f257c6ea"
+    },
+    {
+      "file": "B0DE069C-BD22-48B2-AAB5-D1B4FA842422",
+      "bytes": 35555,
+      "sha256": "079118cf9167b469085112b7fac23e92ecaade0021c2cd3d9aee47b4c9260b2e"
+    },
+    {
+      "file": "B31BB499-AAAB-43CA-B740-1430AD7C4F54",
+      "bytes": 1893,
+      "sha256": "f79be0a3169146dc5011f56c7c99c2e63c4c6ceb7f69a02a9a2975c514df5fe5"
+    },
+    {
+      "file": "B38AF330-96F3-42B1-BFA4-429E1090FAF1.txt",
+      "bytes": 8795,
+      "sha256": "7802fb66aea932bc8763d50ad3964f749036df95b124a659adc15de094c29b98"
+    },
+    {
+      "file": "B881AEAD-9851-4FEA-A600-31DF5857485D",
+      "bytes": 2745,
+      "sha256": "d75be700aa558adbf0bcaee42368ecd72e9fab83acfb040cf48a77b17ea1c950"
+    },
+    {
+      "file": "C488CF04-52B5-4F47-8C27-1F92ED38401D",
+      "bytes": 19426,
+      "sha256": "0fae74884d3890ffaacd0bca005e86440ccb09d3074490987375697f068b54d8"
+    },
+    {
+      "file": "D90DC32D-1FD3-4B18-A62B-EC27E39BBC71.txt",
+      "bytes": 8795,
+      "sha256": "4d32208accfa73900be7990549bb10ca49ee8bc842b5c70b838fc56e2fe82c8d"
+    },
+    {
+      "file": "E8583CD7-922E-4784-9E56-E3E677758D8E.txt",
+      "bytes": 4333,
+      "sha256": "e91ede605fda48a188f14d1a51f8a37a9cc7c742059370d08f11cbea76c94fe1"
+    },
+    {
+      "file": "F204EA7A-34CF-4913-9F73-BCBAFF1979EF",
+      "bytes": 35555,
+      "sha256": "079118cf9167b469085112b7fac23e92ecaade0021c2cd3d9aee47b4c9260b2e"
+    },
+    {
+      "file": "manifest.json",
+      "bytes": 9197,
+      "sha256": "ef56e36295015178d826096df6d7d82f6f34e67810894e4246a1d1d2f9c13b2b"
+    }
+  ],
+  "greenAttachmentCount": 0,
+  "recordingFrameInspection": [
+    "task-2-red-frame-1.png",
+    "task-2-red-frame-2.png"
+  ],
+  "visualInspection": "Both sampled frames show generated pink grid/marker and Resize viewport only; no copyrighted artwork or user content. Text hierarchy attachments inspected/scanned, no credential patterns.",
+  "findings": [],
+  "protectedScreenshotsAccessed": false
+}
