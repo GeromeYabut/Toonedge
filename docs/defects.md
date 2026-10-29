@@ -349,7 +349,7 @@ Reader opens with page 1 failed, and Retry fails again. View Original Page retur
 
 ## DEF-036 — Vortex chapter detection differs between in-site and direct navigation
 
-**Status:** Open — bounded route follow-up and sanitized fixture coverage pass; live Reader parity is not verified
+**Status:** Open — bounded late-hydration recovery implemented; historical live/device Reader parity remains unverified
 **Severity:** High  
 **Reported:** 2026-09-22  
 **Area:** Browser navigation observation, WebKit route changes, detection scheduling
@@ -389,6 +389,15 @@ In-site navigation stays in Browser; direct navigation opens Reader.
 - Vortex low-confidence route results now receive one host-scoped, 12-second settled-content follow-up. URL/KVO/navigation callback duplication remains suppressed by the existing per-URL navigation and retry policies.
 - The deterministic Vortex fixture and route-policy regressions pass.
 - Repeated live checks later in the session returned only one viable candidate for both in-site and direct chapter 168 loads, including after the bounded follow-up. Because the live site no longer produced a viable direct control, parity and Reader presentation could not be independently verified. The defect remains open.
+
+### 2026-10-21 bounded late-hydration continuation
+
+- An owned Mac WKWebView regression confirmed a same-URL scheduling gap: content arrived after the legacy retry, manual detection found six eligible images, and automatic analysis was missing. The original test failed for that exact reason before the fix.
+- Browser scheduling now observes bounded image-readiness hints in an isolated WebKit world. Recovery coalesces for 500ms, permits at most four extra analyses within a fixed 30-second window, and fingerprints the first 512 images. It preserves initial/legacy follow-up scheduling, classifier thresholds, hard blocks, existing first-image ImageIO preflight and Browser fallback.
+- Navigation/document/source guards, serialized preflight, cancellation and teardown prevent stale work from handing off a Reader session. Independent task review found visibility and absent-to-empty semantic marker collisions; owned regression controls reproduced both and the descriptor was corrected.
+- The focused Mac suite passed eight functions/16 parameter cases, including the 14-second delay, readiness-only changes, hard blocks, unreadable images, stale navigation/replacement/teardown, noise suppression, finite budget and coalescing. This establishes pending Reader handoff with owned image bytes; mounted Reader usability and historical live/device parity are not established.
+- Recovery is finite and signal-driven: later, out-of-budget or unobserved readiness transitions can remain in Browser. DEF-036 remains open. DEF-047 remains separately open/tracked on [draft PR #18](https://github.com/GeromeYabut/Toonedge/pull/18). Persistence remains parked.
+- Commands, failed attempts, hashes and independent reviews: [bounded continuation evidence](qa_evidence/2026-10-21/browser-late-hydration-fix/REPORT.md).
 
 ## DEF-035 — Protected WEBTOON episodes incorrectly receive a Clean Mode prompt
 
