@@ -464,7 +464,8 @@ public struct ReaderView: View {
             .font(ToonEdgeTypography.caption)
             .buttonStyle(.plain)
 
-            if let presentation = ReaderAdjacentFeedbackPresentation(state: viewModel.adjacentLoadState) {
+            if let presentation = ReaderAdjacentFeedbackPresentation(state: viewModel.adjacentLoadState),
+               presentation.showsInlineMessage {
                 adjacentFeedback(presentation)
             }
 
@@ -487,14 +488,9 @@ public struct ReaderView: View {
     @ViewBuilder
     private func adjacentFeedback(_ presentation: ReaderAdjacentFeedbackPresentation) -> some View {
         HStack(spacing: ToonEdgeSpacing.small) {
-            if presentation.disablesNavigationControls {
-                ProgressView()
-                    .controlSize(.small)
-            } else {
-                Image(systemName: presentation.systemImage)
-                    .foregroundStyle(ToonEdgeColor.accent)
-                    .accessibilityHidden(true)
-            }
+            Image(systemName: presentation.systemImage)
+                .foregroundStyle(ToonEdgeColor.accent)
+                .accessibilityHidden(true)
 
             Text(presentation.message)
                 .font(ToonEdgeTypography.caption)
@@ -749,6 +745,8 @@ struct ReaderAdjacentFeedbackPresentation: Equatable {
     let systemImage: String
     let actions: [ReaderAdjacentRecoveryAction]
     let disablesNavigationControls: Bool
+    /// Loading shows only the tapped control's spinner; the message is still announced.
+    let showsInlineMessage: Bool
     let isCompact = true
     let keepsCurrentSessionVisible = true
 
@@ -761,6 +759,7 @@ struct ReaderAdjacentFeedbackPresentation: Equatable {
             systemImage = "arrow.trianglehead.2.clockwise"
             actions = []
             disablesNavigationControls = true
+            showsInlineMessage = false
         case .failed(let failure):
             switch failure.reason {
             case .timeout:
@@ -777,6 +776,7 @@ struct ReaderAdjacentFeedbackPresentation: Equatable {
             systemImage = "exclamationmark.circle"
             actions = failure.targetURL == nil ? [.retry] : [.retry, .openOriginal]
             disablesNavigationControls = false
+            showsInlineMessage = true
         }
     }
 }

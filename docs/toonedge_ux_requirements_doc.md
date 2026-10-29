@@ -411,6 +411,7 @@ Provide the cleanest possible mobile reading experience for extracted chapter co
 - Reader chrome uses translucent dark surfaces with undimmed text/icons; Reduce Transparency and increased contrast receive an opaque legible fallback.
 - Reader top, bottom and side controls use compact spacing while retaining 44-point hit targets, safe-area clearance and adaptive Dynamic Type layout.
 - Zoom feedback passively displays the actual applied percentage during pinch and other zoom commands, including with chrome hidden, then briefly fades after completion. The indicator does not consume reading gestures or alter progress/settings.
+- While Next or Previous loads an adjacent chapter, the tapped control shows a spinner and both controls are disabled; no inline loading message is shown. VoiceOver still announces “Loading next chapter.” or “Loading previous chapter.” Adjacent-load failures keep their inline message with Retry and, when the target is known, Open Original.
 - Reader should preserve the user’s place even if the screen is dismissed and reopened.
 
 ## Acceptance criteria
