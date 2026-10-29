@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 @MainActor
 final class ToonEdgeHomeSearchUITests: XCTestCase {
@@ -443,5 +444,290 @@ final class ToonEdgeSearchHistoryUITests: XCTestCase {
     private func openSearch(_ app: XCUIApplication) {
         app.buttons["home.searchEntry"].tap()
         XCTAssertTrue(app.textFields["search.input"].waitForExistence(timeout: 5))
+    }
+}
+
+@MainActor
+final class ToonEdgeSharedSearchUITests: XCTestCase {
+    // XCUI may report a 44-point frame as 43.99999999999994. Allow at most
+    // 0.001 point of measurement rounding; the required hit size stays 44.
+    private let geometryTolerance: CGFloat = 0.001
+
+    func testDarkHomeHasTitleAndCompactSearch() throws {
+        let app = launch()
+        XCTAssertTrue(app.navigationBars["Home"].waitForExistence(timeout: 5))
+        let entry = app.buttons["home.searchEntry"]
+        XCTAssertTrue(entry.isHittable)
+        XCTAssertEqual(entry.frame.height, 44, accuracy: 0.5)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Owned Recent Only")).firstMatch.exists)
+        let image = XCUIScreen.main.screenshot().image
+        let crop = try XCTUnwrap(image.cgImage?.cropping(to:
+            CGRect(x: 2 * image.scale, y: 300 * image.scale, width: 1, height: 1)))
+        var pixel = [UInt8](repeating: 255, count: 4)
+        pixel.withUnsafeMutableBytes { bytes in
+            let context = CGContext(data: bytes.baseAddress, width: 1, height: 1,
+                bitsPerComponent: 8, bytesPerRow: 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            context.draw(crop, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        }
+        XCTAssertLessThan(pixel[0], 8)
+        XCTAssertLessThan(pixel[1], 8)
+        XCTAssertLessThan(pixel[2], 8)
+    }
+
+    func testUtilitySearchCancelPreservesTabsAndLibraryOrganization() {
+        let app = launch()
+        tab(app, "Library").tap()
+        app.buttons["Planned"].tap()
+        let summary = app.staticTexts["library.sources.summary"].label
+        for (name, identifier) in [("Library", "library.search"),
+                                    ("Downloads", "downloads.search"),
+                                    ("Settings", "settings.search")] {
+            tab(app, name).tap()
+            let search = app.buttons[identifier]
+            XCTAssertTrue(search.waitForExistence(timeout: 5))
+            XCTAssertGreaterThanOrEqual(search.frame.width, 44)
+            search.tap()
+            XCTAssertTrue(app.textFields["search.input"].waitForExistence(timeout: 5))
+            app.textFields["search.input"].typeText("cancel this")
+            app.buttons["search.cancel"].tap()
+            XCTAssertTrue(app.textFields["search.input"].waitForNonExistence(timeout: 5))
+            XCTAssertTrue(tab(app, name).isSelected)
+            XCTAssertTrue(app.navigationBars[name].exists)
+        }
+        tab(app, "Library").tap()
+        XCTAssertEqual(app.buttons["Planned"].value as? String, "Selected")
+        XCTAssertEqual(app.staticTexts["library.sources.summary"].label, summary)
+    }
+
+    func testBrowserAddressSearchLoadsRepeatedRequestsAndSavedSelection() {
+        let app = launch(["-browserFixture", "low"])
+        let address = app.buttons["browser.search"]
+        XCTAssertTrue(address.waitForExistence(timeout: 5))
+        address.tap()
+        app.buttons["search.cancel"].tap()
+        XCTAssertTrue(address.waitForExistence(timeout: 5))
+        let destination = "https://owned.toonedge.test/search-result"
+        for _ in 0..<2 {
+            address.tap()
+            submit(app, destination)
+            XCTAssertTrue(app.textFields["search.input"].waitForNonExistence(timeout: 5))
+            let loaded = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "value == %@", destination), object: address)
+            XCTAssertEqual(XCTWaiter.wait(for: [loaded], timeout: 5), .completed)
+            XCTAssertTrue(address.isHittable)
+        }
+        address.tap()
+        chooseSaved(app)
+        assertNativeSavedDetail(app)
+    }
+
+    func testBrowserOwnedReaderSearchCancelKeepsScaleThenCommitsWebSelection() {
+        let app = launch(["-browserFixture", "medium", "-readerIntegratedZoomFixture"])
+        let clean = app.buttons["browser.cleanModeAction"]
+        XCTAssertTrue(clean.waitForExistence(timeout: 5))
+        clean.tap()
+        let reader = app.descendants(matching: .any)["reader.root"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["reader.search"].exists)
+        _ = waitForReader(app) { $0["firstPageReady"] as? Bool == true }
+        revealReader(app)
+        assertReaderChromeGeometry(app)
+        attachOwnedScreenshot(app, name: "owned-reader-normal-chrome")
+        app.buttons["reader.zoom.enlarge"].tap()
+        let before = waitForReader(app) { ($0["scale"] as? Double ?? 0) > 1.5 }
+        app.buttons["reader.search"].tap()
+        XCTAssertTrue(app.textFields["search.input"].waitForExistence(timeout: 5))
+        app.buttons["search.cancel"].tap()
+        XCTAssertTrue(app.textFields["search.input"].waitForNonExistence(timeout: 5))
+        let after = waitForReader(app) { ($0["scale"] as? Double ?? 0) > 1.5 }
+        XCTAssertEqual(before["session"] as? String, after["session"] as? String)
+        XCTAssertEqual(before["pipeline"] as? String, after["pipeline"] as? String)
+        XCTAssertEqual(before["scale"] as? Double, after["scale"] as? Double)
+        XCTAssertTrue(app.buttons["reader.search"].isHittable)
+        app.buttons["reader.search"].tap()
+        submit(app, "https://owned.toonedge.test/new-destination")
+        XCTAssertTrue(reader.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["browser.search"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["browser.search"].value as? String,
+                       "https://owned.toonedge.test/new-destination")
+        app.terminate()
+        let savedApp = launch(["-browserFixture", "medium"])
+        XCTAssertTrue(savedApp.buttons["browser.cleanModeAction"].waitForExistence(timeout: 5))
+        savedApp.buttons["browser.cleanModeAction"].tap()
+        XCTAssertTrue(savedApp.descendants(matching: .any)["reader.root"].waitForExistence(timeout: 5))
+        revealReader(savedApp)
+        savedApp.buttons["reader.search"].tap()
+        chooseSaved(savedApp)
+        assertNativeSavedDetail(savedApp)
+        savedApp.terminate()
+
+        let accessible = launch(["-UIPreferredContentSizeCategoryName",
+                                 "UICTContentSizeCategoryAccessibilityXXXL"])
+        let recent = accessible.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "Owned Recent Only")).firstMatch
+        XCTAssertTrue(recent.waitForExistence(timeout: 5))
+        if !recent.isHittable { accessible.scrollViews.firstMatch.swipeUp() }
+        recent.tap()
+        XCTAssertTrue(accessible.descendants(matching: .any)["reader.root"].waitForExistence(timeout: 5))
+        revealReader(accessible)
+        assertReaderChromeGeometry(accessible)
+        attachOwnedScreenshot(accessible, name: "owned-reader-accessibilityXXXL-chrome")
+        accessible.buttons["reader.search"].tap()
+        XCTAssertTrue(accessible.textFields["search.input"].waitForExistence(timeout: 5))
+        XCTAssertTrue(accessible.buttons["search.cancel"].isHittable)
+        accessible.buttons["search.cancel"].tap()
+        XCTAssertTrue(accessible.textFields["search.input"].waitForNonExistence(timeout: 5))
+        assertReaderChromeGeometry(accessible)
+    }
+
+    func testLibraryCompactSummaryControlsAndAccessibilityFallback() {
+        var app = launch()
+        tab(app, "Library").tap()
+        let count = app.staticTexts["library.count"]
+        let summary = app.staticTexts["library.sources.summary"]
+        XCTAssertTrue(summary.waitForExistence(timeout: 5))
+        XCTAssertLessThanOrEqual(count.frame.maxX, summary.frame.minX)
+        XCTAssertLessThan(summary.frame.height, 32)
+        let density = app.buttons["library.density.comfortable"]
+        let organization = app.buttons["library.sort"]
+        XCTAssertGreaterThanOrEqual(density.frame.height + geometryTolerance, 44)
+        XCTAssertGreaterThanOrEqual(organization.frame.height + geometryTolerance, 44)
+        XCTAssertGreaterThan(organization.frame.minX, density.frame.maxX)
+        XCTAssertLessThanOrEqual(app.frame.maxX - organization.frame.maxX, 24)
+        organization.tap()
+        XCTAssertTrue(app.buttons["library.organization.sortPicker"].waitForExistence(timeout: 5))
+        app.buttons["library.organization.done"].tap()
+        app.terminate()
+        app = launch(["-UIPreferredContentSizeCategoryName",
+                      "UICTContentSizeCategoryAccessibilityXXXL"])
+        tab(app, "Library").tap()
+        XCTAssertTrue(app.staticTexts["library.sources.summary"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["library.sort"].isHittable)
+        XCTAssertTrue(app.buttons["library.search"].isHittable)
+        XCTAssertGreaterThanOrEqual(app.buttons["library.sort"].frame.height + geometryTolerance, 44)
+    }
+
+    func testRecentOnlyHomeReaderSearchCancelAndDirectReaderWebSelection() {
+        let app = launch(["-readerIntegratedZoomFixture"])
+        let recent = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Owned Recent Only")).firstMatch
+        XCTAssertTrue(recent.waitForExistence(timeout: 5))
+        recent.tap()
+        let reader = app.descendants(matching: .any)["reader.root"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 5))
+        revealReader(app)
+        XCTAssertEqual(app.staticTexts["reader.chapter.context"].label, "Chapter 7")
+        app.buttons["reader.search"].tap()
+        XCTAssertTrue(app.textFields["search.input"].waitForExistence(timeout: 5))
+        app.buttons["search.cancel"].tap()
+        XCTAssertTrue(app.textFields["search.input"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(reader.exists)
+        XCTAssertEqual(app.staticTexts["reader.chapter.context"].label, "Chapter 7")
+        app.buttons["reader.search"].tap()
+        submit(app, "https://owned.toonedge.test/direct-reader-search")
+        XCTAssertTrue(reader.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["browser.search"].waitForExistence(timeout: 5))
+        app.buttons["browser.close"].tap()
+        XCTAssertTrue(app.navigationBars["Home"].waitForExistence(timeout: 5))
+        recent.tap()
+        XCTAssertTrue(reader.waitForExistence(timeout: 5))
+        revealReader(app)
+        app.buttons["reader.search"].tap()
+        chooseSaved(app)
+        assertNativeSavedDetail(app)
+    }
+
+    private func assertReaderChromeGeometry(_ app: XCUIApplication,
+                                           file: StaticString = #filePath, line: UInt = #line) {
+        let identifiers = ["reader.back", "reader.library", "reader.search",
+                           "reader.viewOriginalPage", "reader.settings", "reader.retainChapter",
+                           "reader.zoom.reset"]
+        let actions = identifiers.map { app.buttons[$0] }
+        for action in actions {
+            XCTAssertTrue(action.exists, action.identifier, file: file, line: line)
+            XCTAssertTrue(action.isHittable, action.identifier, file: file, line: line)
+            XCTAssertGreaterThanOrEqual(action.frame.width + geometryTolerance, 44, action.identifier, file: file, line: line)
+            XCTAssertGreaterThanOrEqual(action.frame.height + geometryTolerance, 44, action.identifier, file: file, line: line)
+            XCTAssertTrue(app.frame.contains(action.frame), action.identifier, file: file, line: line)
+        }
+        for i in actions.indices {
+            for j in actions.indices where j > i {
+                let overlap = actions[i].frame.intersection(actions[j].frame)
+                XCTAssertFalse(overlap.width > 1 && overlap.height > 1,
+                    "Reader action hit targets overlap", file: file, line: line)
+            }
+        }
+        let progress = app.staticTexts["reader.progress.value"]
+        XCTAssertTrue(progress.exists, file: file, line: line)
+        // A numeric percentage is wider than one line's height, including at AX.
+        // The previous fixed 44-point width wrapped 0% onto two lines.
+        XCTAssertLessThan(progress.frame.height, progress.frame.width,
+            "Reader percentage must remain on one line", file: file, line: line)
+        XCTAssertTrue(app.frame.contains(progress.frame), file: file, line: line)
+        let context = app.staticTexts["reader.chapter.context"]
+        XCTAssertTrue(context.exists, file: file, line: line)
+        XCTAssertTrue(app.frame.contains(context.frame), file: file, line: line)
+        for action in actions {
+            let overlap = context.frame.intersection(action.frame)
+            XCTAssertFalse(overlap.width > 1 && overlap.height > 1,
+                "Chapter context overlaps an action", file: file, line: line)
+        }
+    }
+    private func attachOwnedScreenshot(_ app: XCUIApplication, name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+    private func launch(_ extra: [String] = []) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-sharedSearchFixture",
+            "-resetLibraryOrganization", "-libraryDensity", "comfortable"] + extra
+        app.launch()
+        return app
+    }
+    private func tab(_ app: XCUIApplication, _ name: String) -> XCUIElement {
+        let identified = app.tabBars.buttons["tab.\(name.lowercased())"]
+        return identified.exists ? identified : app.tabBars.buttons[name]
+    }
+    private func submit(_ app: XCUIApplication, _ text: String) {
+        let input = app.textFields["search.input"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.typeText(text + "\n")
+    }
+    private func chooseSaved(_ app: XCUIApplication) {
+        let input = app.textFields["search.input"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.typeText("moonlit")
+        let saved = app.buttons["search.savedSeries.A4A029B1-778A-46DF-9B92-2E94378C8E11"]
+        XCTAssertTrue(saved.waitForExistence(timeout: 5))
+        saved.tap()
+    }
+    private func assertNativeSavedDetail(_ app: XCUIApplication) {
+        XCTAssertTrue(app.textFields["search.input"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Continue Chapter 12"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["browser.close"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["reader.root"].exists)
+        XCTAssertTrue(app.navigationBars.buttons["Library"].isHittable)
+    }
+    private func revealReader(_ app: XCUIApplication) {
+        if !app.buttons["reader.search"].isHittable {
+            app.descendants(matching: .any)["reader.root"]
+                .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        XCTAssertTrue(app.buttons["reader.search"].waitForExistence(timeout: 5))
+    }
+    private func waitForReader(_ app: XCUIApplication,
+                              _ condition: ([String: Any]) -> Bool) -> [String: Any] {
+        let deadline = Date().addingTimeInterval(8)
+        repeat {
+            if let raw = app.staticTexts["reader.zoom.status"].value as? String,
+               let bytes = raw.data(using: .utf8),
+               let value = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any],
+               condition(value) { return value }
+            Thread.sleep(forTimeInterval: 0.05)
+        } while Date() < deadline
+        XCTFail("Owned Reader did not reach the expected native state")
+        return [:]
     }
 }

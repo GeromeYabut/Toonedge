@@ -25,6 +25,7 @@ public struct BrowserView: View {
     @StateObject private var viewModel: BrowserViewModel
     @StateObject private var librarySaveOperation: BrowserLibrarySaveOperation
     private let chromeLayout = BrowserChromeLayout()
+    @State private var showsSearch = false
     @State private var pendingLibrarySaveSession: MockReaderSession?
     @State private var librarySaveState = AddToLibraryStatePickerModel.defaultState(for: .browser)
 
@@ -91,6 +92,7 @@ public struct BrowserView: View {
                         viewModel.dismissBrowserOwnedReader()
                         viewModel.load(url)
                     },
+                    searchAction: { showsSearch = true },
                     router: $router
                 )
                 .id(session.id)
@@ -138,6 +140,15 @@ public struct BrowserView: View {
         }
         .onChange(of: viewModel.detectionResult?.readerSession?.id) { _, sessionID in
             librarySaveOperation.reset(for: sessionID)
+        }
+        .onChange(of: router.browserRequestRevision) { _, _ in
+            guard let startPoint = router.presentedBrowser else { return }
+            viewModel.openRequestedPage(
+                startPoint, readerLaunchOrigin: router.presentedBrowserReaderLaunchOrigin
+            )
+        }
+        .universalSearch(isPresented: $showsSearch, dependencies: dependencies) {
+            $0.apply(to: &router)
         }
         .sheet(item: $pendingLibrarySaveSession) { session in
             AddToLibraryStatePickerView(
@@ -207,6 +218,7 @@ public struct BrowserView: View {
             .foregroundStyle(ToonEdgeColor.textPrimary)
             .accessibilityIdentifier(chromeLayout.closeActionIdentifier)
 
+            Button { showsSearch = true } label: {
             HStack(spacing: ToonEdgeSpacing.small) {
                 Image(systemName: viewModel.initialRequestIconName)
                     .foregroundStyle(ToonEdgeColor.accent)
@@ -230,6 +242,14 @@ public struct BrowserView: View {
                 RoundedRectangle(cornerRadius: ToonEdgeRadius.medium)
                     .stroke(ToonEdgeColor.border)
             )
+
+            }
+            .buttonStyle(.plain)
+            .frame(minHeight: 44)
+            .accessibilityLabel("Search or enter URL")
+            .accessibilityValue(viewModel.currentURL?.absoluteString ?? viewModel.subtitleDisplay)
+            .accessibilityIdentifier("browser.search")
+            .disabled(pendingLibrarySaveSession != nil)
 
             if viewModel.detectionResult?.readerSession != nil, dependencies.libraryLifecycleService != nil {
                 Button {

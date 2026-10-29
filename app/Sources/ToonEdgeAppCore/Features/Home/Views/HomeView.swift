@@ -7,6 +7,10 @@ public struct HomeView: View {
     @State private var snapshot = HomeSnapshot(continueReading: [], recentlyUpdated: [], library: [])
     @State private var hasLoadedSnapshot = false
     @State private var refreshMessage: String?
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var resumeTask: Task<Void, Never>?
+    @State private var resumeRequestID: UUID?
+    @State private var failedResumeSeriesID: UUID?
 
     public init(dependencies: AppDependencies, router: Binding<AppRouter>) {
         self.dependencies = dependencies
@@ -16,13 +20,15 @@ public struct HomeView: View {
     public var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: ToonEdgeSpacing.xlarge) {
+                VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
                     ForEach(layout.contentPriority, id: \.self) { section in
                         dashboardSection(section)
                     }
                 }
-                .padding(ToonEdgeSpacing.large)
+                .padding(.horizontal, ToonEdgeSpacing.large)
+                .padding(.vertical, ToonEdgeSpacing.medium)
             }
+            .navigationTitle("Home")
             .task {
                 await reloadSnapshot()
             }
@@ -31,6 +37,11 @@ public struct HomeView: View {
                     await refreshUpdates()
                 }
             }
+            .onDisappear { cancelResume() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase != .active { cancelResume() }
+            }
+            .onChange(of: router) { _, _ in cancelResume() }
             .toonEdgeScreen()
         }
     }
@@ -80,10 +91,9 @@ public struct HomeView: View {
             .padding(.horizontal, layout.horizontalPadding)
             .frame(minHeight: layout.height)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, ToonEdgeSpacing.small)
             .background(ToonEdgeColor.panel, in: RoundedRectangle(cornerRadius: layout.cornerRadius))
         }
-        .buttonStyle(TEActionStyle())
+        .buttonStyle(TEActionStyle(verticalPadding: 0))
         .accessibilityLabel("Search the web or paste a chapter link")
         .accessibilityIdentifier("home.searchEntry")
     }
@@ -151,6 +161,19 @@ public struct HomeView: View {
                 }
             }
 
+            if resumeRequestID != nil {
+                ProgressView("Opening chapter…")
+                    .accessibilityIdentifier("home.continueReading.loading")
+            }
+            if let failedResumeSeriesID {
+                VStack(alignment: .leading) {
+                    Text("This chapter could not be opened. Try again.")
+                    Button("Retry") { openContinueReading(seriesID: failedResumeSeriesID) }
+                        .frame(minHeight: 44)
+                }
+                .accessibilityIdentifier("home.continueReading.retry")
+            }
+
             TEEditorialGroup(snapshot.continueReading) { item in
                 let style: HomeSectionStyle = item.id == snapshot.continueReading.first?.id ? .featured : .compact
                 Button {
@@ -191,18 +214,40 @@ public struct HomeView: View {
     }
 
     private func openContinueReading(seriesID: UUID) {
-        Task {
+        guard resumeRequestID == nil else { return }
+        let requestID = UUID()
+        let originatingRouter = router
+        resumeRequestID = requestID
+        failedResumeSeriesID = nil
+        resumeTask = Task { @MainActor in
             let target = await dependencies.libraryLifecycleService?.continueReadingTarget(for: seriesID)
-            if let target,
-               let session = await dependencies.libraryLifecycleService?.readerSession(forChapterID: target.chapterID) {
-                var librarySession = session
-                librarySession.launchOrigin = .homeContinueReading
-                router.presentReader(librarySession)
-                return
+            guard !Task.isCancelled, resumeRequestID == requestID,
+                  router == originatingRouter, scenePhase == .active else { return }
+            let session: MockReaderSession?
+            if let target {
+                session = await dependencies.libraryLifecycleService?.readerSession(forChapterID: target.chapterID)
+            } else {
+                session = nil
             }
-
-            HomeContinueReadingNavigation.presentBrowserFallback(for: target, router: &router)
+            guard !Task.isCancelled, resumeRequestID == requestID,
+                  router == originatingRouter, scenePhase == .active else { return }
+            resumeRequestID = nil
+            resumeTask = nil
+            if var session {
+                session.launchOrigin = .homeContinueReading
+                router.presentReader(session)
+            } else if let target {
+                HomeContinueReadingNavigation.presentBrowserFallback(for: target, router: &router)
+            } else {
+                failedResumeSeriesID = seriesID
+            }
         }
+    }
+
+    private func cancelResume() {
+        resumeTask?.cancel()
+        resumeTask = nil
+        resumeRequestID = nil
     }
 
     private func reloadSnapshot() async {
@@ -302,7 +347,7 @@ struct HomeSearchEntryLayout: Equatable, Sendable {
     var horizontalPadding: CGFloat
 
     init() {
-        self.placeholder = "Search the web or paste a chapter link"
+        self.placeholder = "Search or enter URL"
         self.height = 44
         self.cornerRadius = 10
         self.usesCapsuleShape = false

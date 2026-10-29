@@ -193,8 +193,11 @@ public struct SettingsView: View {
     @StateObject private var viewModel: SettingsViewModel
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private let onShowDownloads: () -> Void
+    private let onSearch: (() -> Void)?
 
-    public init(dependencies: AppDependencies, onShowDownloads: @escaping () -> Void = {}) {
+    public init(dependencies: AppDependencies, onSearch: (() -> Void)? = nil,
+                onShowDownloads: @escaping () -> Void = {}) {
+        self.onSearch = onSearch
         self._viewModel = StateObject(wrappedValue: SettingsViewModel(
             settingsManager: dependencies.settingsService,
             cacheMetadataManager: dependencies.cacheMetadataService,
@@ -304,6 +307,13 @@ public struct SettingsView: View {
                 Text("This removes recent searches and links from ToonEdge. Your Library, reading progress, downloads, cookies, and website data are not changed.")
             }
             .navigationTitle("Settings")
+            .toolbar {
+                if let onSearch {
+                    ToolbarItem(placement: .primaryAction) {
+                        UniversalSearchButton(identifier: "settings.search", action: onSearch)
+                    }
+                }
+            }
             .task { await viewModel.loadStorage() }
             .toonEdgeScreen()
         }

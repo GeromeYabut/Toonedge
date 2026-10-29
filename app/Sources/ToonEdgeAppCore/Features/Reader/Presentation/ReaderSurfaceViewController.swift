@@ -34,6 +34,7 @@ final class ReaderSurfaceViewController: UIViewController,
     private var geometryRevision: UInt64 = 0
     private var lastLoadingIndexes: [Int] = []
     private var lastSelection: ReaderViewportSelection?
+    private let zoomHUD = ReaderZoomHUD()
     private let diagnostic = UILabel()
     #if DEBUG
     // Observation only: never feeds recognizer, presentation, or policy state.
@@ -105,6 +106,13 @@ final class ReaderSurfaceViewController: UIViewController,
         scroll.panGestureRecognizer.maximumNumberOfTouches = 1
         scroll.panGestureRecognizer.addTarget(self, action: #selector(panChanged(_:)))
         view.addSubview(scroll)
+        view.addSubview(zoomHUD)
+        zoomHUD.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            zoomHUD.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
+            zoomHUD.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor),
+            zoomHUD.trailingAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -8)
+        ])
         canvas.backgroundColor = .black
         scroll.addSubview(canvas)
 
@@ -258,6 +266,7 @@ final class ReaderSurfaceViewController: UIViewController,
 
     func stop() {
         stopped = true
+        zoomHUD.stop()
         restoreTask?.cancel()
         restoreTask = nil
         subscription = nil
@@ -270,6 +279,7 @@ final class ReaderSurfaceViewController: UIViewController,
 
     public override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        zoomHUD.hide()
         if state?.isPinching == true {
             state?.cancelPinch()
             scroll.panGestureRecognizer.isEnabled = true
@@ -278,7 +288,7 @@ final class ReaderSurfaceViewController: UIViewController,
     }
 
     public func perform(_ command: ReaderSurfaceCommand) {
-        guard let state else { return }
+        guard !stopped, let state else { return }
         contract.userDidInteract()
         scroll.setContentOffset(scroll.contentOffset, animated: false)
         if state.isPinching {
@@ -299,10 +309,27 @@ final class ReaderSurfaceViewController: UIViewController,
         #endif
         }
         applyPresentation()
+        switch command {
+        case .reset, .enlarge, .shrink: showZoomFeedback(ongoing: false)
+        default: break
+        }
+    }
+
+    private func showZoomFeedback(ongoing: Bool) {
+        guard !stopped, let scale = state?.presentation?.scale else { return }
+        zoomHUD.show(scale: Double(scale), ongoing: ongoing)
     }
 
     @objc private func pinchChanged(_ recognizer: UIPinchGestureRecognizer) {
+        guard !stopped else { return }
         let point = recognizer.location(in: view)
+        defer {
+            switch recognizer.state {
+            case .began, .changed: showZoomFeedback(ongoing: true)
+            case .ended, .cancelled, .failed: showZoomFeedback(ongoing: false)
+            default: break
+            }
+        }
         #if DEBUG
         // Capture native inputs before the original handler, and outcomes afterward.
         let tracePre = diagnosticsEnabled ? pinchTraceState(at: point) : nil
@@ -469,11 +496,12 @@ final class ReaderSurfaceViewController: UIViewController,
     }
 
     @objc private func doubleTapped(_ recognizer: UITapGestureRecognizer) {
-        guard recognizer.state == .ended else { return }
+        guard !stopped, recognizer.state == .ended else { return }
         contract.userDidInteract()
         synchronizeNativeOffset()
         state?.doubleTap(at: recognizer.location(in: view))
         applyPresentation()
+        showZoomFeedback(ongoing: false)
     }
 
     @objc private func singleTapped(_ recognizer: UITapGestureRecognizer) {
