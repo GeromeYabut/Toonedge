@@ -4,7 +4,7 @@ This document tracks confirmed product defects, their evidence, current status, 
 
 ## DEF-047 — Resumed Reader can lose previous and next chapter targets
 
-**Status:** Fix merged to `main` in PR #22 (`6941766`); owned simulator flow verified 2026-10-29; physical-iPhone confirmation pending
+**Status:** Closed (verified 2026-10-29). Fix merged to `main` in PR #22 (`6941766`); owned simulator flow and physical iPhone confirmed
 
 **Severity:** High
 
@@ -57,7 +57,7 @@ This is a read-only session reconstruction defect, distinct from DEF-010's loadi
 - Independent review: clear with notes. Notes not changed: the label number can come from the URL itself, so the own-route check is consistency rather than independent evidence; the recent path re-checks the rewritten target while the saved path relies on stored links.
 - No storage schema, autosave or progress-write changes.
 - Owned simulator flow (2026-10-29, iPhone 16e, iOS 18.6): `ToonEdgeResumeAdjacencyUITests` seeds the persistent SwiftData store, relaunches, resumes from Home → Continue Reading and completes Next and Previous transitions for recent-only and saved-empty-image chapters. 4 of 4 failed on the pre-fix repository code at the Previous check and 4 of 4 passed on `main`. The adjacent loader is a stand-in. [Simulator evidence](qa_evidence/2026-10-29/def-047-simulator/REPORT.md).
-- Not verified: physical iPhone.
+- Physical iPhone (2026-10-29, iPhone 16 Pro): a Debug build installed with `devicectl`, from `main` and then from `feature/reader-quiet-adjacent-loading` (`64446f4`; Reader loading-UI change only, on top of the same fix). The user confirmed that a chapter resumed from Home → Continue Reading enables Previous and Next, and that both open the adjacent chapter. The user's own library was used; no device data or screenshots were retained.
 
 ### Evidence and related work
 
