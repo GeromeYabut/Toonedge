@@ -515,3 +515,65 @@ final class ToonEdgeNumericAdjacencyUITests: XCTestCase {
         XCTAssertEqual(chapterLabel.label, expectedLabel)
     }
 }
+
+// DEF-047: Home → Continue Reading rebuilds the Reader from the persistent store after a relaunch.
+@MainActor
+final class ToonEdgeResumeAdjacencyUITests: XCTestCase {
+    func testRecentOnlyResumeNextOpensChapter200() {
+        assertResume("recent-only", tapping: "reader.nextChapter", opens: 200)
+    }
+
+    func testRecentOnlyResumePreviousOpensChapter198() {
+        assertResume("recent-only", tapping: "reader.previousChapter", opens: 198)
+    }
+
+    func testSavedEmptyImageResumeNextOpensChapter200() {
+        assertResume("saved-empty-images", tapping: "reader.nextChapter", opens: 200)
+    }
+
+    func testSavedEmptyImageResumePreviousOpensChapter198() {
+        assertResume("saved-empty-images", tapping: "reader.previousChapter", opens: 198)
+    }
+
+    private func assertResume(_ storage: String, tapping control: String, opens chapter: Int) {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-resetTestData", "-resumeAdjacencyFixture", storage]
+        app.launch()
+        assertLabel("Seeded", on: app.staticTexts["resumeAdjacency.seedStatus"])
+
+        app.terminate()
+        app.launchArguments = ["-uiTesting", "-resumeAdjacencyFixture", storage]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Continue Reading"].waitForExistence(timeout: 10))
+        let card = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Resume Adjacency Fixture")).firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        card.tap()
+
+        assertReaderChapter(199, in: app)
+        XCTAssertTrue(app.buttons["reader.previousChapter"].isEnabled, "Resumed Reader must offer Previous")
+        XCTAssertTrue(app.buttons["reader.nextChapter"].isEnabled, "Resumed Reader must offer Next")
+
+        app.buttons[control].tap()
+        assertReaderChapter(chapter, in: app)
+
+        app.buttons["reader.back"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Continue Reading"].waitForExistence(timeout: 5))
+    }
+
+    private func assertReaderChapter(_ number: Int, in app: XCUIApplication) {
+        let reader = app.descendants(matching: .any)["reader.root"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 10))
+        if !app.buttons["reader.back"].exists {
+            reader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        XCTAssertTrue(app.buttons["reader.back"].waitForExistence(timeout: 5))
+        assertLabel("Resume Adjacency Fixture, Chapter \(number)", on: app.staticTexts["reader.chapter.label"])
+    }
+
+    private func assertLabel(_ label: String, on element: XCUIElement) {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", label), object: element)
+        XCTAssertEqual(XCTWaiter().wait(for: [expectation], timeout: 10), .completed, "Expected \(label), saw \(element.label)")
+    }
+}

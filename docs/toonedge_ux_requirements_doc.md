@@ -178,7 +178,7 @@ Home is the primary launchpad for both search-based reading and saved reading.
 
 ## Required behavior
 - Tapping the search field opens search entry state or overlay.
-- Continue Reading opens the displayed current chapter using a retained Reader session when available, otherwise the existing source-page entry flow; show loading and Retry on failure. Resumed sessions retain valid adjacent chapter navigation. Delivery status and the known navigation defect are tracked in DEF-047.
+- Continue Reading opens the displayed current chapter using a retained Reader session when available, otherwise the existing source-page entry flow; show loading and Retry on failure. Resumed sessions retain valid adjacent chapter navigation. The resumed-navigation defect is resolved and recorded in DEF-047.
 - Tapping a continue-reading card opens the last-read chapter.
 - Tapping a library card opens Series Detail.
 - Tapping a recently updated card opens Series Detail.
