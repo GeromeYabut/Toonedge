@@ -414,6 +414,19 @@ Provide the cleanest possible mobile reading experience for extracted chapter co
 - While Next or Previous loads an adjacent chapter, the tapped control shows a spinner and both controls are disabled; no inline loading message is shown. VoiceOver still announces “Loading next chapter.” or “Loading previous chapter.” Adjacent-load failures keep their inline message with Retry and, when the target is known, Open Original.
 - Reader should preserve the user’s place even if the screen is dismissed and reopened.
 
+## Sticky baseline zoom
+
+Approved by the user on 2026-10-06 in [Story 13.4 Sticky Baseline Reader Zoom Design](superpowers/specs/2026-10-06-story-13.4-sticky-baseline-zoom-design.md); shipped through PR #17.
+
+- Pinch enlargement remains after release; it is not a temporary hold-to-inspect effect.
+- 100 percent means the current normal fitted reading size, not source pixel size or progress.
+- Inward pinch snaps to exact `1x` near baseline. Deliberate further contraction in that same pinch crosses the resistance; a second gesture is not required.
+- Prototype tuning: `0.75x...3x`, downward snap entry at `1.03x`, and an additional inward ratio of `0.88` measured only after engagement. A first overshooting sample cannot immediately cross the stop. Thresholds still require usability validation.
+- The below-baseline view persists after release. Reset and off-baseline double tap restore `1x` at the frozen reading anchor; idle baseline double tap enlarges to `2x`.
+- Suspend chapter scrolling and progress during any pinch, held detent, off-baseline presentation, or unfinished reset/reconciliation. Baseline scrolling resumes only after actual anchor reconciliation and gesture completion.
+- Preserve aspect ratio, page order, canvas, chapter position, and fixed chrome. Consumed zoom gestures do not toggle chrome. Smaller scale cannot trigger eager whole-chapter loading.
+- Reset Zoom is accessible above and below baseline, with non-pinch Enlarge and Shrink actions. VoiceOver focus is not tied to permission to save progress. Reduce Motion removes nonessential animation without changing behavior.
+
 ## Acceptance criteria
 - Reader feels immersive and calm.
 - Escape hatch is clear and reliable.

@@ -498,7 +498,7 @@ Entities should include:
 11. Users must always be able to return to the original webpage.
 12. The product stores library data locally and checks saved series for new chapters.
 13. Saved Library results are included in universal search but open native Series Detail rather than Browser.
-14. Reader zoom is transient and bounded to `1x...3x`.
+14. Reader zoom is transient per Reader session, persists after gesture release, and has a sticky `1x` fitted-size baseline that deliberate same-pinch contraction can cross; the prototype `0.75x...3x` range still requires usability validation. See [Sticky Baseline Reader Zoom Design](superpowers/specs/2026-10-06-story-13.4-sticky-baseline-zoom-design.md).
 15. Reader prefetch is bounded and does not imply an offline download.
 16. Library sort and source filters are presentation preferences and do not mutate collection metadata.
 17. Search-history clearing affects only locally stored search/link history.
