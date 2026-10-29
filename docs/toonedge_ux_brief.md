@@ -180,6 +180,7 @@ UX goals:
 - make the chapter feel native to the phone
 - make controls discoverable but unobtrusive
 - support uninterrupted long-session reading
+- allow persistent detail inspection with a sticky normal-size zoom baseline; intentional continued pinch may shrink below baseline without losing the reading position
 
 ### Downloads
 Downloads should primarily support reassurance and utility:

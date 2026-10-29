@@ -1749,10 +1749,10 @@ As a reader viewing small text or artwork detail, I want to zoom and pan tempora
 
 **Acceptance criteria**
 
-- Reader content supports focal-point pinch zoom from `1x` through `3x`.
+- Reader content supports persistent focal-point pinch zoom from `0.75x` through `3x`, with a sticky `1x` fitted-size baseline that a deliberate continued inward pinch can cross ([design](superpowers/specs/2026-10-06-story-13.4-sticky-baseline-zoom-design.md)).
 - At `1x`, the existing vertical ScrollView remains the sole drag owner.
 - Above `1x`, chapter scrolling pauses and drag pans the scaled strip within recoverable bounds.
-- Returning to `1x` clears translation and restores vertical scrolling at the prior chapter position.
+- Returning to `1x` (by reset or off-baseline double tap) clears translation and restores vertical scrolling at the prior chapter position.
 - Spatial double tap at `1x` zooms to `2x`; double tap while zoomed resets to `1x`.
 - Double tap and the existing single-tap chrome gesture do not trigger each other.
 - Zoom resets on session replacement, adjacent-chapter navigation, and Reader dismissal.
