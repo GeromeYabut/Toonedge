@@ -268,7 +268,24 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
     }
 
     public func continueReadingTarget(for seriesID: UUID) async -> ContinueReadingTarget? {
-        guard let series = fetchSeries(id: seriesID),
+        let series = fetchSeries(id: seriesID)
+        // Match the same recent read model used by Home, including saved identity aliases.
+        // This query deliberately avoids snapshot reconciliation and all persistence writes.
+        let visibleSeries = fetchSeries().filter { !isDomainPlaceholder(title: $0.title, sourceDomain: $0.sourceDomain) }
+        if let recent = fetchRecentReadings().first(where: {
+            recentReadingSummary($0, replacingPlaceholderWith: visibleSeries)?.id == seriesID
+        }), recent.lastReadAt >= (series?.lastReadAt ?? .distantPast),
+           let sourceURL = URL(string: recent.sourceURLString),
+           ["http", "https"].contains(sourceURL.scheme?.lowercased() ?? ""), sourceURL.host != nil {
+            // Reader session UUIDs can differ from persistent chapter UUIDs.
+            // A URL match preserves the saved session's metadata and adjacent chapters.
+            let chapterID = fetchChapter(sourceURLString: recent.sourceURLString)?.id ?? recent.chapterID
+            return ContinueReadingTarget(
+                seriesID: seriesID, chapterID: chapterID, sourceURL: sourceURL,
+                progress: ReaderProgress(currentImageIndex: recent.currentImageIndex, totalImageCount: recent.totalImageCount)
+            )
+        }
+        guard let series,
               let chapterID = series.lastOpenedChapterID,
               let chapter = fetchChapter(id: chapterID),
               let sourceURL = URL(string: chapter.sourceURLString),
@@ -289,12 +306,12 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
               let series = fetchSeries(id: chapter.seriesID),
               let sourceURL = URL(string: chapter.sourceURLString),
               let seriesURL = URL(string: series.canonicalURLString) else {
-            return nil
+            return recentReaderSession(forChapterID: chapterID)
         }
 
         let imageURLs = decodedURLStrings(chapter.imageURLStrings).compactMap(URL.init(string:))
         guard !imageURLs.isEmpty else {
-            return nil
+            return recentReaderSession(forChapterID: chapterID)
         }
         let derivedAdjacent = adjacentChapters(for: chapter, in: series.id)
 
@@ -312,6 +329,27 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
             previousChapter: derivedAdjacent.previous,
             nextChapter: derivedAdjacent.next
         )
+    }
+
+    private func recentReaderSession(forChapterID chapterID: UUID) -> MockReaderSession? {
+        let savedSourceURLString = fetchChapter(id: chapterID)?.sourceURLString
+        if let recent = fetchRecentReadings().first(where: {
+            $0.chapterID == chapterID || $0.sourceURLString == savedSourceURLString
+        }),
+           let sourceURL = URL(string: recent.sourceURLString),
+           let seriesURL = URL(string: recent.seriesURLString) {
+            let images = decodedURLStrings(recent.imageURLStrings).compactMap(URL.init(string:))
+            if !images.isEmpty {
+                return MockReaderSession(
+                    seriesID: matchingSeries(for: recent, in: fetchSeries())?.id ?? recent.seriesID,
+                    seriesTitle: recent.seriesTitle, seriesURL: seriesURL,
+                    sourceDomain: recent.sourceDomain,
+                    coverImageURL: recent.coverImageURLString.flatMap(URL.init(string:)),
+                    chapterTitle: recent.chapterTitle, sourceURL: sourceURL, imageURLs: images
+                )
+            }
+        }
+        return nil
     }
 
     public func readerSession(forSourceURL sourceURL: URL) async -> MockReaderSession? {

@@ -160,8 +160,8 @@ public struct OSLogBrowserReaderPresentationLogger: BrowserReaderPresentationLog
 
 @MainActor
 public final class BrowserViewModel: ObservableObject {
-    public let startPoint: BrowserStartPoint
-    public let initialRequest: BrowserRequest?
+    public private(set) var startPoint: BrowserStartPoint
+    public private(set) var initialRequest: BrowserRequest?
 
     @Published public private(set) var currentURL: URL?
     @Published public private(set) var pageTitle: String
@@ -176,7 +176,7 @@ public final class BrowserViewModel: ObservableObject {
     @Published public private(set) var browserOwnedReaderSession: MockReaderSession?
     private let readerPresentationLogger: any BrowserReaderPresentationLogging
     private var pendingReaderLaunchOriginOverride: ReaderLaunchOrigin?
-    private let readerLaunchOriginOverrideSourceURL: URL?
+    private var readerLaunchOriginOverrideSourceURL: URL?
 
     public init(
         startPoint: BrowserStartPoint,
@@ -247,6 +247,25 @@ public final class BrowserViewModel: ObservableObject {
     public func reload() {
         navigationDidStart()
         pendingCommand = BrowserCommand(action: .reload)
+    }
+
+    /// A committed external request reuses WebKit history, but replaces the
+    /// active chapter and any launch origin retained from the previous request.
+    @discardableResult
+    public func openRequestedPage(
+        _ startPoint: BrowserStartPoint,
+        readerLaunchOrigin: ReaderLaunchOrigin? = nil
+    ) -> Bool {
+        guard let request = BrowserRequest(startPoint: startPoint) else { return false }
+        dismissBrowserOwnedReader()
+        self.startPoint = startPoint
+        initialRequest = request
+        pendingReaderLaunchOriginOverride = readerLaunchOrigin
+        readerLaunchOriginOverrideSourceURL = request.url
+        currentURL = request.url
+        pageTitle = ""
+        load(request.url)
+        return true
     }
 
     public func load(_ url: URL) {

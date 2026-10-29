@@ -19,6 +19,16 @@ enum LibrarySortChoice: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    var compactTitle: String {
+        switch self {
+        case .recentNewest: "Recent ↓"
+        case .recentOldest: "Recent ↑"
+        case .titleAscending: "Title A–Z"
+        case .titleDescending: "Title Z–A"
+        case .unreadUpdates: "Unread first"
+        }
+    }
+
     init(query: LibraryCollectionQuery) {
         switch query.sortKey {
         case .activity:
@@ -60,6 +70,11 @@ struct LibraryOrganizationLayout: Equatable, Sendable {
     let accessibilityLabel = "Sort and filter library"
     let resetTitle = "Reset Library organization"
     let isActive: Bool
+
+    var compactSummary: String {
+        let source = sourceSummary == "All Sources" ? "All sources" : sourceSummary
+        return "\(source) · \(sortChoice.compactTitle)"
+    }
 
     var accessibilityValue: String { "\(sortChoice.title), \(sourceSummary)" }
 

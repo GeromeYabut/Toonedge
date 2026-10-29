@@ -39,6 +39,9 @@ struct ToonEdgeAppEntry: App {
         WindowGroup {
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("-uiTesting"),
+               ProcessInfo.processInfo.arguments.contains("-sharedSearchFixture") {
+                ToonEdgeRootView(dependencies: launchDependencies(), initialRouter: launchRouter())
+            } else if ProcessInfo.processInfo.arguments.contains("-uiTesting"),
                ProcessInfo.processInfo.arguments.contains("-readerZoomFixture") {
                 ReaderZoomFixtureRoot()
             } else if ProcessInfo.processInfo.arguments.contains("-uiTesting"),
@@ -262,6 +265,20 @@ struct ToonEdgeAppEntry: App {
                 result: LibraryUpdateRefreshResult(checkedCount: 3, updatedCount: 0, failedCount: 3)
             )
         }
+        #if DEBUG
+        if arguments.contains("-sharedSearchFixture") {
+            let library = SharedSearchUITestLibrary()
+            dependencies.libraryService = library
+            dependencies.libraryLifecycleService = library
+            dependencies.readerProgressRepository = MockReaderProgressRepository()
+            dependencies.settingsService = MockSettingsService()
+            dependencies.recentReadingRecorder = nil
+            dependencies.chapterAssetCache = try! ReaderIntegratedZoomAssetCache()
+            dependencies.chapterAssetRetainer = nil
+            dependencies.seriesMetadataService = nil
+            dependencies.browserPresentationFixture = dependencies.browserPresentationFixture ?? .lowConfidence
+        }
+        #endif
         return dependencies
     }
 
@@ -1359,5 +1376,71 @@ private final class ReaderIntegratedZoomAssetCache: ChapterAssetCaching, @unchec
         return sourceURL.lastPathComponent == "chapter-2" ? images[4] : images[number % 4]
     }
     func store(_ data: Data, for assetURL: URL, sourceURL: URL) throws {}
+}
+#endif
+
+#if DEBUG
+/// Owned in-memory routing fixture: the recent-only chapter has no saved detail.
+/// This is reached only through the paired UI-testing/shared-search launch flags.
+private actor SharedSearchUITestLibrary: LibraryLifecycleManaging {
+    private let base = SourceLibraryUITestFixture()
+    private static let recentID = UUID(uuidString: "ED603003-0000-4000-8000-000000000001")!
+    private static var recentSession: MockReaderSession {
+        var session = ReaderIntegratedZoomOwnedSession.make(chapter: 1)
+        session.seriesID = recentID
+        session.seriesTitle = "Owned Recent Only — A Longer Synthetic Series Title"
+        session.chapterTitle = "Chapter 7"
+        session.previousChapter = nil
+        session.nextChapter = nil
+        return session
+    }
+    func homeSnapshot() async -> HomeSnapshot {
+        var result = await base.homeSnapshot()
+        result.continueReading.insert(SeriesSummary(id: Self.recentID,
+            title: "Owned Recent Only", subtitle: "Chapter 7", progressPercent: 0.25,
+            hasUnreadUpdates: false), at: 0)
+        return result
+    }
+    func librarySnapshot() async -> LibrarySnapshot {
+        var result = await base.librarySnapshot()
+        let session = Self.recentSession
+        result.recentReadSeries.append(LibrarySeriesSummary(
+            id: Self.recentID, title: session.seriesTitle, sourceDomain: "owned.toonedge.test",
+            canonicalURL: session.seriesURL, coverImageURL: nil, progressPercent: 0.25,
+            chaptersRead: 0, totalKnownChapters: nil, lastReadAt: Date(),
+            libraryState: .reading, hasUnreadUpdates: false, isCompleted: false,
+            latestChapterLabel: "7", currentChapterLabel: "7"
+        ))
+        return result
+    }
+    func librarySearchItems() async -> [LibrarySearchItem] { await base.librarySearchItems() }
+    func seriesDetail(for seriesID: UUID) async -> SeriesDetailSnapshot? {
+        guard seriesID != Self.recentID else { return nil }
+        return await base.seriesDetail(for: seriesID)
+    }
+    func continueReadingTarget(for seriesID: UUID) async -> ContinueReadingTarget? {
+        guard seriesID == Self.recentID else { return nil }
+        let session = Self.recentSession
+        return ContinueReadingTarget(seriesID: seriesID, chapterID: session.id,
+            sourceURL: session.sourceURL, progress: .init(currentImageIndex: 0, totalImageCount: 80))
+    }
+    func readerSession(forChapterID chapterID: UUID) async -> MockReaderSession? {
+        let session = Self.recentSession
+        return chapterID == session.id ? session : nil
+    }
+    func readerSession(forSourceURL sourceURL: URL) async -> MockReaderSession? {
+        let session = Self.recentSession
+        return sourceURL == session.sourceURL ? session : nil
+    }
+    func isSaved(canonicalURL: URL) async -> Bool {
+        canonicalURL != Self.recentSession.seriesURL
+    }
+    func addToLibrary(_ input: LibrarySeriesInput, context: LibraryAddContext) async throws {}
+    func removeFromLibrary(seriesID: UUID) async throws {}
+    func updateLibraryState(_ state: LibraryCollectionState, for seriesID: UUID) async throws {}
+    func recordUpdateCheckResult(seriesID: UUID, latestChapterLabel: String?,
+        hasUnreadUpdates: Bool, checkedAt: Date) async throws {}
+    func recordReadingProgress(_ progress: ReaderProgress, forChapterID chapterID: UUID,
+        at date: Date) async throws {}
 }
 #endif

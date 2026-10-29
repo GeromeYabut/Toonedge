@@ -964,3 +964,29 @@ private actor SuspendedBrowserSaveGate {
         operationContinuation = nil
     }
 }
+
+@Test func parsedDocumentSchedulesBeforeLoadSettlesAndOnceMoreWhenSettled() throws {
+    let chapter = try #require(URL(string: "https://fixture.toonedge.test/chapter-1"))
+    var policy = BrowserDetectionNavigationPolicy()
+
+    let unparsed = policy.shouldSchedule(url: chapter, isLoading: true, documentReady: false)
+    let parsed = policy.shouldSchedule(url: chapter, isLoading: true, documentReady: true)
+    let duplicateParsed = policy.shouldSchedule(url: chapter, isLoading: true, documentReady: true)
+    let settled = policy.shouldSchedule(url: chapter, isLoading: false, documentReady: true)
+    let duplicateSettled = policy.shouldSchedule(url: chapter, isLoading: false, documentReady: true)
+    #expect(!unparsed)
+    #expect(parsed)
+    #expect(!duplicateParsed)
+    #expect(settled, "A load that settles after early detection gets one settled pass")
+    #expect(!duplicateSettled)
+}
+
+@Test func settledFirstScheduleDoesNotGrantAnExtraPass() throws {
+    let chapter = try #require(URL(string: "https://fixture.toonedge.test/chapter-1"))
+    var policy = BrowserDetectionNavigationPolicy()
+
+    let settled = policy.shouldSchedule(url: chapter, isLoading: false, documentReady: true)
+    let duplicate = policy.shouldSchedule(url: chapter, isLoading: false, documentReady: true)
+    #expect(settled)
+    #expect(!duplicate)
+}

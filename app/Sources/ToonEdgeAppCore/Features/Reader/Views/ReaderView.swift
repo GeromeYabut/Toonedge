@@ -6,6 +6,7 @@ import AppKit
 #endif
 
 public struct ReaderView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var viewModel: ReaderViewModel
     @Binding private var router: AppRouter
     @State private var isSaveStatePickerPresented = false
@@ -24,6 +25,7 @@ public struct ReaderView: View {
     private let dismissAction: (() -> Void)?
     private let viewOriginalPageAction: (() -> Void)?
     private let backAction: (() -> Void)?
+    private let searchAction: (() -> Void)?
     private let adjacentSessionDidChange: ((MockReaderSession) -> Void)?
     private let openAdjacentOriginalPageAction: ((URL) -> Void)?
 
@@ -45,6 +47,7 @@ public struct ReaderView: View {
         backAction: (() -> Void)? = nil,
         adjacentSessionDidChange: ((MockReaderSession) -> Void)? = nil,
         openAdjacentOriginalPageAction: ((URL) -> Void)? = nil,
+        searchAction: (() -> Void)? = nil,
         router: Binding<AppRouter>
     ) {
         var preparedSession = session
@@ -76,6 +79,7 @@ public struct ReaderView: View {
         self.dismissAction = dismissAction
         self.viewOriginalPageAction = viewOriginalPageAction
         self.backAction = backAction
+        self.searchAction = searchAction
         self.adjacentSessionDidChange = adjacentSessionDidChange
         self.openAdjacentOriginalPageAction = openAdjacentOriginalPageAction
         self._router = router
@@ -292,18 +296,21 @@ public struct ReaderView: View {
 
             VStack(spacing: 0) {
                 topChrome
-                Spacer()
+                Spacer(minLength: 4)
+                HStack {
+                    Spacer(minLength: 0)
+                    floatingActionRail
+                }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 4)
                 bottomChrome
             }
-
-            floatingActionRail
-                .padding(.trailing, ToonEdgeSpacing.large)
-                .padding(.bottom, 132)
+            .foregroundStyle(.white)
         }
     }
 
     private var topChrome: some View {
-        HStack(spacing: ToonEdgeSpacing.medium) {
+        HStack(spacing: 4) {
             ReaderIconButton(systemImage: "chevron.left", label: "Back", identifier: "reader.back") {
                 if let backAction {
                     backAction()
@@ -315,32 +322,36 @@ public struct ReaderView: View {
             VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
                 Text(viewModel.session.seriesTitle)
                     .font(ToonEdgeTypography.caption)
-                    .foregroundStyle(textColor)
-                    .lineLimit(1)
+                    .foregroundStyle(.white)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     .accessibilityIdentifier("reader.series.label")
                 Text(viewModel.session.chapterTitle)
                     .font(ToonEdgeTypography.sectionTitle)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     .accessibilityIdentifier("reader.chapter.context")
             }
 
             Spacer(minLength: ToonEdgeSpacing.small)
 
+            if let searchAction {
+                ReaderIconButton(systemImage: "magnifyingglass", label: "Search or enter URL",
+                                 identifier: "reader.search", action: searchAction)
+                    .disabled(viewModel.isSettingsPresented || isSaveStatePickerPresented)
+            }
             ReaderIconButton(systemImage: "books.vertical", label: "Open Library", identifier: "reader.library") {
                 router.openLibraryRoot()
             }
         }
-        .padding(.horizontal, ToonEdgeSpacing.large)
-        .padding(.top, ToonEdgeSpacing.large)
-        .padding(.bottom, ToonEdgeSpacing.medium)
-        .background(.ultraThinMaterial)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 4)
+        .background { ReaderChromeSurface() }
         .task {
             await viewModel.refreshSavedState()
         }
     }
 
     private var floatingActionRail: some View {
-        VStack(spacing: ToonEdgeSpacing.small) {
+        railLayout {
             #if canImport(UIKit)
             ReaderIconButton(systemImage: "arrow.counterclockwise", label: "Reset Zoom", identifier: "reader.zoom.reset") {
                 zoomRequest = ReaderSurfaceRequest(sessionID: viewModel.session.id, pipelineID: ObjectIdentifier(viewModel.pagePipeline), command: .reset)
@@ -382,12 +393,20 @@ public struct ReaderView: View {
                 viewModel.showSettings()
             }
         }
-        .padding(ToonEdgeSpacing.xsmall)
-        .background(.ultraThinMaterial, in: Capsule())
+        .padding(2)
+        .background { ReaderChromeSurface().clipShape(RoundedRectangle(cornerRadius: 24)) }
+    }
+
+    private var railLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(VStackLayout(spacing: 0))
+    }
+
+    private var navigationLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 4))
     }
 
     private var bottomChrome: some View {
-        VStack(spacing: ToonEdgeSpacing.medium) {
+        VStack(spacing: 4) {
             #if DEBUG && canImport(UIKit)
             if ProcessInfo.processInfo.arguments.contains("-uiTesting"),
                ProcessInfo.processInfo.arguments.contains("-readerIntegratedZoomFixture") {
@@ -405,7 +424,7 @@ public struct ReaderView: View {
                 }.font(.caption2).frame(minHeight: 44)
             }
             #endif
-            HStack(spacing: ToonEdgeSpacing.medium) {
+            navigationLayout {
                 Button {
                     navigate(.previous)
                 } label: {
@@ -416,21 +435,17 @@ public struct ReaderView: View {
                             .labelStyle(.titleAndIcon)
                     }
                 }
-                .frame(minWidth: 96, minHeight: chromeLayout.minimumActionSize, alignment: .leading)
+                .frame(minWidth: 44, maxWidth: .infinity, minHeight: chromeLayout.minimumActionSize, alignment: .leading)
                 .accessibilityIdentifier("reader.previousChapter")
                 .disabled(!chromeLayout.isEnabled(.previousChapter) || viewModel.isAdjacentLoading)
 
-                Spacer()
-
                 Text(viewModel.currentChapterDisplayLabel)
                     .font(ToonEdgeTypography.caption.weight(.semibold))
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     .truncationMode(.tail)
-                    .frame(maxWidth: 150)
+                    .frame(maxWidth: .infinity)
                     .accessibilityLabel(viewModel.currentChapterAccessibilityLabel)
                     .accessibilityIdentifier("reader.chapter.label")
-
-                Spacer()
 
                 Button {
                     navigate(.next)
@@ -442,7 +457,7 @@ public struct ReaderView: View {
                             .labelStyle(.titleAndIcon)
                     }
                 }
-                .frame(minWidth: 96, minHeight: chromeLayout.minimumActionSize, alignment: .trailing)
+                .frame(minWidth: 44, maxWidth: .infinity, minHeight: chromeLayout.minimumActionSize, alignment: .trailing)
                 .accessibilityIdentifier("reader.nextChapter")
                 .disabled(!chromeLayout.isEnabled(.nextChapter) || viewModel.isAdjacentLoading)
             }
@@ -459,12 +474,14 @@ public struct ReaderView: View {
                 Text(viewModel.progressDisplay)
                     .font(ToonEdgeTypography.caption)
                     .monospacedDigit()
-                    .frame(width: 44, alignment: .trailing)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .frame(minWidth: 44, alignment: .trailing)
                     .accessibilityIdentifier("reader.progress.value")
             }
         }
-        .padding(ToonEdgeSpacing.large)
-        .background(.ultraThinMaterial)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background { ReaderChromeSurface() }
     }
 
     @ViewBuilder
@@ -481,7 +498,7 @@ public struct ReaderView: View {
 
             Text(presentation.message)
                 .font(ToonEdgeTypography.caption)
-                .foregroundStyle(textColor.opacity(0.82))
+                .foregroundStyle(.white)
                 .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: ToonEdgeSpacing.xsmall)

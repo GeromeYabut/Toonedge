@@ -31,16 +31,41 @@ public struct ReaderSessionImagePreflight: Sendable {
         self.httpClient = httpClient
     }
 
-    public func isViable(_ session: MockReaderSession) async -> Bool {
-        guard let imageURL = session.imageURLs.first else { return false }
+    public func isViable(
+        _ session: MockReaderSession,
+        observation: (@Sendable (ReaderImagePreflightObservation) -> Void)? = nil
+    ) async -> Bool {
+        guard let imageURL = session.imageURLs.first else {
+            observation?(.init(outcome: .noImage))
+            return false
+        }
         var request = session.imageRequestContext?.request(for: imageURL) ?? URLRequest(url: imageURL)
         request.timeoutInterval = 8
         do {
             let response = try await httpClient.data(for: request)
-            guard (200..<300).contains(response.statusCode), !response.data.isEmpty else { return false }
-            guard let source = CGImageSourceCreateWithData(response.data as CFData, nil) else { return false }
-            return CGImageSourceGetType(source) != nil && CGImageSourceGetCount(source) > 0
+            guard (200..<300).contains(response.statusCode), !response.data.isEmpty else {
+                if let observation {
+                    observation(.init(outcome: (200..<300).contains(response.statusCode) ? .emptyData : .httpFailure,
+                        httpStatus: ReaderImagePreflightObservation.safeStatus(response.statusCode)))
+                }
+                return false
+            }
+            guard let source = CGImageSourceCreateWithData(response.data as CFData, nil) else {
+                observation?(.init(outcome: .unrecognizedImage,
+                    httpStatus: ReaderImagePreflightObservation.safeStatus(response.statusCode)))
+                return false
+            }
+            let viable = CGImageSourceGetType(source) != nil && CGImageSourceGetCount(source) > 0
+            if let observation {
+                let properties = viable ? CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as NSDictionary? : nil
+                observation(.init(outcome: viable ? .recognizedImage : .unrecognizedImage,
+                    httpStatus: ReaderImagePreflightObservation.safeStatus(response.statusCode),
+                    pixelWidth: .classify(properties?[kCGImagePropertyPixelWidth]),
+                    pixelHeight: .classify(properties?[kCGImagePropertyPixelHeight])))
+            }
+            return viable
         } catch {
+            observation?(.init(outcome: .transportError, transport: .category(for: error)))
             return false
         }
     }
