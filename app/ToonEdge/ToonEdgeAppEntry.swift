@@ -47,6 +47,9 @@ struct ToonEdgeAppEntry: App {
             } else if ProcessInfo.processInfo.arguments.contains("-uiTesting"),
                       ProcessInfo.processInfo.arguments.contains("-readerIntegratedZoomFixture") {
                 ReaderIntegratedZoomFixtureRoot()
+            } else if ProcessInfo.processInfo.arguments.contains("-resetTestData"),
+                      let fixture = ResumeAdjacencyUITestFixture(arguments: ProcessInfo.processInfo.arguments) {
+                ResumeAdjacencySeedRoot(fixture: fixture)
             } else if let fixture = SearchHistoryUITestFixture(arguments: ProcessInfo.processInfo.arguments) {
                 SearchHistoryFixtureRoot(fixture: fixture)
             } else {
@@ -95,6 +98,9 @@ struct ToonEdgeAppEntry: App {
 
         if let fixture = UITestCacheLifecycleFixture(arguments: arguments) {
             return try! fixture.dependencies(reset: arguments.contains("-resetTestData"))
+        }
+        if let fixture = ResumeAdjacencyUITestFixture(arguments: arguments) {
+            return try! fixture.dependencies()
         }
 
         var dependencies = AppDependencies.mock()
@@ -409,6 +415,131 @@ private struct UITestCacheLifecycleFixture {
         dependencies.cacheMetadataService = fixtureService
         dependencies.downloadService = fixtureService
         return dependencies
+    }
+}
+
+// DEF-047: authored chapter metadata on the persistent SwiftData store. Reserved hosts and a
+// generated 1x1 image only; the seeding launch writes the store, a plain relaunch resumes from it.
+private struct ResumeAdjacencyUITestFixture {
+    enum Storage: String {
+        case recentOnly = "recent-only"
+        case savedEmptyImages = "saved-empty-images"
+    }
+
+    private static let marker = "-resumeAdjacencyFixture"
+    private static let seriesID = UUID(uuidString: "D0470000-0000-4000-8000-000000000047")!
+    private static let chapterID = UUID(uuidString: "D0470000-0000-4000-8000-000000000199")!
+    private static let seriesURL = URL(string: "https://owned.toonedge.test/comics/resume-adjacency")!
+    private static let imageURL = URL(string: "https://images.owned.toonedge.test/resume-adjacency/199.png")!
+    private static let png = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==")!
+    let storage: Storage
+
+    init?(arguments: [String]) {
+        guard let markerIndex = arguments.firstIndex(of: Self.marker),
+              arguments.indices.contains(markerIndex + 1),
+              let storage = Storage(rawValue: arguments[markerIndex + 1]) else {
+            return nil
+        }
+        self.storage = storage
+    }
+
+    private static func chapterURL(_ number: Int) -> URL {
+        seriesURL.appendingPathComponent("chapter/\(number)")
+    }
+
+    private var root: URL {
+        let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        return base
+            .appendingPathComponent("ToonEdgeResumeAdjacencyUITests", isDirectory: true)
+            .appendingPathComponent(storage.rawValue, isDirectory: true)
+    }
+
+    @MainActor
+    func dependencies() throws -> AppDependencies {
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        var dependencies = try AppDependencies.persistent(
+            modelStoreURL: root.appendingPathComponent("metadata.store"),
+            cacheRootDirectory: root.appendingPathComponent("assets", isDirectory: true)
+        )
+        // Reserved hosts never resolve, so keep the resumed session exactly as the repository rebuilt it.
+        dependencies.chapterIndexRefreshService = nil
+        dependencies.seriesMetadataService = nil
+        dependencies.updateRefreshService = nil
+        dependencies.adjacentReaderSessionLoader = UITestAdjacentSuccessLoader()
+        if let cache = dependencies.chapterAssetCache {
+            try? cache.store(Self.png, for: Self.imageURL, sourceURL: Self.chapterURL(199))
+            for number in [198, 200] {
+                try? cache.store(
+                    Self.png,
+                    for: URL(string: "https://images.example.test/numeric/\(number).png")!,
+                    sourceURL: Self.chapterURL(number)
+                )
+            }
+        }
+        return dependencies
+    }
+
+    @MainActor
+    func seed() async throws {
+        try? FileManager.default.removeItem(at: root)
+        let dependencies = try dependencies()
+        if storage == .savedEmptyImages {
+            try await dependencies.libraryLifecycleService?.addToLibrary(LibrarySeriesInput(
+                id: Self.seriesID,
+                title: "Resume Adjacency Fixture",
+                canonicalURL: Self.seriesURL,
+                sourceDomain: "owned.toonedge.test",
+                coverImageURL: nil,
+                status: "Ongoing",
+                synopsis: "Authored DEF-047 fixture.",
+                latestKnownChapterLabel: "199",
+                libraryState: nil,
+                chapters: [
+                    LibraryChapterInput(
+                        id: Self.chapterID,
+                        title: "Chapter 199",
+                        chapterLabel: "199",
+                        chapterNumber: 199,
+                        sourceURL: Self.chapterURL(199),
+                        previousChapterURL: Self.chapterURL(198),
+                        nextChapterURL: Self.chapterURL(200),
+                        imageURLs: [],
+                        publishedAt: nil
+                    )
+                ]
+            ), context: .reader)
+        }
+        try await dependencies.recentReadingRecorder?.recordRecentReading(RecentReadingInput(
+            seriesID: Self.seriesID,
+            chapterID: Self.chapterID,
+            seriesTitle: "Resume Adjacency Fixture",
+            seriesURL: Self.seriesURL,
+            sourceDomain: "owned.toonedge.test",
+            chapterTitle: "Chapter 199",
+            chapterLabel: "199",
+            sourceURL: Self.chapterURL(199),
+            imageURLs: [Self.imageURL],
+            progress: ReaderProgress(currentImageIndex: 0, totalImageCount: 1)
+        ))
+    }
+}
+
+private struct ResumeAdjacencySeedRoot: View {
+    let fixture: ResumeAdjacencyUITestFixture
+    @State private var status = "Seeding"
+
+    var body: some View {
+        Text(status)
+            .accessibilityIdentifier("resumeAdjacency.seedStatus")
+            .task {
+                do {
+                    try await fixture.seed()
+                    status = "Seeded"
+                } catch {
+                    status = "Seed failed"
+                }
+            }
     }
 }
 
