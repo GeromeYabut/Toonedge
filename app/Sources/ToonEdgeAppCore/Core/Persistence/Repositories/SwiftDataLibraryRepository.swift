@@ -309,8 +309,13 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
             return recentReaderSession(forChapterID: chapterID)
         }
 
-        let imageURLs = decodedURLStrings(chapter.imageURLStrings).compactMap(URL.init(string:))
+        var imageURLs = decodedURLStrings(chapter.imageURLStrings).compactMap(URL.init(string:))
+        if imageURLs.isEmpty {
+            // Recent images supply the payload; saved metadata and neighbors still apply.
+            imageURLs = recentImageURLs(forSourceURLString: chapter.sourceURLString)
+        }
         guard !imageURLs.isEmpty else {
+            // A recent row for another URL stays self-consistent rather than borrowing saved metadata.
             return recentReaderSession(forChapterID: chapterID)
         }
         let derivedAdjacent = adjacentChapters(for: chapter, in: series.id)
@@ -333,23 +338,63 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
 
     private func recentReaderSession(forChapterID chapterID: UUID) -> MockReaderSession? {
         let savedSourceURLString = fetchChapter(id: chapterID)?.sourceURLString
-        if let recent = fetchRecentReadings().first(where: {
-            $0.chapterID == chapterID || $0.sourceURLString == savedSourceURLString
-        }),
+        if let recent = recentReading(forChapterID: chapterID, savedSourceURLString: savedSourceURLString),
            let sourceURL = URL(string: recent.sourceURLString),
            let seriesURL = URL(string: recent.seriesURLString) {
             let images = decodedURLStrings(recent.imageURLStrings).compactMap(URL.init(string:))
             if !images.isEmpty {
+                let adjacent = recentAdjacentChapters(for: recent, sourceURL: sourceURL)
                 return MockReaderSession(
                     seriesID: matchingSeries(for: recent, in: fetchSeries())?.id ?? recent.seriesID,
                     seriesTitle: recent.seriesTitle, seriesURL: seriesURL,
                     sourceDomain: recent.sourceDomain,
                     coverImageURL: recent.coverImageURLString.flatMap(URL.init(string:)),
-                    chapterTitle: recent.chapterTitle, sourceURL: sourceURL, imageURLs: images
+                    chapterTitle: recent.chapterTitle, sourceURL: sourceURL, imageURLs: images,
+                    previousChapter: adjacent.previous, nextChapter: adjacent.next
                 )
             }
         }
         return nil
+    }
+
+    private func recentReading(forChapterID chapterID: UUID, savedSourceURLString: String?) -> StoredRecentReading? {
+        fetchRecentReadings().first(where: {
+            $0.chapterID == chapterID || $0.sourceURLString == savedSourceURLString
+        })
+    }
+
+    private func recentImageURLs(forSourceURLString sourceURLString: String) -> [URL] {
+        guard let recent = fetchRecentReadings().first(where: { $0.sourceURLString == sourceURLString }) else {
+            return []
+        }
+        return decodedURLStrings(recent.imageURLStrings).compactMap(URL.init(string:))
+    }
+
+    /// Recent-only chapters have no stored neighbors, so infer them from the chapter's own
+    /// numbered route. Routes without that number yield no target rather than a guess.
+    private func recentAdjacentChapters(
+        for recent: StoredRecentReading,
+        sourceURL: URL
+    ) -> (previous: MockChapter?, next: MockChapter?) {
+        guard let currentNumber = ChapterURLInference.integerChapterNumber(
+            chapterNumber: nil, chapterLabel: recent.chapterLabel, title: recent.chapterTitle
+        ), ChapterURLInference.containsChapterNumber(currentNumber, in: sourceURL) else {
+            return (nil, nil)
+        }
+
+        func inferred(_ targetNumber: Int) -> MockChapter? {
+            guard targetNumber > 0,
+                  let url = ChapterURLInference.inferredSourceURL(
+                      forChapter: targetNumber,
+                      knownChapters: [ChapterURLInference.KnownChapter(number: currentNumber, sourceURL: sourceURL)]
+                  ),
+                  ChapterURLInference.containsChapterNumber(targetNumber, in: url) else {
+                return nil
+            }
+            return MockChapter(title: "Chapter \(targetNumber)", sourceURL: url)
+        }
+
+        return (inferred(currentNumber - 1), inferred(currentNumber + 1))
     }
 
     public func readerSession(forSourceURL sourceURL: URL) async -> MockReaderSession? {
