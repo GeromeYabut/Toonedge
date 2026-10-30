@@ -39,7 +39,8 @@ public struct GenericChapterDetector: ChapterPageDetecting {
             tallestHeightRatio: tallestHeightRatio,
             hardBlocks: hardBlocks,
             hasViableSession: session != nil,
-            totalRenderedHeightRatio: totalRenderedHeightRatio(candidates: normalizedCandidates, viewportHeight: page.viewportHeight)
+            totalRenderedHeightRatio: totalRenderedHeightRatio(candidates: normalizedCandidates, viewportHeight: page.viewportHeight),
+            isArticleShaped: isArticleShaped(page: page)
         )
         let disposition = entryPolicy.disposition(for: evidence)
         let confidence: DetectionConfidence
@@ -276,10 +277,17 @@ public struct GenericChapterDetector: ChapterPageDetecting {
         return pathPrefixes.filter { $0 == first }.count >= max(2, candidates.count - 1)
     }
 
+    /// Chapter words in the title or route. The host is ignored ("chapterbrief.net"), and
+    /// genre words such as "manhwa" describe reviews and catalogs as often as chapters.
     private func isChapterLike(page: DetectionPageAnalysis) -> Bool {
-        let haystack = "\(page.title) \(page.pageURL.absoluteString)".lowercased()
-        let hints = ["chapter", "chap-", "chap_", "/chap", "/read", "episode", "webtoon", "manga", "manhwa"]
+        let haystack = "\(page.title) \(page.pageURL.path()) \(page.pageURL.query() ?? "")".lowercased()
+        let hints = ["chapter", "chap-", "chap_", "/chap", "/read", "episode"]
         return hints.contains { haystack.contains($0) }
+    }
+
+    private func isArticleShaped(page: DetectionPageAnalysis) -> Bool {
+        let hasArticleMarkup = page.ogType == "article" || page.hasArticleElement
+        return hasArticleMarkup && page.proseCharacterCount >= 1_200 && !isChapterLike(page: page)
     }
 
     private func makeReaderSession(page: DetectionPageAnalysis, candidates: [DetectionImageCandidate]) -> MockReaderSession? {
@@ -374,7 +382,7 @@ public struct GenericChapterDetector: ChapterPageDetecting {
                 "documentHeight=\(Int(page.documentHeight))",
                 "parserPath=\(parserPath.rawValue)",
                 "compatibilityClass=\(profile?.compatibilityClass.rawValue ?? "none")"
-            ],
+            ] + (evidence.isArticleShaped ? ["articleShaped=true"] : []),
             hardBlocks: evidence.hardBlocks,
             negativeScore: evidence.negativeScore,
             tallestHeightRatio: evidence.tallestHeightRatio,

@@ -35,6 +35,8 @@ public struct ReaderEntryEvidence: Equatable, Sendable {
     public var hasViableSession: Bool
     /// Zero means combined actual rendered geometry is unavailable or invalid.
     public var totalRenderedHeightRatio: Double
+    /// Editorial page without chapter evidence; never eligible for automatic entry.
+    public var isArticleShaped: Bool
 
     public init(
         score: Int,
@@ -43,7 +45,8 @@ public struct ReaderEntryEvidence: Equatable, Sendable {
         tallestHeightRatio: Double,
         hardBlocks: Set<DetectionHardBlock>,
         hasViableSession: Bool,
-        totalRenderedHeightRatio: Double = 0
+        totalRenderedHeightRatio: Double = 0,
+        isArticleShaped: Bool = false
     ) {
         self.score = score
         self.negativeScore = negativeScore
@@ -52,6 +55,7 @@ public struct ReaderEntryEvidence: Equatable, Sendable {
         self.hardBlocks = hardBlocks
         self.hasViableSession = hasViableSession
         self.totalRenderedHeightRatio = totalRenderedHeightRatio
+        self.isArticleShaped = isArticleShaped
     }
 }
 
@@ -127,6 +131,11 @@ public struct DetectionPageAnalysis: Codable, Equatable, Sendable {
     /// Zero means an older payload did not measure viewport height; never infer it from width.
     public var viewportHeight: Double
     public var hardBlocks: [DetectionHardBlock]
+    /// Editorial-page evidence; older payloads decode as "not an article".
+    public var ogType: String?
+    public var hasArticleElement: Bool
+    /// Visible paragraph text outside navigation, footers and comment threads.
+    public var proseCharacterCount: Int
 
     public init(
         pageURL: URL,
@@ -138,7 +147,10 @@ public struct DetectionPageAnalysis: Codable, Equatable, Sendable {
         nextChapterURL: URL? = nil,
         challengeSignals: [String] = [],
         viewportHeight: Double = 0,
-        hardBlocks: [DetectionHardBlock] = []
+        hardBlocks: [DetectionHardBlock] = [],
+        ogType: String? = nil,
+        hasArticleElement: Bool = false,
+        proseCharacterCount: Int = 0
     ) {
         self.pageURL = pageURL
         self.title = title
@@ -150,11 +162,15 @@ public struct DetectionPageAnalysis: Codable, Equatable, Sendable {
         self.challengeSignals = challengeSignals
         self.viewportHeight = viewportHeight
         self.hardBlocks = hardBlocks
+        self.ogType = ogType
+        self.hasArticleElement = hasArticleElement
+        self.proseCharacterCount = proseCharacterCount
     }
 
     private enum CodingKeys: String, CodingKey {
         case pageURL, title, documentHeight, viewportWidth, images
         case previousChapterURL, nextChapterURL, challengeSignals, viewportHeight, hardBlocks
+        case ogType, hasArticleElement, proseCharacterCount
     }
 
     public init(from decoder: Decoder) throws {
@@ -169,7 +185,10 @@ public struct DetectionPageAnalysis: Codable, Equatable, Sendable {
             nextChapterURL: try values.decodeIfPresent(URL.self, forKey: .nextChapterURL),
             challengeSignals: try values.decodeIfPresent([String].self, forKey: .challengeSignals) ?? [],
             viewportHeight: try values.decodeIfPresent(Double.self, forKey: .viewportHeight) ?? 0,
-            hardBlocks: try values.decodeIfPresent([DetectionHardBlock].self, forKey: .hardBlocks) ?? []
+            hardBlocks: try values.decodeIfPresent([DetectionHardBlock].self, forKey: .hardBlocks) ?? [],
+            ogType: try values.decodeIfPresent(String.self, forKey: .ogType),
+            hasArticleElement: try values.decodeIfPresent(Bool.self, forKey: .hasArticleElement) ?? false,
+            proseCharacterCount: try values.decodeIfPresent(Int.self, forKey: .proseCharacterCount) ?? 0
         )
     }
 
