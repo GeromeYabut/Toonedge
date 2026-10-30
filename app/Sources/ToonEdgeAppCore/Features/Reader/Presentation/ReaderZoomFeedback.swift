@@ -48,6 +48,7 @@ final class ReaderZoomHUD: UIView {
         super.traitCollectionDidChange(previousTraitCollection)
         updateContrast()
     }
+    var displayedPercentage: String? { isHidden ? nil : label.text }
     func show(scale: Double, ongoing: Bool) {
         guard !stopped else { return }
         generation &+= 1

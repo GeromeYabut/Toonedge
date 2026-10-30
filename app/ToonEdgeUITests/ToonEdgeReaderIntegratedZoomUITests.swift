@@ -220,20 +220,22 @@ final class ToonEdgeReaderIntegratedZoomUITests: XCTestCase {
         let app = launch()
         let badge = app.staticTexts["reader.zoom.percentage"]
         app.buttons["reader.zoom.enlarge"].tap()
-        XCTAssertTrue(waitForBadge(in: app, label: "200%"), "Production applied zoom badge is missing")
+        XCTAssertTrue(waitForBadgeShown(in: app, count: 1, label: "200%"), "Production applied zoom badge is missing")
         let hidden = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: badge)
         XCTAssertEqual(XCTWaiter.wait(for: [hidden], timeout: 2), .completed)
         app.buttons["reader.zoom.reset"].tap()
-        XCTAssertTrue(waitForBadge(in: app, label: "100%"))
+        XCTAssertTrue(waitForBadgeShown(in: app, count: 2, label: "100%"))
         app.buttons["reader.zoom.shrink"].tap()
-        XCTAssertTrue(waitForBadge(in: app, label: "75%"))
+        XCTAssertTrue(waitForBadgeShown(in: app, count: 3, label: "75%"))
     }
 
-    /// Matches identifier and label in one query: the badge fades 0.8s after a command.
-    private func waitForBadge(in app: XCUIApplication, label: String) -> Bool {
-        app.staticTexts.matching(identifier: "reader.zoom.percentage")
-            .matching(NSPredicate(format: "label == %@", label)).firstMatch
-            .waitForExistence(timeout: 0.6)
+    /// The badge fades 0.8s after a command, so read the debug record of each badge shown.
+    private func waitForBadgeShown(in app: XCUIApplication, count: Int, label: String) -> Bool {
+        let trace = app.staticTexts["reader.zoom.feedbackTrace"]
+        let shown = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "\(count) \(label)"), object: trace
+        )
+        return XCTWaiter.wait(for: [shown], timeout: 3) == .completed
     }
 
     func testProductionZoomBadgeWithHiddenChromeDoesNotConsumeDoubleTap() {
