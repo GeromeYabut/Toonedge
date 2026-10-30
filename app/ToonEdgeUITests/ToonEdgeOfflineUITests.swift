@@ -10,7 +10,7 @@ final class ToonEdgeOfflineUITests: XCTestCase {
 
         let chapter = app.staticTexts["Retry Chapter 9"]
         XCTAssertTrue(chapter.waitForExistence(timeout: 5))
-        app.buttons["Remove Retry Fixture, Retry Chapter 9 from cache"].tap()
+        app.buttons["Remove Retry Fixture, Retry Chapter 9 from this device"].tap()
 
         XCTAssertTrue(app.descendants(matching: .any)["downloads.feedback.failure"].waitForExistence(timeout: 5))
         XCTAssertTrue(chapter.exists, "A failed removal must preserve its row")
@@ -34,7 +34,7 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         let retain = app.buttons["Retain Chapter Offline"]
         XCTAssertTrue(retain.waitForExistence(timeout: 5))
         retain.tap()
-        XCTAssertTrue(app.staticTexts["Chapter retained offline."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Chapter downloaded for offline reading."].waitForExistence(timeout: 5))
 
         app.terminate()
         app = XCUIApplication()
@@ -77,7 +77,7 @@ final class ToonEdgeRetainedCacheLifecycleUITests: XCTestCase {
         XCTAssertTrue(chapter.waitForExistence(timeout: 8))
         assertMeasuredRetainedSummary(in: app)
 
-        app.buttons["Remove Retained Cache Fixture, Retained Cache Chapter 7 from cache"].tap()
+        app.buttons["Remove Retained Cache Fixture, Retained Cache Chapter 7 from this device"].tap()
 
         XCTAssertTrue(chapter.waitForNonExistence(timeout: 8))
         XCTAssertTrue(app.descendants(matching: .any)["downloads.feedback.success"].waitForExistence(timeout: 5))
@@ -97,14 +97,14 @@ final class ToonEdgeRetainedCacheLifecycleUITests: XCTestCase {
         let header = app.descendants(matching: .any)["downloads.storageHeader"]
         XCTAssertTrue(header.waitForExistence(timeout: 5))
         XCTAssertTrue(header.label.contains("1 chapter · 2 KB measured"), header.label)
-        XCTAssertTrue(header.label.contains("1 retained references · 0 recent references"), header.label)
+        XCTAssertTrue(header.label.contains("1 downloaded · 0 kept while reading"), header.label)
     }
 
     private func assertEmptyStorageSummary(in app: XCUIApplication) {
         let header = app.descendants(matching: .any)["downloads.storageHeader"]
         XCTAssertTrue(header.waitForExistence(timeout: 5))
         XCTAssertTrue(header.label.contains("0 chapters · No local storage tracked"), header.label)
-        XCTAssertTrue(header.label.contains("0 retained references · 0 recent references"), header.label)
+        XCTAssertTrue(header.label.contains("0 downloaded · 0 kept while reading"), header.label)
     }
 }
 

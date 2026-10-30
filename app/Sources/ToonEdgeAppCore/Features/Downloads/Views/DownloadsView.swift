@@ -25,8 +25,23 @@ public struct DownloadsContentLayout: Equatable, Sendable {
         self.entryCount = entryCount
     }
 
+    public let sectionTitle = "On this device"
+    public let emptyTitle = "No offline chapters"
+    public let emptyMessage = "Chapters you download, and chapters kept while you read, appear here."
+
     public func removalLabel(chapterTitle: String, seriesTitle: String) -> String {
-        "Remove \(seriesTitle), \(chapterTitle) from cache"
+        "Remove \(seriesTitle), \(chapterTitle) from this device"
+    }
+
+    public func entryDetail(seriesTitle: String, retentionState: CacheRetentionState) -> String {
+        "\(seriesTitle) · \(Self.retentionDescription(retentionState))"
+    }
+
+    private static func retentionDescription(_ state: CacheRetentionState) -> String {
+        switch state {
+        case .retained: "Downloaded"
+        case .recent: "Kept while reading"
+        }
     }
 
     public func storageTitle(summary: DownloadSummary) -> String {
@@ -35,7 +50,7 @@ public struct DownloadsContentLayout: Equatable, Sendable {
     }
 
     public func storageDetail(summary: DownloadSummary) -> String {
-        "\(summary.retainedItemCount) retained references · \(summary.recentItemCount) recent references"
+        "\(summary.retainedItemCount) downloaded · \(summary.recentItemCount) kept while reading"
     }
 }
 
@@ -101,7 +116,7 @@ public final class DownloadsViewModel: ObservableObject {
             }
             await load()
         } catch {
-            cacheFeedback = .failure("Could not remove cached chapter.")
+            cacheFeedback = .failure("Couldn’t remove this offline copy. Try again.")
             failedRemovalURL = sourceURL
         }
     }
@@ -231,9 +246,9 @@ public struct DownloadsView: View {
 
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
-            Text("No cached chapters")
+            Text(layout.emptyTitle)
                 .font(ToonEdgeTypography.sectionTitle)
-            Text("Chapters cached while reading will appear here.")
+            Text(layout.emptyMessage)
                 .font(ToonEdgeTypography.body)
                 .foregroundStyle(ToonEdgeColor.textSecondary)
         }
@@ -244,7 +259,7 @@ public struct DownloadsView: View {
 
     private var contentRows: some View {
         VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
-            Text("Cached chapters")
+            Text(layout.sectionTitle)
                 .font(ToonEdgeTypography.sectionTitle)
 
             TEEditorialGroup(
@@ -270,7 +285,7 @@ public struct DownloadsView: View {
                     .font(ToonEdgeTypography.body.weight(.semibold))
                     .foregroundStyle(ToonEdgeColor.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("\(entry.seriesTitle) · \(entry.retentionState.title) reference")
+                Text(layout.entryDetail(seriesTitle: entry.seriesTitle, retentionState: entry.retentionState))
                     .font(ToonEdgeTypography.caption)
                     .foregroundStyle(ToonEdgeColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -292,7 +307,7 @@ public struct DownloadsView: View {
                 chapterTitle: entry.chapterTitle,
                 seriesTitle: entry.seriesTitle
             ))
-            .accessibilityHint("Removes local cached data for this chapter")
+            .accessibilityHint("Removes this chapter's offline copy")
         }
         .modifier(TEEditorialRowStyle())
         .accessibilityIdentifier("downloads.entry.\(entry.id.uuidString)")

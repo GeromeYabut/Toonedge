@@ -453,7 +453,7 @@ public struct SettingsView: View {
 
     private var storageItemDescription: String {
         let count = viewModel.storageSummary.cachedItemCount
-        return count == 1 ? "1 cached chapter" : "\(count) cached chapters"
+        return count == 1 ? "1 offline chapter" : "\(count) offline chapters"
     }
 
     @ViewBuilder
