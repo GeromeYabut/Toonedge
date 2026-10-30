@@ -204,6 +204,24 @@ import Testing
     ) == 39)
 }
 
+@Test func finalPageAtClampedChapterEndToleratesFloatingPointOverhang() {
+    // Measured on the iPhone 16e at the clamped end of a 40-page fit-screen chapter.
+    let viewportHeight: CGFloat = 763
+    let finalFrame = CGRect(x: 15.6, y: 404.20000000000073, width: 358.8, height: 358.8)
+    #expect(finalFrame.maxY > viewportHeight)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [37: CGRect(x: 15.6, y: -313.6, width: 358.8, height: 358.8),
+                 38: CGRect(x: 15.6, y: 45.2, width: 358.8, height: 358.8),
+                 39: finalFrame],
+        viewportHeight: viewportHeight, lastPageIndex: 39
+    ) == 39)
+    #expect(ReaderViewportPageSelector.visibleIndex(
+        frames: [38: CGRect(x: 15.6, y: 46.2, width: 358.8, height: 358.8),
+                 39: CGRect(x: 15.6, y: 405.2, width: 358.8, height: 358.8)],
+        viewportHeight: viewportHeight, lastPageIndex: 39
+    ) == 38)
+}
+
 @Test func tallFinalPageDoesNotOverrideTopmostPageUntilBottomIsReached() {
     let viewportHeight: CGFloat = 600
     #expect(ReaderViewportPageSelector.visibleIndex(
