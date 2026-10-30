@@ -4,7 +4,7 @@ This document tracks confirmed product defects, their evidence, current status, 
 
 ## DEF-050 — Home search keyboard has no spacebar
 
-**Status:** Open
+**Status:** Implemented (2026-10-30). Fix merged to `main` in PR #27 (`ab81d69`); simulator UI test passes; physical iPhone verification pending
 
 **Severity:** Medium
 
@@ -49,7 +49,7 @@ The URL keyboard layout is shown, which has no spacebar.
 
 ## DEF-049 — Article page auto-opens in Reader Mode and is recorded in Continue Reading
 
-**Status:** Open
+**Status:** Implemented (2026-10-30). Fixes merged to `main` in PR #29 (`098bb1d`), PR #30 (`59df243`) and PR #33 (`b3d7b2a`); package tests pass; live-site and physical iPhone verification pending
 
 **Severity:** High
 
@@ -120,7 +120,7 @@ Existing affected rows must be removed manually unless a cleanup migration is ap
 
 ## DEF-048 — Series title is truncated at an apostrophe
 
-**Status:** Open
+**Status:** Implemented (2026-10-30). Fix merged to `main` in PR #28 (`255f0bf`); package tests pass; live-site and physical iPhone verification pending
 
 **Severity:** Medium
 
