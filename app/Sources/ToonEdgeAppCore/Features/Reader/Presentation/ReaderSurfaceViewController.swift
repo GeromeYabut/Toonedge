@@ -39,6 +39,8 @@ final class ReaderSurfaceViewController: UIViewController,
     #if DEBUG
     // Observation only: never feeds recognizer, presentation, or policy state.
     private let pinchTraceDiagnostic = UILabel()
+    private let feedbackTraceDiagnostic = UILabel()
+    private var feedbackShownCount = 0
     private var pinchTraceSamples: [[String: Any]] = []
     private var pinchTraceCounts = [Int](repeating: 0, count: 4)
     private var pinchTraceGesture = 0
@@ -150,6 +152,14 @@ final class ReaderSurfaceViewController: UIViewController,
             pinchTraceDiagnostic.isUserInteractionEnabled = false
             view.addSubview(pinchTraceDiagnostic)
             publishPinchTrace()
+            feedbackTraceDiagnostic.isAccessibilityElement = true
+            feedbackTraceDiagnostic.accessibilityIdentifier = "reader.zoom.feedbackTrace"
+            feedbackTraceDiagnostic.accessibilityLabel = "Zoom feedback trace"
+            feedbackTraceDiagnostic.accessibilityValue = "0"
+            feedbackTraceDiagnostic.font = .systemFont(ofSize: 1)
+            feedbackTraceDiagnostic.text = " "
+            feedbackTraceDiagnostic.isUserInteractionEnabled = false
+            view.addSubview(feedbackTraceDiagnostic)
         }
         #endif
         subscription = pipeline.$states.sink { [weak self] _ in
@@ -176,6 +186,7 @@ final class ReaderSurfaceViewController: UIViewController,
         #if DEBUG
         if diagnosticsEnabled {
             pinchTraceDiagnostic.frame = CGRect(x: 2, y: view.bounds.height - 2, width: 2, height: 2)
+            feedbackTraceDiagnostic.frame = CGRect(x: 4, y: view.bounds.height - 2, width: 2, height: 2)
         }
         #endif
         refreshGeometry()
@@ -318,6 +329,13 @@ final class ReaderSurfaceViewController: UIViewController,
     private func showZoomFeedback(ongoing: Bool) {
         guard !stopped, let scale = state?.presentation?.scale else { return }
         zoomHUD.show(scale: Double(scale), ongoing: ongoing)
+        #if DEBUG
+        // Records each settled badge so tests need not race its fade.
+        if diagnosticsEnabled, !ongoing, let shown = zoomHUD.displayedPercentage {
+            feedbackShownCount += 1
+            feedbackTraceDiagnostic.accessibilityValue = "\(feedbackShownCount) \(shown)"
+        }
+        #endif
     }
 
     @objc private func pinchChanged(_ recognizer: UIPinchGestureRecognizer) {
