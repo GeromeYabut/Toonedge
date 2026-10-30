@@ -916,13 +916,16 @@ struct ReaderViewportPageSelector {
         ) ?? topmostVisibleIndex(frames: frames, viewportHeight: viewportHeight)
     }
 
+    /// Clamped end-of-chapter frames can overshoot the viewport by floating-point error.
+    private static let finalPageBottomTolerance: CGFloat = 0.5
+
     private static func finalPageAtViewportEnd(
         frames: [Int: CGRect], viewportHeight: CGFloat, lastPageIndex: Int?
     ) -> Int? {
         guard viewportHeight > 0 else { return nil }
         if let lastPageIndex, let finalFrame = frames[lastPageIndex],
-           finalFrame.height > 0, finalFrame.maxY > 0,
-           finalFrame.minY < viewportHeight, finalFrame.maxY <= viewportHeight {
+           finalFrame.height > 0, finalFrame.maxY > 0, finalFrame.minY < viewportHeight,
+           finalFrame.maxY <= viewportHeight + finalPageBottomTolerance {
             return lastPageIndex
         }
         return nil
