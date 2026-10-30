@@ -2,6 +2,179 @@
 
 This document tracks confirmed product defects, their evidence, current status, and intended resolution.
 
+## DEF-050 — Home search keyboard has no spacebar
+
+**Status:** Open
+
+**Severity:** Medium
+
+**Reported:** 2026-10-30
+
+**Area:** Home, Search overlay, text input
+
+### User-visible problem
+
+The keyboard shown for the universal search / URL field has no spacebar, so the user cannot type multi-word search queries such as a series title. This breaks the product promise that the field accepts URLs and web queries without the user thinking about input type.
+
+### Reproduction
+
+1. Launch ToonEdge on iPhone.
+2. Tap the Home search bar.
+3. Observe the on-screen keyboard.
+
+### Expected behavior
+
+The keyboard includes a spacebar and still offers URL-friendly keys (`.`, `/`) and a Go/return action.
+
+### Actual behavior
+
+The URL keyboard layout is shown, which has no spacebar.
+
+### Confirmed cause
+
+`SearchOverlayView` sets `.keyboardType(.URL)` on the search `TextField` (`app/Sources/ToonEdgeAppCore/Features/Search/Views/SearchOverlayView.swift`). The iOS URL keyboard intentionally omits the spacebar.
+
+### Intended resolution
+
+- Switch the search field to `.keyboardType(.webSearch)`, which provides a spacebar, `.` and a Go key.
+- Keep `.submitLabel(.go)`, `.textInputAutocapitalization(.never)` and `.autocorrectionDisabled()`.
+- Review any other ToonEdge text field that accepts queries for the same keyboard type.
+
+### Acceptance criteria
+
+- The search keyboard shows a spacebar on iPhone.
+- A multi-word query can be typed and submitted, and is classified as a web search.
+- URL entry and submission still work.
+- A UI test types a query containing spaces into `search.input` and verifies the resulting search flow.
+
+## DEF-049 — Article page auto-opens in Reader Mode and is recorded in Continue Reading
+
+**Status:** Open
+
+**Severity:** High
+
+**Reported:** 2026-10-30
+
+**Area:** Detection scoring, Reader entry policy, Reader recent-reading recording, chapter label inference
+
+### User-visible problem
+
+While searching, the user opened a recommendation blog article (`chapterbrief.net/blog/best-academy-fantasy-manhwa`). ToonEdge treated the article as a chapter and auto-opened Reader Mode. The article then appeared on Home → Continue Reading as `Best Academy Fantasy Manh…` with `Continue Chapter 2026`. A false-positive auto-open is a trust failure: per the detection rules, false positives are worse than false negatives. The polluted Continue Reading row makes the mistake persistent.
+
+### Reproduction
+
+1. From Home, search for an academy fantasy manhwa recommendation and open the chapterbrief.net article from the results.
+2. Observe that Reader Mode opens automatically.
+3. Scroll the Reader, then return to Home.
+4. Observe the article in Continue Reading as "Continue Chapter 2026".
+
+### Expected behavior
+
+- An editorial/article page with a few portrait cover images stays in the browser (low confidence), or at most shows the medium-confidence "Read in Clean Mode" CTA.
+- A page that was not actually a chapter never becomes a Continue Reading entry.
+- A year in a page title is never presented as a chapter number.
+
+### Actual behavior
+
+The page reached the automatic band, the Reader recorded recent reading on its first progress update, and the chapter label was taken from the year in the title.
+
+### Evidence and root cause
+
+The article contains six cover images (`/images/posts/best-academy-fantasy-manhwa-cover-N.webp`, 460×650) in one column, plus `og:type=article`. Estimated `GenericChapterDetector` scoring:
+
+| Signal | Points |
+|---|---|
+| 6 candidates (≥320×500, aspect ≥0.9) | +18 |
+| Single-column flow | +18 |
+| Consistent host | +8 |
+| Repeated path shape | +8 |
+| Document height ≥6,000 (possibly ≥12,000) | +12 (+20) |
+| `isChapterLike` — "manhwa" in the URL | +12 |
+| **Total** | **~76–84** |
+
+With six or more candidates, `ReaderEntryPolicy` allows the automatic band at ≥78. Contributing causes:
+
+1. **No article signals.** The detector does not consider `og:type=article`, `<article>` structure, the amount of prose between candidate images, or cover-like aspect ratios (~1.4 vs. typical webtoon strips >2.5).
+2. **Genre words count as chapter evidence.** `isChapterLike` awards points for "manhwa", "manga" or "webtoon" alone, which matches editorial and catalog pages.
+3. **Recent reading is recorded unconditionally.** `ReaderViewModel.updateProgress` calls `recordRecentReading` on the first progress update after restore, so any Reader open — including a false positive — writes to Continue Reading.
+4. **Year inferred as a chapter number.** With no chapter token in the URL, the chapter label falls back to the first numeric token in the title ("…Manhwa **2026**: 6 Series Reviewed").
+
+### Intended resolution
+
+Deliver in three independently reviewable slices:
+
+1. **Recording rule (Reader).** Record Continue Reading only after evidence of real reading, for example progress past the first image or a minimum dwell. Alternatively, record only when the chapter identity came from the URL or a chapter label rather than the title alone.
+2. **Chapter label (Domain).** In title-only inference, ignore year-like four-digit numbers (19xx/20xx) when the URL has no chapter token. Prefer showing no number over a wrong one.
+3. **Article/prose signals (Detection).** Extend `PageAnalysisScript` to report `og:type`, `<article>` presence and the amount of visible text between candidates. Add a negative score, or block the automatic band, for article-shaped pages. Count genre words only alongside a chapter/episode signal. Consider an aspect-ratio signal for cover-shaped images.
+
+Existing affected rows must be removed manually unless a cleanup migration is approved separately.
+
+### Acceptance criteria
+
+- A synthetic fixture modelled on this article's structure (six ~460×650 portrait images, `og:type=article`, prose between images, genre words in the URL) scores below the automatic band and does not auto-open. Use authored fixture URLs and no copyrighted artwork.
+- Existing high-confidence chapter fixtures and owned flows keep their dispositions; no regression in true-positive auto-open.
+- Opening and immediately leaving a Reader session for a non-chapter page does not create a Continue Reading row.
+- A title such as "Best X Manhwa 2026" yields no chapter label; genuine chapter numbers from URLs and labels still resolve.
+- Focused tests cover scoring, confidence mapping, the recording rule and year rejection, and fail before the fix.
+- View Original Page remains available whenever Reader Mode opens.
+
+## DEF-048 — Series title is truncated at an apostrophe
+
+**Status:** Open
+
+**Severity:** Medium
+
+**Reported:** 2026-10-30
+
+**Area:** Series metadata parsing, Home Continue Reading, Library
+
+### User-visible problem
+
+After the user read chapter 48 of "A Villain's Will to Survive" from asurascans.com, Home → Continue Reading showed the series title as **A Villain**. Any series whose title contains an apostrophe is shown cut off at that apostrophe, and the truncated title is stored in Library and recent reading.
+
+### Reproduction
+
+1. Open `https://asurascans.com/comics/a-villains-will-to-survive-3ebcc5a9/chapter/48` and let Reader Mode open.
+2. Scroll so progress and metadata enrichment run.
+3. Return to Home and observe the Continue Reading title.
+
+### Expected behavior
+
+The title reads **A Villain's Will to Survive**, without the site-name suffix.
+
+### Actual behavior
+
+The title reads **A Villain**.
+
+### Confirmed cause
+
+Series titles come from `HTMLSeriesMetadataParser.metaContent`, which reads `og:title` / `twitter:title` from the series page. The live series page provides:
+
+```html
+<meta property="og:title" content="A Villain's Will to Survive | Asura Scans">
+```
+
+The capture group `["']([^"']+)["']` excludes both quote characters, so a double-quoted value ends at the first apostrophe and the match yields `A Villain`. The same pattern is used for `og:image` / `twitter:image`.
+
+Related gaps that the fix must also handle:
+
+- **Site-name suffix.** A correctly parsed value would include ` | Asura Scans`. Suffix stripping exists only in `SwiftDataLibraryRepository.comparableSeriesTitle` for comparison, not for the stored or displayed title.
+- **HTML entities.** These are not decoded. Pages that encode the apostrophe (e.g. `&#x27;`, which chapterbrief.net uses) would show the raw entity.
+
+### Intended resolution
+
+- Match each quote style independently (`"([^"]*)"` or `'([^']*)'`) for both attribute orders.
+- Decode HTML entities in the extracted value.
+- Strip a trailing site-name segment after `|`, ` - `, ` – ` or ` — ` only when it matches `og:site_name` or the source host, so titles that genuinely contain a dash stay intact.
+- Repair already-stored truncated titles through the next successful metadata refresh, without a schema change.
+
+### Acceptance criteria
+
+- `HTMLSeriesMetadataParser` returns `A Villain's Will to Survive` for the observed meta tag.
+- Tests cover double-quoted values with apostrophes, single-quoted values with double quotes, both attribute orders, entity-encoded titles, site-suffix stripping, and a title with an intrinsic dash that is preserved.
+- Cover image extraction is unchanged for existing fixtures.
+- A series with an existing truncated title displays the corrected title after the next metadata refresh.
+
 ## DEF-047 — Resumed Reader can lose previous and next chapter targets
 
 **Status:** Closed (verified 2026-10-29). Fix merged to `main` in PR #22 (`6941766`); owned simulator flow and physical iPhone confirmed
