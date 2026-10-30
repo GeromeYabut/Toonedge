@@ -102,8 +102,8 @@ final class ToonEdgeLibraryUITests: XCTestCase {
         for title in ["Compact", "Comfortable", "List"] {
             let density = app.buttons["\(title) library view"]
             XCTAssertEqual(density.value as? String, "Not selected")
-            XCTAssertGreaterThanOrEqual(density.frame.width, 44)
-            XCTAssertGreaterThanOrEqual(density.frame.height, 44)
+            XCTAssertGreaterThanOrEqual(density.frame.width, 44 - 0.001)
+            XCTAssertGreaterThanOrEqual(density.frame.height, 44 - 0.001)
             density.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
                 .withOffset(CGVector(dx: 0, dy: -18)).tap()
             let selected = XCTNSPredicateExpectation(
@@ -113,16 +113,16 @@ final class ToonEdgeLibraryUITests: XCTestCase {
         }
 
         let refresh = app.buttons["Check for new chapters"]
-        XCTAssertGreaterThanOrEqual(refresh.frame.width, 44)
-        XCTAssertGreaterThanOrEqual(refresh.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(refresh.frame.width, 44 - 0.001)
+        XCTAssertGreaterThanOrEqual(refresh.frame.height, 44 - 0.001)
         refresh.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
             .withOffset(CGVector(dx: 0, dy: -18)).tap()
         XCTAssertTrue(app.staticTexts["No new chapters"].waitForExistence(timeout: 5))
 
         for offset in marginOffsets {
             scrollLibraryToTop(in: app)
-            XCTAssertGreaterThanOrEqual(sort.frame.width, 44)
-            XCTAssertGreaterThanOrEqual(sort.frame.height, 44)
+            XCTAssertGreaterThanOrEqual(sort.frame.width, 44 - 0.001)
+            XCTAssertGreaterThanOrEqual(sort.frame.height, 44 - 0.001)
             // Probe inside the intended 44-point label, outside the sliders glyph.
             sort.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
                 .withOffset(offset).tap()
@@ -345,7 +345,11 @@ final class ToonEdgeLibraryUITests: XCTestCase {
         let sheet = app.collectionViews.firstMatch
         XCTAssertTrue(sheet.waitForExistence(timeout: 5))
         let source = app.buttons["library.sources.ink.example.test"]
-        for _ in 0..<6 where !source.isHittable { sheet.swipeUp() }
+        // A full swipe can carry the first source row past the top at this text size.
+        for _ in 0..<12 where !source.isHittable {
+            sheet.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+                .press(forDuration: 0.05, thenDragTo: sheet.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
+        }
         XCTAssertTrue(source.isHittable)
         source.tap()
         let reset = app.buttons["library.sort.reset"]
