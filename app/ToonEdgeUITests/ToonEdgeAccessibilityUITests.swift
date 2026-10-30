@@ -114,7 +114,11 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
         XCTAssertEqual(reader.value as? String, "Show Reader Controls")
 
         reader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        XCTAssertEqual(reader.value as? String, "Hide Reader Controls")
+        // A single tap waits for the double-tap zoom gesture to fail before toggling chrome.
+        let shown = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "Hide Reader Controls"), object: reader
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [shown], timeout: 2), .completed)
     }
 
     private func assertPrimaryTabsRemainHittable(appearance: TestAppearance) {
