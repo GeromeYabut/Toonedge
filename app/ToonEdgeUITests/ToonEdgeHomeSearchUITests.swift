@@ -13,6 +13,16 @@ final class ToonEdgeHomeSearchUITests: XCTestCase {
         XCTAssertEqual(input.value as? String, "first open")
     }
 
+    func testSearchKeyboardOffersSpaceForMultiWordQueries() {
+        let app = openSearch()
+        let keyboard = app.keyboards.firstMatch
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 3))
+        // DEF-050: the URL keyboard omits the space key, blocking multi-word queries.
+        XCTAssertTrue(keyboard.keys["space"].exists)
+        keyboard.keys["space"].tap()
+        XCTAssertEqual(app.textFields["search.input"].value as? String, " ")
+    }
+
     func testClearThenRetypeAndSubmitOpensBrowser() {
         let app = openSearch()
         let input = app.textFields["search.input"]

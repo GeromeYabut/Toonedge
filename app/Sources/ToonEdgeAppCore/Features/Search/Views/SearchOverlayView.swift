@@ -162,7 +162,7 @@ public struct SearchOverlayView: View {
                     .accessibilityLabel("Search the web or paste a chapter link")
                     .accessibilityIdentifier("search.input")
                     #if os(iOS)
-                    .keyboardType(.URL)
+                    .keyboardType(.webSearch)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     #endif
