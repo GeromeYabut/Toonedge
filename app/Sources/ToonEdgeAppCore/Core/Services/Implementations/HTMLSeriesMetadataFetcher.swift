@@ -40,8 +40,8 @@ public struct HTMLSeriesMetadataFetcher: SeriesMetadataFetching {
 
 public enum HTMLSeriesMetadataParser {
     public static func parse(html: String, baseURL: URL) -> SeriesMetadataSnapshot? {
-        let title = metaContent(in: html, key: "og:title")
-            ?? metaContent(in: html, key: "twitter:title")
+        let title = (metaContent(in: html, key: "og:title") ?? metaContent(in: html, key: "twitter:title"))
+            .map { seriesTitle(from: $0, siteName: metaContent(in: html, key: "og:site_name"), baseURL: baseURL) }
         let image = structuredPortraitCover(in: html)
             ?? visibleSeriesCoverImage(in: html, title: title)
             ?? metaContent(in: html, key: "og:image")
@@ -57,9 +57,11 @@ public enum HTMLSeriesMetadataParser {
 
     private static func metaContent(in html: String, key: String) -> String? {
         let escapedKey = NSRegularExpression.escapedPattern(for: key)
+        // Each quote style excludes only its own delimiter, so "A Villain's" stays whole.
+        let value = #"(?:"([^"]*)"|'([^']*)')"#
         let patterns = [
-            #"<meta\b[^>]*(?:property|name)\s*=\s*["']\#(escapedKey)["'][^>]*content\s*=\s*["']([^"']+)["'][^>]*>"#,
-            #"<meta\b[^>]*content\s*=\s*["']([^"']+)["'][^>]*(?:property|name)\s*=\s*["']\#(escapedKey)["'][^>]*>"#
+            #"<meta\b[^>]*(?:property|name)\s*=\s*["']\#(escapedKey)["'][^>]*content\s*=\s*\#(value)[^>]*>"#,
+            #"<meta\b[^>]*content\s*=\s*\#(value)[^>]*(?:property|name)\s*=\s*["']\#(escapedKey)["'][^>]*>"#
         ]
 
         for pattern in patterns {
@@ -68,13 +70,77 @@ public enum HTMLSeriesMetadataParser {
                     in: html,
                     range: NSRange(html.startIndex..<html.endIndex, in: html)
                   ),
-                  let range = Range(match.range(at: 1), in: html) else {
+                  let range = [1, 2].lazy.compactMap({ Range(match.range(at: $0), in: html) }).first else {
                 continue
             }
-            return String(html[range])
+            let content = decodedHTMLEntities(String(html[range])).trimmingCharacters(in: .whitespacesAndNewlines)
+            return content.isEmpty ? nil : content
         }
 
         return nil
+    }
+
+    /// Drops a trailing site-name segment such as " | Asura Scans" only when it names the
+    /// source site, so dashes that belong to the series title are preserved.
+    static func seriesTitle(from rawTitle: String, siteName: String?, baseURL: URL) -> String {
+        let siteKeys = Set([siteName.map(comparableKey), hostLabel(of: baseURL).map(comparableKey)]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty })
+        let separators = ["|", " - ", " – ", " — "]
+        guard let separator = separators
+            .compactMap({ rawTitle.range(of: $0, options: .backwards) })
+            .max(by: { $0.lowerBound < $1.lowerBound }) else {
+            return rawTitle
+        }
+
+        let head = rawTitle[..<separator.lowerBound].trimmingCharacters(in: .whitespacesAndNewlines)
+        let tail = String(rawTitle[separator.upperBound...])
+        guard !head.isEmpty, siteKeys.contains(comparableKey(tail)) else {
+            return rawTitle
+        }
+        return head
+    }
+
+    private static func comparableKey(_ value: String) -> String {
+        String(value.lowercased().unicodeScalars.filter(CharacterSet.alphanumerics.contains).map(Character.init))
+    }
+
+    private static func hostLabel(of url: URL) -> String? {
+        guard var host = url.host()?.lowercased() else { return nil }
+        if host.hasPrefix("www.") { host.removeFirst(4) }
+        return host.split(separator: ".").first.map(String.init)
+    }
+
+    static func decodedHTMLEntities(_ value: String) -> String {
+        guard value.contains("&"),
+              let regex = try? NSRegularExpression(pattern: #"&(#[xX][0-9a-fA-F]+|#[0-9]+|[a-zA-Z]+);"#) else {
+            return value
+        }
+        let named: [String: String] = [
+            "amp": "&", "quot": "\"", "apos": "'", "lt": "<", "gt": ">", "nbsp": " ",
+            "rsquo": "’", "lsquo": "‘", "rdquo": "”", "ldquo": "“", "ndash": "–", "mdash": "—", "hellip": "…"
+        ]
+
+        var decoded = ""
+        var cursor = value.startIndex
+        for match in regex.matches(in: value, range: NSRange(value.startIndex..<value.endIndex, in: value)) {
+            guard let whole = Range(match.range, in: value),
+                  let entityRange = Range(match.range(at: 1), in: value) else { continue }
+            let entity = String(value[entityRange])
+            let replacement: String?
+            if entity.hasPrefix("#x") || entity.hasPrefix("#X") {
+                replacement = UInt32(entity.dropFirst(2), radix: 16).flatMap(Unicode.Scalar.init).map { String($0) }
+            } else if entity.hasPrefix("#") {
+                replacement = UInt32(entity.dropFirst()).flatMap(Unicode.Scalar.init).map { String($0) }
+            } else {
+                replacement = named[entity.lowercased()]
+            }
+            decoded += value[cursor..<whole.lowerBound]
+            decoded += replacement ?? String(value[whole])
+            cursor = whole.upperBound
+        }
+        decoded += value[cursor...]
+        return decoded
     }
 
     private static func visibleSeriesCoverImage(in html: String, title: String?) -> String? {
@@ -255,17 +321,17 @@ public enum HTMLSeriesMetadataParser {
         }
 
         private static func attributes(in tag: String) -> [String: String] {
-            let pattern = #"([A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*["']([^"']*)["']"#
+            let pattern = #"([A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)')"#
             guard let regex = try? NSRegularExpression(pattern: pattern) else {
                 return [:]
             }
 
             return regex.matches(in: tag, range: NSRange(tag.startIndex..<tag.endIndex, in: tag)).reduce(into: [:]) { result, match in
                 guard let keyRange = Range(match.range(at: 1), in: tag),
-                      let valueRange = Range(match.range(at: 2), in: tag) else {
+                      let valueRange = [2, 3].lazy.compactMap({ Range(match.range(at: $0), in: tag) }).first else {
                     return
                 }
-                result[String(tag[keyRange]).lowercased()] = String(tag[valueRange])
+                result[String(tag[keyRange]).lowercased()] = HTMLSeriesMetadataParser.decodedHTMLEntities(String(tag[valueRange]))
             }
         }
 
