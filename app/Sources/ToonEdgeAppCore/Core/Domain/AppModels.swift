@@ -1095,7 +1095,7 @@ enum ChapterURLInference {
             return number
         }
 
-        return firstNumericToken(in: title).flatMap(Int.init)
+        return ChapterNumericLabelExtractor.titleNumericToken(in: title).flatMap(Int.init)
     }
 
     static func containsChapterNumber(_ number: Int, in sourceURL: URL) -> Bool {
@@ -1161,7 +1161,7 @@ public enum ChapterNumericLabelExtractor {
             return String(chapterNumber)
         }
 
-        return chapterNumberInText(title) ?? firstNumericToken(in: title)
+        return chapterNumberInText(title) ?? titleNumericToken(in: title)
     }
 
     public static func displayLabel(title: String, sourceURL: URL? = nil) -> String {
@@ -1190,6 +1190,13 @@ public enum ChapterNumericLabelExtractor {
         guard let match = regex.firstMatch(in: value, range: range),
               let tokenRange = Range(match.range(at: 1), in: value) else { return nil }
         return String(value[tokenRange])
+    }
+
+    /// A bare number in free text, without a chapter keyword. A leading year such as
+    /// "Best Manhwa 2026" or "/blog/2025/11/" is publication context, not a chapter.
+    static func titleNumericToken(in value: String) -> String? {
+        guard let token = firstNumericToken(in: value) else { return nil }
+        return token.range(of: #"^(?:19|20)[0-9]{2}$"#, options: .regularExpression) == nil ? token : nil
     }
 
     static func firstNumericToken(in value: String) -> String? {
