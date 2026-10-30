@@ -162,6 +162,21 @@ public enum PageAnalysisScript {
         && Array.from(scope.querySelectorAll('canvas, img[src^="blob:"]')).some(isContentSized));
       if (hasOpaqueViewer) hardBlocks.push('canvasOrBlob');
 
+      // Editorial evidence: article metadata/structure plus reading prose outside page chrome and comments.
+      const ogTypeMeta = document.querySelector('meta[property="og:type"]');
+      const ogType = ogTypeMeta ? (ogTypeMeta.getAttribute('content') || '').trim().toLowerCase() || null : null;
+      const hasArticleElement = Array.from(document.querySelectorAll('article')).some(isVisible);
+      const isProseChrome = (element) => {
+        for (let node = element; node; node = node.parentElement) {
+          if (/^(?:nav|footer|aside|header)$/i.test(node.tagName || '')
+            || /comment/i.test(`${node.id || ''} ${String(node.className || '')}`)) return true;
+        }
+        return false;
+      };
+      const proseCharacterCount = Array.from(document.querySelectorAll('p'))
+        .filter((paragraph) => isVisible(paragraph) && !isProseChrome(paragraph))
+        .reduce((total, paragraph) => total + (paragraph.innerText || '').trim().length, 0);
+
       return JSON.stringify({
         pageURL: window.location.href,
         title: document.title || '',
@@ -175,7 +190,10 @@ public enum PageAnalysisScript {
         previousChapterURL: chapterLink('prev'),
         nextChapterURL: chapterLink('next'),
         challengeSignals,
-        hardBlocks
+        hardBlocks,
+        ogType,
+        hasArticleElement,
+        proseCharacterCount
       });
     })();
     """

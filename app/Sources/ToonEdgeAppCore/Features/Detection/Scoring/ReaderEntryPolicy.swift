@@ -26,7 +26,8 @@ public struct ReaderEntryPolicy: Equatable, Sendable {
                   evidence.candidateCount >= 6 || evidence.tallestHeightRatio >= 5 else {
                 return .unavailable
             }
-            return .automatic
+            // Editorial pages can look like long image runs; let the user opt in instead.
+            return evidence.isArticleShaped ? .recommended : .automatic
         }
 
         if evidence.score >= medium {
