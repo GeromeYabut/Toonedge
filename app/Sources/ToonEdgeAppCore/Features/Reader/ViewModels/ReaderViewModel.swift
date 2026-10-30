@@ -24,6 +24,9 @@ public final class ReaderViewModel: ObservableObject {
     private let interactionFeedback: (any InteractionFeedbackProviding)?
     private var hasCompletedInitialRestore: Bool
     private var hasRecordedRecentCacheMetadataForSession: Bool
+    /// Continue Reading only learns about a session once the user reads past its first image,
+    /// so a page opened by mistake and left at once never becomes a resume entry (DEF-049).
+    private var hasReadPastFirstImage: Bool
     private var visibleImageIndex: Int?
     private var hasAttemptedMetadataRefresh: Bool
     private let adjacentRetryDelayNanoseconds: UInt64
@@ -70,6 +73,7 @@ public final class ReaderViewModel: ObservableObject {
         self.adjacentRetryDelayNanoseconds = adjacentRetryDelayNanoseconds
         self.hasCompletedInitialRestore = progressRepository == nil
         self.hasRecordedRecentCacheMetadataForSession = false
+        self.hasReadPastFirstImage = false
         self.visibleImageIndex = nil
         self.hasAttemptedMetadataRefresh = false
         self.adjacentNavigationOperationID = nil
@@ -143,6 +147,8 @@ public final class ReaderViewModel: ObservableObject {
         self.isSettingsPresented = false
         self.hasCompletedInitialRestore = true
         self.hasRecordedRecentCacheMetadataForSession = false
+        // Choosing Previous/Next is itself evidence of reading this series.
+        self.hasReadPastFirstImage = true
         self.visibleImageIndex = nil
         self.lastRecordedReadySelection = nil
         self.adjacentLoadState = .idle
@@ -334,6 +340,10 @@ public final class ReaderViewModel: ObservableObject {
 
         if hasCompletedInitialRestore, let progressRepository {
             await progressRepository.save(progress, for: session.sourceURL)
+            if progress.currentImageIndex > 0 || session.imageURLs.count <= 1 {
+                hasReadPastFirstImage = true
+            }
+            guard hasReadPastFirstImage else { return }
             await enrichSessionMetadataIfNeeded()
             try? await recentReadingRecorder?.recordRecentReading(
                 RecentReadingInput(
