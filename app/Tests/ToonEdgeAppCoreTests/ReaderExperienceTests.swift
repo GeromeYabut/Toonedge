@@ -1597,3 +1597,103 @@ private actor AlwaysFailingHTTPDataLoader: HTTPDataLoading {
         throw URLError(.notConnectedToInternet)
     }
 }
+
+// DEF-049: a Reader session reaches Continue Reading only after the user reads past image 1.
+
+private actor CountingRecentReadingRecorder: RecentReadingRecording {
+    private(set) var inputs: [RecentReadingInput] = []
+
+    func recordRecentReading(_ input: RecentReadingInput) async throws {
+        inputs.append(input)
+    }
+}
+
+@MainActor
+private func makeViewModel(
+    session: MockReaderSession = .sample,
+    progressRepository: MockReaderProgressRepository = MockReaderProgressRepository(),
+    recorder: CountingRecentReadingRecorder,
+    cache: CountingCacheMetadataService? = nil
+) -> ReaderViewModel {
+    ReaderViewModel(
+        session: session,
+        progressRepository: progressRepository,
+        cacheMetadataManager: cache,
+        recentReadingRecorder: recorder
+    )
+}
+
+@MainActor
+@Test func readerDoesNotRecordRecentReadingWhileOnFirstImage() async {
+    let recorder = CountingRecentReadingRecorder()
+    let cache = CountingCacheMetadataService()
+    let progressRepository = MockReaderProgressRepository()
+    let viewModel = makeViewModel(progressRepository: progressRepository, recorder: recorder, cache: cache)
+
+    await viewModel.restoreProgress()
+    await viewModel.updateProgress(visibleImageIndex: 0)
+
+    #expect(await recorder.inputs.isEmpty)
+    #expect(await cache.recordCacheMetadataCallCount == 0)
+    // Position is still kept so reopening the same page resumes in place.
+    #expect(await progressRepository.progress(for: MockReaderSession.sample.sourceURL)?.currentImageIndex == 0)
+}
+
+@MainActor
+@Test func readerRecordsRecentReadingOnceUserPassesFirstImage() async {
+    let recorder = CountingRecentReadingRecorder()
+    let viewModel = makeViewModel(recorder: recorder)
+
+    await viewModel.restoreProgress()
+    await viewModel.updateProgress(visibleImageIndex: 0)
+    await viewModel.updateProgress(visibleImageIndex: 1)
+
+    let inputs = await recorder.inputs
+    #expect(inputs.count == 1)
+    #expect(inputs.last?.progress.currentImageIndex == 1)
+}
+
+@MainActor
+@Test func readerKeepsRecordingAfterScrollingBackToFirstImage() async {
+    let recorder = CountingRecentReadingRecorder()
+    let viewModel = makeViewModel(recorder: recorder)
+
+    await viewModel.restoreProgress()
+    await viewModel.updateProgress(visibleImageIndex: 2)
+    await viewModel.updateProgress(visibleImageIndex: 0)
+
+    let inputs = await recorder.inputs
+    #expect(inputs.count == 2)
+    #expect(inputs.last?.progress.currentImageIndex == 0)
+}
+
+@MainActor
+@Test func readerResumedPastFirstImageRecordsImmediately() async {
+    let recorder = CountingRecentReadingRecorder()
+    let progressRepository = MockReaderProgressRepository()
+    let session = MockReaderSession.sample
+    await progressRepository.save(
+        ReaderProgress(currentImageIndex: 3, totalImageCount: session.imageURLs.count),
+        for: session.sourceURL
+    )
+    let viewModel = makeViewModel(session: session, progressRepository: progressRepository, recorder: recorder)
+
+    await viewModel.restoreProgress()
+    await viewModel.updateProgress(visibleImageIndex: 3)
+
+    #expect(await recorder.inputs.count == 1)
+}
+
+@MainActor
+@Test func readerSingleImageSessionRecordsOnFirstImage() async throws {
+    let recorder = CountingRecentReadingRecorder()
+    var session = MockReaderSession.sample
+    session.imageURLs = [try #require(session.imageURLs.first)]
+    session.pageMetadata = Array(session.pageMetadata.prefix(1))
+    let viewModel = makeViewModel(session: session, recorder: recorder)
+
+    await viewModel.restoreProgress()
+    await viewModel.updateProgress(visibleImageIndex: 0)
+
+    #expect(await recorder.inputs.count == 1)
+}
