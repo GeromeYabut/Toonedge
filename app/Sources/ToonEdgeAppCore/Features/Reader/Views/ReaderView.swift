@@ -20,6 +20,8 @@ public struct ReaderView: View {
     #endif
     @State private var pageFrames: [Int: CGRect] = [:]
     @State private var bottomChromeHeight: CGFloat = 0
+    @State private var isAtChapterEnd = false
+    @State private var chapterEndPolicy = ReaderChapterEndPolicy()
     private let readerService: any ReaderSessionProviding
     private let adjacentLoader: (any AdjacentReaderSessionLoading)?
     private let libraryLifecycleService: (any LibraryLifecycleManaging)?
@@ -151,6 +153,10 @@ public struct ReaderView: View {
                 }
             )
         }
+        .onChange(of: viewModel.session.id) { _, _ in
+            isAtChapterEnd = false
+            chapterEndPolicy = ReaderChapterEndPolicy()
+        }
         .onDisappear {
             viewModel.readerDidDisappear()
             adjacentNavigationTask?.cancel()
@@ -170,6 +176,7 @@ public struct ReaderView: View {
             }, onSingleTap: { handleInteraction(.readingSurfaceTap) },
             onBaselineSelection: { selection in
                 guard selection.pipelineID == ObjectIdentifier(viewModel.pagePipeline) else { return }
+                updateChapterEnd(selection.reachedChapterEnd)
                 viewportVisibleIndex = selection.loadingAnchorIndex
                 let pipeline = viewModel.pagePipeline
                 Task {
@@ -243,6 +250,7 @@ public struct ReaderView: View {
         reportedViewportSelection = selection
         viewportVisibleIndex = selection?.index
         guard let selection else { return }
+        updateChapterEnd(selection.reachedChapterEnd)
         let pipeline = viewModel.pagePipeline
         pipeline.updateVisibleIndex(selection.loadingAnchorIndex)
         Task {
@@ -397,6 +405,9 @@ public struct ReaderView: View {
                 }.font(.caption2).frame(minHeight: 44)
             }
             #endif
+            if isAtChapterEnd {
+                chapterEndRow
+            }
             navigationLayout {
                 Button {
                     navigate(.previous)
@@ -456,6 +467,63 @@ public struct ReaderView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background { ReaderChromeSurface() }
+    }
+
+    private var chapterEndPresentation: ReaderChapterEndPresentation {
+        ReaderChapterEndPresentation(
+            currentChapterLabel: viewModel.currentChapterDisplayLabel,
+            nextChapter: viewModel.session.nextChapter
+        )
+    }
+
+    private var chapterEndRow: some View {
+        let presentation = chapterEndPresentation
+        return VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+            Text(presentation.title)
+                .font(ToonEdgeTypography.caption.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.82))
+                .accessibilityIdentifier("reader.chapterEnd.title")
+
+            Button {
+                switch presentation.primaryAction {
+                case .nextChapter:
+                    navigate(.next)
+                case .viewOriginalPage:
+                    viewOriginalPageAction?() ?? router.viewOriginalPage()
+                }
+            } label: {
+                HStack(spacing: ToonEdgeSpacing.small) {
+                    if viewModel.adjacentLoadState == .loading(.next) {
+                        ProgressView()
+                            .tint(ToonEdgeColor.filledActionForeground)
+                    }
+                    Text(presentation.primaryActionTitle)
+                    Image(systemName: presentation.primaryAction == .nextChapter ? "chevron.right" : "safari")
+                        .accessibilityHidden(true)
+                }
+                .font(ToonEdgeTypography.body.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: TEActionMetrics.minimumHitSize)
+                .foregroundStyle(ToonEdgeColor.filledActionForeground)
+                .background(ToonEdgeColor.filledActionBackground, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
+            }
+            .buttonStyle(.plain)
+            .disabled(presentation.primaryAction == .nextChapter && viewModel.isAdjacentLoading)
+            .accessibilityIdentifier("reader.chapterEnd.primary")
+        }
+        .padding(.top, ToonEdgeSpacing.xsmall)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("reader.chapterEnd")
+    }
+
+    private func updateChapterEnd(_ reachedChapterEnd: Bool) {
+        isAtChapterEnd = reachedChapterEnd
+        guard chapterEndPolicy.shouldRevealControls(reachedChapterEnd: reachedChapterEnd) else { return }
+        if !viewModel.isChromeVisible {
+            viewModel.toggleChrome()
+        }
+        #if os(iOS)
+        UIAccessibility.post(notification: .announcement, argument: chapterEndPresentation.announcement)
+        #endif
     }
 
     @ViewBuilder
@@ -879,6 +947,54 @@ struct ReaderViewportSelection: Equatable {
     let index: Int
     let loadingAnchorIndex: Int
     let pipelineID: ObjectIdentifier
+    /// True only once the final page's bottom edge is on screen, not merely when it is topmost.
+    var reachedChapterEnd = false
+}
+
+/// Reveals Reader controls once per chapter, and only when the reader scrolls into the end.
+/// A chapter that opens at its end (short, or resumed there) keeps the immersive hidden chrome.
+struct ReaderChapterEndPolicy {
+    private var hasReadBeforeEnd = false
+    private var hasRevealed = false
+
+    mutating func shouldRevealControls(reachedChapterEnd: Bool) -> Bool {
+        guard reachedChapterEnd else {
+            hasReadBeforeEnd = true
+            return false
+        }
+        guard hasReadBeforeEnd, !hasRevealed else { return false }
+        hasRevealed = true
+        return true
+    }
+}
+
+struct ReaderChapterEndPresentation: Equatable {
+    enum PrimaryAction: Equatable {
+        case nextChapter
+        case viewOriginalPage
+    }
+
+    let title: String
+    let primaryAction: PrimaryAction
+    let primaryActionTitle: String
+    let announcement: String
+
+    init(currentChapterLabel: String, nextChapter: MockChapter?) {
+        if let nextChapter {
+            let nextLabel = ChapterNumericLabelExtractor.displayLabel(
+                title: nextChapter.title, sourceURL: nextChapter.sourceURL
+            )
+            title = "End of \(currentChapterLabel)"
+            primaryAction = .nextChapter
+            primaryActionTitle = "Next: \(nextLabel)"
+            announcement = "\(title). Next: \(nextLabel) is available."
+        } else {
+            title = "You’re caught up"
+            primaryAction = .viewOriginalPage
+            primaryActionTitle = "View Original Page"
+            announcement = "\(title). Check the original page for newer chapters."
+        }
+    }
 }
 
 struct ReaderViewportPageSelector {
@@ -889,11 +1005,12 @@ struct ReaderViewportPageSelector {
         guard let loadingAnchorIndex = topmostVisibleIndex(
             frames: frames, viewportHeight: viewportHeight
         ) else { return nil }
-        let progressIndex = finalPageAtViewportEnd(
+        let finalPage = finalPageAtViewportEnd(
             frames: frames, viewportHeight: viewportHeight, lastPageIndex: lastPageIndex
-        ) ?? loadingAnchorIndex
+        )
         return ReaderViewportSelection(
-            index: progressIndex, loadingAnchorIndex: loadingAnchorIndex, pipelineID: pipelineID
+            index: finalPage ?? loadingAnchorIndex, loadingAnchorIndex: loadingAnchorIndex,
+            pipelineID: pipelineID, reachedChapterEnd: finalPage != nil
         )
     }
 
