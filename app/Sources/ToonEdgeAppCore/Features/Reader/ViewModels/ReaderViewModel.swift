@@ -437,7 +437,7 @@ public final class ReaderViewModel: ObservableObject {
                 interactionFeedback?.emit(event)
             }
         } catch {
-            cacheFeedback = .failure("Could not retain this chapter offline.")
+            cacheFeedback = .failure("Couldn’t download this chapter. Try again.")
         }
     }
 

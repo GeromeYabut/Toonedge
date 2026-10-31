@@ -6,7 +6,7 @@ public struct HomeView: View {
     @Binding private var router: AppRouter
     @State private var snapshot = HomeSnapshot(continueReading: [], recentlyUpdated: [], library: [])
     @State private var hasLoadedSnapshot = false
-    @State private var refreshMessage: String?
+    @State private var refreshFeedback: TEFeedback?
     @Environment(\.scenePhase) private var scenePhase
     @State private var resumeTask: Task<Void, Never>?
     @State private var resumeRequestID: UUID?
@@ -37,6 +37,7 @@ public struct HomeView: View {
                     await refreshUpdates()
                 }
             }
+            .teFeedbackBanner($refreshFeedback)
             .onDisappear { cancelResume() }
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active { cancelResume() }
@@ -51,7 +52,6 @@ public struct HomeView: View {
         switch section {
         case .search:
             searchEntry
-            refreshStatus
             if hasLoadedSnapshot && snapshot.isEmpty {
                 emptyState
             }
@@ -96,27 +96,6 @@ public struct HomeView: View {
         .buttonStyle(TEActionStyle(verticalPadding: 0))
         .accessibilityLabel("Search the web or paste a chapter link")
         .accessibilityIdentifier("home.searchEntry")
-    }
-
-    @ViewBuilder
-    private var refreshStatus: some View {
-        if let refreshMessage {
-            let layout = HomeRefreshStatusLayout(message: refreshMessage)
-
-            HStack(spacing: ToonEdgeSpacing.small) {
-                Image(systemName: "arrow.clockwise")
-                    .font(ToonEdgeTypography.caption)
-                    .foregroundStyle(ToonEdgeColor.accent)
-
-                Text(layout.message)
-                    .font(ToonEdgeTypography.caption)
-                    .foregroundStyle(ToonEdgeColor.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.horizontal, ToonEdgeSpacing.medium)
-            .padding(.vertical, ToonEdgeSpacing.small)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
     }
 
     private var emptyState: some View {
@@ -262,17 +241,9 @@ public struct HomeView: View {
 
         let result = await updateRefreshService.refreshUpdates()
         await reloadSnapshot()
-        refreshMessage = refreshMessage(for: result)
+        refreshFeedback = TEFeedback(updateRefresh: result)
         InteractionFeedbackOutcomeReporter(feedback: dependencies.interactionFeedback)
             .reportUserInitiatedUpdate(result)
-    }
-
-    private func refreshMessage(for result: LibraryUpdateRefreshResult) -> String {
-        if result.failedCount > 0 {
-            return "Checked \(result.checkedCount), found \(result.updatedCount) updates, \(result.failedCount) failed."
-        }
-
-        return "Checked \(result.checkedCount), found \(result.updatedCount) updates."
     }
 
     private func chapterTitle(from subtitle: String) -> String {
@@ -387,16 +358,6 @@ struct HomeSeriesCardLayout: Equatable, Sendable {
             self.fixedHeight = nil
             self.titleLineLimit = nil
         }
-    }
-}
-
-struct HomeRefreshStatusLayout: Equatable, Sendable {
-    var message: String
-    var usesBannerContainer: Bool
-
-    init(message: String) {
-        self.message = message
-        self.usesBannerContainer = false
     }
 }
 

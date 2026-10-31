@@ -69,7 +69,7 @@ public struct LibraryView: View {
     @State private var hasLoadedSnapshot = false
     @State private var showsOrganization = false
     @State private var isRefreshingUpdates = false
-    @State private var refreshFeedback: LibraryRefreshFeedback?
+    @State private var refreshFeedback: TEFeedback?
     @State private var navigationPath: [LibrarySeriesDetailRoute] = []
     @State private var seriesDetailCache: [UUID: SeriesDetailSnapshot] = [:]
     private let libraryViewPreferences: LibraryViewPreferences
@@ -97,10 +97,7 @@ public struct LibraryView: View {
                 }
                 .padding(ToonEdgeSpacing.large)
             }
-            .overlay(alignment: .bottomTrailing) {
-                floatingRefreshFeedback
-            }
-            .animation(.easeInOut(duration: 0.2), value: refreshFeedback)
+            .teFeedbackBanner($refreshFeedback)
             .navigationTitle("Library")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -166,22 +163,6 @@ public struct LibraryView: View {
         }
     }
 
-    @ViewBuilder
-    private var floatingRefreshFeedback: some View {
-        if let refreshFeedback {
-            LibraryRefreshFeedbackView(layout: refreshFeedback.layout) {
-                dismissRefreshFeedback()
-            }
-            .padding(.horizontal, ToonEdgeSpacing.large)
-            .padding(.bottom, ToonEdgeSpacing.large)
-            .transition(.asymmetric(
-                insertion: .move(edge: .bottom).combined(with: .opacity),
-                removal: .opacity
-            ))
-            .zIndex(1)
-        }
-    }
-
     private var collectionControls: some View {
         let visible = collectionQuery.apply(to: snapshot)
         let layout = LibraryCollectionControlsLayout(
@@ -223,7 +204,7 @@ public struct LibraryView: View {
         let result = await updateRefreshService.refreshUpdates()
         await reloadSnapshot()
         isRefreshingUpdates = false
-        showRefreshFeedback(result: result)
+        refreshFeedback = TEFeedback(updateRefresh: result)
         InteractionFeedbackOutcomeReporter(feedback: dependencies.interactionFeedback)
             .reportUserInitiatedUpdate(result)
     }
@@ -345,21 +326,6 @@ public struct LibraryView: View {
         }
     }
 
-    private func showRefreshFeedback(result: LibraryUpdateRefreshResult) {
-        let feedback = LibraryRefreshFeedback(result: result)
-        refreshFeedback = feedback
-
-        Task { [feedbackID = feedback.id] in
-            try? await Task.sleep(for: .seconds(LibraryRefreshFeedbackLayout.autoDismissDelay))
-            if refreshFeedback?.id == feedbackID {
-                refreshFeedback = nil
-            }
-        }
-    }
-
-    private func dismissRefreshFeedback() {
-        refreshFeedback = nil
-    }
 }
 
 struct LibraryHeaderLayout: Equatable, Sendable {
@@ -425,88 +391,6 @@ struct LibraryCollectionControlsLayout: Equatable, Sendable {
 enum LibraryCollectionControlsArrangement: Equatable, Sendable {
     case horizontal
     case stacked
-}
-
-struct LibraryRefreshFeedbackLayout: Equatable, Sendable {
-    static let autoDismissDelay = 5
-
-    var title: String
-    var message: String
-    var presentationStyle: LibraryRefreshFeedbackPresentationStyle
-    var overlayAlignment: LibraryRefreshFeedbackOverlayAlignment
-    var maximumWidth: CGFloat
-    var contentSize: LibraryRefreshFeedbackContentSize
-    var accentColorRole: LibraryRefreshFeedbackAccentColorRole
-    var reservesContentSpace: Bool
-    var dismissAccessibilityLabel: String
-    var autoDismissDelay: Int
-
-    init(result: LibraryUpdateRefreshResult) {
-        let feedback = LibraryRefreshFeedbackPresentation(result: result)
-        self.title = feedback.title
-        self.message = feedback.message
-        self.presentationStyle = .floatingOverlay
-        self.overlayAlignment = .bottomTrailing
-        self.maximumWidth = 280
-        self.contentSize = .compact
-        self.accentColorRole = feedback.accentColorRole
-        self.reservesContentSpace = false
-        self.dismissAccessibilityLabel = "Dismiss update refresh"
-        self.autoDismissDelay = Self.autoDismissDelay
-    }
-}
-
-enum LibraryRefreshFeedbackPresentationStyle: Equatable, Sendable {
-    case floatingOverlay
-}
-
-enum LibraryRefreshFeedbackOverlayAlignment: Equatable, Sendable {
-    case bottomTrailing
-}
-
-enum LibraryRefreshFeedbackContentSize: Equatable, Sendable {
-    case compact
-}
-
-enum LibraryRefreshFeedbackAccentColorRole: Equatable, Sendable {
-    case purple
-    case success
-    case warning
-    case failure
-}
-
-struct LibraryRefreshFeedbackPresentation: Equatable, Sendable {
-    var title: String
-    var message: String
-    var accentColorRole: LibraryRefreshFeedbackAccentColorRole
-
-    init(result: LibraryUpdateRefreshResult) {
-        self.message = "\(result.checkedCount) checked, \(result.updatedCount) \(result.updatedCount == 1 ? "update" : "updates")"
-        if result.failedCount == result.checkedCount, result.checkedCount > 0 {
-            self.title = "Update check failed"
-            self.accentColorRole = .failure
-        } else if result.failedCount > 0 {
-            self.title = "Some updates unavailable"
-            self.message += ", \(result.failedCount) failed"
-            self.accentColorRole = .warning
-        } else if result.updatedCount > 0 {
-            self.title = "Updates found"
-            self.accentColorRole = .success
-        } else {
-            self.title = "No new chapters"
-            self.accentColorRole = .purple
-        }
-    }
-}
-
-struct LibraryContentLayout: Equatable, Sendable {
-    var refreshFeedbackIsOverlay: Bool
-    var contentStartsWithSegmentedControl: Bool
-
-    init(refreshFeedback: LibraryRefreshFeedbackLayout?) {
-        self.refreshFeedbackIsOverlay = refreshFeedback?.presentationStyle == .floatingOverlay
-        self.contentStartsWithSegmentedControl = true
-    }
 }
 
 struct LibraryGridLayout: Equatable, Sendable {
@@ -661,15 +545,6 @@ enum ToonEdgeAppCoreResources {
     }
 }
 
-private struct LibraryRefreshFeedback: Equatable {
-    let id = UUID()
-    let layout: LibraryRefreshFeedbackLayout
-
-    init(result: LibraryUpdateRefreshResult) {
-        self.layout = LibraryRefreshFeedbackLayout(result: result)
-    }
-}
-
 private struct LibraryCollectionControls: View {
     let layout: LibraryCollectionControlsLayout
     let organizationLayout: LibraryOrganizationLayout
@@ -751,57 +626,6 @@ private struct LibraryCollectionControls: View {
             .accessibilityIdentifier("library.sources.summary")
     }
 
-}
-
-private struct LibraryRefreshFeedbackView: View {
-    let layout: LibraryRefreshFeedbackLayout
-    let dismiss: () -> Void
-
-    var body: some View {
-        HStack(alignment: .center, spacing: ToonEdgeSpacing.small) {
-            Image(systemName: "arrow.clockwise")
-                .font(ToonEdgeTypography.caption)
-                .foregroundStyle(accentColor)
-                .frame(width: 24, height: 24)
-                .background(accentColor.opacity(0.14), in: Circle())
-
-            VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
-                Text(layout.title)
-                    .font(ToonEdgeTypography.caption)
-                Text(layout.message)
-                    .font(ToonEdgeTypography.caption)
-                    .foregroundStyle(ToonEdgeColor.textSecondary)
-            }
-
-            Spacer(minLength: ToonEdgeSpacing.small)
-
-            Button(action: dismiss) {
-                Image(systemName: "xmark")
-                    .font(ToonEdgeTypography.caption)
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(layout.dismissAccessibilityLabel)
-        }
-        .padding(.horizontal, ToonEdgeSpacing.medium)
-        .padding(.vertical, ToonEdgeSpacing.small)
-        .frame(maxWidth: layout.maximumWidth)
-        .background(ToonEdgeColor.accentSoft.opacity(0.72), in: RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
-        .overlay(RoundedRectangle(cornerRadius: ToonEdgeRadius.small).stroke(accentColor.opacity(0.38)))
-    }
-
-    private var accentColor: Color {
-        switch layout.accentColorRole {
-        case .purple:
-            return ToonEdgeColor.accent
-        case .success:
-            return ToonEdgeColor.success
-        case .warning:
-            return ToonEdgeColor.warning
-        case .failure:
-            return ToonEdgeColor.failure
-        }
-    }
 }
 
 private struct LibraryEmptyStateView: View {

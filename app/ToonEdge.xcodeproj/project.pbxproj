@@ -40,6 +40,7 @@
 		A1000000000000000000000E /* SearchOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000E /* SearchOverlayView.swift */; };
 		A1000000000000000000000F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000F /* SettingsView.swift */; };
 		A10000000000000000000010 /* ToonEdgePrimitives.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000010 /* ToonEdgePrimitives.swift */; };
+		F1BEFCA3CE78F611D061608C /* TEFeedbackBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55F4F2EDA831509500EFC78 /* TEFeedbackBanner.swift */; };
 		A10000000000000000000011 /* ToonEdgeDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* ToonEdgeDesignSystem.swift */; };
 		A10000000000000000000013 /* BrowserViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000013 /* BrowserViewModel.swift */; };
 		A10000000000000000000014 /* BrowserWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* BrowserWebView.swift */; };
@@ -130,6 +131,7 @@
 		A2000000000000000000000E /* SearchOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Search/Views/SearchOverlayView.swift; sourceTree = "<group>"; };
 		A2000000000000000000000F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Settings/Views/SettingsView.swift; sourceTree = "<group>"; };
 		A20000000000000000000010 /* ToonEdgePrimitives.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/SharedUI/Components/ToonEdgePrimitives.swift; sourceTree = "<group>"; };
+		D55F4F2EDA831509500EFC78 /* TEFeedbackBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/SharedUI/Components/TEFeedbackBanner.swift; sourceTree = "<group>"; };
 		A20000000000000000000011 /* ToonEdgeDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/SharedUI/DesignSystem/ToonEdgeDesignSystem.swift; sourceTree = "<group>"; };
 		A20000000000000000000012 /* ToonEdge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ToonEdge.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A20000000000000000000013 /* BrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ToonEdgeAppCore/Features/Browser/ViewModels/BrowserViewModel.swift; sourceTree = "<group>"; };
@@ -286,6 +288,7 @@
 				A20000000000000000000046 /* SearchOverlayViewModel.swift */,
 				A2000000000000000000000F /* SettingsView.swift */,
 				A20000000000000000000010 /* ToonEdgePrimitives.swift */,
+				D55F4F2EDA831509500EFC78 /* TEFeedbackBanner.swift */,
 				A20000000000000000000011 /* ToonEdgeDesignSystem.swift */,
 				A20000000000000000000029 /* sleepy transparent.png */,
 			);
@@ -537,6 +540,7 @@
 				A1000000000000000000000E /* SearchOverlayView.swift in Sources */,
 				A1000000000000000000000F /* SettingsView.swift in Sources */,
 				A10000000000000000000010 /* ToonEdgePrimitives.swift in Sources */,
+				F1BEFCA3CE78F611D061608C /* TEFeedbackBanner.swift in Sources */,
 				A10000000000000000000011 /* ToonEdgeDesignSystem.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

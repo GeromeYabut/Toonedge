@@ -19,6 +19,7 @@ public struct ReaderView: View {
     @State private var zoomRequest: ReaderSurfaceRequest?
     #endif
     @State private var pageFrames: [Int: CGRect] = [:]
+    @State private var bottomChromeHeight: CGFloat = 0
     private let readerService: any ReaderSessionProviding
     private let adjacentLoader: (any AdjacentReaderSessionLoading)?
     private let libraryLifecycleService: (any LibraryLifecycleManaging)?
@@ -99,38 +100,6 @@ public struct ReaderView: View {
                     .transition(.opacity)
             }
 
-            if let feedback = viewModel.cacheFeedback {
-                VStack {
-                    TEBanner(
-                        title: feedback.isFailure ? "Cache action failed" : "Cache updated",
-                        message: feedback.message,
-                        systemImage: feedback.isFailure ? "exclamationmark.triangle" : "checkmark.circle"
-                    )
-                    .padding(ToonEdgeSpacing.large)
-                    Spacer()
-                }
-                .transition(.opacity)
-                .onTapGesture {
-                    viewModel.clearCacheFeedback()
-                }
-            }
-
-            if let feedback = viewModel.libraryFeedback {
-                VStack {
-                    TEBanner(
-                        title: feedback.isFailure ? "Save failed" : "Saved",
-                        message: feedback.message,
-                        systemImage: feedback.isFailure ? "exclamationmark.triangle" : "bookmark.fill"
-                    )
-                    .padding(ToonEdgeSpacing.large)
-                    Spacer()
-                }
-                .transition(.opacity)
-                .onTapGesture {
-                    viewModel.clearLibraryFeedback()
-                }
-            }
-
             if viewModel.settings.brightnessAid > 0 {
                 Color.black
                     .opacity(viewModel.settings.brightnessAid)
@@ -138,6 +107,7 @@ public struct ReaderView: View {
                     .allowsHitTesting(false)
             }
         }
+        .teFeedbackBanner(readerFeedback, presentation: .floats, bottomInset: viewModel.isChromeVisible ? bottomChromeHeight : 0)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.root")
         .accessibilityValue(readerControlsAccessibilityActionName)
@@ -297,13 +267,16 @@ public struct ReaderView: View {
             VStack(spacing: 0) {
                 topChrome
                 Spacer(minLength: 4)
-                HStack {
-                    Spacer(minLength: 0)
-                    floatingActionRail
+                VStack(spacing: 0) {
+                    HStack {
+                        Spacer(minLength: 0)
+                        floatingActionRail
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 4)
+                    bottomChrome
                 }
-                .padding(.horizontal, 8)
-                .padding(.bottom, 4)
-                bottomChrome
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bottomChromeHeight = $0 }
             }
             .foregroundStyle(.white)
         }
@@ -558,6 +531,22 @@ public struct ReaderView: View {
 
     private var readerColorScheme: ColorScheme {
         viewModel.settings.readerCanvas == .paper ? .light : .dark
+    }
+
+    private var readerFeedback: Binding<TEFeedback?> {
+        Binding(
+            get: {
+                if let library = viewModel.libraryFeedback {
+                    return TEFeedback(librarySaveSucceeded: !library.isFailure)
+                }
+                return viewModel.cacheFeedback.map(TEFeedback.init(offlineAction:))
+            },
+            set: { feedback in
+                guard feedback == nil else { return }
+                viewModel.clearLibraryFeedback()
+                viewModel.clearCacheFeedback()
+            }
+        )
     }
 
     private var chromeLayout: ReaderChromeLayout {

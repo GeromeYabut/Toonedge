@@ -153,28 +153,6 @@ import Testing
     #expect(idle.refreshAccessibilityLabel == "Check for new chapters")
 }
 
-@Test func libraryRefreshFeedbackLayoutIsDismissibleAndAutoExpires() {
-    let layout = LibraryRefreshFeedbackLayout(result: .init(checkedCount: 2, updatedCount: 1, failedCount: 0))
-
-    #expect(layout.title == "Updates found")
-    #expect(layout.message == "2 checked, 1 update")
-    #expect(layout.presentationStyle == .floatingOverlay)
-    #expect(layout.overlayAlignment == .bottomTrailing)
-    #expect(layout.maximumWidth == 280)
-    #expect(layout.contentSize == .compact)
-    #expect(layout.accentColorRole == .success)
-    #expect(!layout.reservesContentSpace)
-    #expect(layout.dismissAccessibilityLabel == "Dismiss update refresh")
-    #expect(layout.autoDismissDelay == 5)
-}
-
-@Test func libraryContentLayoutKeepsRefreshFeedbackOutOfFlow() {
-    let layout = LibraryContentLayout(refreshFeedback: LibraryRefreshFeedbackLayout(result: .init(checkedCount: 2, updatedCount: 1, failedCount: 0)))
-
-    #expect(layout.refreshFeedbackIsOverlay)
-    #expect(layout.contentStartsWithSegmentedControl)
-}
-
 @Test func libraryEmptyStateUsesCenteredNothingSavedModel() {
     let visible = LibraryEmptyStateLayout(hasLoadedSnapshot: true, visibleSeries: [])
     let loading = LibraryEmptyStateLayout(hasLoadedSnapshot: false, visibleSeries: [])
@@ -1335,13 +1313,6 @@ import Testing
     #expect(layout.cornerRadius == 10)
     #expect(layout.usesCapsuleShape == false)
     #expect(layout.horizontalPadding == ToonEdgeSpacing.medium)
-}
-
-@Test func homeRefreshFeedbackKeepsResultWithoutBannerContainer() {
-    let status = HomeRefreshStatusLayout(message: "Checked 2, found 1 update.")
-
-    #expect(status.message == "Checked 2, found 1 update.")
-    #expect(status.usesBannerContainer == false)
 }
 
 @Test func homeReadingDashboardCardsUseCoverFirstNativeLayouts() {
