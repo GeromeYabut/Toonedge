@@ -376,6 +376,10 @@ final class ToonEdgeLibraryUITests: XCTestCase {
         XCTAssertTrue(saved.waitForExistence(timeout: 5))
         saved.tap()
         app.buttons["Remove from Library"].tap()
+        let confirmRemoval = app.buttons["series-detail.remove.confirm"]
+        XCTAssertTrue(confirmRemoval.waitForExistence(timeout: 5))
+        XCTAssertTrue(saved.exists, "Series stays saved until removal is confirmed")
+        confirmRemoval.tap()
         // Removal publishes nil Detail and returns this screen to its seed shell.
         XCTAssertTrue(saved.waitForNonExistence(timeout: 5))
         app.navigationBars.buttons.element(boundBy: 0).tap()
