@@ -287,19 +287,15 @@ struct SeriesDetailView: View {
                 seedShell(seedSummary)
                     .padding(ToonEdgeSpacing.large)
             }
-        } else if hasLoaded {
+        } else {
+            let layout = SeriesDetailPageLayout(detail: nil, seedSummary: nil, hasLoaded: hasLoaded)
             ScrollView {
                 TEBanner(
-                    title: "Series unavailable",
-                    message: "This saved title could not be loaded from the mock repository.",
-                    systemImage: "exclamationmark.triangle"
+                    title: layout.statusTitle,
+                    message: layout.statusMessage,
+                    systemImage: layout.stateKind == .unavailable ? "exclamationmark.triangle" : "hourglass"
                 )
                 .padding(ToonEdgeSpacing.large)
-            }
-        } else {
-            ScrollView {
-                TEBanner(title: "Loading series", message: "Preparing chapter state.", systemImage: "hourglass")
-                    .padding(ToonEdgeSpacing.large)
             }
         }
     }
@@ -472,7 +468,7 @@ struct SeriesDetailView: View {
     private var cacheStatus: some View {
         if let cacheFeedback {
             TEBanner(
-                title: cacheFeedback.isFailure ? "Cache action failed" : "Cache updated",
+                title: cacheFeedback.isFailure ? "Offline copy not updated" : "Offline copy updated",
                 message: cacheFeedback.message,
                 systemImage: cacheFeedback.isFailure ? "exclamationmark.triangle" : "checkmark.circle"
             )
@@ -777,6 +773,16 @@ struct SeriesDetailPageLayout: Equatable, Sendable {
             self.scrollsChaptersIndependently = false
             self.keepsPrimaryActionVisible = false
         }
+    }
+
+    var statusTitle: String {
+        stateKind == .unavailable ? "Series unavailable" : "Loading series"
+    }
+
+    var statusMessage: String {
+        stateKind == .unavailable
+            ? "This series couldn’t be opened. Go back to Library and try again."
+            : "Getting chapters ready."
     }
 }
 

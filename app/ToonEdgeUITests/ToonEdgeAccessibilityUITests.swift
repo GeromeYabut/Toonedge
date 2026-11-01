@@ -41,7 +41,7 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
             list.swipeUp()
         }
         XCTAssertTrue(finalRow.isHittable)
-        let remove = app.buttons["Remove Fixture Series, Fixture Chapter 20 from cache"]
+        let remove = app.buttons["Remove Fixture Series, Fixture Chapter 20 from this device"]
         for _ in 0..<5 where !remove.isHittable {
             list.swipeUp()
         }
@@ -80,7 +80,7 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
         XCTAssertTrue(storageHeader.label.contains("20 chapters"))
         XCTAssertFalse(app.staticTexts["Local reading cache"].exists)
 
-        let firstRemove = app.buttons["Remove Fixture Series, Fixture Chapter 20 from cache"]
+        let firstRemove = app.buttons["Remove Fixture Series, Fixture Chapter 20 from this device"]
         let scrollView = app.scrollViews.firstMatch
         for _ in 0..<25 where !firstRemove.isHittable {
             scrollView.swipeUp()

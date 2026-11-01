@@ -480,6 +480,15 @@ import Testing
     #expect(!unavailable.scrollsChaptersIndependently)
 }
 
+@Test func unavailableSeriesDetailCopyIsUserFacing() {
+    let unavailable = SeriesDetailPageLayout(detail: nil, seedSummary: nil, hasLoaded: true)
+
+    #expect(unavailable.statusTitle == "Series unavailable")
+    #expect(unavailable.statusMessage == "This series couldn’t be opened. Go back to Library and try again.")
+    #expect(!unavailable.statusMessage.localizedCaseInsensitiveContains("mock"))
+    #expect(!unavailable.statusMessage.localizedCaseInsensitiveContains("repository"))
+}
+
 @Test func librarySeriesDetailRouteIdentityUsesSeriesIDAndCarriesOptionalSeed() {
     let seriesID = UUID(uuidString: "C8D607B4-91EC-4D18-B28B-0626E9A8C748")!
     let firstSeed = LibrarySeriesSummary.mock(

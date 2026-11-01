@@ -8,7 +8,46 @@ import Testing
 
     #expect(layout.usesScrollableContent)
     #expect(layout.minimumActionSize >= 44)
-    #expect(layout.removalLabel(chapterTitle: "Chapter 20", seriesTitle: "Sample") == "Remove Sample, Chapter 20 from cache")
+    #expect(layout.removalLabel(chapterTitle: "Chapter 20", seriesTitle: "Sample") == "Remove Sample, Chapter 20 from this device")
+}
+
+@Test func downloadsCopyUsesReaderVocabularyInsteadOfCacheInternals() {
+    let layout = DownloadsContentLayout(entryCount: 2)
+    let summary = DownloadSummary(
+        cachedItemCount: 3,
+        storageDescription: "1 KB estimated",
+        recentItemCount: 2,
+        retainedItemCount: 1
+    )
+
+    #expect(layout.entryDetail(seriesTitle: "Sample", retentionState: .retained) == "Sample · Downloaded")
+    #expect(layout.entryDetail(seriesTitle: "Sample", retentionState: .recent) == "Sample · Kept while reading")
+    #expect(layout.storageDetail(summary: summary) == "1 downloaded · 2 kept while reading")
+    for copy in [
+        layout.entryDetail(seriesTitle: "Sample", retentionState: .retained),
+        layout.entryDetail(seriesTitle: "Sample", retentionState: .recent),
+        layout.storageDetail(summary: summary),
+        layout.removalLabel(chapterTitle: "Chapter 20", seriesTitle: "Sample"),
+        layout.emptyTitle,
+        layout.emptyMessage,
+        layout.sectionTitle
+    ] {
+        #expect(!copy.localizedCaseInsensitiveContains("reference"))
+        #expect(!copy.localizedCaseInsensitiveContains("cache"))
+        #expect(!copy.localizedCaseInsensitiveContains("retained"))
+    }
+}
+
+@Test func offlineActionFeedbackUsesReaderVocabulary() {
+    #expect(CacheActionFeedback.success(.retained).message == "Chapter downloaded for offline reading.")
+    #expect(CacheActionFeedback.success(.recent).message == "Chapter kept for offline reading.")
+    #expect(CacheActionFeedback.success(.unchanged).message == "This chapter is already available offline.")
+    #expect(CacheActionFeedback.success(.removed).message == "Offline copy removed.")
+    #expect(CacheActionFeedback.success(.notFound).message == "This offline copy was already removed.")
+    #expect(CacheActionFeedback.failure().message == "Couldn’t update offline copy. Try again.")
+    for result in [CacheActionResult.recent, .retained, .unchanged, .removed, .notFound] {
+        #expect(!CacheActionFeedback.success(result).message.localizedCaseInsensitiveContains("cache"))
+    }
 }
 
 @MainActor
