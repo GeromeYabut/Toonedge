@@ -219,6 +219,7 @@ struct SeriesDetailView: View {
     @State private var hasAttemptedChapterIndexRefresh = false
     @State private var cacheFeedback: CacheActionFeedback?
     @State private var pendingSaveDetail: SeriesDetailSnapshot?
+    @State private var isConfirmingRemoval = false
     @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
     @StateObject private var mutationModel: SeriesDetailMutationModel
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -468,13 +469,17 @@ struct SeriesDetailView: View {
     }
 
     private func chapterToolbar(_ detail: SeriesDetailSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
+        let control = SeriesDetailLibraryControlPresentation(isSaved: detail.isSaved, state: detail.libraryState)
+        return VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
             HStack {
                 Text("Chapters")
                     .font(ToonEdgeTypography.sectionTitle)
                 Spacer()
                 Menu {
-                    Button(detail.isSaved ? "Remove from Library" : "Add to Library") {
+                    Button(
+                        control.membershipActionTitle,
+                        role: control.membershipActionIsDestructive ? .destructive : nil
+                    ) {
                         toggleLibraryMembership(detail)
                     }
 
@@ -493,15 +498,32 @@ struct SeriesDetailView: View {
                         updateLibraryState(.completed)
                     }
                 } label: {
-                    Image(systemName: detail.isSaved ? "bookmark.fill" : "bookmark")
+                    Label(control.title, systemImage: control.systemImage)
+                        .font(ToonEdgeTypography.body.weight(.semibold))
                         .foregroundStyle(ToonEdgeColor.accent)
-                        .frame(width: 44, height: 44)
+                        .padding(.horizontal, ToonEdgeSpacing.medium)
+                        .frame(minHeight: TEActionMetrics.minimumHitSize)
+                        .background(ToonEdgeColor.accentSoft, in: Capsule())
+                        .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .disabled(mutationModel.isMutating)
-                .accessibilityLabel(detail.isSaved ? "Saved series" : "Save series")
-                .accessibilityValue(detail.isSaved ? detail.libraryState.title : "Not saved")
+                .accessibilityLabel(control.accessibilityLabel)
+                .accessibilityValue(control.accessibilityValue)
             }
+        }
+        .confirmationDialog(
+            SeriesDetailRemovalConfirmation(seriesTitle: detail.title).title,
+            isPresented: $isConfirmingRemoval,
+            titleVisibility: .visible
+        ) {
+            let confirmation = SeriesDetailRemovalConfirmation(seriesTitle: detail.title)
+            Button(confirmation.confirmTitle, role: .destructive) {
+                removeFromLibrary()
+            }
+            .accessibilityIdentifier("series-detail.remove.confirm")
+        } message: {
+            Text(SeriesDetailRemovalConfirmation(seriesTitle: detail.title).message)
         }
     }
 
@@ -637,14 +659,19 @@ struct SeriesDetailView: View {
     private func toggleLibraryMembership(_ detail: SeriesDetailSnapshot) {
         guard dependencies.libraryLifecycleService != nil else { return }
 
+        if detail.isSaved {
+            isConfirmingRemoval = true
+        } else {
+            saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
+            pendingSaveDetail = detail
+        }
+    }
+
+    private func removeFromLibrary() {
+        guard dependencies.libraryLifecycleService != nil else { return }
         Task {
-            if detail.isSaved {
-                let outcome = await mutationModel.removeFromLibrary()
-                publishSuccessfulMutationIfAvailable(outcome)
-            } else {
-                saveState = AddToLibraryStatePickerModel.defaultState(for: .seriesDetail)
-                pendingSaveDetail = detail
-            }
+            let outcome = await mutationModel.removeFromLibrary()
+            publishSuccessfulMutationIfAvailable(outcome)
         }
     }
 
@@ -706,6 +733,36 @@ struct SeriesDetailHeaderLayout: Equatable, Sendable {
         self.metadata = "\(snapshot.sourceDomain) • \(snapshot.chaptersRead)/\(snapshot.totalKnownChapters ?? snapshot.chapters.count) chapters"
         self.synopsisText = nil
         self.primaryActionTitle = snapshot.primaryActionTitle
+    }
+}
+
+struct SeriesDetailLibraryControlPresentation: Equatable, Sendable {
+    var title: String
+    var systemImage: String
+    var accessibilityLabel: String
+    var accessibilityValue: String
+    var membershipActionTitle: String
+    var membershipActionIsDestructive: Bool
+
+    init(isSaved: Bool, state: LibraryCollectionState) {
+        self.title = isSaved ? state.title : "Save"
+        self.systemImage = isSaved ? "bookmark.fill" : "bookmark"
+        self.accessibilityLabel = isSaved ? "Saved series" : "Save series"
+        self.accessibilityValue = isSaved ? state.title : "Not saved"
+        self.membershipActionTitle = isSaved ? "Remove from Library" : "Add to Library"
+        self.membershipActionIsDestructive = isSaved
+    }
+}
+
+struct SeriesDetailRemovalConfirmation: Equatable, Sendable {
+    var title: String
+    var message: String
+    var confirmTitle: String
+
+    init(seriesTitle: String) {
+        self.title = "Remove \(seriesTitle) from Library?"
+        self.message = "Your reading progress for this series will also be removed."
+        self.confirmTitle = "Remove"
     }
 }
 
@@ -928,6 +985,14 @@ struct ChapterRowPresentation: Equatable, Sendable {
     var showsUpdateMarker: Bool
     var showsRetainedMarker: Bool
 
+    /// Returns nil when the title already reads as the chapter label, so rows don't repeat "Chapter 1".
+    static func secondaryLabel(title: String, chapterLabel: String) -> String? {
+        let normalizedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let label = chapterLabel.lowercased()
+        guard normalizedTitle != label, normalizedTitle != "chapter \(label)" else { return nil }
+        return "Chapter \(chapterLabel)"
+    }
+
     init(
         readState: ChapterReadState,
         progressPercent: Double,
@@ -1025,9 +1090,14 @@ private struct ChapterRow: View {
                     .font(ToonEdgeTypography.body.weight(.semibold))
                     .foregroundStyle(ToonEdgeColor.textPrimary)
 
-                Text("Chapter \(chapter.chapterLabel)")
-                    .font(ToonEdgeTypography.caption)
-                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                if let secondaryLabel = ChapterRowPresentation.secondaryLabel(
+                    title: chapter.title,
+                    chapterLabel: chapter.chapterLabel
+                ) {
+                    Text(secondaryLabel)
+                        .font(ToonEdgeTypography.caption)
+                        .foregroundStyle(ToonEdgeColor.textSecondary)
+                }
             }
 
             Spacer()
