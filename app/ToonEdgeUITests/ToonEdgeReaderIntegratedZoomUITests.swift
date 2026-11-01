@@ -92,6 +92,33 @@ final class ToonEdgeReaderIntegratedZoomUITests: XCTestCase {
         XCTAssertTrue(reset.isHittable)
     }
 
+    func testChapterEndOffersNextStepOnlyAtFinalPageBottom() {
+        let app = launch()
+        let canvas = app.scrollViews["reader.readingSurface"]
+        let chapterEnd = app.buttons["reader.chapterEnd.primary"]
+        XCTAssertFalse(chapterEnd.exists, "Chapter end must not appear at the start of a chapter")
+
+        app.buttons["reader.zoom.last"].tap()
+        for _ in 0..<6 where !chapterEnd.exists {
+            canvas.swipeUp()
+        }
+        XCTAssertTrue(chapterEnd.waitForExistence(timeout: 5))
+        XCTAssertTrue(chapterEnd.isHittable)
+        XCTAssertGreaterThanOrEqual(chapterEnd.frame.height, 44)
+        XCTAssertTrue(app.staticTexts["reader.chapterEnd.title"].exists)
+
+        canvas.tap()
+        let hidden = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: chapterEnd)
+        XCTAssertEqual(XCTWaiter.wait(for: [hidden], timeout: 3), .completed)
+        canvas.tap()
+        XCTAssertTrue(chapterEnd.waitForExistence(timeout: 3))
+
+        for _ in 0..<6 where chapterEnd.exists { canvas.swipeDown() }
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: chapterEnd)
+        XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 5), .completed,
+            "Leaving the final page must remove the chapter-end step")
+    }
+
     func testLongShortContainersReuseAndLoadingLimit() {
         let app = launch()
         assertBound(snapshot(app))
