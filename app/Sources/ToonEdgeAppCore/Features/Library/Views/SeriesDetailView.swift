@@ -275,6 +275,10 @@ struct SeriesDetailView: View {
                     }
                 )
             }
+            .teFeedbackBanner(Binding(
+                get: { cacheFeedback.map(TEFeedback.init(offlineAction:)) },
+                set: { if $0 == nil { cacheFeedback = nil } }
+            ))
             .toonEdgeScreen()
     }
 
@@ -340,7 +344,6 @@ struct SeriesDetailView: View {
     private func detailHeaderArea(_ detail: SeriesDetailSnapshot) -> some View {
         VStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
             header(detail)
-            cacheStatus
             if let mutationFeedback = mutationModel.failureMessage {
                 VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
                     TEBanner(title: "Library update failed", message: mutationFeedback, systemImage: "exclamationmark.triangle")
@@ -462,17 +465,6 @@ struct SeriesDetailView: View {
             MissingCoverView(title: layout.title)
         }
         .clipShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.small))
-    }
-
-    @ViewBuilder
-    private var cacheStatus: some View {
-        if let cacheFeedback {
-            TEBanner(
-                title: cacheFeedback.isFailure ? "Offline copy not updated" : "Offline copy updated",
-                message: cacheFeedback.message,
-                systemImage: cacheFeedback.isFailure ? "exclamationmark.triangle" : "checkmark.circle"
-            )
-        }
     }
 
     private func chapterToolbar(_ detail: SeriesDetailSnapshot) -> some View {
@@ -693,7 +685,7 @@ struct SeriesDetailView: View {
                 }
                 publishDetail(await dependencies.libraryService.seriesDetail(for: seriesID))
             } catch {
-                cacheFeedback = .failure("Could not retain this chapter offline.")
+                cacheFeedback = .failure("Couldn’t download this chapter. Try again.")
             }
         }
     }

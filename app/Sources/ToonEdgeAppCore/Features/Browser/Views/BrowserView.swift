@@ -27,6 +27,7 @@ public struct BrowserView: View {
     private let chromeLayout = BrowserChromeLayout()
     @State private var showsSearch = false
     @State private var pendingLibrarySaveSession: MockReaderSession?
+    @State private var librarySaveFeedback: TEFeedback?
     @State private var librarySaveState = AddToLibraryStatePickerModel.defaultState(for: .browser)
 
     public init(
@@ -99,32 +100,6 @@ public struct BrowserView: View {
                 .transition(.opacity)
                 .zIndex(1)
             }
-
-            if let failureMessage = librarySaveOperation.failureMessage {
-                VStack {
-                    TEBanner(
-                        title: "Save failed",
-                        message: failureMessage,
-                        systemImage: "exclamationmark.triangle"
-                    )
-                    .padding(ToonEdgeSpacing.large)
-                    Spacer()
-                }
-                .accessibilityIdentifier("browser.librarySave.failure")
-                .zIndex(2)
-            } else if let successMessage = librarySaveOperation.successMessage {
-                VStack {
-                    TEBanner(
-                        title: successMessage,
-                        message: "This series is now available in Library.",
-                        systemImage: "checkmark.circle"
-                    )
-                    .padding(ToonEdgeSpacing.large)
-                    Spacer()
-                }
-                .accessibilityIdentifier("browser.librarySave.success")
-                .zIndex(2)
-            }
         }
         .animation(.easeInOut(duration: 0.18), value: viewModel.browserOwnedReaderSession?.id)
         .toonEdgeScreen()
@@ -137,6 +112,12 @@ public struct BrowserView: View {
             if viewModel.browserOwnedReaderSession != nil {
                 router.clearPresentedBrowserReaderLaunchOrigin()
             }
+        }
+        .onChange(of: librarySaveOperation.isSaved) { _, isSaved in
+            if isSaved { librarySaveFeedback = TEFeedback(librarySaveSucceeded: true) }
+        }
+        .onChange(of: librarySaveOperation.failureMessage) { _, message in
+            if message != nil { librarySaveFeedback = TEFeedback(librarySaveSucceeded: false) }
         }
         .onChange(of: viewModel.detectionResult?.readerSession?.id) { _, sessionID in
             librarySaveOperation.reset(for: sessionID)
@@ -198,6 +179,7 @@ public struct BrowserView: View {
                         .padding(.top, ToonEdgeSpacing.medium)
                 }
             }
+            .teFeedbackBanner($librarySaveFeedback, presentation: .floats)
 
             bottomControls
         }
