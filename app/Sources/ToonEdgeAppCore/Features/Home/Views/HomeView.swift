@@ -6,7 +6,6 @@ public struct HomeView: View {
     @Binding private var router: AppRouter
     @State private var snapshot = HomeSnapshot(continueReading: [], recentlyUpdated: [], library: [])
     @State private var hasLoadedSnapshot = false
-    @State private var refreshFeedback: TEFeedback?
     @Environment(\.scenePhase) private var scenePhase
     @State private var resumeTask: Task<Void, Never>?
     @State private var resumeRequestID: UUID?
@@ -32,12 +31,6 @@ public struct HomeView: View {
             .task {
                 await reloadSnapshot()
             }
-            .refreshable {
-                if layout.refreshPlacement == .pullToRefresh {
-                    await refreshUpdates()
-                }
-            }
-            .teFeedbackBanner($refreshFeedback)
             .onDisappear { cancelResume() }
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active { cancelResume() }
@@ -234,18 +227,6 @@ public struct HomeView: View {
         hasLoadedSnapshot = true
     }
 
-    private func refreshUpdates() async {
-        guard let updateRefreshService = dependencies.updateRefreshService else {
-            return
-        }
-
-        let result = await updateRefreshService.refreshUpdates()
-        await reloadSnapshot()
-        refreshFeedback = TEFeedback(updateRefresh: result)
-        InteractionFeedbackOutcomeReporter(feedback: dependencies.interactionFeedback)
-            .reportUserInitiatedUpdate(result)
-    }
-
     private func chapterTitle(from subtitle: String) -> String {
         if subtitle.hasPrefix("Continue Chapter ") {
             return subtitle.replacingOccurrences(of: "Continue ", with: "")
@@ -282,7 +263,8 @@ enum HomeContinueReadingNavigation {
 struct HomeDashboardLayout: Equatable, Sendable {
     var contentPriority: [HomeDashboardSection]
     var searchPlacement: HomeSearchPlacement
-    var refreshPlacement: HomeRefreshPlacement
+    /// Update checks live in Library, where their results appear; Home stays search-first.
+    let offersUpdateCheck = false
     var usesCircularTopAccessoryButtons: Bool
     let showsDuplicateSearchCTA = false
     let showsSettingsAccessory = false
@@ -290,7 +272,6 @@ struct HomeDashboardLayout: Equatable, Sendable {
     init() {
         self.contentPriority = [.search, .continueReading, .recentlyUpdated, .libraryPreview]
         self.searchPlacement = .compactCommandBar
-        self.refreshPlacement = .pullToRefresh
         self.usesCircularTopAccessoryButtons = false
     }
 }
@@ -304,10 +285,6 @@ enum HomeDashboardSection: Hashable, Sendable {
 
 enum HomeSearchPlacement: Equatable, Sendable {
     case compactCommandBar
-}
-
-enum HomeRefreshPlacement: Equatable, Sendable {
-    case pullToRefresh
 }
 
 struct HomeSearchEntryLayout: Equatable, Sendable {

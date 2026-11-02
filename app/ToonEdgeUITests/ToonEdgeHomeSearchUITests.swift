@@ -444,7 +444,7 @@ final class ToonEdgeSearchHistoryUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["home.searchEntry"].waitForExistence(timeout: 10))
         for (identifier, label) in [("tab.home", "Home"), ("tab.library", "Library"),
-                                    ("tab.downloads", "Downloads"), ("tab.settings", "Settings")] {
+                                    ("tab.settings", "Settings")] {
             XCTAssertTrue(tabButton(app, identifier: identifier, label: label).isHittable,
                           "Fixture diagnostics must not cover the \(label) tab")
         }

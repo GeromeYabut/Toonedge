@@ -132,10 +132,7 @@ public final class DownloadsViewModel: ObservableObject {
 public struct DownloadsView: View {
     @StateObject private var viewModel: DownloadsViewModel
 
-    private let onSearch: (() -> Void)?
-
-    public init(dependencies: AppDependencies, onSearch: (() -> Void)? = nil) {
-        self.onSearch = onSearch
+    public init(dependencies: AppDependencies) {
         self._viewModel = StateObject(
             wrappedValue: DownloadsViewModel(
                 cacheMetadataManager: dependencies.cacheMetadataService,
@@ -146,41 +143,32 @@ public struct DownloadsView: View {
     }
 
     public var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
-                    if viewModel.hasLoaded {
-                        storageHeader
-                    }
-
-                    feedback
-
-                    switch viewModel.contentPhase {
-                    case .loading:
-                        loadingState
-                    case .empty:
-                        emptyState
-                    case .content:
-                        contentRows
-                    }
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
+                if viewModel.hasLoaded {
+                    storageHeader
                 }
-                .padding(ToonEdgeSpacing.large)
-                .padding(.bottom, ToonEdgeSpacing.xlarge)
-            }
-            .accessibilityIdentifier("downloads.root")
-            .navigationTitle("Downloads")
-            .toolbar {
-                if let onSearch {
-                    ToolbarItem(placement: .primaryAction) {
-                        UniversalSearchButton(identifier: "downloads.search", action: onSearch)
-                    }
+
+                feedback
+
+                switch viewModel.contentPhase {
+                case .loading:
+                    loadingState
+                case .empty:
+                    emptyState
+                case .content:
+                    contentRows
                 }
             }
-            .task {
-                await viewModel.load()
-            }
-            .toonEdgeScreen()
+            .padding(ToonEdgeSpacing.large)
+            .padding(.bottom, ToonEdgeSpacing.xlarge)
         }
+        .accessibilityIdentifier("downloads.root")
+        .navigationTitle("Downloads")
+        .task {
+            await viewModel.load()
+        }
+        .toonEdgeScreen()
     }
 
     private var layout: DownloadsContentLayout {

@@ -3,7 +3,6 @@ import Foundation
 public enum AppTab: String, CaseIterable, Identifiable, Sendable {
     case home
     case library
-    case downloads
     case settings
 
     public var id: String { rawValue }
@@ -12,7 +11,6 @@ public enum AppTab: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .home: "Home"
         case .library: "Library"
-        case .downloads: "Downloads"
         case .settings: "Settings"
         }
     }

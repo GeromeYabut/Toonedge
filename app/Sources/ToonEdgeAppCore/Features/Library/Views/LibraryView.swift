@@ -64,6 +64,7 @@ public struct LibraryView: View {
     private let dependencies: AppDependencies
     @Binding private var router: AppRouter
     @State private var snapshot = LibrarySnapshot(series: [])
+    @State private var showsDownloads = false
     @State private var collectionQuery: LibraryCollectionQuery
     @State private var selectedViewMode: LibraryViewMode
     @State private var hasLoadedSnapshot = false
@@ -101,8 +102,22 @@ public struct LibraryView: View {
             .navigationTitle("Library")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showsDownloads = true
+                    } label: {
+                        Image(systemName: "arrow.down.circle")
+                            .frame(minWidth: TEActionMetrics.minimumHitSize, minHeight: TEActionMetrics.minimumHitSize)
+                    }
+                    .accessibilityLabel("Downloads")
+                    .accessibilityHint("Shows chapters saved for offline reading")
+                    .accessibilityIdentifier("library.downloads")
+                }
+                ToolbarItem(placement: .primaryAction) {
                     UniversalSearchButton(identifier: "library.search") { router.presentSearch() }
                 }
+            }
+            .navigationDestination(isPresented: $showsDownloads) {
+                DownloadsView(dependencies: dependencies)
             }
             .task {
                 await reloadSnapshot()
