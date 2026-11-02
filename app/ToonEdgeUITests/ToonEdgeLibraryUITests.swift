@@ -438,6 +438,43 @@ final class ToonEdgeLibraryUITests: XCTestCase {
         add(attachment)
     }
 
+    func testLibraryUpdateCheckReportsEachOutcomeAndStaysRetryable() {
+        let outcomes = [
+            ("-seedUpdateSuccess", "Updates found", "3 checked, 1 update"),
+            ("-seedUpdateNoChange", "No new chapters", "3 checked, 0 updates"),
+            ("-seedUpdateFailure", "Some updates unavailable", "3 checked, 0 updates, 2 failed"),
+            ("-seedUpdateTotalFailure", "Update check failed", "3 checked, 0 updates, 3 failed")
+        ]
+        for (argument, title, detail) in outcomes {
+            let app = launchLibrary(extraArguments: [argument])
+            let refresh = app.buttons["Check for new chapters"]
+            XCTAssertTrue(refresh.waitForExistence(timeout: 5))
+            refresh.tap()
+            XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 5), "Missing \(title) for \(argument)")
+            XCTAssertTrue(app.staticTexts[detail].exists, "Missing \(detail) for \(argument)")
+            XCTAssertTrue(refresh.isEnabled, "Update checking must remain retryable after \(argument)")
+            app.terminate()
+        }
+    }
+
+    func testHomeAndSettingsLeaveUpdateChecksToLibrary() {
+        let app = launchLibrary()
+        app.tabBars.buttons["tab.settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["settings.checkUpdates"].exists)
+        XCTAssertFalse(app.staticTexts["New Chapters"].exists)
+        XCTAssertFalse(app.tabBars.buttons["tab.downloads"].exists)
+        XCTAssertFalse(app.tabBars.buttons["Downloads"].exists)
+    }
+
+    func testLibraryOpensDownloadsAndReturns() {
+        let app = launchLibrary()
+        app.openDownloadsFromLibrary()
+        XCTAssertTrue(app.navigationBars["Downloads"].waitForExistence(timeout: 5))
+        app.navigationBars["Downloads"].buttons["Library"].tap()
+        XCTAssertTrue(app.buttons["library.downloads"].waitForExistence(timeout: 5))
+    }
+
     private func launchLibrary(extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-resetLibraryOrganization"] + (extraArguments.contains("-libraryDensity") ? [] : ["-libraryDensity", "comfortable"]) + extraArguments

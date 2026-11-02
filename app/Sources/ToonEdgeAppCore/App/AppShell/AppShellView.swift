@@ -25,16 +25,7 @@ public struct AppShellView: View {
                 }
                 .tag(AppTab.library)
 
-            DownloadsView(dependencies: dependencies, onSearch: { router.presentSearch() })
-                .tabItem {
-                    Label(AppTab.downloads.title, systemImage: "arrow.down.circle")
-                        .accessibilityIdentifier("tab.downloads")
-                }
-                .tag(AppTab.downloads)
-
-            SettingsView(dependencies: dependencies, onSearch: { router.presentSearch() }) {
-                router.selectedTab = .downloads
-            }
+            SettingsView(dependencies: dependencies, onSearch: { router.presentSearch() })
                 .tabItem {
                     Label(AppTab.settings.title, systemImage: "gearshape")
                         .accessibilityIdentifier("tab.settings")

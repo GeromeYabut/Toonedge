@@ -6,7 +6,7 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-resetTestData", "-seedDownloadsRemovalRetry"]
         app.launch()
-        app.tabBars.buttons["tab.downloads"].tap()
+        app.openDownloadsFromLibrary()
 
         let chapter = app.staticTexts["Retry Chapter 9"]
         XCTAssertTrue(chapter.waitForExistence(timeout: 5))
@@ -72,6 +72,7 @@ final class ToonEdgeRetainedCacheLifecycleUITests: XCTestCase {
             "-uiTesting", "-resetTestData", "-cacheLifecycleFixture", fixtureID,
         ]
         app.launch()
+        app.openDownloadsFromLibrary()
 
         let chapter = app.staticTexts["Retained Cache Chapter 7"]
         XCTAssertTrue(chapter.waitForExistence(timeout: 8))
@@ -87,6 +88,7 @@ final class ToonEdgeRetainedCacheLifecycleUITests: XCTestCase {
         app.terminate()
         app.launchArguments = ["-uiTesting", "-cacheLifecycleFixture", fixtureID]
         app.launch()
+        app.openDownloadsFromLibrary()
 
         XCTAssertTrue(app.descendants(matching: .any)["downloads.empty"].waitForExistence(timeout: 8))
         XCTAssertFalse(chapter.exists)
@@ -575,5 +577,18 @@ final class ToonEdgeResumeAdjacencyUITests: XCTestCase {
     private func assertLabel(_ label: String, on element: XCUIElement) {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", label), object: element)
         XCTAssertEqual(XCTWaiter().wait(for: [expectation], timeout: 10), .completed, "Expected \(label), saw \(element.label)")
+    }
+}
+
+extension XCUIApplication {
+    /// Downloads lives inside Library rather than in the tab bar.
+    func openDownloadsFromLibrary(file: StaticString = #filePath, line: UInt = #line) {
+        let library = tabBars.buttons["tab.library"].exists
+            ? tabBars.buttons["tab.library"]
+            : tabBars.buttons["Library"]
+        library.tap()
+        let downloads = buttons["library.downloads"]
+        XCTAssertTrue(downloads.waitForExistence(timeout: 5), "Library must offer Downloads", file: file, line: line)
+        downloads.tap()
     }
 }

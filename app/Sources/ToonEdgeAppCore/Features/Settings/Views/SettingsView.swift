@@ -1,53 +1,9 @@
 import SwiftUI
 
-public enum SettingsUpdateFeedback: Equatable, Sendable {
-    case noSavedSeries
-    case noChanges
-    case updatesFound(count: Int)
-    case partial(updated: Int, failed: Int)
-    case totalFailure(failed: Int)
-    case unavailable
-
-    public init(result: LibraryUpdateRefreshResult) {
-        if result.checkedCount == 0 {
-            self = .noSavedSeries
-        } else if result.updatedCount == 0, result.failedCount >= result.checkedCount {
-            self = .totalFailure(failed: result.failedCount)
-        } else if result.failedCount > 0 {
-            self = .partial(updated: result.updatedCount, failed: result.failedCount)
-        } else if result.updatedCount > 0 {
-            self = .updatesFound(count: result.updatedCount)
-        } else {
-            self = .noChanges
-        }
-    }
-
-    public var message: String {
-        switch self {
-        case .noSavedSeries:
-            "No saved series to check."
-        case .noChanges:
-            "No new chapters found."
-        case let .updatesFound(count):
-            "Found updates for \(count) series."
-        case let .partial(updated, failed):
-            updated == 0
-                ? "No updates found; \(failed) series could not be refreshed."
-                : "Found updates for \(updated) series; \(failed) series could not be refreshed."
-        case let .totalFailure(failed):
-            "Could not refresh \(failed) series."
-        case .unavailable:
-            "Update checking is unavailable."
-        }
-    }
-}
-
 @MainActor
 public final class SettingsViewModel: ObservableObject {
     @Published public private(set) var settings: ReaderSettings
     @Published public private(set) var storageSummary: DownloadSummary
-    @Published public private(set) var isCheckingForUpdates = false
-    @Published public private(set) var updateFeedback: SettingsUpdateFeedback?
     @Published public private(set) var isHapticFeedbackEnabled: Bool
 
     @Published public private(set) var isClearSearchHistoryConfirmationPresented = false
@@ -65,7 +21,6 @@ public final class SettingsViewModel: ObservableObject {
     private let interactionFeedback: (any InteractionFeedbackProviding)?
     private let cacheMetadataManager: any CacheMetadataManaging
     private let storageMeasurementService: (any CacheStorageMeasuring)?
-    private let updateRefreshService: (any LibraryUpdateRefreshing)?
 
     public init(
         settingsManager: any SettingsManaging,
@@ -73,7 +28,6 @@ public final class SettingsViewModel: ObservableObject {
         interactionPreferences: any InteractionPreferencesManaging,
         interactionFeedback: (any InteractionFeedbackProviding)? = nil,
         storageMeasurementService: (any CacheStorageMeasuring)? = nil,
-        updateRefreshService: (any LibraryUpdateRefreshing)? = nil,
         searchHistoryManager: (any SearchHistoryManaging)? = nil
     ) {
         self.searchHistoryManager = searchHistoryManager
@@ -82,7 +36,6 @@ public final class SettingsViewModel: ObservableObject {
         self.interactionFeedback = interactionFeedback
         self.cacheMetadataManager = cacheMetadataManager
         self.storageMeasurementService = storageMeasurementService
-        self.updateRefreshService = updateRefreshService
         self.settings = settingsManager.currentSettings()
         self.isHapticFeedbackEnabled = interactionPreferences.isHapticFeedbackEnabled()
         self.storageSummary = DownloadSummary(cachedItemCount: 0, storageDescription: "Loading")
@@ -171,32 +124,16 @@ public final class SettingsViewModel: ObservableObject {
             searchHistoryFeedback = SearchHistoryFeedback(message: "Couldn’t clear search history. Try again.", canRetry: true)
         }
     }
-
-    public func refreshUpdates() async {
-        guard !isCheckingForUpdates else { return }
-        guard let updateRefreshService else {
-            updateFeedback = .unavailable
-            return
-        }
-        isCheckingForUpdates = true
-        defer { isCheckingForUpdates = false }
-        let result = await updateRefreshService.refreshUpdates()
-        updateFeedback = SettingsUpdateFeedback(result: result)
-        if let interactionFeedback {
-            InteractionFeedbackOutcomeReporter(feedback: interactionFeedback)
-                .reportUserInitiatedUpdate(result)
-        }
-    }
 }
 
 public struct SettingsView: View {
     @StateObject private var viewModel: SettingsViewModel
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    private let onShowDownloads: () -> Void
+    private let dependencies: AppDependencies
     private let onSearch: (() -> Void)?
 
-    public init(dependencies: AppDependencies, onSearch: (() -> Void)? = nil,
-                onShowDownloads: @escaping () -> Void = {}) {
+    public init(dependencies: AppDependencies, onSearch: (() -> Void)? = nil) {
+        self.dependencies = dependencies
         self.onSearch = onSearch
         self._viewModel = StateObject(wrappedValue: SettingsViewModel(
             settingsManager: dependencies.settingsService,
@@ -204,10 +141,8 @@ public struct SettingsView: View {
             interactionPreferences: dependencies.interactionPreferences,
             interactionFeedback: dependencies.interactionFeedback,
             storageMeasurementService: dependencies.cacheStorageMeasurementService,
-            updateRefreshService: dependencies.updateRefreshService,
             searchHistoryManager: dependencies.searchHistoryManager
         ))
-        self.onShowDownloads = onShowDownloads
     }
 
     public var body: some View {
@@ -231,7 +166,9 @@ public struct SettingsView: View {
 
                     settingsSection("Storage Management") {
                         TEEditorialGroup([SettingsUtility.storage]) { _ in
-                            Button(action: onShowDownloads) {
+                            NavigationLink {
+                                DownloadsView(dependencies: dependencies)
+                            } label: {
                                 storageDisclosureLabel
                             }
                             .buttonStyle(.plain)
@@ -245,35 +182,6 @@ public struct SettingsView: View {
 
                     settingsSection("Search History") {
                         searchHistoryControls
-                    }
-
-                    settingsSection("New Chapters") {
-                        VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
-                            TEEditorialGroup([SettingsUtility.updateCheck]) { _ in
-                                Button {
-                                    Task { await viewModel.refreshUpdates() }
-                                } label: {
-                                    Label(
-                                        viewModel.isCheckingForUpdates ? "Checking…" : "Check for New Chapters",
-                                        systemImage: "arrow.clockwise"
-                                    )
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                                .buttonStyle(.plain)
-                                .modifier(TEEditorialRowStyle())
-                                .disabled(viewModel.isCheckingForUpdates)
-                                .accessibilityIdentifier("settings.checkUpdates")
-                            }
-
-                            if !viewModel.isCheckingForUpdates, let feedback = viewModel.updateFeedback {
-                                Text(feedback.message)
-                                    .font(ToonEdgeTypography.caption)
-                                    .foregroundStyle(ToonEdgeColor.textSecondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .padding(.horizontal, ToonEdgeSpacing.medium)
-                                    .accessibilityIdentifier("settings.updateResult")
-                            }
-                        }
                     }
 
                     settingsSection("About ToonEdge") {
@@ -539,7 +447,7 @@ private enum SettingsPreference: String, CaseIterable, Identifiable {
 }
 
 private enum SettingsUtility: String, Identifiable {
-    case storage, searchHistory, updateCheck, about
+    case storage, searchHistory, about
 
     var id: String { rawValue }
 }

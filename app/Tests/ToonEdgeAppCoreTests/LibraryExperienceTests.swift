@@ -1282,7 +1282,7 @@ import Testing
 
     #expect(layout.contentPriority == [.search, .continueReading, .recentlyUpdated, .libraryPreview])
     #expect(layout.searchPlacement == .compactCommandBar)
-    #expect(layout.refreshPlacement == .pullToRefresh)
+    #expect(layout.offersUpdateCheck == false)
     #expect(layout.usesCircularTopAccessoryButtons == false)
 }
 
@@ -1292,7 +1292,7 @@ import Testing
     #expect(layout.contentPriority == [.search, .continueReading, .recentlyUpdated, .libraryPreview])
     #expect(layout.showsDuplicateSearchCTA == false)
     #expect(layout.showsSettingsAccessory == false)
-    #expect(layout.refreshPlacement == .pullToRefresh)
+    #expect(layout.offersUpdateCheck == false)
 }
 
 @Test func quietHomeSeriesRowsExpandAtAccessibilitySizes() {
@@ -2006,4 +2006,8 @@ private func waitForSeriesMutationAttempt(
     #expect(filtered.compactSummary == "panel.example.test · Title Z–A")
     #expect(filtered.accessibilityValue.contains("panel.example.test"))
     #expect(filtered.sortChoice.applying(to: query) == query)
+}
+
+@Test func tabBarKeepsDownloadsOutOfPrimaryNavigation() {
+    #expect(AppTab.allCases == [.home, .library, .settings])
 }
