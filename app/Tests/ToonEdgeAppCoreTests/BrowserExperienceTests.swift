@@ -990,3 +990,25 @@ private actor SuspendedBrowserSaveGate {
     #expect(settled)
     #expect(!duplicate)
 }
+
+@MainActor
+@Test func addressIconShowsLockOnlyForSecurePages() {
+    #expect(BrowserViewModel(startPoint: .url("https://example.com/a")).addressIconName == "lock")
+    #expect(BrowserViewModel(startPoint: .url("http://example.com/a")).addressIconName == "globe")
+    #expect(BrowserViewModel(startPoint: .searchQuery("solo leveling")).addressIconName == "magnifyingglass")
+}
+
+@MainActor
+@Test func addressIconFollowsNavigationToAnInsecurePage() {
+    let viewModel = BrowserViewModel(startPoint: .url("https://example.com/a"))
+
+    viewModel.updateNavigation(
+        url: URL(string: "http://example.com/b"),
+        title: nil,
+        canGoBack: true,
+        canGoForward: false,
+        isLoading: false
+    )
+
+    #expect(viewModel.addressIconName == "globe")
+}
