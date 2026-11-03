@@ -254,6 +254,54 @@ final class ToonEdgeAuthoritativeContinueUITests: XCTestCase {
         app.launch()
     }
 
+    func testChapterListJumpsToChosenChapterAndBackStillReturnsToSeriesDetail() {
+        let app = launchFixture("continue-target")
+        openFixtureSeries(in: app)
+        app.buttons["Continue Chapter 3"].tap()
+        assertReaderChapter(3, in: app)
+        XCTAssertFalse(app.buttons["reader.library"].exists)
+
+        app.buttons["reader.chapters"].tap()
+        let current = app.buttons["reader.chapters.row.Chapter 3"]
+        XCTAssertTrue(current.waitForExistence(timeout: 5))
+        XCTAssertTrue(current.isSelected)
+        XCTAssertTrue(app.buttons["reader.chapters.seriesDetails"].exists)
+
+        let chapterOne = app.buttons["reader.chapters.row.Chapter 1"]
+        XCTAssertTrue(chapterOne.waitForExistence(timeout: 5))
+        chapterOne.tap()
+        XCTAssertTrue(chapterOne.waitForNonExistence(timeout: 5))
+        assertReaderChapter(1, in: app)
+
+        app.buttons["reader.back"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForNonExistence(timeout: 5))
+        let chapterUtilities = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'series-detail.chapter-actions.'")
+        )
+        XCTAssertTrue(chapterUtilities.firstMatch.waitForExistence(timeout: 5), "Back returns to Series Detail")
+    }
+
+    func testChapterListCurrentRowStaysOnChapterAndSeriesDetailsLeavesReader() {
+        let app = launchFixture("continue-target")
+        openFixtureSeries(in: app)
+        app.buttons["Continue Chapter 3"].tap()
+        assertReaderChapter(3, in: app)
+
+        app.buttons["reader.chapters"].tap()
+        let current = app.buttons["reader.chapters.row.Chapter 3"]
+        XCTAssertTrue(current.waitForExistence(timeout: 5))
+        current.tap()
+        XCTAssertTrue(current.waitForNonExistence(timeout: 5))
+        assertReaderChapter(3, in: app)
+
+        app.buttons["reader.chapters"].tap()
+        let seriesDetails = app.buttons["reader.chapters.seriesDetails"]
+        XCTAssertTrue(seriesDetails.waitForExistence(timeout: 5))
+        seriesDetails.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForNonExistence(timeout: 5))
+        assertContinueChapterThree(in: app)
+    }
+
     private func openFixtureSeries(in app: XCUIApplication) {
         let identifiedLibraryTab = app.tabBars.buttons["tab.library"]
         let libraryTab = identifiedLibraryTab.exists ? identifiedLibraryTab : app.tabBars.buttons["Library"]

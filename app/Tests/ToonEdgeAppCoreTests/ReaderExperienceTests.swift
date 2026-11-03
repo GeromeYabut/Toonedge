@@ -1049,7 +1049,7 @@ func adjacentFailureWaitsForExplicitRetry(reason: AdjacentReaderSessionLoadFailu
         canNavigateNext: false
     )
 
-    #expect(savedLayout.top == [.back, .library])
+    #expect(savedLayout.top == [.back, .chapterList])
     #expect(savedLayout.floating == [.download, .saved, .viewOriginalPage, .settings])
     #expect(savedLayout.bottom == [.previousChapter, .nextChapter])
     #expect(savedLayout.isEnabled(.previousChapter))
@@ -1071,7 +1071,7 @@ func adjacentFailureWaitsForExplicitRetry(reason: AdjacentReaderSessionLoadFailu
     }
 
     for layout in [savedLayout, unsavedLayout, noLibraryLayout] {
-        #expect(layout.top == [.back, .library])
+        #expect(layout.top == [.back, .chapterList])
         #expect(layout.floating.contains(.viewOriginalPage))
         #expect(layout.floating.contains(.settings))
         #expect(layout.showsChapterContext)
