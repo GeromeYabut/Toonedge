@@ -24,6 +24,64 @@ import Testing
 }
 
 @MainActor
+@Test func dismissingTheCleanModeSuggestionKeepsTheManualEntry() {
+    let result = browserEntryResult(.recommended)
+    let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+    model.handleDetectionResult(result)
+
+    model.dismissCleanModeRecommendation()
+
+    #expect(!model.showsCleanModeCTA)
+    #expect(model.cleanModePresentation == .manualTool)
+    model.enterCleanModeManually()
+    #expect(model.pendingReaderSession != nil)
+}
+
+@MainActor
+@Test func aLaterDetectionPassDoesNotBringBackADismissedSuggestion() {
+    let result = browserEntryResult(.recommended)
+    let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+    model.handleDetectionResult(result)
+    model.dismissCleanModeRecommendation()
+
+    model.navigationDidStart()
+    model.handleDetectionResult(result)
+
+    #expect(!model.showsCleanModeCTA)
+    #expect(model.cleanModePresentation == .manualTool)
+}
+
+@MainActor
+@Test func dismissingTheSuggestionOnlyAffectsThatPage() {
+    let result = browserEntryResult(.recommended)
+    let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+    model.handleDetectionResult(result)
+    model.dismissCleanModeRecommendation()
+
+    let otherURL = URL(string: "https://example.com/series/other-chapter")!
+    var session = result.readerSession!
+    session.sourceURL = otherURL
+    var other = result
+    other.pageURL = otherURL
+    other.readerSession = session
+    model.updateNavigation(url: otherURL, title: nil, canGoBack: true, canGoForward: false, isLoading: false)
+    model.handleDetectionResult(other)
+
+    #expect(model.showsCleanModeCTA)
+}
+
+@MainActor
+@Test func dismissDoesNothingWithoutAVisibleSuggestion() {
+    let result = browserEntryResult(.manual)
+    let model = BrowserViewModel(startPoint: .url(result.pageURL.absoluteString))
+    model.navigationDidStart()
+
+    model.dismissCleanModeRecommendation()
+
+    #expect(model.cleanModePresentation == .hidden)
+}
+
+@MainActor
 @Test func unavailableDispositionCannotEnterReader() {
     var result = browserEntryResult(.manual)
     result.readerEntryDisposition = .unavailable

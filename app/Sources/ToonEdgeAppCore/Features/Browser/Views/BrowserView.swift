@@ -11,6 +11,7 @@ public struct BrowserChromeLayout: Equatable, Sendable {
     public let minimumActionSize: CGFloat = 44
     public let cleanModeActionIdentifier = "browser.cleanModeAction"
     public let manualCleanModeActionIdentifier = "browser.tryCleanMode"
+    public let cleanModeDismissIdentifier = "browser.cleanModeDismiss"
     public let closeActionIdentifier = "browser.close"
     public let reloadActionIdentifier = "browser.reload"
     public let backActionIdentifier = "browser.back"
@@ -169,11 +170,7 @@ public struct BrowserView: View {
                         .frame(maxWidth: .infinity)
                 }
 
-                if viewModel.showsCleanModeCTA {
-                    cleanModeBanner
-                        .padding(.horizontal, ToonEdgeSpacing.medium)
-                        .padding(.top, ToonEdgeSpacing.medium)
-                } else if let message = viewModel.readerUnavailableMessage {
+                if !viewModel.showsCleanModeCTA, let message = viewModel.readerUnavailableMessage {
                     readerUnavailableFeedback(message)
                         .padding(.horizontal, ToonEdgeSpacing.medium)
                         .padding(.top, ToonEdgeSpacing.medium)
@@ -181,8 +178,14 @@ public struct BrowserView: View {
             }
             .teFeedbackBanner($librarySaveFeedback, presentation: .floats)
 
+            if viewModel.showsCleanModeCTA {
+                cleanModeBanner
+                    .transition(.opacity)
+            }
+
             bottomControls
         }
+        .animation(.easeInOut(duration: 0.18), value: viewModel.showsCleanModeCTA)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("browser.root")
     }
@@ -308,41 +311,59 @@ public struct BrowserView: View {
     }
 
     private var cleanModeBanner: some View {
-        Button {
-            viewModel.enterCleanModeManually()
-        } label: {
-            HStack(spacing: ToonEdgeSpacing.medium) {
-                Image(systemName: "rectangle.portrait.on.rectangle.portrait")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(ToonEdgeColor.accent)
+        HStack(spacing: ToonEdgeSpacing.small) {
+            Button {
+                viewModel.enterCleanModeManually()
+            } label: {
+                HStack(spacing: ToonEdgeSpacing.medium) {
+                    Image(systemName: "rectangle.portrait.on.rectangle.portrait")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(ToonEdgeColor.accent)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Clean Mode available")
-                        .font(ToonEdgeTypography.body.weight(.semibold))
-                        .foregroundStyle(ToonEdgeColor.textPrimary)
-                    Text("A likely chapter page is ready to read.")
-                        .font(ToonEdgeTypography.caption)
-                        .foregroundStyle(ToonEdgeColor.textSecondary)
-                        .lineLimit(1)
-                }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Read in Clean Mode")
+                            .font(ToonEdgeTypography.body.weight(.semibold))
+                            .foregroundStyle(ToonEdgeColor.textPrimary)
+                        Text("A likely chapter page is ready to read.")
+                            .font(ToonEdgeTypography.caption)
+                            .foregroundStyle(ToonEdgeColor.textSecondary)
+                            .lineLimit(1)
+                    }
 
-                Spacer()
+                    Spacer(minLength: 0)
 
-                HStack(spacing: ToonEdgeSpacing.xsmall) {
-                    Text("Read")
-                        .font(ToonEdgeTypography.body.weight(.semibold))
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
+                        .foregroundStyle(ToonEdgeColor.accent)
                 }
-                .foregroundStyle(ToonEdgeColor.accent)
+                .frame(minHeight: chromeLayout.minimumActionSize)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(chromeLayout.cleanModeActionIdentifier)
+
+            Button {
+                viewModel.dismissCleanModeRecommendation()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                    .frame(minWidth: chromeLayout.minimumActionSize, minHeight: chromeLayout.minimumActionSize)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Dismiss Clean Mode suggestion")
+            .accessibilityIdentifier(chromeLayout.cleanModeDismissIdentifier)
         }
-        .buttonStyle(.plain)
-        .padding(ToonEdgeSpacing.medium)
-        .background(ToonEdgeColor.elevated, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
-        .contentShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
-        .frame(minHeight: chromeLayout.minimumActionSize)
-        .accessibilityIdentifier(chromeLayout.cleanModeActionIdentifier)
+        .padding(.leading, ToonEdgeSpacing.large)
+        .padding(.trailing, ToonEdgeSpacing.small)
+        .padding(.vertical, ToonEdgeSpacing.xsmall)
+        .background(ToonEdgeColor.elevated)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(ToonEdgeColor.border)
+                .frame(height: 1)
+        }
     }
 
     private func readerUnavailableFeedback(_ message: String) -> some View {
