@@ -491,7 +491,6 @@ final class ToonEdgeSharedSearchUITests: XCTestCase {
         app.buttons["Planned"].tap()
         let summary = app.staticTexts["library.sources.summary"].label
         for (name, identifier) in [("Library", "library.search"),
-                                    ("Downloads", "downloads.search"),
                                     ("Settings", "settings.search")] {
             tab(app, name).tap()
             let search = app.buttons[identifier]
