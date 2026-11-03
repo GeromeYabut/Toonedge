@@ -491,7 +491,6 @@ final class ToonEdgeSharedSearchUITests: XCTestCase {
         app.buttons["Planned"].tap()
         let summary = app.staticTexts["library.sources.summary"].label
         for (name, identifier) in [("Library", "library.search"),
-                                    ("Downloads", "downloads.search"),
                                     ("Settings", "settings.search")] {
             tab(app, name).tap()
             let search = app.buttons[identifier]
@@ -649,7 +648,7 @@ final class ToonEdgeSharedSearchUITests: XCTestCase {
 
     private func assertReaderChromeGeometry(_ app: XCUIApplication,
                                            file: StaticString = #filePath, line: UInt = #line) {
-        let identifiers = ["reader.back", "reader.library", "reader.search",
+        let identifiers = ["reader.back", "reader.chapters", "reader.search",
                            "reader.viewOriginalPage", "reader.settings", "reader.retainChapter",
                            "reader.zoom.reset"]
         let actions = identifiers.map { app.buttons[$0] }

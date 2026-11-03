@@ -10,6 +10,7 @@ public struct ReaderView: View {
     @StateObject private var viewModel: ReaderViewModel
     @Binding private var router: AppRouter
     @State private var isSaveStatePickerPresented = false
+    @State private var isChapterListPresented = false
     @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .reader)
     @State private var adjacentNavigationTask: Task<Void, Never>?
     @State private var adjacentAnnouncementPolicy = ReaderAdjacentAnnouncementPolicy()
@@ -139,6 +140,18 @@ public struct ReaderView: View {
             ReaderSettingsView(viewModel: viewModel)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $isChapterListPresented) {
+            ReaderChapterListView(
+                viewModel: viewModel,
+                onSelect: openChapter,
+                onOpenSeriesDetails: { seriesID in
+                    isChapterListPresented = false
+                    router.openLibraryDetail(seriesID: seriesID)
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isSaveStatePickerPresented) {
             AddToLibraryStatePickerView(
@@ -319,9 +332,10 @@ public struct ReaderView: View {
                                  identifier: "reader.search", action: searchAction)
                     .disabled(viewModel.isSettingsPresented || isSaveStatePickerPresented)
             }
-            ReaderIconButton(systemImage: "books.vertical", label: "Open Library", identifier: "reader.library") {
-                router.openLibraryRoot()
+            ReaderIconButton(systemImage: "list.bullet", label: "Chapters", identifier: "reader.chapters") {
+                isChapterListPresented = true
             }
+            .disabled(viewModel.isSettingsPresented || isSaveStatePickerPresented)
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 4)
@@ -673,6 +687,19 @@ public struct ReaderView: View {
         }
     }
 
+    private func openChapter(_ row: ReaderChapterListRow) {
+        isChapterListPresented = false
+        guard let direction = row.direction else { return }
+        startAdjacentNavigation {
+            await viewModel.openChapter(
+                row.chapter,
+                direction: direction,
+                libraryLifecycleService: libraryLifecycleService,
+                adjacentLoader: adjacentLoader
+            )
+        }
+    }
+
     private func chapterLabel(from title: String) -> String {
         title
             .split(separator: " ")
@@ -711,7 +738,7 @@ enum ReaderChromeAction: Equatable {
     case download
     case save
     case saved
-    case library
+    case chapterList
     case viewOriginalPage
     case settings
     case previousChapter
@@ -745,7 +772,7 @@ struct ReaderChromeLayout: Equatable {
         }
         floating.append(contentsOf: [.viewOriginalPage, .settings])
 
-        var enabledActions = [ReaderChromeAction.back, .library] + floating
+        var enabledActions = [ReaderChromeAction.back, .chapterList] + floating
         if canNavigatePrevious {
             enabledActions.append(.previousChapter)
         }
@@ -755,7 +782,7 @@ struct ReaderChromeLayout: Equatable {
 
         return ReaderChromeLayout(
             launchOrigin: launchOrigin,
-            top: [.back, .library],
+            top: [.back, .chapterList],
             floating: floating,
             bottom: [.previousChapter, .nextChapter],
             enabledActions: enabledActions,
@@ -774,7 +801,7 @@ struct ReaderChromeLayout: Equatable {
         case .back: "reader.back"
         case .download: "reader.retainChapter"
         case .save, .saved: "reader.saveToLibrary"
-        case .library: "reader.library"
+        case .chapterList: "reader.chapters"
         case .viewOriginalPage: "reader.viewOriginalPage"
         case .settings: "reader.settings"
         case .previousChapter: "reader.previousChapter"

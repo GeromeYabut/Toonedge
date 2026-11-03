@@ -31,6 +31,7 @@ public final class ReaderViewModel: ObservableObject {
     private var hasAttemptedMetadataRefresh: Bool
     private let adjacentRetryDelayNanoseconds: UInt64
     private var adjacentNavigationOperationID: UUID?
+    private var lastRequestedChapter: MockChapter?
     private let pagePipelineFactory: @MainActor (MockReaderSession) -> ReaderPagePipeline
     private var isPagePipelineCancelled: Bool
     private var pageReadinessSubscription: AnyCancellable?
@@ -188,7 +189,24 @@ public final class ReaderViewModel: ObservableObject {
             chapter = session.nextChapter
         }
         guard let chapter else { return false }
+        return await openChapter(
+            chapter,
+            direction: direction,
+            libraryLifecycleService: libraryLifecycleService,
+            adjacentLoader: adjacentLoader
+        )
+    }
 
+    /// `direction` says which way the chapter lies from the current one, for loading and failure feedback.
+    public func openChapter(
+        _ chapter: MockChapter,
+        direction: ReaderChapterDirection,
+        libraryLifecycleService: (any LibraryLifecycleManaging)?,
+        adjacentLoader: (any AdjacentReaderSessionLoading)?
+    ) async -> Bool {
+        if case .loading = adjacentLoadState { return false }
+
+        lastRequestedChapter = chapter
         let operationID = UUID()
         adjacentNavigationOperationID = operationID
         adjacentLoadState = .loading(direction)
@@ -263,7 +281,7 @@ public final class ReaderViewModel: ObservableObject {
         libraryLifecycleService: (any LibraryLifecycleManaging)?,
         adjacentLoader: (any AdjacentReaderSessionLoading)?
     ) async -> Bool {
-        guard let failure = adjacentFailure else { return false }
+        guard let failure = adjacentFailure, let chapter = lastRequestedChapter else { return false }
         let retryOperationID = UUID()
         adjacentNavigationOperationID = retryOperationID
         adjacentLoadState = .loading(failure.direction)
@@ -281,8 +299,9 @@ public final class ReaderViewModel: ObservableObject {
         guard isCurrentAdjacentOperation(retryOperationID) else { return false }
         adjacentNavigationOperationID = nil
         adjacentLoadState = .idle
-        return await navigateAdjacentChapter(
-            failure.direction,
+        return await openChapter(
+            chapter,
+            direction: failure.direction,
             libraryLifecycleService: libraryLifecycleService,
             adjacentLoader: adjacentLoader
         )
@@ -447,6 +466,23 @@ public final class ReaderViewModel: ObservableObject {
 
     public func clearLibraryFeedback() {
         libraryFeedback = nil
+    }
+
+    /// The session's own series ID is only a throwaway for browser-detected pages, so the
+    /// stored chapter is the fallback that identifies an already-saved series.
+    public func chapterListDetail() async -> SeriesDetailSnapshot? {
+        guard let libraryLifecycleService else { return nil }
+        if case let .library(seriesID) = session.launchOrigin,
+           let detail = await libraryLifecycleService.seriesDetail(for: seriesID) {
+            return detail
+        }
+        if let detail = await libraryLifecycleService.seriesDetail(for: session.seriesID) {
+            return detail
+        }
+        guard let storedSeriesID = await libraryLifecycleService.readerSession(forSourceURL: session.sourceURL)?.seriesID else {
+            return nil
+        }
+        return await libraryLifecycleService.seriesDetail(for: storedSeriesID)
     }
 
     public func refreshSavedState() async {
