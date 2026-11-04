@@ -15,6 +15,7 @@ public struct BrowserChromeLayout: Equatable, Sendable {
     public let reloadActionIdentifier = "browser.reload"
     public let backActionIdentifier = "browser.back"
     public let forwardActionIdentifier = "browser.forward"
+    public let moreActionIdentifier = "browser.more"
 
     public init() {}
 }
@@ -24,6 +25,7 @@ public struct BrowserView: View {
     @Binding private var router: AppRouter
     @StateObject private var viewModel: BrowserViewModel
     @StateObject private var librarySaveOperation: BrowserLibrarySaveOperation
+    @Environment(\.openURL) private var openURL
     private let chromeLayout = BrowserChromeLayout()
     @State private var showsSearch = false
     @State private var pendingLibrarySaveSession: MockReaderSession?
@@ -299,12 +301,38 @@ public struct BrowserView: View {
                 }
                 .accessibilityIdentifier(chromeLayout.reloadActionIdentifier)
             }
+
+            moreActionsMenu
         }
         .buttonStyle(.plain)
         .foregroundStyle(ToonEdgeColor.textPrimary)
         .padding(.horizontal, ToonEdgeSpacing.large)
         .padding(.vertical, ToonEdgeSpacing.small)
         .background(ToonEdgeColor.elevated)
+    }
+
+    private var moreActionsMenu: some View {
+        Menu {
+            if let pageURL = viewModel.externalPageURL {
+                ShareLink(item: pageURL) {
+                    Label("Share Page", systemImage: "square.and.arrow.up")
+                }
+
+                Button {
+                    openURL(pageURL)
+                } label: {
+                    Label("Open in Safari", systemImage: "safari")
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 18, weight: .semibold))
+                .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
+                .contentShape(Rectangle())
+        }
+        .disabled(viewModel.externalPageURL == nil)
+        .accessibilityLabel("More Actions")
+        .accessibilityIdentifier(chromeLayout.moreActionIdentifier)
     }
 
     private var cleanModeBanner: some View {

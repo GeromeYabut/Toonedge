@@ -53,6 +53,18 @@ final class ToonEdgeBrowserReaderUITests: XCTestCase {
         XCTAssertFalse(app.buttons["browser.cleanModeAction"].exists)
     }
 
+    func testBrowserMoreMenuOffersShareAndOpenInSafari() {
+        let app = launchBrowserFixture("medium")
+
+        let more = app.buttons["browser.more"]
+        XCTAssertTrue(more.waitForExistence(timeout: 5))
+        XCTAssertTrue(more.isHittable)
+        more.tap()
+
+        XCTAssertTrue(app.buttons["Share Page"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Open in Safari"].exists)
+    }
+
     func testMediumConfidenceFixtureShowsWholeCleanModeActionAndOpensReader() {
         let app = launchBrowserFixture("medium")
         let action = app.buttons["browser.cleanModeAction"]

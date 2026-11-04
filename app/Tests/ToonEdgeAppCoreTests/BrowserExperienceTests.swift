@@ -990,3 +990,27 @@ private actor SuspendedBrowserSaveGate {
     #expect(settled)
     #expect(!duplicate)
 }
+
+@MainActor
+@Test func externalPageURLFollowsTheCurrentWebPage() throws {
+    let start = try #require(URL(string: "https://example.com/start"))
+    let next = try #require(URL(string: "https://example.org/next"))
+    let model = BrowserViewModel(startPoint: .url(start.absoluteString))
+    #expect(model.externalPageURL == start)
+
+    model.updateNavigation(url: next, title: nil, canGoBack: true, canGoForward: false, isLoading: false)
+    #expect(model.externalPageURL == next)
+}
+
+@MainActor
+@Test func externalPageURLIsLimitedToWebAddresses() throws {
+    let model = BrowserViewModel(startPoint: .url("https://example.com/start"))
+
+    for address in ["about:blank", "file:///private/page.html", "data:text/html,hello"] {
+        model.updateNavigation(url: try #require(URL(string: address)), title: nil, canGoBack: false, canGoForward: false, isLoading: false)
+        #expect(model.externalPageURL == nil, "\(address) can't open outside the app")
+    }
+
+    model.updateNavigation(url: try #require(URL(string: "HTTP://example.com/upper")), title: nil, canGoBack: false, canGoForward: false, isLoading: false)
+    #expect(model.externalPageURL != nil)
+}
