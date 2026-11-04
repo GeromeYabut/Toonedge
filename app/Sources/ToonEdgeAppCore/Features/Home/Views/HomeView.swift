@@ -443,10 +443,10 @@ private struct HomeSeriesCard: View {
 
     private func coverPlaceholder(cornerRadius: CGFloat) -> some View {
         RoundedRectangle(cornerRadius: cornerRadius)
-            .fill(item.hasUnreadUpdates ? ToonEdgeColor.success.opacity(0.22) : ToonEdgeColor.accentSoft.opacity(0.82))
+            .fill(ToonEdgeColor.accentSoft.opacity(0.82))
             .overlay {
                 Image(systemName: item.hasUnreadUpdates ? "sparkle" : "book.pages")
-                    .foregroundStyle(item.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.accent)
+                    .foregroundStyle(ToonEdgeColor.accent)
             }
     }
 }

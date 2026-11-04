@@ -196,7 +196,7 @@ public struct BrowserView: View {
                 router.dismissBrowser()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 15, weight: .semibold))
+                    .teChromeIconFont(.subheadline.weight(.semibold))
                     .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
             }
             .buttonStyle(.plain)
@@ -205,7 +205,7 @@ public struct BrowserView: View {
 
             Button { showsSearch = true } label: {
             HStack(spacing: ToonEdgeSpacing.small) {
-                Image(systemName: viewModel.initialRequestIconName)
+                Image(systemName: viewModel.addressIconName)
                     .foregroundStyle(ToonEdgeColor.accent)
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -241,7 +241,7 @@ public struct BrowserView: View {
                     presentDetectedSessionLibrarySave()
                 } label: {
                     Image(systemName: librarySaveOperation.isSaved ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 15, weight: .semibold))
+                        .teChromeIconFont(.subheadline.weight(.semibold))
                         .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
                 }
                 .buttonStyle(.plain)
@@ -265,7 +265,7 @@ public struct BrowserView: View {
                 viewModel.goBack()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 19, weight: .semibold))
+                    .teChromeIconFont(.title3.weight(.semibold))
                     .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
             }
             .disabled(!viewModel.canGoBack)
@@ -275,7 +275,7 @@ public struct BrowserView: View {
                 viewModel.goForward()
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 19, weight: .semibold))
+                    .teChromeIconFont(.title3.weight(.semibold))
                     .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
             }
             .disabled(!viewModel.canGoForward)
@@ -297,7 +297,7 @@ public struct BrowserView: View {
                     viewModel.reload()
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 18, weight: .semibold))
+                        .teChromeIconFont(.body.weight(.semibold))
                         .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
                 }
                 .accessibilityIdentifier(chromeLayout.reloadActionIdentifier)
@@ -390,8 +390,8 @@ public struct BrowserView: View {
     private var invalidRequestView: some View {
         VStack(spacing: ToonEdgeSpacing.medium) {
             Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(ToonEdgeColor.accent)
+                .font(.title.weight(.semibold))
+                .foregroundStyle(ToonEdgeColor.failure)
             Text("Unable to open this address")
                 .font(ToonEdgeTypography.sectionTitle)
             Text(viewModel.startPoint.displayText)
@@ -561,11 +561,12 @@ enum DetectedSessionLibraryInputBuilder {
     }
 }
 
-private extension BrowserViewModel {
-    var initialRequestIconName: String {
+extension BrowserViewModel {
+    /// The lock claims a secure connection, so only an https page may show it.
+    var addressIconName: String {
         switch startPoint {
         case .url:
-            "lock"
+            currentURL?.scheme?.lowercased() == "https" ? "lock" : "globe"
         case .searchQuery:
             "magnifyingglass"
         }
