@@ -734,7 +734,7 @@ private struct SeriesCard: View {
                 .frame(height: layout.metadataHeight, alignment: .leading)
 
             ProgressView(value: series.progressPercent)
-                .tint(progressTint)
+                .tint(ToonEdgeColor.accent)
                 .frame(height: layout.progressHeight)
 
             HStack(spacing: ToonEdgeSpacing.xsmall) {
@@ -772,10 +772,6 @@ private struct SeriesCard: View {
         .frame(width: layout.coverImageWidth, height: layout.coverHeight)
         .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
     }
-
-    private var progressTint: Color {
-        series.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.accent
-    }
 }
 
 private struct SeriesCompactTile: View {
@@ -802,7 +798,7 @@ private struct SeriesCompactTile: View {
 
             Text(content.compactMetadata)
                 .font(ToonEdgeTypography.caption)
-                .foregroundStyle(series.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.textSecondary)
+                .foregroundStyle(series.hasUnreadUpdates ? ToonEdgeColor.accent : ToonEdgeColor.textSecondary)
                 .lineLimit(1)
                 .frame(height: layout.metadataHeight, alignment: .leading)
         }
@@ -860,7 +856,7 @@ private struct SeriesListRow: View {
                     .foregroundStyle(ToonEdgeColor.textSecondary)
                     .lineLimit(layout.textLineLimit)
                 ProgressView(value: series.progressPercent)
-                    .tint(series.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.accent)
+                    .tint(ToonEdgeColor.accent)
                     .frame(height: 4)
             }
         }

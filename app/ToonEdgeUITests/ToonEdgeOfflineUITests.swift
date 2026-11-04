@@ -57,7 +57,7 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForExistence(timeout: 5))
         XCTAssertTrue(
-            app.staticTexts["Page 1 unavailable. Connect to the internet and retry."].waitForExistence(timeout: 8)
+            app.staticTexts["Couldn't load page 1."].waitForExistence(timeout: 8)
         )
     }
 }
