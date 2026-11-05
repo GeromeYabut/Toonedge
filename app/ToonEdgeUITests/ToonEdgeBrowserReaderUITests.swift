@@ -65,6 +65,24 @@ final class ToonEdgeBrowserReaderUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Open in Safari"].exists)
     }
 
+    func testBrowserToolbarFitsMoreMenuBesideTryCleanMode() {
+        let app = launchBrowserFixture("manual")
+        let chapter = app.webViews.buttons["Open synthetic chapter"]
+        XCTAssertTrue(chapter.waitForExistence(timeout: 5))
+        chapter.tap()
+
+        let manual = app.buttons["browser.tryCleanMode"]
+        let more = app.buttons["browser.more"]
+        XCTAssertTrue(manual.waitForExistence(timeout: 5))
+        XCTAssertTrue(manual.isHittable)
+        XCTAssertTrue(more.isHittable)
+        XCTAssertFalse(manual.frame.intersects(more.frame))
+        XCTAssertLessThanOrEqual(more.frame.maxX, app.frame.maxX)
+
+        more.tap()
+        XCTAssertTrue(app.buttons["Share Page"].waitForExistence(timeout: 3))
+    }
+
     func testMediumConfidenceFixtureShowsWholeCleanModeActionAndOpensReader() {
         let app = launchBrowserFixture("medium")
         let action = app.buttons["browser.cleanModeAction"]
