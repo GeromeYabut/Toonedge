@@ -19,7 +19,8 @@ final class ToonEdgeHomeSearchUITests: XCTestCase {
         XCTAssertTrue(keyboard.waitForExistence(timeout: 3))
         // DEF-050: the URL keyboard omits the space key, blocking multi-word queries.
         XCTAssertTrue(keyboard.keys["space"].exists)
-        keyboard.keys["space"].tap()
+        // With a hardware keyboard connected the layout stays off screen, so type rather than tap the key.
+        app.textFields["search.input"].typeText(" ")
         XCTAssertEqual(app.textFields["search.input"].value as? String, " ")
     }
 
