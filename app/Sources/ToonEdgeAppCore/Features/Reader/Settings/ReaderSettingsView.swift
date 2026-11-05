@@ -28,12 +28,12 @@ public struct ReaderSettingsView: View {
                         .accessibilityIdentifier("reader-settings.pageSpacing")
 
                     VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
-                        Text("Brightness Aid")
+                        Text("Dim Pages")
                             .font(ToonEdgeTypography.caption)
                             .foregroundStyle(ToonEdgeColor.textSecondary)
                         Slider(value: brightnessBinding, in: 0...0.75)
                             .tint(ToonEdgeColor.accent)
-                            .accessibilityLabel("Brightness Aid")
+                            .accessibilityLabel("Dim Pages")
                             .accessibilityValue("\(Int((viewModel.settings.brightnessAid * 100).rounded())) percent")
                             .accessibilityIdentifier("reader-settings.brightness")
                     }

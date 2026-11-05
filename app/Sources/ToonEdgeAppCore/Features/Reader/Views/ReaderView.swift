@@ -940,7 +940,7 @@ private struct ReaderImagePanel: View {
                 VStack(spacing: ToonEdgeSpacing.small) {
                     Image(systemName: "photo")
                         .foregroundStyle(palette.foreground.color)
-                    Text("Page \(index + 1) unavailable. Connect to the internet and retry.")
+                    Text("Couldn't load page \(index + 1).")
                         .font(ToonEdgeTypography.caption)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(palette.foreground.color)
@@ -1139,7 +1139,7 @@ private struct ReaderIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .semibold))
+                .teChromeIconFont(.callout.weight(.semibold))
                 .frame(width: 44, height: 44)
                 .contentShape(Circle())
         }
