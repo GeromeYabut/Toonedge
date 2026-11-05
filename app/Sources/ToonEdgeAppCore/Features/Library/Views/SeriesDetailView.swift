@@ -548,7 +548,7 @@ struct SeriesDetailView: View {
                                 Button("Open Original Page", systemImage: "safari") {
                                     openOriginal(chapter)
                                 }
-                                Button("Retain Offline", systemImage: "arrow.down.circle") {
+                                Button("Download", systemImage: "arrow.down.circle") {
                                     retain(chapter)
                                 }
                             } label: {
@@ -566,7 +566,7 @@ struct SeriesDetailView: View {
                             Button("Open Original Page", systemImage: "safari") {
                                 openOriginal(chapter)
                             }
-                            Button("Retain Offline", systemImage: "arrow.down.circle") {
+                            Button("Download", systemImage: "arrow.down.circle") {
                                 retain(chapter)
                             }
                         }
@@ -599,7 +599,7 @@ struct SeriesDetailView: View {
                 .accessibilityAction(named: "Open Original Page") {
                     openOriginal(chapter)
                 }
-                .accessibilityAction(named: "Retain Offline") {
+                .accessibilityAction(named: "Download") {
                     retain(chapter)
                 }
         }

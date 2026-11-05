@@ -213,8 +213,7 @@ public struct TEButton: View {
 
     public var body: some View {
         Button(action: action) {
-            Label(title, systemImage: systemImage ?? "circle.fill")
-                .labelStyle(.titleAndIcon)
+            label
                 .font(ToonEdgeTypography.body.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, ToonEdgeSpacing.medium)
@@ -222,6 +221,23 @@ public struct TEButton: View {
                 .foregroundStyle(ToonEdgeColor.filledActionForeground)
         }
         .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var label: some View {
+        if let systemImage {
+            Label(title, systemImage: systemImage)
+                .labelStyle(.titleAndIcon)
+        } else {
+            Text(title)
+        }
+    }
+}
+
+extension View {
+    /// Scales an icon with Dynamic Type, capped so it stays inside its fixed 44pt tap area.
+    func teChromeIconFont(_ font: Font) -> some View {
+        self.font(font).dynamicTypeSize(...DynamicTypeSize.accessibility2)
     }
 }
 
