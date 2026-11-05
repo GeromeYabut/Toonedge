@@ -10,6 +10,7 @@ public struct ReaderView: View {
     @StateObject private var viewModel: ReaderViewModel
     @Binding private var router: AppRouter
     @State private var isSaveStatePickerPresented = false
+    @State private var isChapterListPresented = false
     @State private var saveState = AddToLibraryStatePickerModel.defaultState(for: .reader)
     @State private var adjacentNavigationTask: Task<Void, Never>?
     @State private var adjacentAnnouncementPolicy = ReaderAdjacentAnnouncementPolicy()
@@ -19,6 +20,9 @@ public struct ReaderView: View {
     @State private var zoomRequest: ReaderSurfaceRequest?
     #endif
     @State private var pageFrames: [Int: CGRect] = [:]
+    @State private var bottomChromeHeight: CGFloat = 0
+    @State private var isAtChapterEnd = false
+    @State private var chapterEndPolicy = ReaderChapterEndPolicy()
     private let readerService: any ReaderSessionProviding
     private let adjacentLoader: (any AdjacentReaderSessionLoading)?
     private let libraryLifecycleService: (any LibraryLifecycleManaging)?
@@ -99,38 +103,6 @@ public struct ReaderView: View {
                     .transition(.opacity)
             }
 
-            if let feedback = viewModel.cacheFeedback {
-                VStack {
-                    TEBanner(
-                        title: feedback.isFailure ? "Cache action failed" : "Cache updated",
-                        message: feedback.message,
-                        systemImage: feedback.isFailure ? "exclamationmark.triangle" : "checkmark.circle"
-                    )
-                    .padding(ToonEdgeSpacing.large)
-                    Spacer()
-                }
-                .transition(.opacity)
-                .onTapGesture {
-                    viewModel.clearCacheFeedback()
-                }
-            }
-
-            if let feedback = viewModel.libraryFeedback {
-                VStack {
-                    TEBanner(
-                        title: feedback.isFailure ? "Save failed" : "Saved",
-                        message: feedback.message,
-                        systemImage: feedback.isFailure ? "exclamationmark.triangle" : "bookmark.fill"
-                    )
-                    .padding(ToonEdgeSpacing.large)
-                    Spacer()
-                }
-                .transition(.opacity)
-                .onTapGesture {
-                    viewModel.clearLibraryFeedback()
-                }
-            }
-
             if viewModel.settings.brightnessAid > 0 {
                 Color.black
                     .opacity(viewModel.settings.brightnessAid)
@@ -138,6 +110,7 @@ public struct ReaderView: View {
                     .allowsHitTesting(false)
             }
         }
+        .teFeedbackBanner(readerFeedback, presentation: .floats, bottomInset: viewModel.isChromeVisible ? bottomChromeHeight : 0)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.root")
         .accessibilityValue(readerControlsAccessibilityActionName)
@@ -168,6 +141,18 @@ public struct ReaderView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $isChapterListPresented) {
+            ReaderChapterListView(
+                viewModel: viewModel,
+                onSelect: openChapter,
+                onOpenSeriesDetails: { seriesID in
+                    isChapterListPresented = false
+                    router.openLibraryDetail(seriesID: seriesID)
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $isSaveStatePickerPresented) {
             AddToLibraryStatePickerView(
                 title: viewModel.session.seriesTitle,
@@ -180,6 +165,10 @@ public struct ReaderView: View {
                     isSaveStatePickerPresented = false
                 }
             )
+        }
+        .onChange(of: viewModel.session.id) { _, _ in
+            isAtChapterEnd = false
+            chapterEndPolicy = ReaderChapterEndPolicy()
         }
         .onDisappear {
             viewModel.readerDidDisappear()
@@ -200,6 +189,7 @@ public struct ReaderView: View {
             }, onSingleTap: { handleInteraction(.readingSurfaceTap) },
             onBaselineSelection: { selection in
                 guard selection.pipelineID == ObjectIdentifier(viewModel.pagePipeline) else { return }
+                updateChapterEnd(selection.reachedChapterEnd)
                 viewportVisibleIndex = selection.loadingAnchorIndex
                 let pipeline = viewModel.pagePipeline
                 Task {
@@ -273,6 +263,7 @@ public struct ReaderView: View {
         reportedViewportSelection = selection
         viewportVisibleIndex = selection?.index
         guard let selection else { return }
+        updateChapterEnd(selection.reachedChapterEnd)
         let pipeline = viewModel.pagePipeline
         pipeline.updateVisibleIndex(selection.loadingAnchorIndex)
         Task {
@@ -297,13 +288,16 @@ public struct ReaderView: View {
             VStack(spacing: 0) {
                 topChrome
                 Spacer(minLength: 4)
-                HStack {
-                    Spacer(minLength: 0)
-                    floatingActionRail
+                VStack(spacing: 0) {
+                    HStack {
+                        Spacer(minLength: 0)
+                        floatingActionRail
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 4)
+                    bottomChrome
                 }
-                .padding(.horizontal, 8)
-                .padding(.bottom, 4)
-                bottomChrome
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bottomChromeHeight = $0 }
             }
             .foregroundStyle(.white)
         }
@@ -338,9 +332,10 @@ public struct ReaderView: View {
                                  identifier: "reader.search", action: searchAction)
                     .disabled(viewModel.isSettingsPresented || isSaveStatePickerPresented)
             }
-            ReaderIconButton(systemImage: "books.vertical", label: "Open Library", identifier: "reader.library") {
-                router.openLibraryRoot()
+            ReaderIconButton(systemImage: "list.bullet", label: "Chapters", identifier: "reader.chapters") {
+                isChapterListPresented = true
             }
+            .disabled(viewModel.isSettingsPresented || isSaveStatePickerPresented)
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 4)
@@ -424,6 +419,9 @@ public struct ReaderView: View {
                 }.font(.caption2).frame(minHeight: 44)
             }
             #endif
+            if isAtChapterEnd {
+                chapterEndRow
+            }
             navigationLayout {
                 Button {
                     navigate(.previous)
@@ -483,6 +481,63 @@ public struct ReaderView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background { ReaderChromeSurface() }
+    }
+
+    private var chapterEndPresentation: ReaderChapterEndPresentation {
+        ReaderChapterEndPresentation(
+            currentChapterLabel: viewModel.currentChapterDisplayLabel,
+            nextChapter: viewModel.session.nextChapter
+        )
+    }
+
+    private var chapterEndRow: some View {
+        let presentation = chapterEndPresentation
+        return VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
+            Text(presentation.title)
+                .font(ToonEdgeTypography.caption.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.82))
+                .accessibilityIdentifier("reader.chapterEnd.title")
+
+            Button {
+                switch presentation.primaryAction {
+                case .nextChapter:
+                    navigate(.next)
+                case .viewOriginalPage:
+                    viewOriginalPageAction?() ?? router.viewOriginalPage()
+                }
+            } label: {
+                HStack(spacing: ToonEdgeSpacing.small) {
+                    if viewModel.adjacentLoadState == .loading(.next) {
+                        ProgressView()
+                            .tint(ToonEdgeColor.filledActionForeground)
+                    }
+                    Text(presentation.primaryActionTitle)
+                    Image(systemName: presentation.primaryAction == .nextChapter ? "chevron.right" : "safari")
+                        .accessibilityHidden(true)
+                }
+                .font(ToonEdgeTypography.body.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: TEActionMetrics.minimumHitSize)
+                .foregroundStyle(ToonEdgeColor.filledActionForeground)
+                .background(ToonEdgeColor.filledActionBackground, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
+            }
+            .buttonStyle(.plain)
+            .disabled(presentation.primaryAction == .nextChapter && viewModel.isAdjacentLoading)
+            .accessibilityIdentifier("reader.chapterEnd.primary")
+        }
+        .padding(.top, ToonEdgeSpacing.xsmall)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("reader.chapterEnd")
+    }
+
+    private func updateChapterEnd(_ reachedChapterEnd: Bool) {
+        isAtChapterEnd = reachedChapterEnd
+        guard chapterEndPolicy.shouldRevealControls(reachedChapterEnd: reachedChapterEnd) else { return }
+        if !viewModel.isChromeVisible {
+            viewModel.toggleChrome()
+        }
+        #if os(iOS)
+        UIAccessibility.post(notification: .announcement, argument: chapterEndPresentation.announcement)
+        #endif
     }
 
     @ViewBuilder
@@ -560,6 +615,22 @@ public struct ReaderView: View {
         viewModel.settings.readerCanvas == .paper ? .light : .dark
     }
 
+    private var readerFeedback: Binding<TEFeedback?> {
+        Binding(
+            get: {
+                if let library = viewModel.libraryFeedback {
+                    return TEFeedback(librarySaveSucceeded: !library.isFailure)
+                }
+                return viewModel.cacheFeedback.map(TEFeedback.init(offlineAction:))
+            },
+            set: { feedback in
+                guard feedback == nil else { return }
+                viewModel.clearLibraryFeedback()
+                viewModel.clearCacheFeedback()
+            }
+        )
+    }
+
     private var chromeLayout: ReaderChromeLayout {
         ReaderChromeLayout.actions(
             launchOrigin: viewModel.session.launchOrigin,
@@ -616,6 +687,19 @@ public struct ReaderView: View {
         }
     }
 
+    private func openChapter(_ row: ReaderChapterListRow) {
+        isChapterListPresented = false
+        guard let direction = row.direction else { return }
+        startAdjacentNavigation {
+            await viewModel.openChapter(
+                row.chapter,
+                direction: direction,
+                libraryLifecycleService: libraryLifecycleService,
+                adjacentLoader: adjacentLoader
+            )
+        }
+    }
+
     private func chapterLabel(from title: String) -> String {
         title
             .split(separator: " ")
@@ -654,7 +738,7 @@ enum ReaderChromeAction: Equatable {
     case download
     case save
     case saved
-    case library
+    case chapterList
     case viewOriginalPage
     case settings
     case previousChapter
@@ -688,7 +772,7 @@ struct ReaderChromeLayout: Equatable {
         }
         floating.append(contentsOf: [.viewOriginalPage, .settings])
 
-        var enabledActions = [ReaderChromeAction.back, .library] + floating
+        var enabledActions = [ReaderChromeAction.back, .chapterList] + floating
         if canNavigatePrevious {
             enabledActions.append(.previousChapter)
         }
@@ -698,7 +782,7 @@ struct ReaderChromeLayout: Equatable {
 
         return ReaderChromeLayout(
             launchOrigin: launchOrigin,
-            top: [.back, .library],
+            top: [.back, .chapterList],
             floating: floating,
             bottom: [.previousChapter, .nextChapter],
             enabledActions: enabledActions,
@@ -717,7 +801,7 @@ struct ReaderChromeLayout: Equatable {
         case .back: "reader.back"
         case .download: "reader.retainChapter"
         case .save, .saved: "reader.saveToLibrary"
-        case .library: "reader.library"
+        case .chapterList: "reader.chapters"
         case .viewOriginalPage: "reader.viewOriginalPage"
         case .settings: "reader.settings"
         case .previousChapter: "reader.previousChapter"
@@ -841,7 +925,7 @@ private struct ReaderImagePanel: View {
                 VStack(spacing: ToonEdgeSpacing.small) {
                     Image(systemName: "photo")
                         .foregroundStyle(palette.foreground.color)
-                    Text("Page \(index + 1) unavailable. Connect to the internet and retry.")
+                    Text("Couldn't load page \(index + 1).")
                         .font(ToonEdgeTypography.caption)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(palette.foreground.color)
@@ -890,6 +974,54 @@ struct ReaderViewportSelection: Equatable {
     let index: Int
     let loadingAnchorIndex: Int
     let pipelineID: ObjectIdentifier
+    /// True only once the final page's bottom edge is on screen, not merely when it is topmost.
+    var reachedChapterEnd = false
+}
+
+/// Reveals Reader controls once per chapter, and only when the reader scrolls into the end.
+/// A chapter that opens at its end (short, or resumed there) keeps the immersive hidden chrome.
+struct ReaderChapterEndPolicy {
+    private var hasReadBeforeEnd = false
+    private var hasRevealed = false
+
+    mutating func shouldRevealControls(reachedChapterEnd: Bool) -> Bool {
+        guard reachedChapterEnd else {
+            hasReadBeforeEnd = true
+            return false
+        }
+        guard hasReadBeforeEnd, !hasRevealed else { return false }
+        hasRevealed = true
+        return true
+    }
+}
+
+struct ReaderChapterEndPresentation: Equatable {
+    enum PrimaryAction: Equatable {
+        case nextChapter
+        case viewOriginalPage
+    }
+
+    let title: String
+    let primaryAction: PrimaryAction
+    let primaryActionTitle: String
+    let announcement: String
+
+    init(currentChapterLabel: String, nextChapter: MockChapter?) {
+        if let nextChapter {
+            let nextLabel = ChapterNumericLabelExtractor.displayLabel(
+                title: nextChapter.title, sourceURL: nextChapter.sourceURL
+            )
+            title = "End of \(currentChapterLabel)"
+            primaryAction = .nextChapter
+            primaryActionTitle = "Next: \(nextLabel)"
+            announcement = "\(title). Next: \(nextLabel) is available."
+        } else {
+            title = "You’re caught up"
+            primaryAction = .viewOriginalPage
+            primaryActionTitle = "View Original Page"
+            announcement = "\(title). Check the original page for newer chapters."
+        }
+    }
 }
 
 struct ReaderViewportPageSelector {
@@ -900,11 +1032,12 @@ struct ReaderViewportPageSelector {
         guard let loadingAnchorIndex = topmostVisibleIndex(
             frames: frames, viewportHeight: viewportHeight
         ) else { return nil }
-        let progressIndex = finalPageAtViewportEnd(
+        let finalPage = finalPageAtViewportEnd(
             frames: frames, viewportHeight: viewportHeight, lastPageIndex: lastPageIndex
-        ) ?? loadingAnchorIndex
+        )
         return ReaderViewportSelection(
-            index: progressIndex, loadingAnchorIndex: loadingAnchorIndex, pipelineID: pipelineID
+            index: finalPage ?? loadingAnchorIndex, loadingAnchorIndex: loadingAnchorIndex,
+            pipelineID: pipelineID, reachedChapterEnd: finalPage != nil
         )
     }
 
@@ -991,7 +1124,7 @@ private struct ReaderIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .semibold))
+                .teChromeIconFont(.callout.weight(.semibold))
                 .frame(width: 44, height: 44)
                 .contentShape(Circle())
         }

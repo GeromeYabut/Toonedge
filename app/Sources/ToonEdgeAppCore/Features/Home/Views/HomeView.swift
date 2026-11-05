@@ -6,7 +6,6 @@ public struct HomeView: View {
     @Binding private var router: AppRouter
     @State private var snapshot = HomeSnapshot(continueReading: [], recentlyUpdated: [], library: [])
     @State private var hasLoadedSnapshot = false
-    @State private var refreshMessage: String?
     @Environment(\.scenePhase) private var scenePhase
     @State private var resumeTask: Task<Void, Never>?
     @State private var resumeRequestID: UUID?
@@ -32,11 +31,6 @@ public struct HomeView: View {
             .task {
                 await reloadSnapshot()
             }
-            .refreshable {
-                if layout.refreshPlacement == .pullToRefresh {
-                    await refreshUpdates()
-                }
-            }
             .onDisappear { cancelResume() }
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active { cancelResume() }
@@ -51,7 +45,6 @@ public struct HomeView: View {
         switch section {
         case .search:
             searchEntry
-            refreshStatus
             if hasLoadedSnapshot && snapshot.isEmpty {
                 emptyState
             }
@@ -96,27 +89,6 @@ public struct HomeView: View {
         .buttonStyle(TEActionStyle(verticalPadding: 0))
         .accessibilityLabel("Search the web or paste a chapter link")
         .accessibilityIdentifier("home.searchEntry")
-    }
-
-    @ViewBuilder
-    private var refreshStatus: some View {
-        if let refreshMessage {
-            let layout = HomeRefreshStatusLayout(message: refreshMessage)
-
-            HStack(spacing: ToonEdgeSpacing.small) {
-                Image(systemName: "arrow.clockwise")
-                    .font(ToonEdgeTypography.caption)
-                    .foregroundStyle(ToonEdgeColor.accent)
-
-                Text(layout.message)
-                    .font(ToonEdgeTypography.caption)
-                    .foregroundStyle(ToonEdgeColor.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.horizontal, ToonEdgeSpacing.medium)
-            .padding(.vertical, ToonEdgeSpacing.small)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
     }
 
     private var emptyState: some View {
@@ -255,26 +227,6 @@ public struct HomeView: View {
         hasLoadedSnapshot = true
     }
 
-    private func refreshUpdates() async {
-        guard let updateRefreshService = dependencies.updateRefreshService else {
-            return
-        }
-
-        let result = await updateRefreshService.refreshUpdates()
-        await reloadSnapshot()
-        refreshMessage = refreshMessage(for: result)
-        InteractionFeedbackOutcomeReporter(feedback: dependencies.interactionFeedback)
-            .reportUserInitiatedUpdate(result)
-    }
-
-    private func refreshMessage(for result: LibraryUpdateRefreshResult) -> String {
-        if result.failedCount > 0 {
-            return "Checked \(result.checkedCount), found \(result.updatedCount) updates, \(result.failedCount) failed."
-        }
-
-        return "Checked \(result.checkedCount), found \(result.updatedCount) updates."
-    }
-
     private func chapterTitle(from subtitle: String) -> String {
         if subtitle.hasPrefix("Continue Chapter ") {
             return subtitle.replacingOccurrences(of: "Continue ", with: "")
@@ -311,7 +263,8 @@ enum HomeContinueReadingNavigation {
 struct HomeDashboardLayout: Equatable, Sendable {
     var contentPriority: [HomeDashboardSection]
     var searchPlacement: HomeSearchPlacement
-    var refreshPlacement: HomeRefreshPlacement
+    /// Update checks live in Library, where their results appear; Home stays search-first.
+    let offersUpdateCheck = false
     var usesCircularTopAccessoryButtons: Bool
     let showsDuplicateSearchCTA = false
     let showsSettingsAccessory = false
@@ -319,7 +272,6 @@ struct HomeDashboardLayout: Equatable, Sendable {
     init() {
         self.contentPriority = [.search, .continueReading, .recentlyUpdated, .libraryPreview]
         self.searchPlacement = .compactCommandBar
-        self.refreshPlacement = .pullToRefresh
         self.usesCircularTopAccessoryButtons = false
     }
 }
@@ -333,10 +285,6 @@ enum HomeDashboardSection: Hashable, Sendable {
 
 enum HomeSearchPlacement: Equatable, Sendable {
     case compactCommandBar
-}
-
-enum HomeRefreshPlacement: Equatable, Sendable {
-    case pullToRefresh
 }
 
 struct HomeSearchEntryLayout: Equatable, Sendable {
@@ -387,16 +335,6 @@ struct HomeSeriesCardLayout: Equatable, Sendable {
             self.fixedHeight = nil
             self.titleLineLimit = nil
         }
-    }
-}
-
-struct HomeRefreshStatusLayout: Equatable, Sendable {
-    var message: String
-    var usesBannerContainer: Bool
-
-    init(message: String) {
-        self.message = message
-        self.usesBannerContainer = false
     }
 }
 
@@ -505,10 +443,10 @@ private struct HomeSeriesCard: View {
 
     private func coverPlaceholder(cornerRadius: CGFloat) -> some View {
         RoundedRectangle(cornerRadius: cornerRadius)
-            .fill(item.hasUnreadUpdates ? ToonEdgeColor.success.opacity(0.22) : ToonEdgeColor.accentSoft.opacity(0.82))
+            .fill(ToonEdgeColor.accentSoft.opacity(0.82))
             .overlay {
                 Image(systemName: item.hasUnreadUpdates ? "sparkle" : "book.pages")
-                    .foregroundStyle(item.hasUnreadUpdates ? ToonEdgeColor.success : ToonEdgeColor.accent)
+                    .foregroundStyle(ToonEdgeColor.accent)
             }
     }
 }

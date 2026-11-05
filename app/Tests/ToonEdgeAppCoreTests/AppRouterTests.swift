@@ -250,12 +250,12 @@ import Testing
 }
 
 @Test func task3BrowserSelectionReplacesPresentedReader() {
-    var router = AppRouter(selectedTab: .downloads, presentedReader: .sample)
+    var router = AppRouter(selectedTab: .settings, presentedReader: .sample)
     router.presentSearch()
     router.presentBrowser(.searchQuery("owned search"))
     #expect(router.presentedReader == nil)
     #expect(router.presentedBrowser == .searchQuery("owned search"))
-    #expect(router.selectedTab == .downloads)
+    #expect(router.selectedTab == .settings)
     #expect(router.activeSheet == nil)
 }
 

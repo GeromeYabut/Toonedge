@@ -16,6 +16,33 @@ public enum DownloadsContentPhase: Equatable, Sendable {
     }
 }
 
+public struct DownloadsSeriesGroup: Identifiable, Equatable, Sendable {
+    public let seriesTitle: String
+    public let entries: [CacheMetadataEntry]
+
+    public var id: String { seriesTitle }
+    /// A single chapter already has its own remove button.
+    public var offersRemoveAll: Bool { entries.count > 1 }
+
+    public init(seriesTitle: String, entries: [CacheMetadataEntry]) {
+        self.seriesTitle = seriesTitle
+        self.entries = entries
+    }
+
+    /// Keeps the incoming order: a series sits where its first chapter appears.
+    public static func groups(from entries: [CacheMetadataEntry]) -> [DownloadsSeriesGroup] {
+        var titles: [String] = []
+        var entriesByTitle: [String: [CacheMetadataEntry]] = [:]
+        for entry in entries {
+            if entriesByTitle[entry.seriesTitle] == nil {
+                titles.append(entry.seriesTitle)
+            }
+            entriesByTitle[entry.seriesTitle, default: []].append(entry)
+        }
+        return titles.map { DownloadsSeriesGroup(seriesTitle: $0, entries: entriesByTitle[$0] ?? []) }
+    }
+}
+
 public struct DownloadsContentLayout: Equatable, Sendable {
     public let entryCount: Int
     public let usesScrollableContent = true
@@ -25,8 +52,38 @@ public struct DownloadsContentLayout: Equatable, Sendable {
         self.entryCount = entryCount
     }
 
+    public let emptyTitle = "No offline chapters"
+    public let emptyMessage = "Chapters you download, and chapters kept while you read, appear here."
+
     public func removalLabel(chapterTitle: String, seriesTitle: String) -> String {
-        "Remove \(seriesTitle), \(chapterTitle) from cache"
+        "Remove \(seriesTitle), \(chapterTitle) from this device"
+    }
+
+    public func entryDetail(retentionState: CacheRetentionState) -> String {
+        switch retentionState {
+        case .retained: "Downloaded"
+        case .recent: "Kept while reading"
+        }
+    }
+
+    public func groupDetail(_ group: DownloadsSeriesGroup) -> String {
+        Self.chapterCount(group.entries.count)
+    }
+
+    public func removeAllLabel(_ group: DownloadsSeriesGroup) -> String {
+        "Remove all \(Self.chapterCount(group.entries.count)) of \(group.seriesTitle) from this device"
+    }
+
+    public func removeAllConfirmationTitle(_ group: DownloadsSeriesGroup) -> String {
+        "Remove \(Self.chapterCount(group.entries.count)) of \(group.seriesTitle) from this device?"
+    }
+
+    public func removeAllConfirmationAction(_ group: DownloadsSeriesGroup) -> String {
+        "Remove \(group.entries.count) Chapters"
+    }
+
+    private static func chapterCount(_ count: Int) -> String {
+        count == 1 ? "1 chapter" : "\(count) chapters"
     }
 
     public func storageTitle(summary: DownloadSummary) -> String {
@@ -35,7 +92,7 @@ public struct DownloadsContentLayout: Equatable, Sendable {
     }
 
     public func storageDetail(summary: DownloadSummary) -> String {
-        "\(summary.retainedItemCount) retained references · \(summary.recentItemCount) recent references"
+        "\(summary.retainedItemCount) downloaded · \(summary.recentItemCount) kept while reading"
     }
 }
 
@@ -45,7 +102,7 @@ public final class DownloadsViewModel: ObservableObject {
     @Published public private(set) var entries: [CacheMetadataEntry]
     @Published public private(set) var cacheFeedback: CacheActionFeedback?
     @Published public private(set) var hasLoaded: Bool
-    @Published public private(set) var failedRemovalURL: URL?
+    @Published public private(set) var failedRemovalURLs: [URL]
     @Published public private(set) var removalInProgressURLs: Set<URL>
     private let cacheMetadataManager: any CacheMetadataManaging
     private let storageMeasurementService: (any CacheStorageMeasuring)?
@@ -63,8 +120,16 @@ public final class DownloadsViewModel: ObservableObject {
         self.entries = []
         self.cacheFeedback = nil
         self.hasLoaded = false
-        self.failedRemovalURL = nil
+        self.failedRemovalURLs = []
         self.removalInProgressURLs = []
+    }
+
+    public var failedRemovalURL: URL? {
+        failedRemovalURLs.first
+    }
+
+    public var groups: [DownloadsSeriesGroup] {
+        DownloadsSeriesGroup.groups(from: entries)
     }
 
     public var contentPhase: DownloadsContentPhase {
@@ -96,31 +161,63 @@ public final class DownloadsViewModel: ObservableObject {
             if let event = InteractionFeedbackOutcomePolicy.cacheEvent(for: result) {
                 interactionFeedback?.emit(event)
             }
-            if failedRemovalURL == sourceURL {
-                failedRemovalURL = nil
-            }
+            failedRemovalURLs.removeAll { $0 == sourceURL }
             await load()
         } catch {
-            cacheFeedback = .failure("Could not remove cached chapter.")
-            failedRemovalURL = sourceURL
+            cacheFeedback = .failure("Couldn’t remove this offline copy. Try again.")
+            failedRemovalURLs = [sourceURL]
         }
     }
 
-    public func retryFailedRemoval() async {
-        guard let failedRemovalURL else {
+    public func removeAll(sourceURLs: [URL]) async {
+        let targets = sourceURLs.filter { removalInProgressURLs.insert($0).inserted }
+        guard !targets.isEmpty else {
             return
         }
-        await remove(sourceURL: failedRemovalURL)
+
+        defer {
+            removalInProgressURLs.subtract(targets)
+        }
+
+        var failed: [URL] = []
+        for target in targets {
+            do {
+                _ = try await cacheMetadataManager.removeCacheMetadata(for: target)
+            } catch {
+                failed.append(target)
+            }
+        }
+
+        failedRemovalURLs = failed
+        if failed.isEmpty {
+            cacheFeedback = CacheActionFeedback(
+                result: .removed,
+                message: "\(targets.count) offline copies removed.",
+                isFailure: false
+            )
+            if let event = InteractionFeedbackOutcomePolicy.cacheEvent(for: .removed) {
+                interactionFeedback?.emit(event)
+            }
+        } else {
+            cacheFeedback = .failure("Couldn’t remove \(failed.count) of \(targets.count) offline copies. Try again.")
+        }
+        await load()
+    }
+
+    public func retryFailedRemoval() async {
+        if failedRemovalURLs.count > 1 {
+            await removeAll(sourceURLs: failedRemovalURLs)
+        } else if let failedRemovalURL {
+            await remove(sourceURL: failedRemovalURL)
+        }
     }
 }
 
 public struct DownloadsView: View {
     @StateObject private var viewModel: DownloadsViewModel
+    @State private var pendingRemoveAll: DownloadsSeriesGroup?
 
-    private let onSearch: (() -> Void)?
-
-    public init(dependencies: AppDependencies, onSearch: (() -> Void)? = nil) {
-        self.onSearch = onSearch
+    public init(dependencies: AppDependencies) {
         self._viewModel = StateObject(
             wrappedValue: DownloadsViewModel(
                 cacheMetadataManager: dependencies.cacheMetadataService,
@@ -131,41 +228,56 @@ public struct DownloadsView: View {
     }
 
     public var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: ToonEdgeSpacing.large) {
-                    if viewModel.hasLoaded {
-                        storageHeader
-                    }
-
-                    feedback
-
-                    switch viewModel.contentPhase {
-                    case .loading:
-                        loadingState
-                    case .empty:
-                        emptyState
-                    case .content:
-                        contentRows
-                    }
-                }
-                .padding(ToonEdgeSpacing.large)
-                .padding(.bottom, ToonEdgeSpacing.xlarge)
+        List {
+            if viewModel.hasLoaded {
+                storageHeader
+                    .modifier(DownloadsPlainListRow())
             }
-            .accessibilityIdentifier("downloads.root")
-            .navigationTitle("Downloads")
-            .toolbar {
-                if let onSearch {
-                    ToolbarItem(placement: .primaryAction) {
-                        UniversalSearchButton(identifier: "downloads.search", action: onSearch)
-                    }
+
+            if viewModel.cacheFeedback != nil {
+                feedback
+                    .modifier(DownloadsPlainListRow())
+            }
+
+            switch viewModel.contentPhase {
+            case .loading:
+                loadingState
+                    .modifier(DownloadsPlainListRow())
+            case .empty:
+                emptyState
+                    .modifier(DownloadsPlainListRow())
+            case .content:
+                ForEach(viewModel.groups) { group in
+                    seriesSection(group)
                 }
             }
-            .task {
-                await viewModel.load()
-            }
-            .toonEdgeScreen()
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .accessibilityIdentifier("downloads.root")
+        .navigationTitle("Downloads")
+        .task {
+            await viewModel.load()
+        }
+        .confirmationDialog(
+            pendingRemoveAll.map(layout.removeAllConfirmationTitle) ?? "",
+            isPresented: Binding(
+                get: { pendingRemoveAll != nil },
+                set: { if !$0 { pendingRemoveAll = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingRemoveAll
+        ) { group in
+            Button(layout.removeAllConfirmationAction(group), role: .destructive) {
+                Task {
+                    await viewModel.removeAll(sourceURLs: group.entries.map(\.sourceURL))
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text("You’ll need a connection to read them again.")
+        }
+        .toonEdgeScreen()
     }
 
     private var layout: DownloadsContentLayout {
@@ -231,9 +343,9 @@ public struct DownloadsView: View {
 
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
-            Text("No cached chapters")
+            Text(layout.emptyTitle)
                 .font(ToonEdgeTypography.sectionTitle)
-            Text("Chapters cached while reading will appear here.")
+            Text(layout.emptyMessage)
                 .font(ToonEdgeTypography.body)
                 .foregroundStyle(ToonEdgeColor.textSecondary)
         }
@@ -242,19 +354,69 @@ public struct DownloadsView: View {
         .accessibilityIdentifier("downloads.empty")
     }
 
-    private var contentRows: some View {
-        VStack(alignment: .leading, spacing: ToonEdgeSpacing.medium) {
-            Text("Cached chapters")
-                .font(ToonEdgeTypography.sectionTitle)
-
-            TEEditorialGroup(
-                viewModel.entries,
-                spacing: 0,
-                separatorInset: 44 + ToonEdgeSpacing.medium
-            ) { entry in
+    private func seriesSection(_ group: DownloadsSeriesGroup) -> some View {
+        Section {
+            ForEach(group.entries) { entry in
                 downloadRow(entry)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+                    .swipeActions(edge: .trailing) {
+                        Button("Remove", role: .destructive) {
+                            Task {
+                                await viewModel.remove(sourceURL: entry.sourceURL)
+                            }
+                        }
+                        .tint(ToonEdgeColor.failure)
+                    }
             }
-            .accessibilityIdentifier("downloads.entries")
+        } header: {
+            seriesHeader(group)
+        }
+    }
+
+    private func seriesHeader(_ group: DownloadsSeriesGroup) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: ToonEdgeSpacing.medium) {
+                seriesTitle(group)
+                Spacer(minLength: ToonEdgeSpacing.small)
+                removeAllButton(group)
+            }
+            VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+                seriesTitle(group)
+                removeAllButton(group)
+            }
+        }
+        .textCase(nil)
+        .padding(.vertical, ToonEdgeSpacing.xsmall)
+    }
+
+    private func seriesTitle(_ group: DownloadsSeriesGroup) -> some View {
+        VStack(alignment: .leading, spacing: ToonEdgeSpacing.xsmall) {
+            Text(group.seriesTitle)
+                .font(ToonEdgeTypography.sectionTitle)
+                .foregroundStyle(ToonEdgeColor.textPrimary)
+                .accessibilityAddTraits(.isHeader)
+            Text(layout.groupDetail(group))
+                .font(ToonEdgeTypography.caption)
+                .foregroundStyle(ToonEdgeColor.textSecondary)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private func removeAllButton(_ group: DownloadsSeriesGroup) -> some View {
+        if group.offersRemoveAll {
+            Button("Remove All") {
+                pendingRemoveAll = group
+            }
+            .font(ToonEdgeTypography.caption.weight(.semibold))
+            .foregroundStyle(ToonEdgeColor.accent)
+            .buttonStyle(.plain)
+            .frame(minHeight: layout.minimumActionSize)
+            .contentShape(Rectangle())
+            .fixedSize()
+            .accessibilityLabel(layout.removeAllLabel(group))
+            .accessibilityIdentifier("downloads.removeAll.\(group.seriesTitle)")
         }
     }
 
@@ -270,7 +432,7 @@ public struct DownloadsView: View {
                     .font(ToonEdgeTypography.body.weight(.semibold))
                     .foregroundStyle(ToonEdgeColor.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("\(entry.seriesTitle) · \(entry.retentionState.title) reference")
+                Text(layout.entryDetail(retentionState: entry.retentionState))
                     .font(ToonEdgeTypography.caption)
                     .foregroundStyle(ToonEdgeColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -292,9 +454,17 @@ public struct DownloadsView: View {
                 chapterTitle: entry.chapterTitle,
                 seriesTitle: entry.seriesTitle
             ))
-            .accessibilityHint("Removes local cached data for this chapter")
+            .accessibilityHint("Removes this chapter's offline copy")
         }
         .modifier(TEEditorialRowStyle())
         .accessibilityIdentifier("downloads.entry.\(entry.id.uuidString)")
+    }
+}
+
+private struct DownloadsPlainListRow: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
     }
 }

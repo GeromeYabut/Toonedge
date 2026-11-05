@@ -11,6 +11,7 @@ public struct BrowserChromeLayout: Equatable, Sendable {
     public let minimumActionSize: CGFloat = 44
     public let cleanModeActionIdentifier = "browser.cleanModeAction"
     public let manualCleanModeActionIdentifier = "browser.tryCleanMode"
+    public let cleanModeDismissIdentifier = "browser.cleanModeDismiss"
     public let closeActionIdentifier = "browser.close"
     public let reloadActionIdentifier = "browser.reload"
     public let backActionIdentifier = "browser.back"
@@ -27,6 +28,7 @@ public struct BrowserView: View {
     private let chromeLayout = BrowserChromeLayout()
     @State private var showsSearch = false
     @State private var pendingLibrarySaveSession: MockReaderSession?
+    @State private var librarySaveFeedback: TEFeedback?
     @State private var librarySaveState = AddToLibraryStatePickerModel.defaultState(for: .browser)
 
     public init(
@@ -99,32 +101,6 @@ public struct BrowserView: View {
                 .transition(.opacity)
                 .zIndex(1)
             }
-
-            if let failureMessage = librarySaveOperation.failureMessage {
-                VStack {
-                    TEBanner(
-                        title: "Save failed",
-                        message: failureMessage,
-                        systemImage: "exclamationmark.triangle"
-                    )
-                    .padding(ToonEdgeSpacing.large)
-                    Spacer()
-                }
-                .accessibilityIdentifier("browser.librarySave.failure")
-                .zIndex(2)
-            } else if let successMessage = librarySaveOperation.successMessage {
-                VStack {
-                    TEBanner(
-                        title: successMessage,
-                        message: "This series is now available in Library.",
-                        systemImage: "checkmark.circle"
-                    )
-                    .padding(ToonEdgeSpacing.large)
-                    Spacer()
-                }
-                .accessibilityIdentifier("browser.librarySave.success")
-                .zIndex(2)
-            }
         }
         .animation(.easeInOut(duration: 0.18), value: viewModel.browserOwnedReaderSession?.id)
         .toonEdgeScreen()
@@ -137,6 +113,12 @@ public struct BrowserView: View {
             if viewModel.browserOwnedReaderSession != nil {
                 router.clearPresentedBrowserReaderLaunchOrigin()
             }
+        }
+        .onChange(of: librarySaveOperation.isSaved) { _, isSaved in
+            if isSaved { librarySaveFeedback = TEFeedback(librarySaveSucceeded: true) }
+        }
+        .onChange(of: librarySaveOperation.failureMessage) { _, message in
+            if message != nil { librarySaveFeedback = TEFeedback(librarySaveSucceeded: false) }
         }
         .onChange(of: viewModel.detectionResult?.readerSession?.id) { _, sessionID in
             librarySaveOperation.reset(for: sessionID)
@@ -188,19 +170,22 @@ public struct BrowserView: View {
                         .frame(maxWidth: .infinity)
                 }
 
-                if viewModel.showsCleanModeCTA {
-                    cleanModeBanner
-                        .padding(.horizontal, ToonEdgeSpacing.medium)
-                        .padding(.top, ToonEdgeSpacing.medium)
-                } else if let message = viewModel.readerUnavailableMessage {
+                if !viewModel.showsCleanModeCTA, let message = viewModel.readerUnavailableMessage {
                     readerUnavailableFeedback(message)
                         .padding(.horizontal, ToonEdgeSpacing.medium)
                         .padding(.top, ToonEdgeSpacing.medium)
                 }
             }
+            .teFeedbackBanner($librarySaveFeedback, presentation: .floats)
+
+            if viewModel.showsCleanModeCTA {
+                cleanModeBanner
+                    .transition(.opacity)
+            }
 
             bottomControls
         }
+        .animation(.easeInOut(duration: 0.18), value: viewModel.showsCleanModeCTA)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("browser.root")
     }
@@ -211,7 +196,7 @@ public struct BrowserView: View {
                 router.dismissBrowser()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 15, weight: .semibold))
+                    .teChromeIconFont(.subheadline.weight(.semibold))
                     .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
             }
             .buttonStyle(.plain)
@@ -220,7 +205,7 @@ public struct BrowserView: View {
 
             Button { showsSearch = true } label: {
             HStack(spacing: ToonEdgeSpacing.small) {
-                Image(systemName: viewModel.initialRequestIconName)
+                Image(systemName: viewModel.addressIconName)
                     .foregroundStyle(ToonEdgeColor.accent)
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -256,7 +241,7 @@ public struct BrowserView: View {
                     presentDetectedSessionLibrarySave()
                 } label: {
                     Image(systemName: librarySaveOperation.isSaved ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 15, weight: .semibold))
+                        .teChromeIconFont(.subheadline.weight(.semibold))
                         .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
                 }
                 .buttonStyle(.plain)
@@ -280,7 +265,7 @@ public struct BrowserView: View {
                 viewModel.goBack()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 19, weight: .semibold))
+                    .teChromeIconFont(.title3.weight(.semibold))
                     .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
             }
             .disabled(!viewModel.canGoBack)
@@ -290,7 +275,7 @@ public struct BrowserView: View {
                 viewModel.goForward()
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 19, weight: .semibold))
+                    .teChromeIconFont(.title3.weight(.semibold))
                     .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
             }
             .disabled(!viewModel.canGoForward)
@@ -312,7 +297,7 @@ public struct BrowserView: View {
                     viewModel.reload()
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 18, weight: .semibold))
+                        .teChromeIconFont(.body.weight(.semibold))
                         .frame(width: chromeLayout.minimumActionSize, height: chromeLayout.minimumActionSize)
                 }
                 .accessibilityIdentifier(chromeLayout.reloadActionIdentifier)
@@ -326,41 +311,59 @@ public struct BrowserView: View {
     }
 
     private var cleanModeBanner: some View {
-        Button {
-            viewModel.enterCleanModeManually()
-        } label: {
-            HStack(spacing: ToonEdgeSpacing.medium) {
-                Image(systemName: "rectangle.portrait.on.rectangle.portrait")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(ToonEdgeColor.accent)
+        HStack(spacing: ToonEdgeSpacing.small) {
+            Button {
+                viewModel.enterCleanModeManually()
+            } label: {
+                HStack(spacing: ToonEdgeSpacing.medium) {
+                    Image(systemName: "rectangle.portrait.on.rectangle.portrait")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(ToonEdgeColor.accent)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Clean Mode available")
-                        .font(ToonEdgeTypography.body.weight(.semibold))
-                        .foregroundStyle(ToonEdgeColor.textPrimary)
-                    Text("A likely chapter page is ready to read.")
-                        .font(ToonEdgeTypography.caption)
-                        .foregroundStyle(ToonEdgeColor.textSecondary)
-                        .lineLimit(1)
-                }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Read in Clean Mode")
+                            .font(ToonEdgeTypography.body.weight(.semibold))
+                            .foregroundStyle(ToonEdgeColor.textPrimary)
+                        Text("A likely chapter page is ready to read.")
+                            .font(ToonEdgeTypography.caption)
+                            .foregroundStyle(ToonEdgeColor.textSecondary)
+                            .lineLimit(1)
+                    }
 
-                Spacer()
+                    Spacer(minLength: 0)
 
-                HStack(spacing: ToonEdgeSpacing.xsmall) {
-                    Text("Read")
-                        .font(ToonEdgeTypography.body.weight(.semibold))
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
+                        .foregroundStyle(ToonEdgeColor.accent)
                 }
-                .foregroundStyle(ToonEdgeColor.accent)
+                .frame(minHeight: chromeLayout.minimumActionSize)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(chromeLayout.cleanModeActionIdentifier)
+
+            Button {
+                viewModel.dismissCleanModeRecommendation()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(ToonEdgeColor.textSecondary)
+                    .frame(minWidth: chromeLayout.minimumActionSize, minHeight: chromeLayout.minimumActionSize)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Dismiss Clean Mode suggestion")
+            .accessibilityIdentifier(chromeLayout.cleanModeDismissIdentifier)
         }
-        .buttonStyle(.plain)
-        .padding(ToonEdgeSpacing.medium)
-        .background(ToonEdgeColor.elevated, in: RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
-        .contentShape(RoundedRectangle(cornerRadius: ToonEdgeRadius.medium))
-        .frame(minHeight: chromeLayout.minimumActionSize)
-        .accessibilityIdentifier(chromeLayout.cleanModeActionIdentifier)
+        .padding(.leading, ToonEdgeSpacing.large)
+        .padding(.trailing, ToonEdgeSpacing.small)
+        .padding(.vertical, ToonEdgeSpacing.xsmall)
+        .background(ToonEdgeColor.elevated)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(ToonEdgeColor.border)
+                .frame(height: 1)
+        }
     }
 
     private func readerUnavailableFeedback(_ message: String) -> some View {
@@ -387,8 +390,8 @@ public struct BrowserView: View {
     private var invalidRequestView: some View {
         VStack(spacing: ToonEdgeSpacing.medium) {
             Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(ToonEdgeColor.accent)
+                .font(.title.weight(.semibold))
+                .foregroundStyle(ToonEdgeColor.failure)
             Text("Unable to open this address")
                 .font(ToonEdgeTypography.sectionTitle)
             Text(viewModel.startPoint.displayText)
@@ -558,11 +561,12 @@ enum DetectedSessionLibraryInputBuilder {
     }
 }
 
-private extension BrowserViewModel {
-    var initialRequestIconName: String {
+extension BrowserViewModel {
+    /// The lock claims a secure connection, so only an https page may show it.
+    var addressIconName: String {
         switch startPoint {
         case .url:
-            "lock"
+            currentURL?.scheme?.lowercased() == "https" ? "lock" : "globe"
         case .searchQuery:
             "magnifyingglass"
         }

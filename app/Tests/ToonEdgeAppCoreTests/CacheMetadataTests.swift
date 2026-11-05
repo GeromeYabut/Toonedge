@@ -8,7 +8,45 @@ import Testing
 
     #expect(layout.usesScrollableContent)
     #expect(layout.minimumActionSize >= 44)
-    #expect(layout.removalLabel(chapterTitle: "Chapter 20", seriesTitle: "Sample") == "Remove Sample, Chapter 20 from cache")
+    #expect(layout.removalLabel(chapterTitle: "Chapter 20", seriesTitle: "Sample") == "Remove Sample, Chapter 20 from this device")
+}
+
+@Test func downloadsCopyUsesReaderVocabularyInsteadOfCacheInternals() {
+    let layout = DownloadsContentLayout(entryCount: 2)
+    let summary = DownloadSummary(
+        cachedItemCount: 3,
+        storageDescription: "1 KB estimated",
+        recentItemCount: 2,
+        retainedItemCount: 1
+    )
+
+    #expect(layout.entryDetail(retentionState: .retained) == "Downloaded")
+    #expect(layout.entryDetail(retentionState: .recent) == "Kept while reading")
+    #expect(layout.storageDetail(summary: summary) == "1 downloaded · 2 kept while reading")
+    for copy in [
+        layout.entryDetail(retentionState: .retained),
+        layout.entryDetail(retentionState: .recent),
+        layout.storageDetail(summary: summary),
+        layout.removalLabel(chapterTitle: "Chapter 20", seriesTitle: "Sample"),
+        layout.emptyTitle,
+        layout.emptyMessage,
+    ] {
+        #expect(!copy.localizedCaseInsensitiveContains("reference"))
+        #expect(!copy.localizedCaseInsensitiveContains("cache"))
+        #expect(!copy.localizedCaseInsensitiveContains("retained"))
+    }
+}
+
+@Test func offlineActionFeedbackUsesReaderVocabulary() {
+    #expect(CacheActionFeedback.success(.retained).message == "Chapter downloaded for offline reading.")
+    #expect(CacheActionFeedback.success(.recent).message == "Chapter kept for offline reading.")
+    #expect(CacheActionFeedback.success(.unchanged).message == "This chapter is already available offline.")
+    #expect(CacheActionFeedback.success(.removed).message == "Offline copy removed.")
+    #expect(CacheActionFeedback.success(.notFound).message == "This offline copy was already removed.")
+    #expect(CacheActionFeedback.failure().message == "Couldn’t update offline copy. Try again.")
+    for result in [CacheActionResult.recent, .retained, .unchanged, .removed, .notFound] {
+        #expect(!CacheActionFeedback.success(result).message.localizedCaseInsensitiveContains("cache"))
+    }
 }
 
 @MainActor
@@ -251,6 +289,105 @@ import Testing
     await secondRemoval.value
 }
 
+@Test func downloadsGroupBySeriesKeepingMostRecentSeriesAndChapterOrder() {
+    func entry(_ series: String, _ chapter: Int) -> CacheMetadataEntry {
+        .fixture(sourceURL: URL(string: "https://example.com/\(series)/\(chapter)")!, seriesTitle: series, chapterTitle: "Chapter \(chapter)")
+    }
+
+    let groups = DownloadsSeriesGroup.groups(from: [entry("B", 9), entry("A", 2), entry("B", 8), entry("A", 1)])
+
+    #expect(groups.map(\.seriesTitle) == ["B", "A"])
+    #expect(groups[0].entries.map(\.chapterTitle) == ["Chapter 9", "Chapter 8"])
+    #expect(groups[1].entries.map(\.chapterTitle) == ["Chapter 2", "Chapter 1"])
+    #expect(DownloadsSeriesGroup.groups(from: []).isEmpty)
+}
+
+@Test func downloadsGroupCopyCountsChaptersAndOnlyOffersRemoveAllForSeveral() {
+    let layout = DownloadsContentLayout(entryCount: 3)
+    let one = DownloadsSeriesGroup(seriesTitle: "Sample", entries: [.fixture(sourceURL: URL(string: "https://example.com/1")!)])
+    let two = DownloadsSeriesGroup(seriesTitle: "Sample", entries: [
+        .fixture(sourceURL: URL(string: "https://example.com/1")!),
+        .fixture(sourceURL: URL(string: "https://example.com/2")!)
+    ])
+
+    #expect(layout.groupDetail(one) == "1 chapter")
+    #expect(layout.groupDetail(two) == "2 chapters")
+    #expect(!one.offersRemoveAll)
+    #expect(two.offersRemoveAll)
+    #expect(layout.removeAllLabel(two) == "Remove all 2 chapters of Sample from this device")
+    #expect(layout.removeAllConfirmationTitle(two) == "Remove 2 chapters of Sample from this device?")
+    #expect(layout.removeAllConfirmationAction(two) == "Remove 2 Chapters")
+}
+
+@MainActor
+@Test func removingAllChaptersInASeriesLeavesOtherSeriesAndReportsOnce() async throws {
+    let first = URL(string: "https://example.com/a/1")!
+    let second = URL(string: "https://example.com/a/2")!
+    let other = URL(string: "https://example.com/b/1")!
+    let service = MockCacheMetadataService()
+    _ = try await service.recordCacheMetadata(.fixture(sourceURL: first, retentionState: .retained))
+    _ = try await service.recordCacheMetadata(.fixture(sourceURL: second, retentionState: .retained))
+    _ = try await service.recordCacheMetadata(.fixture(sourceURL: other, retentionState: .retained))
+    let feedback = RecordingInteractionFeedback()
+    let viewModel = DownloadsViewModel(cacheMetadataManager: service, interactionFeedback: feedback)
+    await viewModel.load()
+
+    await viewModel.removeAll(sourceURLs: [first, second])
+
+    #expect(viewModel.entries.map(\.sourceURL) == [other])
+    #expect(viewModel.cacheFeedback?.result == .removed)
+    #expect(viewModel.cacheFeedback?.message == "2 offline copies removed.")
+    #expect(viewModel.failedRemovalURLs.isEmpty)
+    #expect(feedback.events == [.operationSucceeded])
+}
+
+@MainActor
+@Test func partlyFailedRemoveAllKeepsFailedRowsAndRetryFinishesThem() async throws {
+    let good = URL(string: "https://example.com/a/1")!
+    let bad = URL(string: "https://example.com/a/2")!
+    let service = SelectiveFailureCacheMetadataService(
+        entries: [.fixture(sourceURL: good), .fixture(sourceURL: bad)],
+        failing: [bad]
+    )
+    let viewModel = DownloadsViewModel(cacheMetadataManager: service)
+    await viewModel.load()
+
+    await viewModel.removeAll(sourceURLs: [good, bad])
+
+    #expect(viewModel.entries.map(\.sourceURL) == [bad])
+    #expect(viewModel.failedRemovalURLs == [bad])
+    #expect(viewModel.cacheFeedback?.isFailure == true)
+    #expect(viewModel.cacheFeedback?.message == "Couldn’t remove 1 of 2 offline copies. Try again.")
+
+    await service.allowAll()
+    await viewModel.retryFailedRemoval()
+
+    #expect(viewModel.entries.isEmpty)
+    #expect(viewModel.failedRemovalURLs.isEmpty)
+    #expect(viewModel.cacheFeedback?.isFailure == false)
+}
+
+private actor SelectiveFailureCacheMetadataService: CacheMetadataManaging {
+    private var entries: [CacheMetadataEntry]
+    private var failing: Set<URL>
+
+    init(entries: [CacheMetadataEntry], failing: Set<URL>) {
+        self.entries = entries
+        self.failing = failing
+    }
+
+    func allowAll() { failing = [] }
+    func recordCacheMetadata(_ input: CacheMetadataInput) async throws -> CacheActionResult { .unchanged }
+    func updateCacheRetention(for sourceURL: URL, retentionState: CacheRetentionState, cachedAt: Date) async throws -> CacheActionResult { .unchanged }
+    func cacheMetadataEntries() async -> [CacheMetadataEntry] { entries }
+    func downloadSummary() async -> DownloadSummary { DownloadSummary(cachedItemCount: entries.count, storageDescription: "") }
+    func removeCacheMetadata(for sourceURL: URL) async throws -> CacheActionResult {
+        if failing.contains(sourceURL) { throw URLError(.cannotRemoveFile) }
+        entries.removeAll { $0.sourceURL == sourceURL }
+        return .removed
+    }
+}
+
 @MainActor
 @Test func keyedCacheLookupPreservesUpdatesDistinctURLsAndRemoval() async throws {
     let repository = try makeRepository()
@@ -466,11 +603,15 @@ private actor OverlappingRemovalCacheMetadataService: CacheMetadataManaging {
 }
 
 private extension CacheMetadataEntry {
-    static func fixture(sourceURL: URL) -> CacheMetadataEntry {
+    static func fixture(
+        sourceURL: URL,
+        seriesTitle: String = "Retry Fixture",
+        chapterTitle: String = "Chapter 1"
+    ) -> CacheMetadataEntry {
         CacheMetadataEntry(
             sourceURL: sourceURL,
-            seriesTitle: "Retry Fixture",
-            chapterTitle: "Chapter 1",
+            seriesTitle: seriesTitle,
+            chapterTitle: chapterTitle,
             chapterLabel: "1",
             imageCount: 1,
             estimatedStorageBytes: 1_024,

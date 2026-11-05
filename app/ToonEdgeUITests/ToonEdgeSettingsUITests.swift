@@ -38,25 +38,6 @@ final class ToonEdgeSettingsUITests: XCTestCase {
         XCTAssertFalse(app.navigationBars["Reader Settings"].exists)
     }
 
-    func testUpdateCheckDisablesDuplicateSubmissionAndShowsDistinctUsableResults() {
-        verifyUpdateResult(
-            launchArgument: "-seedUpdateSuccess",
-            expected: "Found updates for 1 series."
-        )
-        verifyUpdateResult(
-            launchArgument: "-seedUpdateNoChange",
-            expected: "No new chapters found."
-        )
-        verifyUpdateResult(
-            launchArgument: "-seedUpdateFailure",
-            expected: "No updates found; 2 series could not be refreshed."
-        )
-        verifyUpdateResult(
-            launchArgument: "-seedUpdateTotalFailure",
-            expected: "Could not refresh 3 series."
-        )
-    }
-
     func testAccessibilityTextUsesAdaptivePickersAndKeepsUtilitiesReachable() {
         let app = XCUIApplication()
         app.launchArguments = [
@@ -109,6 +90,7 @@ final class ToonEdgeSettingsUITests: XCTestCase {
         XCTAssertTrue(manageDownloads.isHittable)
         manageDownloads.tap()
         XCTAssertTrue(app.navigationBars["Downloads"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Downloads"].buttons["Settings"].exists, "Downloads opens inside Settings")
     }
 
     func testHapticFeedbackDefaultsEnabledAndPersistsAcrossRelaunch() {
@@ -133,33 +115,5 @@ final class ToonEdgeSettingsUITests: XCTestCase {
         XCTAssertTrue(persistedHapticFeedback.waitForExistence(timeout: 5))
         XCTAssertEqual(persistedHapticFeedback.value as? String, "0")
         persistedHapticFeedback.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-    }
-
-    private func verifyUpdateResult(launchArgument: String, expected: String) {
-        let app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-resetLibraryOrganization", "-libraryDensity", "comfortable", launchArgument]
-        app.launch()
-        app.tabBars.buttons["tab.settings"].tap()
-
-        let checkUpdates = app.buttons["settings.checkUpdates"]
-        for _ in 0..<6 where !checkUpdates.isHittable {
-            app.scrollViews.firstMatch.swipeUp()
-        }
-        XCTAssertTrue(checkUpdates.isHittable)
-        checkUpdates.tap()
-
-        let loading = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "label == %@ AND enabled == false", "Checking…"),
-            object: checkUpdates
-        )
-        XCTAssertEqual(XCTWaiter.wait(for: [loading], timeout: 2), .completed)
-
-        let result = app.staticTexts["settings.updateResult"]
-        XCTAssertTrue(result.waitForExistence(timeout: 5))
-        XCTAssertEqual(result.label, expected)
-        XCTAssertTrue(checkUpdates.isEnabled, "Update checking must remain retryable after a final result")
-        XCTAssertEqual(checkUpdates.label, "Check for New Chapters")
-        XCTAssertTrue(app.tabBars.buttons["tab.home"].isHittable, "Settings must remain navigable after checking")
-        app.terminate()
     }
 }

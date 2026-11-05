@@ -292,7 +292,7 @@ struct ToonEdgeAppEntry: App {
         let arguments = ProcessInfo.processInfo.arguments
         let hardeningFixture = ReaderHardeningFixtureScenario.from(arguments: arguments)
         if UITestCacheLifecycleFixture(arguments: arguments) != nil {
-            return AppRouter(selectedTab: .downloads)
+            return AppRouter(selectedTab: .library)
         }
         if arguments.contains("-uiTesting"),
            let marker = arguments.firstIndex(of: "-openURL"),

@@ -6,11 +6,11 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-resetTestData", "-seedDownloadsRemovalRetry"]
         app.launch()
-        app.tabBars.buttons["tab.downloads"].tap()
+        app.openDownloadsFromLibrary()
 
         let chapter = app.staticTexts["Retry Chapter 9"]
         XCTAssertTrue(chapter.waitForExistence(timeout: 5))
-        app.buttons["Remove Retry Fixture, Retry Chapter 9 from cache"].tap()
+        app.buttons["Remove Retry Fixture, Retry Chapter 9 from this device"].tap()
 
         XCTAssertTrue(app.descendants(matching: .any)["downloads.feedback.failure"].waitForExistence(timeout: 5))
         XCTAssertTrue(chapter.exists, "A failed removal must preserve its row")
@@ -21,6 +21,39 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         XCTAssertTrue(chapter.waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["downloads.feedback.success"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["downloads.empty"].exists)
+    }
+
+    func testDownloadsGroupBySeriesWithSwipeRemovalAndConfirmedRemoveAll() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-resetTestData", "-seedDownloads20"]
+        app.launch()
+        app.openDownloadsFromLibrary()
+
+        let removeAll = app.buttons["downloads.removeAll.Fixture Series"]
+        XCTAssertTrue(removeAll.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["20 chapters"].exists)
+
+        let firstChapter = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Fixture Chapter'")).firstMatch
+        let swipedTitle = firstChapter.label
+        firstChapter.swipeLeft()
+        let swipeRemove = app.buttons["Remove"]
+        XCTAssertTrue(swipeRemove.waitForExistence(timeout: 3))
+        swipeRemove.tap()
+        XCTAssertTrue(app.staticTexts[swipedTitle].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["19 chapters"].waitForExistence(timeout: 5))
+
+        removeAll.tap()
+        let cancel = app.buttons["Cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 3))
+        cancel.tap()
+        XCTAssertTrue(app.staticTexts["19 chapters"].exists, "Cancel must not remove anything")
+
+        removeAll.tap()
+        let confirm = app.buttons["Remove 19 Chapters"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 3))
+        confirm.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["downloads.empty"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.descendants(matching: .any)["downloads.feedback.success"].exists)
     }
 
     func testRetainedChapterReopensOfflineInOrderAndUncachedChapterExplainsFailure() {
@@ -34,7 +67,7 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         let retain = app.buttons["Retain Chapter Offline"]
         XCTAssertTrue(retain.waitForExistence(timeout: 5))
         retain.tap()
-        XCTAssertTrue(app.staticTexts["Chapter retained offline."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Chapter downloaded for offline reading."].waitForExistence(timeout: 5))
 
         app.terminate()
         app = XCUIApplication()
@@ -57,7 +90,7 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForExistence(timeout: 5))
         XCTAssertTrue(
-            app.staticTexts["Page 1 unavailable. Connect to the internet and retry."].waitForExistence(timeout: 8)
+            app.staticTexts["Couldn't load page 1."].waitForExistence(timeout: 8)
         )
     }
 }
@@ -72,12 +105,13 @@ final class ToonEdgeRetainedCacheLifecycleUITests: XCTestCase {
             "-uiTesting", "-resetTestData", "-cacheLifecycleFixture", fixtureID,
         ]
         app.launch()
+        app.openDownloadsFromLibrary()
 
         let chapter = app.staticTexts["Retained Cache Chapter 7"]
         XCTAssertTrue(chapter.waitForExistence(timeout: 8))
         assertMeasuredRetainedSummary(in: app)
 
-        app.buttons["Remove Retained Cache Fixture, Retained Cache Chapter 7 from cache"].tap()
+        app.buttons["Remove Retained Cache Fixture, Retained Cache Chapter 7 from this device"].tap()
 
         XCTAssertTrue(chapter.waitForNonExistence(timeout: 8))
         XCTAssertTrue(app.descendants(matching: .any)["downloads.feedback.success"].waitForExistence(timeout: 5))
@@ -87,6 +121,7 @@ final class ToonEdgeRetainedCacheLifecycleUITests: XCTestCase {
         app.terminate()
         app.launchArguments = ["-uiTesting", "-cacheLifecycleFixture", fixtureID]
         app.launch()
+        app.openDownloadsFromLibrary()
 
         XCTAssertTrue(app.descendants(matching: .any)["downloads.empty"].waitForExistence(timeout: 8))
         XCTAssertFalse(chapter.exists)
@@ -97,14 +132,14 @@ final class ToonEdgeRetainedCacheLifecycleUITests: XCTestCase {
         let header = app.descendants(matching: .any)["downloads.storageHeader"]
         XCTAssertTrue(header.waitForExistence(timeout: 5))
         XCTAssertTrue(header.label.contains("1 chapter · 2 KB measured"), header.label)
-        XCTAssertTrue(header.label.contains("1 retained references · 0 recent references"), header.label)
+        XCTAssertTrue(header.label.contains("1 downloaded · 0 kept while reading"), header.label)
     }
 
     private func assertEmptyStorageSummary(in app: XCUIApplication) {
         let header = app.descendants(matching: .any)["downloads.storageHeader"]
         XCTAssertTrue(header.waitForExistence(timeout: 5))
         XCTAssertTrue(header.label.contains("0 chapters · No local storage tracked"), header.label)
-        XCTAssertTrue(header.label.contains("0 retained references · 0 recent references"), header.label)
+        XCTAssertTrue(header.label.contains("0 downloaded · 0 kept while reading"), header.label)
     }
 }
 
@@ -250,6 +285,54 @@ final class ToonEdgeAuthoritativeContinueUITests: XCTestCase {
         app.terminate()
         app.launchArguments = ["-uiTesting", "-resetLibraryOrganization", "-readerHardeningFixture", scenario]
         app.launch()
+    }
+
+    func testChapterListJumpsToChosenChapterAndBackStillReturnsToSeriesDetail() {
+        let app = launchFixture("continue-target")
+        openFixtureSeries(in: app)
+        app.buttons["Continue Chapter 3"].tap()
+        assertReaderChapter(3, in: app)
+        XCTAssertFalse(app.buttons["reader.library"].exists)
+
+        app.buttons["reader.chapters"].tap()
+        let current = app.buttons["reader.chapters.row.Chapter 3"]
+        XCTAssertTrue(current.waitForExistence(timeout: 5))
+        XCTAssertTrue(current.isSelected)
+        XCTAssertTrue(app.buttons["reader.chapters.seriesDetails"].exists)
+
+        let chapterOne = app.buttons["reader.chapters.row.Chapter 1"]
+        XCTAssertTrue(chapterOne.waitForExistence(timeout: 5))
+        chapterOne.tap()
+        XCTAssertTrue(chapterOne.waitForNonExistence(timeout: 5))
+        assertReaderChapter(1, in: app)
+
+        app.buttons["reader.back"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForNonExistence(timeout: 5))
+        let chapterUtilities = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'series-detail.chapter-actions.'")
+        )
+        XCTAssertTrue(chapterUtilities.firstMatch.waitForExistence(timeout: 5), "Back returns to Series Detail")
+    }
+
+    func testChapterListCurrentRowStaysOnChapterAndSeriesDetailsLeavesReader() {
+        let app = launchFixture("continue-target")
+        openFixtureSeries(in: app)
+        app.buttons["Continue Chapter 3"].tap()
+        assertReaderChapter(3, in: app)
+
+        app.buttons["reader.chapters"].tap()
+        let current = app.buttons["reader.chapters.row.Chapter 3"]
+        XCTAssertTrue(current.waitForExistence(timeout: 5))
+        current.tap()
+        XCTAssertTrue(current.waitForNonExistence(timeout: 5))
+        assertReaderChapter(3, in: app)
+
+        app.buttons["reader.chapters"].tap()
+        let seriesDetails = app.buttons["reader.chapters.seriesDetails"]
+        XCTAssertTrue(seriesDetails.waitForExistence(timeout: 5))
+        seriesDetails.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForNonExistence(timeout: 5))
+        assertContinueChapterThree(in: app)
     }
 
     private func openFixtureSeries(in app: XCUIApplication) {
@@ -575,5 +658,18 @@ final class ToonEdgeResumeAdjacencyUITests: XCTestCase {
     private func assertLabel(_ label: String, on element: XCUIElement) {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", label), object: element)
         XCTAssertEqual(XCTWaiter().wait(for: [expectation], timeout: 10), .completed, "Expected \(label), saw \(element.label)")
+    }
+}
+
+extension XCUIApplication {
+    /// Downloads lives inside Library rather than in the tab bar.
+    func openDownloadsFromLibrary(file: StaticString = #filePath, line: UInt = #line) {
+        let library = tabBars.buttons["tab.library"].exists
+            ? tabBars.buttons["tab.library"]
+            : tabBars.buttons["Library"]
+        library.tap()
+        let downloads = buttons["library.downloads"]
+        XCTAssertTrue(downloads.waitForExistence(timeout: 5), "Library must offer Downloads", file: file, line: line)
+        downloads.tap()
     }
 }

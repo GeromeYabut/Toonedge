@@ -153,28 +153,6 @@ import Testing
     #expect(idle.refreshAccessibilityLabel == "Check for new chapters")
 }
 
-@Test func libraryRefreshFeedbackLayoutIsDismissibleAndAutoExpires() {
-    let layout = LibraryRefreshFeedbackLayout(result: .init(checkedCount: 2, updatedCount: 1, failedCount: 0))
-
-    #expect(layout.title == "Updates found")
-    #expect(layout.message == "2 checked, 1 update")
-    #expect(layout.presentationStyle == .floatingOverlay)
-    #expect(layout.overlayAlignment == .bottomTrailing)
-    #expect(layout.maximumWidth == 280)
-    #expect(layout.contentSize == .compact)
-    #expect(layout.accentColorRole == .success)
-    #expect(!layout.reservesContentSpace)
-    #expect(layout.dismissAccessibilityLabel == "Dismiss update refresh")
-    #expect(layout.autoDismissDelay == 5)
-}
-
-@Test func libraryContentLayoutKeepsRefreshFeedbackOutOfFlow() {
-    let layout = LibraryContentLayout(refreshFeedback: LibraryRefreshFeedbackLayout(result: .init(checkedCount: 2, updatedCount: 1, failedCount: 0)))
-
-    #expect(layout.refreshFeedbackIsOverlay)
-    #expect(layout.contentStartsWithSegmentedControl)
-}
-
 @Test func libraryEmptyStateUsesCenteredNothingSavedModel() {
     let visible = LibraryEmptyStateLayout(hasLoadedSnapshot: true, visibleSeries: [])
     let loading = LibraryEmptyStateLayout(hasLoadedSnapshot: false, visibleSeries: [])
@@ -478,6 +456,15 @@ import Testing
     #expect(!loading.scrollsChaptersIndependently)
     #expect(unavailable.stateKind == .unavailable)
     #expect(!unavailable.scrollsChaptersIndependently)
+}
+
+@Test func unavailableSeriesDetailCopyIsUserFacing() {
+    let unavailable = SeriesDetailPageLayout(detail: nil, seedSummary: nil, hasLoaded: true)
+
+    #expect(unavailable.statusTitle == "Series unavailable")
+    #expect(unavailable.statusMessage == "This series couldn’t be opened. Go back to Library and try again.")
+    #expect(!unavailable.statusMessage.localizedCaseInsensitiveContains("mock"))
+    #expect(!unavailable.statusMessage.localizedCaseInsensitiveContains("repository"))
 }
 
 @Test func librarySeriesDetailRouteIdentityUsesSeriesIDAndCarriesOptionalSeed() {
@@ -1295,7 +1282,7 @@ import Testing
 
     #expect(layout.contentPriority == [.search, .continueReading, .recentlyUpdated, .libraryPreview])
     #expect(layout.searchPlacement == .compactCommandBar)
-    #expect(layout.refreshPlacement == .pullToRefresh)
+    #expect(layout.offersUpdateCheck == false)
     #expect(layout.usesCircularTopAccessoryButtons == false)
 }
 
@@ -1305,7 +1292,7 @@ import Testing
     #expect(layout.contentPriority == [.search, .continueReading, .recentlyUpdated, .libraryPreview])
     #expect(layout.showsDuplicateSearchCTA == false)
     #expect(layout.showsSettingsAccessory == false)
-    #expect(layout.refreshPlacement == .pullToRefresh)
+    #expect(layout.offersUpdateCheck == false)
 }
 
 @Test func quietHomeSeriesRowsExpandAtAccessibilitySizes() {
@@ -1326,13 +1313,6 @@ import Testing
     #expect(layout.cornerRadius == 10)
     #expect(layout.usesCapsuleShape == false)
     #expect(layout.horizontalPadding == ToonEdgeSpacing.medium)
-}
-
-@Test func homeRefreshFeedbackKeepsResultWithoutBannerContainer() {
-    let status = HomeRefreshStatusLayout(message: "Checked 2, found 1 update.")
-
-    #expect(status.message == "Checked 2, found 1 update.")
-    #expect(status.usesBannerContainer == false)
 }
 
 @Test func homeReadingDashboardCardsUseCoverFirstNativeLayouts() {
@@ -2026,4 +2006,8 @@ private func waitForSeriesMutationAttempt(
     #expect(filtered.compactSummary == "panel.example.test · Title Z–A")
     #expect(filtered.accessibilityValue.contains("panel.example.test"))
     #expect(filtered.sortChoice.applying(to: query) == query)
+}
+
+@Test func tabBarKeepsDownloadsOutOfPrimaryNavigation() {
+    #expect(AppTab.allCases == [.home, .library, .settings])
 }

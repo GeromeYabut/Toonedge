@@ -48,7 +48,7 @@ final class ReaderSurfacePageView: UIView {
         imageView.accessibilityIdentifier = "reader.image.\(index + 1)"
         message.isHidden = ready
         message.text = failed
-            ? "Page \(index + 1) unavailable. Connect to the internet and retry."
+            ? "Couldn't load page \(index + 1)."
             : "Page \(index + 1)"
         message.accessibilityIdentifier = failed ? "reader.page.failed.\(index + 1)" : nil
         retry.isHidden = !failed

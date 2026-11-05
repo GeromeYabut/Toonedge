@@ -98,7 +98,7 @@ import Testing
     #expect(await metadata.cacheMetadataEntries().count == 1)
     #expect(model.entries.count == 1)
     #expect(model.failedRemovalURL == sourceURL)
-    #expect(model.cacheFeedback == .failure("Could not remove cached chapter."))
+    #expect(model.cacheFeedback == .failure("Couldn’t remove this offline copy. Try again."))
 }
 
 @Test func cacheMetadataRemovalFailureCanRetryAfterFilesHaveBeenDeleted() async throws {

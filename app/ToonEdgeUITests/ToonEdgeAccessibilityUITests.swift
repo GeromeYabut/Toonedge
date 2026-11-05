@@ -20,13 +20,13 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
 
     func testPrimaryTabsRemainHittableAtAccessibilityTextSize() {
         let app = launchApp(contentSizeCategory: .accessibilityXXXL)
-        for tab in [("tab.library", "Library"), ("tab.downloads", "Downloads"), ("tab.settings", "Settings")] {
+        for tab in [("tab.library", "Library"), ("tab.settings", "Settings")] {
             let button = tabButton(app, identifier: tab.0, label: tab.1)
             XCTAssertTrue(button.exists, "Missing \(tab.1)")
             XCTAssertTrue(button.isHittable, "Unhittable \(tab.1)")
         }
         tabButton(app, identifier: "tab.settings", label: "Settings").tap()
-        for tab in [("tab.home", "Home"), ("tab.library", "Library"), ("tab.downloads", "Downloads"), ("tab.settings", "Settings")] {
+        for tab in [("tab.home", "Home"), ("tab.library", "Library"), ("tab.settings", "Settings")] {
             XCTAssertTrue(tabButton(app, identifier: tab.0, label: tab.1).isHittable, "Unhittable on Settings: \(tab.1)")
         }
         attachScreenshot(app, name: "settings-large-text")
@@ -34,14 +34,14 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
 
     func testTwentiethDownloadEntryIsReachable() {
         let app = launchApp(extraArguments: ["-seedDownloads20"])
-        app.tabBars.buttons["tab.downloads"].tap()
+        app.openDownloadsFromLibrary()
         let finalRow = app.staticTexts["Fixture Chapter 20"]
-        let list = app.scrollViews.firstMatch
+        let list = app.collectionViews.firstMatch
         for _ in 0..<20 where !finalRow.isHittable {
             list.swipeUp()
         }
         XCTAssertTrue(finalRow.isHittable)
-        let remove = app.buttons["Remove Fixture Series, Fixture Chapter 20 from cache"]
+        let remove = app.buttons["Remove Fixture Series, Fixture Chapter 20 from this device"]
         for _ in 0..<5 where !remove.isHittable {
             list.swipeUp()
         }
@@ -51,7 +51,7 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
 
     func testDelayedDownloadsTransitionFromLoadingToEmpty() {
         let app = launchApp(extraArguments: ["-seedDelayedDownloadsEmpty"])
-        tabButton(app, identifier: "tab.downloads", label: "Downloads").tap()
+        app.openDownloadsFromLibrary()
 
         XCTAssertTrue(app.descendants(matching: .any)["downloads.loading"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.descendants(matching: .any)["downloads.empty"].exists)
@@ -61,7 +61,7 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
 
     func testDelayedDownloadsTransitionFromLoadingToContent() {
         let app = launchApp(extraArguments: ["-seedDelayedDownloadsContent"])
-        tabButton(app, identifier: "tab.downloads", label: "Downloads").tap()
+        app.openDownloadsFromLibrary()
 
         XCTAssertTrue(app.descendants(matching: .any)["downloads.loading"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts["Delayed Chapter 7"].waitForExistence(timeout: 8))
@@ -73,15 +73,15 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
             contentSizeCategory: .accessibilityXXXL,
             extraArguments: ["-seedDownloads20"]
         )
-        tabButton(app, identifier: "tab.downloads", label: "Downloads").tap()
+        app.openDownloadsFromLibrary()
 
         let storageHeader = app.descendants(matching: .any)["downloads.storageHeader"]
         XCTAssertTrue(storageHeader.waitForExistence(timeout: 5))
         XCTAssertTrue(storageHeader.label.contains("20 chapters"))
         XCTAssertFalse(app.staticTexts["Local reading cache"].exists)
 
-        let firstRemove = app.buttons["Remove Fixture Series, Fixture Chapter 20 from cache"]
-        let scrollView = app.scrollViews.firstMatch
+        let firstRemove = app.buttons["Remove Fixture Series, Fixture Chapter 20 from this device"]
+        let scrollView = app.collectionViews.firstMatch
         for _ in 0..<25 where !firstRemove.isHittable {
             scrollView.swipeUp()
         }
@@ -126,7 +126,6 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
         let tabs = [
             ("tab.home", "Home"),
             ("tab.library", "Library"),
-            ("tab.downloads", "Downloads"),
             ("tab.settings", "Settings")
         ]
         for (identifier, label) in tabs {

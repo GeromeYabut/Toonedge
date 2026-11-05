@@ -3,7 +3,6 @@ import Foundation
 public enum AppTab: String, CaseIterable, Identifiable, Sendable {
     case home
     case library
-    case downloads
     case settings
 
     public var id: String { rawValue }
@@ -12,7 +11,6 @@ public enum AppTab: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .home: "Home"
         case .library: "Library"
-        case .downloads: "Downloads"
         case .settings: "Settings"
         }
     }
@@ -1488,22 +1486,22 @@ public struct CacheActionFeedback: Equatable, Sendable {
         CacheActionFeedback(result: result, message: message(for: result), isFailure: false)
     }
 
-    public static func failure(_ message: String = "Cache action failed. Try again.") -> CacheActionFeedback {
+    public static func failure(_ message: String = "Couldn’t update offline copy. Try again.") -> CacheActionFeedback {
         CacheActionFeedback(result: nil, message: message, isFailure: true)
     }
 
     private static func message(for result: CacheActionResult) -> String {
         switch result {
         case .recent:
-            return "Chapter cache updated."
+            return "Chapter kept for offline reading."
         case .retained:
-            return "Chapter retained offline."
+            return "Chapter downloaded for offline reading."
         case .unchanged:
-            return "Cache state already up to date."
+            return "This chapter is already available offline."
         case .removed:
-            return "Cached chapter removed."
+            return "Offline copy removed."
         case .notFound:
-            return "Cached chapter was not found."
+            return "This offline copy was already removed."
         }
     }
 }
