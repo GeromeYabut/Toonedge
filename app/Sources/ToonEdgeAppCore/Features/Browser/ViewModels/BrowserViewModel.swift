@@ -288,6 +288,14 @@ public final class BrowserViewModel: ObservableObject {
         self.isLoading = isLoading
     }
 
+    /// The page to hand to Safari or the share sheet. Only web addresses work outside the app.
+    public var externalPageURL: URL? {
+        guard let scheme = currentURL?.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
+            return nil
+        }
+        return currentURL
+    }
+
     public func navigationDidStart() {
         detectionResult = nil
         cleanModePresentation = .hidden
