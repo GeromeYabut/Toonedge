@@ -176,6 +176,7 @@ public final class BrowserViewModel: ObservableObject {
     @Published public private(set) var browserOwnedReaderSession: MockReaderSession?
     private let readerPresentationLogger: any BrowserReaderPresentationLogging
     private var pendingReaderLaunchOriginOverride: ReaderLaunchOrigin?
+    private var dismissedRecommendationURL: URL?
     private var readerLaunchOriginOverrideSourceURL: URL?
 
     public init(
@@ -320,7 +321,7 @@ public final class BrowserViewModel: ObservableObject {
             pendingReaderSession = session
             readerPresentationLogger.log(.pendingBrowserOwnedReader)
         case .recommended:
-            cleanModePresentation = .recommendedBanner
+            cleanModePresentation = result.pageURL == dismissedRecommendationURL ? .manualTool : .recommendedBanner
         case .manual:
             cleanModePresentation = .manualTool
         case .unavailable:
@@ -338,6 +339,13 @@ public final class BrowserViewModel: ObservableObject {
         cleanModePresentation = .hidden
         pendingReaderSession = nil
         readerUnavailableMessage = "Clean Reader could not load this page. Continue on the original site."
+    }
+
+    /// Keeps Clean Mode reachable from the toolbar, and stays dismissed through later detection passes on this page.
+    public func dismissCleanModeRecommendation() {
+        guard cleanModePresentation == .recommendedBanner else { return }
+        dismissedRecommendationURL = currentURL
+        cleanModePresentation = .manualTool
     }
 
     public func enterCleanModeManually() {

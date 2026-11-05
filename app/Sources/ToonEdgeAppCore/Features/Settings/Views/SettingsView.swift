@@ -316,7 +316,7 @@ public struct SettingsView: View {
                 .modifier(TEEditorialRowStyle())
         case .brightness:
             VStack(alignment: .leading, spacing: ToonEdgeSpacing.small) {
-                Text("Brightness Aid")
+                Text("Dim Pages")
                     .font(ToonEdgeTypography.body.weight(.semibold))
                 Slider(value: brightnessBinding, in: 0...0.75)
                     .tint(ToonEdgeColor.accent)

@@ -36,7 +36,7 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
         let app = launchApp(extraArguments: ["-seedDownloads20"])
         app.openDownloadsFromLibrary()
         let finalRow = app.staticTexts["Fixture Chapter 20"]
-        let list = app.scrollViews.firstMatch
+        let list = app.collectionViews.firstMatch
         for _ in 0..<20 where !finalRow.isHittable {
             list.swipeUp()
         }
@@ -81,7 +81,7 @@ final class ToonEdgeAccessibilityUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Local reading cache"].exists)
 
         let firstRemove = app.buttons["Remove Fixture Series, Fixture Chapter 20 from this device"]
-        let scrollView = app.scrollViews.firstMatch
+        let scrollView = app.collectionViews.firstMatch
         for _ in 0..<25 where !firstRemove.isHittable {
             scrollView.swipeUp()
         }

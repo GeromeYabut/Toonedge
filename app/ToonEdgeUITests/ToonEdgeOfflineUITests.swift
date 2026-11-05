@@ -23,6 +23,39 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["downloads.empty"].exists)
     }
 
+    func testDownloadsGroupBySeriesWithSwipeRemovalAndConfirmedRemoveAll() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-resetTestData", "-seedDownloads20"]
+        app.launch()
+        app.openDownloadsFromLibrary()
+
+        let removeAll = app.buttons["downloads.removeAll.Fixture Series"]
+        XCTAssertTrue(removeAll.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["20 chapters"].exists)
+
+        let firstChapter = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Fixture Chapter'")).firstMatch
+        let swipedTitle = firstChapter.label
+        firstChapter.swipeLeft()
+        let swipeRemove = app.buttons["Remove"]
+        XCTAssertTrue(swipeRemove.waitForExistence(timeout: 3))
+        swipeRemove.tap()
+        XCTAssertTrue(app.staticTexts[swipedTitle].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["19 chapters"].waitForExistence(timeout: 5))
+
+        removeAll.tap()
+        let cancel = app.buttons["Cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 3))
+        cancel.tap()
+        XCTAssertTrue(app.staticTexts["19 chapters"].exists, "Cancel must not remove anything")
+
+        removeAll.tap()
+        let confirm = app.buttons["Remove 19 Chapters"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 3))
+        confirm.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["downloads.empty"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.descendants(matching: .any)["downloads.feedback.success"].exists)
+    }
+
     func testRetainedChapterReopensOfflineInOrderAndUncachedChapterExplainsFailure() {
         var app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-seedOfflineReader", "-resetOfflineFixture"]
@@ -57,7 +90,7 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForExistence(timeout: 5))
         XCTAssertTrue(
-            app.staticTexts["Page 1 unavailable. Connect to the internet and retry."].waitForExistence(timeout: 8)
+            app.staticTexts["Couldn't load page 1."].waitForExistence(timeout: 8)
         )
     }
 }

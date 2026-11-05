@@ -81,6 +81,21 @@ final class ToonEdgeBrowserReaderUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForExistence(timeout: 5))
     }
 
+    func testCleanModeSuggestionSitsBelowThePageAndCanBeDismissed() {
+        let app = launchBrowserFixture("medium")
+        let action = app.buttons["browser.cleanModeAction"]
+        XCTAssertTrue(action.waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(action.frame.minY, app.frame.midY, "The suggestion stays clear of the top of the page")
+
+        app.buttons["browser.cleanModeDismiss"].tap()
+
+        XCTAssertFalse(action.waitForExistence(timeout: 1))
+        let manual = app.buttons["browser.tryCleanMode"]
+        XCTAssertTrue(manual.waitForExistence(timeout: 2))
+        manual.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["reader.root"].waitForExistence(timeout: 5))
+    }
+
     func testViewOriginalFromBrowserOwnedReaderReturnsToOriginatingBrowser() {
         let app = launchBrowserFixture("medium")
         openMediumConfidenceReader(in: app)
