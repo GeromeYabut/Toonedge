@@ -650,8 +650,7 @@ final class ToonEdgeSharedSearchUITests: XCTestCase {
     private func assertReaderChromeGeometry(_ app: XCUIApplication,
                                            file: StaticString = #filePath, line: UInt = #line) {
         let identifiers = ["reader.back", "reader.chapters", "reader.search",
-                           "reader.viewOriginalPage", "reader.settings", "reader.retainChapter",
-                           "reader.zoom.reset"]
+                           "reader.more", "reader.viewOriginalPage", "reader.zoom.reset"]
         let actions = identifiers.map { app.buttons[$0] }
         for action in actions {
             XCTAssertTrue(action.exists, action.identifier, file: file, line: line)

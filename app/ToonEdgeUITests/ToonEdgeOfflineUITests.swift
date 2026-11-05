@@ -64,7 +64,10 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         let initialReader = app.descendants(matching: .any)["reader.root"]
         XCTAssertTrue(initialReader.waitForExistence(timeout: 5))
         initialReader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        let retain = app.buttons["Retain Chapter Offline"]
+        let more = app.buttons["reader.more"]
+        XCTAssertTrue(more.waitForExistence(timeout: 5))
+        more.tap()
+        let retain = app.buttons["Download Chapter"]
         XCTAssertTrue(retain.waitForExistence(timeout: 5))
         retain.tap()
         XCTAssertTrue(app.staticTexts["Chapter downloaded for offline reading."].waitForExistence(timeout: 5))

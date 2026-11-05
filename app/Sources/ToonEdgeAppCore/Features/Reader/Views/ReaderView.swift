@@ -336,6 +336,7 @@ public struct ReaderView: View {
                 isChapterListPresented = true
             }
             .disabled(viewModel.isSettingsPresented || isSaveStatePickerPresented)
+            moreActionsMenu
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 4)
@@ -343,6 +344,42 @@ public struct ReaderView: View {
         .task {
             await viewModel.refreshSavedState()
         }
+    }
+
+    private var moreActionsMenu: some View {
+        Menu {
+            Button("Download Chapter", systemImage: "arrow.down.circle") {
+                Task {
+                    await viewModel.retainCurrentChapter()
+                }
+            }
+            .accessibilityIdentifier("reader.retainChapter")
+
+            if libraryLifecycleService != nil {
+                Button(
+                    viewModel.isSavedToLibrary ? "Saved to Library" : "Add to Library",
+                    systemImage: viewModel.isSavedToLibrary ? "bookmark.fill" : "bookmark"
+                ) {
+                    presentLibrarySave()
+                }
+                .accessibilityIdentifier("reader.saveToLibrary")
+            }
+
+            Button("Reader Settings", systemImage: "gearshape") {
+                viewModel.showSettings()
+            }
+            .accessibilityIdentifier("reader.settings")
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.callout.weight(.semibold))
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
+        }
+        .accessibilityLabel("More Actions")
+        .accessibilityIdentifier("reader.more")
+        .disabled(viewModel.isSettingsPresented || isSaveStatePickerPresented)
     }
 
     private var floatingActionRail: some View {
@@ -353,39 +390,11 @@ public struct ReaderView: View {
             }
             #endif
             ReaderIconButton(
-                systemImage: "arrow.down.circle",
-                label: "Retain Chapter Offline",
-                identifier: "reader.retainChapter"
-            ) {
-                Task {
-                    await viewModel.retainCurrentChapter()
-                }
-            }
-
-            if libraryLifecycleService != nil {
-                ReaderIconButton(
-                    systemImage: viewModel.isSavedToLibrary ? "bookmark.fill" : "bookmark",
-                    label: viewModel.isSavedToLibrary ? "Saved to Library" : "Add to Library",
-                    identifier: "reader.saveToLibrary"
-                ) {
-                    presentLibrarySave()
-                }
-            }
-
-            ReaderIconButton(
                 systemImage: "safari",
                 label: "View Original Page",
                 identifier: "reader.viewOriginalPage"
             ) {
                 viewOriginalPageAction?() ?? router.viewOriginalPage()
-            }
-
-            ReaderIconButton(
-                systemImage: "gearshape",
-                label: "Reader Settings",
-                identifier: "reader.settings"
-            ) {
-                viewModel.showSettings()
             }
         }
         .padding(2)
@@ -739,6 +748,7 @@ enum ReaderChromeAction: Equatable {
     case save
     case saved
     case chapterList
+    case more
     case viewOriginalPage
     case settings
     case previousChapter
@@ -749,6 +759,7 @@ struct ReaderChromeLayout: Equatable {
     var launchOrigin: ReaderLaunchOrigin
     var top: [ReaderChromeAction]
     var floating: [ReaderChromeAction]
+    var menu: [ReaderChromeAction]
     var bottom: [ReaderChromeAction]
     var enabledActions: [ReaderChromeAction]
     var showsChapterContext: Bool
@@ -756,7 +767,7 @@ struct ReaderChromeLayout: Equatable {
     var minimumActionSize: CGFloat
 
     var actions: [ReaderChromeAction] {
-        top + floating + bottom
+        top + floating + menu + bottom
     }
 
     static func actions(
@@ -766,13 +777,15 @@ struct ReaderChromeLayout: Equatable {
         canNavigatePrevious: Bool,
         canNavigateNext: Bool
     ) -> ReaderChromeLayout {
-        var floating: [ReaderChromeAction] = [.download]
+        var menu: [ReaderChromeAction] = [.download]
         if isLibraryAvailable {
-            floating.append(isSavedToLibrary ? .saved : .save)
+            menu.append(isSavedToLibrary ? .saved : .save)
         }
-        floating.append(contentsOf: [.viewOriginalPage, .settings])
+        menu.append(.settings)
 
-        var enabledActions = [ReaderChromeAction.back, .chapterList] + floating
+        let top: [ReaderChromeAction] = [.back, .chapterList, .more]
+        let floating: [ReaderChromeAction] = [.viewOriginalPage]
+        var enabledActions = top + floating + menu
         if canNavigatePrevious {
             enabledActions.append(.previousChapter)
         }
@@ -782,8 +795,9 @@ struct ReaderChromeLayout: Equatable {
 
         return ReaderChromeLayout(
             launchOrigin: launchOrigin,
-            top: [.back, .chapterList],
+            top: top,
             floating: floating,
+            menu: menu,
             bottom: [.previousChapter, .nextChapter],
             enabledActions: enabledActions,
             showsChapterContext: true,
@@ -802,6 +816,7 @@ struct ReaderChromeLayout: Equatable {
         case .download: "reader.retainChapter"
         case .save, .saved: "reader.saveToLibrary"
         case .chapterList: "reader.chapters"
+        case .more: "reader.more"
         case .viewOriginalPage: "reader.viewOriginalPage"
         case .settings: "reader.settings"
         case .previousChapter: "reader.previousChapter"

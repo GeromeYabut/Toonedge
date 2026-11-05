@@ -20,6 +20,9 @@ final class ToonEdgeSettingsUITests: XCTestCase {
         XCTAssertTrue(reader.waitForExistence(timeout: 5))
         reader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
+        let more = app.buttons["reader.more"]
+        XCTAssertTrue(more.waitForExistence(timeout: 2))
+        more.tap()
         let settings = app.buttons["reader.settings"]
         XCTAssertTrue(settings.waitForExistence(timeout: 2))
         settings.tap()

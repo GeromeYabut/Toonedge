@@ -158,8 +158,9 @@ final class ToonEdgeBrowserReaderUITests: XCTestCase {
         XCTAssertTrue(chrome.waitForExistence(timeout: 2))
         XCTAssertTrue(back.waitForExistence(timeout: 2))
 
+        app.buttons["reader.more"].tap()
         let retain = app.buttons["reader.retainChapter"]
-        XCTAssertTrue(retain.isHittable)
+        XCTAssertTrue(retain.waitForExistence(timeout: 2))
         retain.tap()
         XCTAssertTrue(chrome.exists)
         XCTAssertTrue(back.exists)

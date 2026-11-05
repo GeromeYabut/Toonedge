@@ -182,6 +182,8 @@ final class ToonEdgeReaderIntegratedZoomUITests: XCTestCase {
             $0["measurementGeometryRevision"] as? Int == $0["geometryRevision"] as? Int }
         XCTAssertLessThanOrEqual(number(data, "relayoutErrorX"), 2)
         XCTAssertLessThanOrEqual(number(data, "relayoutErrorY"), 2)
+        app.buttons["reader.more"].tap()
+        XCTAssertTrue(app.buttons["reader.settings"].waitForExistence(timeout: 3))
         app.buttons["reader.settings"].tap()
         XCTAssertTrue(app.segmentedControls["reader-settings.fit"].waitForExistence(timeout: 3))
         app.segmentedControls["reader-settings.fit"].buttons["Fit Screen"].tap()

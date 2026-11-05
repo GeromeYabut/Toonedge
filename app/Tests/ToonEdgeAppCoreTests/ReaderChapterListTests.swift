@@ -152,7 +152,7 @@ private func session(chapter number: Int) -> MockReaderSession {
         canNavigateNext: false
     )
 
-    #expect(layout.top == [.back, .chapterList])
+    #expect(layout.top == [.back, .chapterList, .more])
     #expect(layout.isEnabled(.chapterList))
     #expect(layout.identifier(for: .chapterList) == "reader.chapters")
 }
