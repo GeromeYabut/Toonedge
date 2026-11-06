@@ -272,13 +272,10 @@ final class ToonEdgeReaderIntegratedZoomUITests: XCTestCase {
         let canvas = app.scrollViews["reader.readingSurface"]
         setChromeForPinchCase(app, visible: false)
         canvas.doubleTap()
-        let badge = app.staticTexts["reader.zoom.percentage"]
-        XCTAssertTrue(badge.waitForExistence(timeout: 0.6), "Hidden chrome must not suppress zoom feedback")
-        XCTAssertEqual(badge.label, "200%")
+        XCTAssertTrue(waitForBadgeShown(in: app, count: 1, label: "200%"), "Hidden chrome must not suppress zoom feedback")
         XCTAssertFalse(app.buttons["reader.zoom.reset"].isHittable)
         canvas.doubleTap()
-        XCTAssertTrue(badge.waitForExistence(timeout: 0.6))
-        XCTAssertEqual(badge.label, "100%")
+        XCTAssertTrue(waitForBadgeShown(in: app, count: 2, label: "100%"))
         XCTAssertFalse(app.buttons["reader.zoom.reset"].isHittable)
     }
 
