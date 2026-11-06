@@ -148,6 +148,7 @@ private func session(chapter number: Int) -> MockReaderSession {
         launchOrigin: .direct,
         isLibraryAvailable: true,
         isSavedToLibrary: false,
+        isChapterDownloaded: false,
         canNavigatePrevious: false,
         canNavigateNext: false
     )
