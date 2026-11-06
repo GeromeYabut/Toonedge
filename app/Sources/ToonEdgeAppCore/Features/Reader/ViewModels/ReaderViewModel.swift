@@ -12,6 +12,7 @@ public final class ReaderViewModel: ObservableObject {
     @Published public private(set) var libraryFeedback: CacheActionFeedback?
     @Published public private(set) var isSavedToLibrary: Bool
     @Published public private(set) var isSavingToLibrary: Bool
+    @Published public private(set) var isChapterDownloaded: Bool
     @Published public private(set) var adjacentLoadState: AdjacentChapterLoadState
     @Published public private(set) var pagePipeline: ReaderPagePipeline
     private let progressRepository: (any ReaderProgressStoring)?
@@ -60,6 +61,7 @@ public final class ReaderViewModel: ObservableObject {
         self.libraryFeedback = nil
         self.isSavedToLibrary = false
         self.isSavingToLibrary = false
+        self.isChapterDownloaded = false
         self.adjacentLoadState = .idle
         self.pagePipeline = resolvedPagePipelineFactory(session)
         self.progressRepository = progressRepository
@@ -146,6 +148,7 @@ public final class ReaderViewModel: ObservableObject {
         self.progress = progress
         self.isChromeVisible = true
         self.isSettingsPresented = false
+        self.isChapterDownloaded = false
         self.hasCompletedInitialRestore = true
         self.hasRecordedRecentCacheMetadataForSession = false
         // Choosing Previous/Next is itself evidence of reading this series.
@@ -451,6 +454,7 @@ public final class ReaderViewModel: ObservableObject {
             ) else {
                 return
             }
+            isChapterDownloaded = true
             cacheFeedback = .success(result)
             if let event = InteractionFeedbackOutcomePolicy.cacheEvent(for: result) {
                 interactionFeedback?.emit(event)
@@ -483,6 +487,13 @@ public final class ReaderViewModel: ObservableObject {
             return nil
         }
         return await libraryLifecycleService.seriesDetail(for: storedSeriesID)
+    }
+
+    public func refreshDownloadState() async {
+        let sourceURL = session.sourceURL
+        let entries = await cacheMetadataManager?.cacheMetadataEntries() ?? []
+        guard session.sourceURL == sourceURL else { return }
+        isChapterDownloaded = entries.contains { $0.sourceURL == sourceURL && $0.retentionState == .retained }
     }
 
     public func refreshSavedState() async {
