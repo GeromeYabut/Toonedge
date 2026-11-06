@@ -168,6 +168,22 @@ import Testing
     #expect(missing == .notFound)
 }
 
+@MainActor
+@Test func readingADownloadedChapterAgainKeepsItDownloaded() async throws {
+    let sourceURL = URL(string: "https://example.com/reread/chapter-1")!
+    let stores: [any CacheMetadataManaging] = [try makeRepository(), MockCacheMetadataService()]
+
+    for store in stores {
+        _ = try await store.recordCacheMetadata(.fixture(sourceURL: sourceURL, estimatedStorageBytes: 524_288, retentionState: .retained))
+        let reread = try await store.recordCacheMetadata(.fixture(sourceURL: sourceURL, estimatedStorageBytes: 0, retentionState: .recent))
+
+        let entry = await store.cacheMetadataEntries().first { $0.sourceURL == sourceURL }
+        #expect(reread == .unchanged, "\(type(of: store))")
+        #expect(entry?.retentionState == .retained, "\(type(of: store))")
+        #expect(entry?.estimatedStorageBytes == 524_288, "\(type(of: store))")
+    }
+}
+
 @Test func mockCacheActionsReturnTypedResultsConsistently() async throws {
     let service = MockCacheMetadataService()
     let sourceURL = URL(string: "https://example.com/results/chapter-1")!
