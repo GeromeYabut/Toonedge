@@ -607,7 +607,6 @@ import Testing
     let viewModel = ReaderViewModel(session: session)
 
     #expect(viewModel.currentChapterDisplayLabel == "Chapter 169")
-    #expect(viewModel.currentChapterAccessibilityLabel == "Moonlit Edge, Chapter 169")
 }
 
 @MainActor

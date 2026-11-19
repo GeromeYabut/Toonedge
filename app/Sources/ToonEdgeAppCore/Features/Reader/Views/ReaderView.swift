@@ -319,7 +319,7 @@ public struct ReaderView: View {
                     .foregroundStyle(.white)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     .accessibilityIdentifier("reader.series.label")
-                Text(viewModel.session.chapterTitle)
+                Text(viewModel.currentChapterDisplayLabel)
                     .font(ToonEdgeTypography.sectionTitle)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     .accessibilityIdentifier("reader.chapter.context")
@@ -452,14 +452,6 @@ public struct ReaderView: View {
                 .frame(minWidth: 44, maxWidth: .infinity, minHeight: chromeLayout.minimumActionSize, alignment: .leading)
                 .accessibilityIdentifier("reader.previousChapter")
                 .disabled(!chromeLayout.isEnabled(.previousChapter) || viewModel.isAdjacentLoading)
-
-                Text(viewModel.currentChapterDisplayLabel)
-                    .font(ToonEdgeTypography.caption.weight(.semibold))
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityLabel(viewModel.currentChapterAccessibilityLabel)
-                    .accessibilityIdentifier("reader.chapter.label")
 
                 Button {
                     navigate(.next)
