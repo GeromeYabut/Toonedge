@@ -71,6 +71,8 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         XCTAssertTrue(retain.waitForExistence(timeout: 5))
         retain.tap()
         XCTAssertTrue(app.staticTexts["Chapter downloaded for offline reading."].waitForExistence(timeout: 5))
+        more.tap()
+        assertMenuShowsDownloaded(in: app)
 
         app.terminate()
         app = XCUIApplication()
@@ -95,6 +97,13 @@ final class ToonEdgeOfflineUITests: XCTestCase {
         XCTAssertTrue(
             app.staticTexts["Couldn't load page 1."].waitForExistence(timeout: 8)
         )
+    }
+
+    private func assertMenuShowsDownloaded(in app: XCUIApplication) {
+        let downloaded = app.buttons["reader.retainChapter"]
+        XCTAssertTrue(downloaded.waitForExistence(timeout: 5))
+        XCTAssertEqual(downloaded.label, "Downloaded")
+        XCTAssertFalse(downloaded.isEnabled, "A downloaded chapter can't be downloaded again")
     }
 }
 

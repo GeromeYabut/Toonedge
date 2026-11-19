@@ -1543,6 +1543,17 @@ public struct CacheMetadataInput: Equatable, Sendable {
     }
 }
 
+extension CacheMetadataInput {
+    /// Reading a downloaded chapter again records it as recent, which must not demote the download.
+    func preservingDownload(previousState: CacheRetentionState?, previousBytes: Int64) -> CacheMetadataInput {
+        guard previousState == .retained, retentionState == .recent else { return self }
+        var input = self
+        input.retentionState = .retained
+        input.estimatedStorageBytes = previousBytes
+        return input
+    }
+}
+
 public struct CacheMetadataEntry: Identifiable, Equatable, Sendable {
     public var id: UUID
     public var sourceURL: URL

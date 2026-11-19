@@ -458,6 +458,61 @@ import Testing
 }
 
 @MainActor
+@Test func readerKnowsWhenTheCurrentChapterIsDownloaded() async throws {
+    let cacheMetadataService = MockCacheMetadataService()
+    let session = MockReaderSession.sample
+    _ = try await cacheMetadataService.recordCacheMetadata(CacheMetadataInput(
+        sourceURL: session.sourceURL,
+        seriesTitle: session.seriesTitle,
+        chapterTitle: session.chapterTitle,
+        chapterLabel: nil,
+        imageCount: session.imageURLs.count,
+        estimatedStorageBytes: 0,
+        retentionState: .recent
+    ))
+    let viewModel = ReaderViewModel(session: session, cacheMetadataManager: cacheMetadataService)
+
+    await viewModel.refreshDownloadState()
+    #expect(!viewModel.isChapterDownloaded, "A recently read chapter isn't downloaded")
+
+    await viewModel.retainCurrentChapter()
+    #expect(viewModel.isChapterDownloaded)
+
+    let reopened = ReaderViewModel(session: session, cacheMetadataManager: cacheMetadataService)
+    await reopened.refreshDownloadState()
+    #expect(reopened.isChapterDownloaded)
+
+    var other = session
+    other.sourceURL = URL(string: "https://example.com/other-chapter")!
+    await reopened.replaceSession(other)
+    #expect(!reopened.isChapterDownloaded)
+}
+
+@MainActor
+@Test func readerRetainFailureLeavesTheChapterNotDownloaded() async {
+    let viewModel = ReaderViewModel(session: .sample, cacheMetadataManager: FailingCacheMetadataService())
+
+    await viewModel.retainCurrentChapter()
+
+    #expect(!viewModel.isChapterDownloaded)
+}
+
+@Test func readerMenuShowsDownloadedChapterAsDone() {
+    let layout = ReaderChromeLayout.actions(
+        launchOrigin: .browser,
+        isLibraryAvailable: true,
+        isSavedToLibrary: false,
+        isChapterDownloaded: true,
+        canNavigatePrevious: false,
+        canNavigateNext: false
+    )
+
+    #expect(layout.menu == [.downloaded, .save, .settings])
+    #expect(!layout.isEnabled(.downloaded))
+    #expect(layout.identifier(for: .downloaded) == "reader.retainChapter")
+}
+
+@MainActor
 @Test func readerRetainFailurePublishesNonBlockingFailureFeedback() async {
     let viewModel = ReaderViewModel(
         session: .sample,
@@ -1031,6 +1086,7 @@ func adjacentFailureWaitsForExplicitRetry(reason: AdjacentReaderSessionLoadFailu
         launchOrigin: .browser,
         isLibraryAvailable: true,
         isSavedToLibrary: true,
+        isChapterDownloaded: false,
         canNavigatePrevious: true,
         canNavigateNext: false
     )
@@ -1038,6 +1094,7 @@ func adjacentFailureWaitsForExplicitRetry(reason: AdjacentReaderSessionLoadFailu
         launchOrigin: .homeContinueReading,
         isLibraryAvailable: true,
         isSavedToLibrary: false,
+        isChapterDownloaded: false,
         canNavigatePrevious: false,
         canNavigateNext: true
     )
@@ -1045,6 +1102,7 @@ func adjacentFailureWaitsForExplicitRetry(reason: AdjacentReaderSessionLoadFailu
         launchOrigin: .library(seriesID: UUID()),
         isLibraryAvailable: false,
         isSavedToLibrary: false,
+        isChapterDownloaded: false,
         canNavigatePrevious: false,
         canNavigateNext: false
     )

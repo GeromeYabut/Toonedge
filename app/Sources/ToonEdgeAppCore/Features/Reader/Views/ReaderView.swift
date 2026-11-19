@@ -344,15 +344,22 @@ public struct ReaderView: View {
         .task {
             await viewModel.refreshSavedState()
         }
+        .task(id: viewModel.session.sourceURL) {
+            await viewModel.refreshDownloadState()
+        }
     }
 
     private var moreActionsMenu: some View {
         Menu {
-            Button("Download Chapter", systemImage: "arrow.down.circle") {
+            Button(
+                viewModel.isChapterDownloaded ? "Downloaded" : "Download Chapter",
+                systemImage: viewModel.isChapterDownloaded ? "arrow.down.circle.fill" : "arrow.down.circle"
+            ) {
                 Task {
                     await viewModel.retainCurrentChapter()
                 }
             }
+            .disabled(viewModel.isChapterDownloaded)
             .accessibilityIdentifier("reader.retainChapter")
 
             if libraryLifecycleService != nil {
@@ -645,6 +652,7 @@ public struct ReaderView: View {
             launchOrigin: viewModel.session.launchOrigin,
             isLibraryAvailable: libraryLifecycleService != nil,
             isSavedToLibrary: viewModel.isSavedToLibrary,
+            isChapterDownloaded: viewModel.isChapterDownloaded,
             canNavigatePrevious: viewModel.canNavigatePrevious,
             canNavigateNext: viewModel.canNavigateNext
         )
@@ -745,6 +753,7 @@ struct ReaderGesturePolicy {
 enum ReaderChromeAction: Equatable {
     case back
     case download
+    case downloaded
     case save
     case saved
     case chapterList
@@ -774,10 +783,11 @@ struct ReaderChromeLayout: Equatable {
         launchOrigin: ReaderLaunchOrigin,
         isLibraryAvailable: Bool,
         isSavedToLibrary: Bool,
+        isChapterDownloaded: Bool,
         canNavigatePrevious: Bool,
         canNavigateNext: Bool
     ) -> ReaderChromeLayout {
-        var menu: [ReaderChromeAction] = [.download]
+        var menu: [ReaderChromeAction] = [isChapterDownloaded ? .downloaded : .download]
         if isLibraryAvailable {
             menu.append(isSavedToLibrary ? .saved : .save)
         }
@@ -785,7 +795,7 @@ struct ReaderChromeLayout: Equatable {
 
         let top: [ReaderChromeAction] = [.back, .chapterList, .more]
         let floating: [ReaderChromeAction] = [.viewOriginalPage]
-        var enabledActions = top + floating + menu
+        var enabledActions = (top + floating + menu).filter { $0 != .downloaded }
         if canNavigatePrevious {
             enabledActions.append(.previousChapter)
         }
@@ -813,7 +823,7 @@ struct ReaderChromeLayout: Equatable {
     func identifier(for action: ReaderChromeAction) -> String {
         switch action {
         case .back: "reader.back"
-        case .download: "reader.retainChapter"
+        case .download, .downloaded: "reader.retainChapter"
         case .save, .saved: "reader.saveToLibrary"
         case .chapterList: "reader.chapters"
         case .more: "reader.more"

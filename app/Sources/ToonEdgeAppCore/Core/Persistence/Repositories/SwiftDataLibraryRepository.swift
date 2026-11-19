@@ -541,10 +541,9 @@ public final class SwiftDataLibraryRepository: LibraryLifecycleManaging, Library
 
     public func recordCacheMetadata(_ input: CacheMetadataInput) async throws -> CacheActionResult {
         let existing = fetchCacheEntry(sourceURLString: input.sourceURL.absoluteString)
-        let result = cacheActionResult(
-            previous: existing.map(cacheRetentionState(for:)),
-            next: input.retentionState
-        )
+        let previous = existing.map(cacheRetentionState(for:))
+        let input = input.preservingDownload(previousState: previous, previousBytes: existing?.estimatedStorageBytes ?? 0)
+        let result = cacheActionResult(previous: previous, next: input.retentionState)
         upsertCacheEntry(input, updatedAt: input.cachedAt)
         syncChapterCacheMetadata(
             sourceURLString: input.sourceURL.absoluteString,

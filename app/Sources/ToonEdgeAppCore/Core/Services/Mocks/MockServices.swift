@@ -416,7 +416,9 @@ public actor MockCacheMetadataService: CacheMetadataManaging {
     }
 
     public func recordCacheMetadata(_ input: CacheMetadataInput) async throws -> CacheActionResult {
-        let result = cacheActionResult(previous: entriesBySourceURL[input.sourceURL]?.retentionState, next: input.retentionState)
+        let existing = entriesBySourceURL[input.sourceURL]
+        let input = input.preservingDownload(previousState: existing?.retentionState, previousBytes: existing?.estimatedStorageBytes ?? 0)
+        let result = cacheActionResult(previous: existing?.retentionState, next: input.retentionState)
         entriesBySourceURL[input.sourceURL] = CacheMetadataEntry(
             sourceURL: input.sourceURL,
             seriesTitle: input.seriesTitle,
