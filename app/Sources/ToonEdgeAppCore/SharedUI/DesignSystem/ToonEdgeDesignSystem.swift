@@ -74,6 +74,7 @@ public struct ToonEdgePaletteValues: Equatable, Sendable {
     public let success: ToonEdgeColorValue
     public let warning: ToonEdgeColorValue
     public let failure: ToonEdgeColorValue
+    public let destructiveFill: ToonEdgeColorValue
     public let border: ToonEdgeColorValue
 
     public var textOnCanvasContrast: Double { textPrimary.contrastRatio(with: canvas) }
@@ -89,8 +90,14 @@ public struct ToonEdgePaletteValues: Equatable, Sendable {
         )
     }
 
+    /// White text on a deep red. Dark mode's failure color is a light red meant for text, too pale to fill behind white.
+    public var destructiveAction: ToonEdgeColorPair {
+        .init(foreground: .white, background: destructiveFill)
+    }
+
     public static func resolve(_ appearance: ToonEdgeAppearance) -> Self {
         let increased = appearance == .lightIncreasedContrast || appearance == .darkIncreasedContrast
+        let destructiveFill = ToonEdgeColorValue(red: increased ? 0.62 : 0.72, green: 0.12, blue: 0.15)
         switch appearance {
         case .light, .lightIncreasedContrast:
             return Self(
@@ -104,6 +111,7 @@ public struct ToonEdgePaletteValues: Equatable, Sendable {
                 success: .init(red: 0.10, green: increased ? 0.32 : 0.40, blue: 0.24),
                 warning: .init(red: increased ? 0.43 : 0.51, green: 0.31, blue: 0.04),
                 failure: .init(red: increased ? 0.62 : 0.72, green: 0.12, blue: 0.15),
+                destructiveFill: destructiveFill,
                 border: .init(white: increased ? 0.40 : 0.76)
             )
         case .dark, .darkIncreasedContrast:
@@ -118,6 +126,7 @@ public struct ToonEdgePaletteValues: Equatable, Sendable {
                 success: .init(red: 0.36, green: increased ? 0.90 : 0.78, blue: 0.58),
                 warning: .init(red: 1, green: increased ? 0.87 : 0.76, blue: 0.36),
                 failure: .init(red: 1, green: increased ? 0.64 : 0.48, blue: 0.50),
+                destructiveFill: destructiveFill,
                 border: .init(white: increased ? 0.65 : 0.28)
             )
         }
@@ -134,6 +143,7 @@ public enum ToonEdgeColor {
     public static let accentSoft = adaptive { $0.accentSoft }
     public static let filledActionForeground = adaptive { $0.filledAction.foreground }
     public static let filledActionBackground = adaptive { $0.filledAction.background }
+    public static let destructiveActionBackground = adaptive { $0.destructiveAction.background }
     public static let bannerForeground = adaptive { $0.banner.foreground }
     public static let bannerBackground = adaptive { $0.banner.background }
     public static let success = adaptive { $0.success }

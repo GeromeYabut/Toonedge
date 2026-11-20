@@ -19,27 +19,45 @@ public enum DownloadsContentPhase: Equatable, Sendable {
 public struct DownloadsSeriesGroup: Identifiable, Equatable, Sendable {
     public let seriesTitle: String
     public let entries: [CacheMetadataEntry]
+    /// The site the chapters came from, named only when another group shares this title.
+    public let distinguishingSite: String?
 
-    public var id: String { seriesTitle }
+    public var id: String { "\(Self.site(of: entries.first?.sourceURL) ?? "")|\(seriesTitle)" }
     /// A single chapter already has its own remove button.
     public var offersRemoveAll: Bool { entries.count > 1 }
 
-    public init(seriesTitle: String, entries: [CacheMetadataEntry]) {
+    public init(seriesTitle: String, entries: [CacheMetadataEntry], distinguishingSite: String? = nil) {
         self.seriesTitle = seriesTitle
         self.entries = entries
+        self.distinguishingSite = distinguishingSite
     }
 
     /// Keeps the incoming order: a series sits where its first chapter appears.
+    /// Cached chapters carry no series identity, so a title is only one series per site.
     public static func groups(from entries: [CacheMetadataEntry]) -> [DownloadsSeriesGroup] {
-        var titles: [String] = []
-        var entriesByTitle: [String: [CacheMetadataEntry]] = [:]
+        struct Key: Hashable { let title: String; let site: String? }
+        var keys: [Key] = []
+        var entriesByKey: [Key: [CacheMetadataEntry]] = [:]
         for entry in entries {
-            if entriesByTitle[entry.seriesTitle] == nil {
-                titles.append(entry.seriesTitle)
+            let key = Key(title: entry.seriesTitle, site: site(of: entry.sourceURL))
+            if entriesByKey[key] == nil {
+                keys.append(key)
             }
-            entriesByTitle[entry.seriesTitle, default: []].append(entry)
+            entriesByKey[key, default: []].append(entry)
         }
-        return titles.map { DownloadsSeriesGroup(seriesTitle: $0, entries: entriesByTitle[$0] ?? []) }
+        let groupsPerTitle = Dictionary(keys.map { ($0.title, 1) }, uniquingKeysWith: +)
+        return keys.map { key in
+            DownloadsSeriesGroup(
+                seriesTitle: key.title,
+                entries: entriesByKey[key] ?? [],
+                distinguishingSite: (groupsPerTitle[key.title] ?? 0) > 1 ? key.site : nil
+            )
+        }
+    }
+
+    private static func site(of url: URL?) -> String? {
+        guard let host = url?.host()?.lowercased() else { return nil }
+        return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
     }
 }
 
@@ -67,15 +85,20 @@ public struct DownloadsContentLayout: Equatable, Sendable {
     }
 
     public func groupDetail(_ group: DownloadsSeriesGroup) -> String {
-        Self.chapterCount(group.entries.count)
+        let count = Self.chapterCount(group.entries.count)
+        return group.distinguishingSite.map { "\(count) · \($0)" } ?? count
     }
 
     public func removeAllLabel(_ group: DownloadsSeriesGroup) -> String {
-        "Remove all \(Self.chapterCount(group.entries.count)) of \(group.seriesTitle) from this device"
+        "Remove all \(Self.chapterCount(group.entries.count)) of \(Self.seriesName(group)) from this device"
     }
 
     public func removeAllConfirmationTitle(_ group: DownloadsSeriesGroup) -> String {
-        "Remove \(Self.chapterCount(group.entries.count)) of \(group.seriesTitle) from this device?"
+        "Remove \(Self.chapterCount(group.entries.count)) of \(Self.seriesName(group)) from this device?"
+    }
+
+    private static func seriesName(_ group: DownloadsSeriesGroup) -> String {
+        group.distinguishingSite.map { "\(group.seriesTitle) from \($0)" } ?? group.seriesTitle
     }
 
     public func removeAllConfirmationAction(_ group: DownloadsSeriesGroup) -> String {
@@ -366,7 +389,7 @@ public struct DownloadsView: View {
                                 await viewModel.remove(sourceURL: entry.sourceURL)
                             }
                         }
-                        .tint(ToonEdgeColor.failure)
+                        .tint(ToonEdgeColor.destructiveActionBackground)
                     }
             }
         } header: {

@@ -66,6 +66,14 @@ import AppKit
     }
 }
 
+@Test func destructiveActionsMaintainTextContrastInEveryAppearance() {
+    for appearance in ToonEdgeAppearance.allCases {
+        let pair = ToonEdgePaletteValues.resolve(appearance).destructiveAction
+        #expect(pair.foreground == .white)
+        #expect(pair.foreground.contrastRatio(with: pair.background) >= 4.5)
+    }
+}
+
 @Test func editorialGroupDefaultsToNoBorder() {
     #expect(TEEditorialGroupStyle.default.drawsBorder == false)
     #expect(TEEditorialGroupStyle.default.usesElevation == false)
