@@ -366,7 +366,7 @@ public struct DownloadsView: View {
                                 await viewModel.remove(sourceURL: entry.sourceURL)
                             }
                         }
-                        .tint(ToonEdgeColor.failure)
+                        .tint(ToonEdgeColor.destructiveActionBackground)
                     }
             }
         } header: {
