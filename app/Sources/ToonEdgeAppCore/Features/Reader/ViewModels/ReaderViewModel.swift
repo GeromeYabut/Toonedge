@@ -112,10 +112,6 @@ public final class ReaderViewModel: ObservableObject {
         ) ?? session.chapterTitle
     }
 
-    public var currentChapterAccessibilityLabel: String {
-        "\(session.seriesTitle), \(currentChapterDisplayLabel)"
-    }
-
     public var adjacentFailureMessage: String? {
         adjacentFailure?.message
     }

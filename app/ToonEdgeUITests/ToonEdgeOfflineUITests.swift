@@ -377,9 +377,8 @@ final class ToonEdgeAuthoritativeContinueUITests: XCTestCase {
 
     private func assertReaderChapter(_ number: Int, in app: XCUIApplication) {
         revealReaderChrome(in: app)
-        let chapter = app.staticTexts["reader.chapter.label"]
-        let expected = "Continue Journey Fixture, Chapter \(number)"
-        assertLabel(expected, on: chapter)
+        assertLabel("Chapter \(number)", on: app.staticTexts["reader.chapter.context"])
+        XCTAssertEqual(app.staticTexts["reader.series.label"].label, "Continue Journey Fixture")
     }
 
     private func advanceReaderProgress(in app: XCUIApplication) -> String {
@@ -537,13 +536,14 @@ final class ToonEdgeAdjacentFailureUITests: XCTestCase {
 
     private func assertReaderChapter(_ number: Int, in app: XCUIApplication) {
         revealReaderChrome(in: app)
-        let chapter = app.staticTexts["reader.chapter.label"]
-        let expected = "Adjacent Outcome Fixture, Chapter \(number)"
+        let chapter = app.staticTexts["reader.chapter.context"]
+        let expected = "Chapter \(number)"
         let expectation = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "label == %@", expected), object: chapter
         )
         XCTAssertEqual(XCTWaiter().wait(for: [expectation], timeout: 6), .completed)
         XCTAssertEqual(chapter.label, expected)
+        XCTAssertEqual(app.staticTexts["reader.series.label"].label, "Adjacent Outcome Fixture")
     }
 
     private func revealReaderChrome(in app: XCUIApplication) {
@@ -565,7 +565,7 @@ final class ToonEdgeNumericAdjacencyUITests: XCTestCase {
         app.buttons["reader.nextChapter"].tap()
 
         assertChapter("Chapter 156", in: app)
-        XCTAssertFalse(app.staticTexts["reader.chapter.label"].label.contains("169"))
+        XCTAssertFalse(app.staticTexts["reader.chapter.context"].label.contains("169"))
     }
 
     func testSparseChapter155PreviousOpens154Never1() {
@@ -575,7 +575,7 @@ final class ToonEdgeNumericAdjacencyUITests: XCTestCase {
         app.buttons["reader.previousChapter"].tap()
 
         assertChapter("Chapter 154", in: app)
-        XCTAssertFalse(app.staticTexts["reader.chapter.label"].label.hasSuffix("Chapter 1"))
+        XCTAssertNotEqual(app.staticTexts["reader.chapter.context"].label, "Chapter 1")
     }
 
     func testUnsafeNumericPatternDoesNotExposeSparseAdjacentTargets() {
@@ -597,12 +597,14 @@ final class ToonEdgeNumericAdjacencyUITests: XCTestCase {
         let reader = app.descendants(matching: .any)["reader.root"]
         XCTAssertTrue(reader.waitForExistence(timeout: 5))
         reader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        XCTAssertTrue(app.staticTexts["reader.chapter.label"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["reader.chapter.context"].waitForExistence(timeout: 5))
+        // The chapter is named once, in the top bar; the bottom bar holds only navigation.
+        XCTAssertFalse(app.staticTexts["reader.chapter.label"].exists)
     }
 
     private func assertChapter(_ expectedChapter: String, in app: XCUIApplication) {
-        let chapterLabel = app.staticTexts["reader.chapter.label"]
-        let expectedLabel = "Numeric Adjacency Fixture, \(expectedChapter)"
+        let chapterLabel = app.staticTexts["reader.chapter.context"]
+        let expectedLabel = expectedChapter
         let matchingLabel = NSPredicate(format: "label == %@", expectedLabel)
         let expectation = XCTNSPredicateExpectation(predicate: matchingLabel, object: chapterLabel)
 
@@ -664,7 +666,8 @@ final class ToonEdgeResumeAdjacencyUITests: XCTestCase {
             reader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         }
         XCTAssertTrue(app.buttons["reader.back"].waitForExistence(timeout: 5))
-        assertLabel("Resume Adjacency Fixture, Chapter \(number)", on: app.staticTexts["reader.chapter.label"])
+        assertLabel("Chapter \(number)", on: app.staticTexts["reader.chapter.context"])
+        XCTAssertEqual(app.staticTexts["reader.series.label"].label, "Resume Adjacency Fixture")
     }
 
     private func assertLabel(_ label: String, on element: XCUIElement) {
