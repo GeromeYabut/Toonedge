@@ -318,6 +318,28 @@ import Testing
     #expect(DownloadsSeriesGroup.groups(from: []).isEmpty)
 }
 
+@Test func downloadsKeepSameTitledSeriesFromDifferentSitesApart() {
+    func entry(_ host: String, _ chapter: Int) -> CacheMetadataEntry {
+        .fixture(sourceURL: URL(string: "https://\(host)/solo/\(chapter)")!, seriesTitle: "Solo", chapterTitle: "Chapter \(chapter)")
+    }
+    let unique = CacheMetadataEntry.fixture(sourceURL: URL(string: "https://a.example/other/1")!, seriesTitle: "Other")
+
+    let groups = DownloadsSeriesGroup.groups(from: [
+        entry("www.a.example", 3), entry("b.example", 7), unique, entry("www.a.example", 2)
+    ])
+    let layout = DownloadsContentLayout(entryCount: 4)
+
+    #expect(groups.map(\.seriesTitle) == ["Solo", "Solo", "Other"])
+    #expect(Set(groups.map(\.id)).count == 3)
+    #expect(groups[0].entries.map(\.chapterTitle) == ["Chapter 3", "Chapter 2"])
+    #expect(groups[1].entries.map(\.chapterTitle) == ["Chapter 7"])
+    #expect(layout.groupDetail(groups[0]) == "2 chapters · a.example")
+    #expect(layout.groupDetail(groups[1]) == "1 chapter · b.example")
+    #expect(layout.groupDetail(groups[2]) == "1 chapter")
+    #expect(layout.removeAllLabel(groups[0]) == "Remove all 2 chapters of Solo from a.example from this device")
+    #expect(layout.removeAllConfirmationTitle(groups[0]) == "Remove 2 chapters of Solo from a.example from this device?")
+}
+
 @Test func downloadsGroupCopyCountsChaptersAndOnlyOffersRemoveAllForSeveral() {
     let layout = DownloadsContentLayout(entryCount: 3)
     let one = DownloadsSeriesGroup(seriesTitle: "Sample", entries: [.fixture(sourceURL: URL(string: "https://example.com/1")!)])
